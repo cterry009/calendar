@@ -8,7 +8,7 @@
 
 ## 2. Backend foundation
 
-- [ ] 2.1 Scaffold NestJS server with Prisma ORM and PostgreSQL connection
+- [x] 2.1 Scaffold NestJS server with Prisma ORM and PostgreSQL connection
 - [ ] 2.2 Define Prisma schema: User, Device, Task, Schedule, PomodoroSession, BlockListEntry, FitnessEntry, AnalyticsSnapshot
 - [ ] 2.3 Implement email/password auth with JWT + refresh tokens
 - [ ] 2.4 Implement OAuth (Google, Apple) login endpoints

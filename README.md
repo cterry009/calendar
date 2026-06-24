@@ -31,6 +31,14 @@ Docker (PostgreSQL + Redis):
 docker compose up -d
 ```
 
+API server:
+
+```bash
+npm install --prefix server --legacy-peer-deps
+cp server/.env.example server/.env
+npm run dev --prefix server
+```
+
 ## Estructura
 
 ```
@@ -38,7 +46,7 @@ apps/web      → MVP web (Vite + React)
 apps/mobile   → Expo (fase 2)
 apps/desktop  → Tauri (fase 3)
 packages/shared → lógica compartida (serotonina, pomodoros, etc.)
-server        → NestJS API (fase 1–2)
+server/        → NestJS API (Prisma + PostgreSQL)
 openspec/     → especificaciones y cambios
 ```
 
