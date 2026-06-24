@@ -106,7 +106,8 @@ Lista de distracciones sincronizada desde la nube; el cliente nativo aplica las 
 - **Pilares de presencia** (6): outdoors/sunlight, reading, meditation, journaling, social connection, exercise.
 - **Rituales guiados** (≤5 min): respiración, gratitud, estiramiento, recordatorio de luz solar, pausa digital.
 - **Bloqueo extendido**: reutiliza `focus-blocking` con lista predefinida de apps/sitios de alta dopamina.
-- **Serotonin Score** (0–100): ponderación de pilares completados, rituales, check-in de ánimo y reducción de pantalla.
+- **Puntuación diaria** (0–100): ponderación de pilares completados, rituales, check-in de ánimo y reducción de pantalla.
+- **Plan de desintoxicación de inicio**: programa 7 días por defecto con fases audit → reducción selectiva → reintroducción con límites → mantenimiento; disponible en web/Android/Windows antes que clientes iOS/macOS.
 - **UI calmada**: tema muted sin animaciones durante el modo activo.
 
 **Alternativas consideradas**:
@@ -119,7 +120,7 @@ Lista de distracciones sincronizada desde la nube; el cliente nativo aplica las 
 |--------|------------|
 | [iOS bloqueo limitado] | Documentar limitaciones; ofrecer valor con pomodoros + recordatorios; solicitar entitlement Screen Time en fase 2 |
 | [Permisos invasivos en Android/desktop] | Onboarding claro explicando por qué; bloqueo solo durante foco explícito |
-| [Complejidad multiplataforma] | MVP Android + Web + Windows primero; iOS y macOS en fase 2 |
+| [Complejidad multiplataforma] | MVP Web + Android + Windows primero; **iOS y macOS en fase 6 (baja prioridad)** |
 | [Sincronización offline] | Cola local de cambios; conflictos: last-write-wins en campos simples, merge manual en tareas |
 | [Batería en móvil por monitoreo de apps] | Activar servicio solo durante sesiones de foco activas |
 | [Seguridad datos de salud] | Cumplir mínimos de privacidad; no compartir datos fitness con terceros en v1 |
@@ -128,15 +129,15 @@ Lista de distracciones sincronizada desde la nube; el cliente nativo aplica las 
 
 No aplica (proyecto nuevo). Despliegue por fases:
 
-1. **Fase 1**: Backend + Web (calendario, tareas, pomodoros, stats básicas, **modo serotonina**).
+1. **Fase 1**: Backend + Web (calendario, tareas, pomodoros, stats básicas, **modo serotonina**, **plan de desintoxicación**).
 2. **Fase 2**: App Android + bloqueo Android + sync completo.
 3. **Fase 3**: Desktop Windows (Tauri + bloqueo).
-4. **Fase 4**: iOS + macOS con capacidades adaptadas.
-5. **Fase 5**: Integraciones Health/Fit y sugerencias avanzadas.
+4. **Fase 5**: Integraciones Health/Fit y sugerencias avanzadas.
+5. **Fase 6 (baja prioridad)**: iOS + macOS — clientes nativos con bloqueo adaptado o modo degradado.
 
 ## Open Questions
 
 - ¿Nombre comercial de la app? (afecta branding y stores)
 - ¿Modelo freemium o pago único? (bloqueo avanzado podría ser premium)
-- ¿Prioridad Windows vs macOS para escritorio?
+- ¿Prioridad Windows vs macOS para escritorio? → **Windows primero; macOS fase 6 (baja prioridad)**
 - ¿Idioma inicial solo español o i18n desde v1?

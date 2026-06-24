@@ -49,6 +49,25 @@ The system SHALL switch to a muted, low-animation UI theme while Serotonin Mode 
 - **WHEN** Serotonin Mode activates on web or desktop
 - **THEN** the interface uses reduced contrast animations and a calm color palette until the mode ends
 
+### Requirement: Serotonin detox initiation plan
+The system SHALL offer a structured multi-day plan to start a serotonin-supporting detox process, with phased daily steps based on selective reduction of high-dopamine inputs (not total abstinence).
+
+#### Scenario: Start detox plan from onboarding
+- **WHEN** user chooses "Iniciar plan de desintoxicación" for the first time
+- **THEN** the system presents a baseline audit (screen time estimate, top distraction apps/sites) and assigns a plan duration (default 7 days)
+
+#### Scenario: Daily plan step
+- **WHEN** user opens the app on day 3 of the detox plan
+- **THEN** the system shows that day's phase goal, checklist tasks, suggested rituals, and pillar targets
+
+#### Scenario: Plan phase progression
+- **WHEN** user completes all required tasks for the current plan day
+- **THEN** the system marks the day complete, unlocks the next day, and updates detox plan progress percentage
+
+#### Scenario: Plan phases structure
+- **WHEN** the detox plan is active
+- **THEN** the system guides the user through phases: (1) baseline audit, (2) selective reduction of top 2–3 high-dopamine inputs, (3) reintroduction with boundaries, (4) maintenance habits linked to Serotonin Mode
+
 ### Requirement: Cross-device serotonin mode sync
 The system SHALL synchronize Serotonin Mode state, pillar progress, rituals, and mood entries across all logged-in devices.
 

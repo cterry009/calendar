@@ -25,6 +25,7 @@
 - [ ] 3.5 Implement fitness-productivity correlation calculator
 - [x] 3.6 Implement serotonin mode engine (pillars, rituals, score, mood check-in)
 - [x] 3.7 Write unit tests for shared logic packages
+- [ ] 3.8 Implement serotonin detox initiation plan engine (multi-day phases, daily steps, baseline audit, progress tracking)
 
 ## 4. Web app (MVP phase 1)
 
@@ -39,6 +40,7 @@
 - [ ] 4.9 Implement productivity dashboard with charts
 - [ ] 4.10 Implement suggestions panel
 - [x] 4.11 Implement Serotonin Mode UI (pillars, rituals, mood, score, calm theme)
+- [ ] 4.14 Implement Serotonin Detox Plan UI (onboarding, plan de inicio multi-día, checklist diaria, progreso por fase)
 - [ ] 4.12 Integrate WebSocket client for real-time sync
 - [ ] 4.13 Add IndexedDB offline storage and sync queue
 
@@ -63,17 +65,20 @@
 - [ ] 6.6 Test blocking during pomodoro and work-hours on Windows
 - [ ] 6.7 Implement auto-start on boot (optional, user-configurable)
 
-## 7. Mobile — iOS and desktop — macOS (phase 4)
+## 7. Mobile — iOS y desktop — macOS (fase 6 — baja prioridad)
 
-- [ ] 7.1 Build iOS app from Expo with platform-adapted blocking (Screen Time API or degraded mode)
-- [ ] 7.2 Implement iOS pre-focus checklist and reminder notifications
-- [ ] 7.3 Build macOS Tauri app with NSWorkspace-based app blocking
-- [ ] 7.4 Test iOS degraded mode and macOS blocking flows
+> Implementación nativa en iOS y macOS pospuesta hasta completar MVP web, Android y Windows.
+> En iOS/macOS el valor inicial se entrega vía web + plan de desintoxicación sin bloqueo profundo del SO.
+
+- [ ] 7.1 Build iOS app from Expo with platform-adapted blocking (Screen Time API or degraded mode) — **baja prioridad**
+- [ ] 7.2 Implement iOS pre-focus checklist and reminder notifications — **baja prioridad**
+- [ ] 7.3 Build macOS Tauri app with NSWorkspace-based app blocking — **baja prioridad**
+- [ ] 7.4 Test iOS degraded mode and macOS blocking flows — **baja prioridad**
 
 ## 8. Analytics and fitness integrations (phase 5)
 
 - [ ] 8.1 Implement nightly BullMQ job for analytics snapshot computation
-- [ ] 8.2 Integrate Apple HealthKit for iOS fitness data import
+- [ ] 8.2 Integrate Apple HealthKit for iOS fitness data import — **baja prioridad (depende de fase 6 iOS)**
 - [ ] 8.3 Integrate Google Health Connect for Android fitness data import
 - [ ] 8.4 Add CSV import for fitness data on desktop
 - [ ] 8.5 Enhance suggestion engine with fitness-productivity correlation insights
@@ -83,5 +88,5 @@
 - [ ] 9.1 Implement onboarding flow explaining permissions (blocking, health, notifications)
 - [ ] 9.2 Add i18n support (Spanish and English)
 - [ ] 9.3 Write end-to-end tests for critical flows (task → pomodoro → block → complete)
-- [ ] 9.4 Prepare app store listings (Google Play, App Store) and desktop installer
+- [ ] 9.4 Prepare app store listings (Google Play primero; App Store iOS — baja prioridad) and desktop installer (Windows primero; macOS — baja prioridad)
 - [ ] 9.5 Set up production deployment (API, database, CDN) and monitoring

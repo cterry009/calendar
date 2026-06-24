@@ -12,6 +12,7 @@ Las herramientas de calendario actuales planifican el tiempo pero no ayudan a ej
 - Mostrar estadísticas de progreso (tiempo planificado vs real, pomodoros, tareas por dificultad) con sugerencias de mejora.
 - Registrar y visualizar estadísticas de deporte, con correlación opcional respecto a la productividad.
 - Añadir **Modo Control de Serotonina**: reducir estímulos digitales de alta dopamina y promover actividades que apoyan el equilibrio serotoninérgico (luz solar, ejercicio, conexión social, meditación, lectura, journaling).
+- Incluir **plan de inicio de desintoxicación serotoninérgica** (programa multi-día con fases, checklist y progreso).
 - Sincronizar datos entre dispositivos mediante cuenta de usuario y backend en la nube.
 
 ## Capabilities
