@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Theme } from 'tamagui';
 import {
   MOOD_LABELS,
   MOOD_STATES,
@@ -17,6 +18,16 @@ import {
   suggestNextPillar,
   suggestNextRitual,
 } from '@calendar/shared';
+import {
+  AppButton,
+  AppCard,
+  Eyebrow,
+  H1,
+  H2,
+  Paragraph,
+  XStack,
+  YStack,
+} from '@calendar/ui';
 import { SerotoninModePanel } from './components/SerotoninModePanel';
 
 export default function App() {
@@ -58,53 +69,67 @@ export default function App() {
   }
 
   return (
-    <div className={`app ${calmMode ? 'app--calm' : ''}`}>
-      <header className="header">
-        <div>
-          <p className="eyebrow">Calendar Productivity</p>
-          <h1>Calendario inteligente + Modo Serotonina</h1>
-          <p className="subtitle">
-            Reduce estímulos digitales de alta dopamina y promueve actividades que apoyan tu
-            equilibrio natural (luz solar, ejercicio, conexión social, meditación).
-          </p>
-        </div>
-        {!session?.active ? (
-          <button className="btn btn--primary" onClick={startMode}>
-            Activar Modo Serotonina
-          </button>
-        ) : (
-          <button className="btn btn--ghost" onClick={stopMode}>
-            Finalizar modo
-          </button>
-        )}
-      </header>
+    <Theme name={calmMode ? 'calm' : 'dark'}>
+      <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7">
+        <XStack
+          justifyContent="space-between"
+          alignItems="flex-start"
+          gap="$6"
+          marginBottom="$7"
+          flexWrap="wrap"
+        >
+          <YStack flex={1} maxWidth={640}>
+            <Eyebrow>Calendar Productivity</Eyebrow>
+            <H1 fontSize="$9" marginBottom="$2">
+              Calendario inteligente + Modo Serotonina
+            </H1>
+            <Paragraph color="$muted" size="$5">
+              Reduce estímulos digitales de alta dopamina y promueve actividades que apoyan tu
+              equilibrio natural (luz solar, ejercicio, conexión social, meditación).
+            </Paragraph>
+          </YStack>
+          {!session?.active ? (
+            <AppButton variant="primary" onPress={startMode}>
+              Activar Modo Serotonina
+            </AppButton>
+          ) : (
+            <AppButton variant="ghost" onPress={stopMode}>
+              Finalizar modo
+            </AppButton>
+          )}
+        </XStack>
 
-      <main className="layout">
-        <section className="card card--info">
-          <h2>Próximamente</h2>
-          <ul>
-            <li>Calendario con tareas (dificultad, complejidad, estimación)</li>
-            <li>Pomodoros y bloqueo de distracciones</li>
-            <li>Estadísticas de productividad y deporte</li>
-            <li>Sync móvil + escritorio</li>
-          </ul>
-        </section>
+        <XStack gap="$6" flexWrap="wrap" alignItems="flex-start">
+          <AppCard flex={1} minWidth={280} maxWidth={420}>
+            <H2 fontSize="$6" marginTop={0}>
+              Próximamente
+            </H2>
+            <YStack gap="$2" paddingLeft="$3">
+              <Paragraph color="$muted">• Calendario con tareas (dificultad, complejidad, estimación)</Paragraph>
+              <Paragraph color="$muted">• Pomodoros y bloqueo de distracciones</Paragraph>
+              <Paragraph color="$muted">• Estadísticas de productividad y deporte</Paragraph>
+              <Paragraph color="$muted">• Sync móvil + escritorio</Paragraph>
+            </YStack>
+          </AppCard>
 
-        <SerotoninModePanel
-          session={session}
-          nextPillar={nextPillar}
-          nextRitual={nextRitual}
-          streakHint={streakHint}
-          onRitual={handleRitual}
-          onPillar={handlePillar}
-          onMood={handleMood}
-          pillarLabels={PILLAR_LABELS}
-          ritualLabels={RITUAL_LABELS}
-          moodLabels={MOOD_LABELS}
-          allRituals={SEROTONIN_RITUALS}
-          allMoods={MOOD_STATES}
-        />
-      </main>
-    </div>
+          <YStack flex={1.4} minWidth={320}>
+            <SerotoninModePanel
+              session={session}
+              nextPillar={nextPillar}
+              nextRitual={nextRitual}
+              streakHint={streakHint}
+              onRitual={handleRitual}
+              onPillar={handlePillar}
+              onMood={handleMood}
+              pillarLabels={PILLAR_LABELS}
+              ritualLabels={RITUAL_LABELS}
+              moodLabels={MOOD_LABELS}
+              allRituals={SEROTONIN_RITUALS}
+              allMoods={MOOD_STATES}
+            />
+          </YStack>
+        </XStack>
+      </YStack>
+    </Theme>
   );
 }

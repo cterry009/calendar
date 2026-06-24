@@ -4,6 +4,17 @@ import type {
   SerotoninRitual,
   SerotoninSession,
 } from '@calendar/shared';
+import {
+  AppButton,
+  AppCard,
+  H2,
+  H3,
+  Paragraph,
+  ScoreDisplay,
+  Text,
+  XStack,
+  YStack,
+} from '@calendar/ui';
 
 interface Props {
   session: SerotoninSession | null;
@@ -36,90 +47,132 @@ export function SerotoninModePanel({
 }: Props) {
   if (!session) {
     return (
-      <section className="card card--serotonin card--idle">
-        <h2>Modo Control de Serotonina</h2>
-        <p>
+      <AppCard variant="serotonin" opacity={0.9}>
+        <H2 fontSize="$6" marginTop={0}>
+          Modo Control de Serotonina
+        </H2>
+        <Paragraph color="$muted">
           Activa el modo para bloquear distracciones (en móvil/escritorio), seguir 6 pilares de
           bienestar y completar rituales breves de calma.
-        </p>
-      </section>
+        </Paragraph>
+      </AppCard>
     );
   }
 
   return (
-    <section className="card card--serotonin">
-      <div className="score-row">
-        <div>
-          <h2>Modo Serotonina activo</h2>
-          <p className="muted">{streakHint}</p>
-        </div>
-        <div className="score" aria-label="Puntuación serotonina">
-          <span className="score__value">{session.score}</span>
-          <span className="score__label">/ 100</span>
-        </div>
-      </div>
+    <AppCard variant="serotonin">
+      <XStack justifyContent="space-between" alignItems="center" gap="$4" marginBottom="$4">
+        <YStack flex={1}>
+          <H2 fontSize="$6" marginTop={0}>
+            Modo Serotonina activo
+          </H2>
+          <Paragraph color="$muted" size="$3">
+            {streakHint}
+          </Paragraph>
+        </YStack>
+        <XStack alignItems="baseline" gap="$1" aria-label="Puntuación serotonina">
+          <ScoreDisplay>{session.score}</ScoreDisplay>
+          <Text color="$muted">/ 100</Text>
+        </XStack>
+      </XStack>
 
       {nextPillar && (
-        <p className="suggestion">
-          Sugerencia: dedica 15 min a <strong>{pillarLabels[nextPillar]}</strong>
-        </p>
+        <YStack
+          backgroundColor="$accentBackground"
+          padding="$4"
+          borderRadius="$3"
+          marginBottom="$4"
+        >
+          <Paragraph size="$4">
+            Sugerencia: dedica 15 min a{' '}
+            <Text fontWeight="700">{pillarLabels[nextPillar]}</Text>
+          </Paragraph>
+        </YStack>
       )}
 
-      <h3>Pilares de presencia</h3>
-      <div className="pillars">
+      <H3 fontSize="$5" color="$muted" marginBottom="$3">
+        Pilares de presencia
+      </H3>
+      <YStack gap="$3" marginBottom="$5">
         {session.pillars.map((p) => (
-          <div key={p.pillar} className={`pillar ${p.completed ? 'pillar--done' : ''}`}>
-            <span>{pillarLabels[p.pillar]}</span>
-            <span className="pillar__progress">
+          <XStack
+            key={p.pillar}
+            alignItems="center"
+            gap="$3"
+            padding="$3"
+            borderRadius="$3"
+            backgroundColor="rgba(0,0,0,0.2)"
+            borderLeftWidth={p.completed ? 3 : 0}
+            borderLeftColor="$success"
+          >
+            <Text flex={1}>{pillarLabels[p.pillar]}</Text>
+            <Text color="$muted" fontSize="$3">
               {p.minutes}/{p.targetMinutes} min
-            </span>
+            </Text>
             {!p.completed && session.active && (
-              <button className="btn btn--small" onClick={() => onPillar(p.pillar, 15)}>
+              <AppButton variant="small" onPress={() => onPillar(p.pillar, 15)}>
                 +15 min
-              </button>
+              </AppButton>
             )}
-          </div>
+          </XStack>
         ))}
-      </div>
+      </YStack>
 
-      <h3>Rituales guiados</h3>
-      <div className="rituals">
+      <H3 fontSize="$5" color="$muted" marginBottom="$3">
+        Rituales guiados
+      </H3>
+      <YStack gap="$3" marginBottom="$5">
         {allRituals.map((ritual) => {
           const meta = ritualLabels[ritual];
           const done = session.completedRituals.includes(ritual);
           return (
-            <article key={ritual} className={`ritual ${done ? 'ritual--done' : ''}`}>
-              <header>
-                <strong>{meta.title}</strong>
-                <span>{meta.durationMin} min</span>
-              </header>
-              <p>{meta.description}</p>
+            <YStack
+              key={ritual}
+              gap="$2"
+              padding="$3"
+              borderRadius="$3"
+              backgroundColor="rgba(0,0,0,0.2)"
+              borderLeftWidth={done ? 3 : 0}
+              borderLeftColor="$success"
+            >
+              <XStack justifyContent="space-between">
+                <Text fontWeight="700">{meta.title}</Text>
+                <Text color="$muted" fontSize="$3">
+                  {meta.durationMin} min
+                </Text>
+              </XStack>
+              <Paragraph color="$muted" size="$3" margin={0}>
+                {meta.description}
+              </Paragraph>
               {!done && session.active && (
-                <button
-                  className={`btn btn--small ${nextRitual === ritual ? 'btn--primary' : ''}`}
-                  onClick={() => onRitual(ritual)}
+                <AppButton
+                  variant={nextRitual === ritual ? 'primary' : 'small'}
+                  alignSelf="flex-start"
+                  onPress={() => onRitual(ritual)}
                 >
                   Completar
-                </button>
+                </AppButton>
               )}
-            </article>
+            </YStack>
           );
         })}
-      </div>
+      </YStack>
 
-      <h3>Check-in de ánimo</h3>
-      <div className="moods">
+      <H3 fontSize="$5" color="$muted" marginBottom="$3">
+        Check-in de ánimo
+      </H3>
+      <XStack gap="$2" flexWrap="wrap">
         {allMoods.map((mood) => (
-          <button
+          <AppButton
             key={mood}
-            className="btn btn--mood"
+            variant="mood"
             disabled={!session.active}
-            onClick={() => onMood(mood)}
+            onPress={() => onMood(mood)}
           >
             {moodLabels[mood]}
-          </button>
+          </AppButton>
         ))}
-      </div>
-    </section>
+      </XStack>
+    </AppCard>
   );
 }

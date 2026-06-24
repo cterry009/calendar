@@ -16,9 +16,11 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm install --prefix packages/shared
+      - run: npm install --prefix packages/ui --legacy-peer-deps
+      - run: npm run typecheck --prefix packages/ui
       - run: npm run typecheck --prefix packages/shared
       - run: npm run test --prefix packages/shared
       - run: npm run build --prefix packages/shared
-      - run: npm install --prefix apps/web
+      - run: npm install --prefix apps/web --legacy-peer-deps
       - run: npm run build --prefix packages/shared
       - run: npm run build --prefix apps/web

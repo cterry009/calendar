@@ -11,10 +11,14 @@
     "lint": "eslint src"
   },
   "dependencies": {
+    "@tamagui/config": "^1.125.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-native-web": "^0.19.13",
+    "tamagui": "^1.125.0"
   },
   "devDependencies": {
+    "@tamagui/vite-plugin": "^1.125.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",

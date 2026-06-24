@@ -5,11 +5,19 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
-    "build": "echo 'UI package stub — Tamagui pending'",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src"
   },
+  "dependencies": {
+    "@tamagui/config": "^1.125.0",
+    "react-native-web": "^0.19.13",
+    "tamagui": "^1.125.0"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  },
   "devDependencies": {
+    "@types/react": "^18.3.12",
     "typescript": "^5.7.2"
   }
 }

@@ -2,7 +2,7 @@
 
 - [x] 1.1 Initialize Turborepo monorepo with `apps/mobile`, `apps/desktop`, `apps/web`, `packages/shared`, `packages/ui`, `server`
 - [x] 1.2 Configure TypeScript, ESLint, Prettier, and shared tsconfig across packages
-- [ ] 1.3 Set up Tamagui design system with theme tokens (colors, spacing, typography)
+- [x] 1.3 Set up Tamagui design system with theme tokens (colors, spacing, typography)
 - [x] 1.4 Create Docker Compose for PostgreSQL and Redis local development
 - [x] 1.5 Configure GitHub Actions CI pipeline (lint, typecheck, test)
 

@@ -11,4 +11,6 @@ Thumbs.db
 coverage/
 *.tsbuildinfo
 .vite/
+.tamagui/
+**/.tamagui/
 server/prisma/migrations/**/migration_lock.toml

@@ -4,7 +4,8 @@
     "jsx": "react-jsx",
     "noEmit": true,
     "paths": {
-      "@calendar/shared": ["../../packages/shared/src/index.ts"]
+      "@calendar/shared": ["../../packages/shared/src/index.ts"],
+      "@calendar/ui": ["../../packages/ui/src/index.ts"]
     }
   },
   "include": ["src"]

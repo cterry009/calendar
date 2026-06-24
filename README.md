@@ -17,7 +17,8 @@ Referencias: [Harvard Health — Serotonin](https://www.health.harvard.edu/mind-
 
 ```bash
 npm install --prefix packages/shared
-npm install --prefix apps/web
+npm install --prefix packages/ui --legacy-peer-deps
+npm install --prefix apps/web --legacy-peer-deps
 npm run build --prefix packages/shared
 npm run dev --prefix apps/web
 ```

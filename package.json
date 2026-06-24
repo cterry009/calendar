@@ -9,7 +9,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "install:all": "npm install --prefix packages/shared && npm install --prefix apps/web",
+    "install:all": "npm install --prefix packages/shared && npm install --prefix packages/ui && npm install --prefix apps/web",
     "build:shared": "npm run build --prefix packages/shared",
     "dev:web": "npm run build:shared && npm run dev --prefix apps/web"
   },
