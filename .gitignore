@@ -13,4 +13,3 @@ coverage/
 .vite/
 .tamagui/
 **/.tamagui/
-server/prisma/migrations/**/migration_lock.toml
