@@ -1,0 +1,18 @@
+schema: spec-driven
+
+context: |
+  Producto: app de productividad y calendario multiplataforma (móvil + escritorio + web).
+  Stack: Turborepo, React Native (Expo), Tauri 2, React (Vite), Tamagui, NestJS, Prisma, PostgreSQL, Redis.
+  Dominio: calendario, tareas con dificultad/complejidad, pomodoros, bloqueo de distracciones, analítica, deporte.
+  Idioma UI: español primero, i18n preparado.
+  Convenciones: TypeScript estricto, conventional commits, tests en packages/shared.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours

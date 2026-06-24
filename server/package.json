@@ -1,0 +1,9 @@
+{
+  "name": "@calendar/server",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'NestJS scaffold pending — task 2.1'",
+    "build": "echo 'pending'"
+  }
+}

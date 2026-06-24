@@ -1,0 +1,29 @@
+{
+  "name": "calendar-productivity",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Calendario de productividad multiplataforma con pomodoros, bloqueo de distracciones y modo serotonina",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "install:all": "npm install --prefix packages/shared && npm install --prefix apps/web",
+    "build:shared": "npm run build --prefix packages/shared",
+    "dev:web": "npm run build:shared && npm run dev --prefix apps/web"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@10.9.0"
+}

@@ -1,0 +1,87 @@
+## 1. Project scaffolding
+
+- [x] 1.1 Initialize Turborepo monorepo with `apps/mobile`, `apps/desktop`, `apps/web`, `packages/shared`, `packages/ui`, `server`
+- [x] 1.2 Configure TypeScript, ESLint, Prettier, and shared tsconfig across packages
+- [ ] 1.3 Set up Tamagui design system with theme tokens (colors, spacing, typography)
+- [x] 1.4 Create Docker Compose for PostgreSQL and Redis local development
+- [x] 1.5 Configure GitHub Actions CI pipeline (lint, typecheck, test)
+
+## 2. Backend foundation
+
+- [ ] 2.1 Scaffold NestJS server with Prisma ORM and PostgreSQL connection
+- [ ] 2.2 Define Prisma schema: User, Device, Task, Schedule, PomodoroSession, BlockListEntry, FitnessEntry, AnalyticsSnapshot
+- [ ] 2.3 Implement email/password auth with JWT + refresh tokens
+- [ ] 2.4 Implement OAuth (Google, Apple) login endpoints
+- [ ] 2.5 Implement device registration and revocation endpoints
+- [ ] 2.6 Set up Socket.io gateway for real-time sync events
+- [ ] 2.7 Implement offline sync queue endpoint (batch upsert with conflict resolution)
+
+## 3. Shared business logic
+
+- [ ] 3.1 Define Zod schemas for Task, Schedule, Pomodoro, BlockList, FitnessEntry in `packages/shared`
+- [ ] 3.2 Implement pomodoro state machine (idle → focus → short_break → long_break)
+- [ ] 3.3 Implement estimation accuracy calculator (estimated vs actual per difficulty)
+- [ ] 3.4 Implement suggestion engine with rule-based heuristics
+- [ ] 3.5 Implement fitness-productivity correlation calculator
+- [x] 3.6 Implement serotonin mode engine (pillars, rituals, score, mood check-in)
+- [x] 3.7 Write unit tests for shared logic packages
+
+## 4. Web app (MVP phase 1)
+
+- [x] 4.1 Scaffold Vite + React app with Tamagui and routing
+- [ ] 4.2 Implement auth screens (login, register, OAuth callback)
+- [ ] 4.3 Implement calendar day/week/month views
+- [ ] 4.4 Implement task CRUD with difficulty, complexity, and time estimate fields
+- [ ] 4.5 Implement work schedule and rest period configuration UI
+- [ ] 4.6 Implement pomodoro timer component with task linking
+- [ ] 4.7 Implement web soft-focus overlay mode
+- [ ] 4.8 Implement fitness manual logging and weekly summary view
+- [ ] 4.9 Implement productivity dashboard with charts
+- [ ] 4.10 Implement suggestions panel
+- [x] 4.11 Implement Serotonin Mode UI (pillars, rituals, mood, score, calm theme)
+- [ ] 4.12 Integrate WebSocket client for real-time sync
+- [ ] 4.13 Add IndexedDB offline storage and sync queue
+
+## 5. Mobile app — Android (phase 2)
+
+- [ ] 5.1 Scaffold Expo app with shared UI components
+- [ ] 5.2 Port auth, calendar, tasks, pomodoro, fitness, and analytics screens from web
+- [ ] 5.3 Implement expo-sqlite offline storage and sync queue
+- [ ] 5.4 Implement push notifications for pomodoro breaks and suggestions
+- [ ] 5.5 Build Android block-list picker (installed apps enumeration)
+- [ ] 5.6 Implement Android Accessibility Service for app blocking during focus
+- [ ] 5.7 Implement overlay UI when blocked app is opened
+- [ ] 5.8 Test blocking during pomodoro, task focus, and work-hours modes
+
+## 6. Desktop app — Windows (phase 3)
+
+- [ ] 6.1 Scaffold Tauri 2 app wrapping shared React UI
+- [ ] 6.2 Implement Tauri system tray with pomodoro quick controls
+- [ ] 6.3 Build Rust sidecar for process blocking (configured desktop apps)
+- [ ] 6.4 Implement hosts-file / DNS-based website blocking during focus
+- [ ] 6.5 Implement block-list management UI for sites and desktop apps
+- [ ] 6.6 Test blocking during pomodoro and work-hours on Windows
+- [ ] 6.7 Implement auto-start on boot (optional, user-configurable)
+
+## 7. Mobile — iOS and desktop — macOS (phase 4)
+
+- [ ] 7.1 Build iOS app from Expo with platform-adapted blocking (Screen Time API or degraded mode)
+- [ ] 7.2 Implement iOS pre-focus checklist and reminder notifications
+- [ ] 7.3 Build macOS Tauri app with NSWorkspace-based app blocking
+- [ ] 7.4 Test iOS degraded mode and macOS blocking flows
+
+## 8. Analytics and fitness integrations (phase 5)
+
+- [ ] 8.1 Implement nightly BullMQ job for analytics snapshot computation
+- [ ] 8.2 Integrate Apple HealthKit for iOS fitness data import
+- [ ] 8.3 Integrate Google Health Connect for Android fitness data import
+- [ ] 8.4 Add CSV import for fitness data on desktop
+- [ ] 8.5 Enhance suggestion engine with fitness-productivity correlation insights
+
+## 9. Polish and release
+
+- [ ] 9.1 Implement onboarding flow explaining permissions (blocking, health, notifications)
+- [ ] 9.2 Add i18n support (Spanish and English)
+- [ ] 9.3 Write end-to-end tests for critical flows (task → pomodoro → block → complete)
+- [ ] 9.4 Prepare app store listings (Google Play, App Store) and desktop installer
+- [ ] 9.5 Set up production deployment (API, database, CDN) and monitoring

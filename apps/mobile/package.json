@@ -1,0 +1,9 @@
+{
+  "name": "@calendar/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Expo scaffold pending — see README'",
+    "build": "echo 'pending'"
+  }
+}
