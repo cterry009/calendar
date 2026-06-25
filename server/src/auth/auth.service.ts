@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { DevicePlatform } from '@prisma/client';
+import { createHash, randomUUID, timingSafeEqual } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -123,7 +124,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const tokenValid = await bcrypt.compare(
+    const tokenValid = this.verifyRefreshTokenHash(
       refreshToken,
       device.refreshToken,
     );
@@ -141,7 +142,7 @@ export class AuthService {
     await this.prisma.device.update({
       where: { id: device.id },
       data: {
-        refreshToken: await this.hashRefreshToken(tokens.refreshToken),
+        refreshToken: this.hashRefreshToken(tokens.refreshToken),
         lastSeenAt: new Date(),
       },
     });
@@ -195,7 +196,7 @@ export class AuthService {
     await this.prisma.device.update({
       where: { id: deviceId },
       data: {
-        refreshToken: await this.hashRefreshToken(tokens.refreshToken),
+        refreshToken: this.hashRefreshToken(tokens.refreshToken),
         lastSeenAt: new Date(),
       },
     });
@@ -226,6 +227,7 @@ export class AuthService {
       sub: user.id,
       deviceId,
       type: 'refresh',
+      jti: randomUUID(),
     };
 
     const accessOptions: JwtSignOptions = {
@@ -249,7 +251,19 @@ export class AuthService {
     };
   }
 
-  private hashRefreshToken(token: string): Promise<string> {
-    return bcrypt.hash(token, this.bcryptRounds);
+  private hashRefreshToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private verifyRefreshTokenHash(token: string, storedHash: string): boolean {
+    const computed = this.hashRefreshToken(token);
+    try {
+      return timingSafeEqual(
+        Buffer.from(computed, 'utf8'),
+        Buffer.from(storedHash, 'utf8'),
+      );
+    } catch {
+      return false;
+    }
   }
 }

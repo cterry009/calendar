@@ -11,6 +11,7 @@ export interface JwtRefreshPayload {
   sub: string;
   deviceId: string;
   type: 'refresh';
+  jti: string;
 }
 
 export interface AuthTokens {
