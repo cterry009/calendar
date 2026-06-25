@@ -12,6 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   AuthResponse,
   AuthTokens,
+  DeviceInfo,
   JwtAccessPayload,
   JwtRefreshPayload,
 } from './auth.types';
@@ -59,15 +60,10 @@ export class AuthService {
       },
     });
 
-    const device = await this.prisma.device.create({
-      data: {
-        userId: user.id,
-        label: dto.deviceLabel,
-        platform: dto.devicePlatform,
-      },
+    return this.createSession(user, {
+      label: dto.deviceLabel,
+      platform: dto.devicePlatform,
     });
-
-    return this.buildAuthResponse(user, device.id);
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
@@ -84,15 +80,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const device = await this.prisma.device.create({
-      data: {
-        userId: user.id,
-        label: dto.deviceLabel ?? 'Web browser',
-        platform: dto.devicePlatform ?? DevicePlatform.WEB,
-      },
+    return this.createSession(user, {
+      label: dto.deviceLabel ?? 'Web browser',
+      platform: dto.devicePlatform ?? DevicePlatform.WEB,
     });
-
-    return this.buildAuthResponse(user, device.id);
   }
 
   async refresh(refreshToken: string): Promise<AuthTokens> {
@@ -185,6 +176,25 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async createSession(
+    user: { id: string; email: string; name: string | null },
+    deviceInfo: DeviceInfo,
+  ): Promise<AuthResponse> {
+    const device = await this.prisma.device.create({
+      data: {
+        userId: user.id,
+        label: deviceInfo.label,
+        platform: deviceInfo.platform,
+      },
+    });
+
+    return this.buildAuthResponse(user, device.id);
+  }
+
+  async revokeDevice(userId: string, deviceId: string): Promise<void> {
+    await this.logout(userId, deviceId);
   }
 
   private async buildAuthResponse(

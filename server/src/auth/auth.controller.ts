@@ -8,24 +8,21 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { AuthenticatedRequest } from '../common/auth-request.types';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { OAuthAppleDto, OAuthGoogleDto } from './dto/oauth.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-
-interface AuthenticatedRequest extends Request {
-  user: {
-    userId: string;
-    email: string;
-    deviceId: string;
-  };
-}
+import { OAuthService } from './oauth.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly oauthService: OAuthService,
+  ) {}
 
   @Post('register')
   register(@Body() dto: RegisterDto) {
@@ -36,6 +33,18 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post('oauth/google')
+  @HttpCode(HttpStatus.OK)
+  loginWithGoogle(@Body() dto: OAuthGoogleDto) {
+    return this.oauthService.loginWithGoogle(dto);
+  }
+
+  @Post('oauth/apple')
+  @HttpCode(HttpStatus.OK)
+  loginWithApple(@Body() dto: OAuthAppleDto) {
+    return this.oauthService.loginWithApple(dto);
   }
 
   @Post('refresh')

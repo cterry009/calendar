@@ -6,4 +6,6 @@ export const authConfig = registerAs('auth', () => ({
   accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? '15m',
   refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? '30d',
   bcryptRounds: Number(process.env.BCRYPT_ROUNDS ?? 12),
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',
+  appleClientId: process.env.APPLE_CLIENT_ID ?? '',
 }));

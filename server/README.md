@@ -20,9 +20,18 @@ npm run dev
 | GET | `/health/db` | PostgreSQL connectivity |
 | POST | `/auth/register` | Create account + device session |
 | POST | `/auth/login` | Email/password login |
+| POST | `/auth/oauth/google` | Google ID token login |
+| POST | `/auth/oauth/apple` | Apple ID token login |
 | POST | `/auth/refresh` | Rotate access + refresh tokens |
 | POST | `/auth/logout` | Revoke current device session (Bearer token) |
 | GET | `/auth/me` | Current user profile (Bearer token) |
+| GET | `/devices` | List registered devices (Bearer token) |
+| POST | `/devices/register` | Register new device session (Bearer token) |
+| DELETE | `/devices/:id` | Revoke another device (Bearer token) |
+| GET | `/sync/pull` | Download full user snapshot (Bearer token) |
+| POST | `/sync/batch` | Push offline changes with conflict resolution (Bearer token) |
+
+WebSocket namespace: `/sync` — connect with `auth.token` = access JWT; receive `sync:changes` events.
 
 Default port: **3000**
 

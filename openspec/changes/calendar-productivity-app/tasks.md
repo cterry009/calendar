@@ -11,10 +11,10 @@
 - [x] 2.1 Scaffold NestJS server with Prisma ORM and PostgreSQL connection
 - [x] 2.2 Define Prisma schema: User, Device, Task, Schedule, PomodoroSession, BlockListEntry, FitnessEntry, AnalyticsSnapshot
 - [x] 2.3 Implement email/password auth with JWT + refresh tokens
-- [ ] 2.4 Implement OAuth (Google, Apple) login endpoints
-- [ ] 2.5 Implement device registration and revocation endpoints
-- [ ] 2.6 Set up Socket.io gateway for real-time sync events
-- [ ] 2.7 Implement offline sync queue endpoint (batch upsert with conflict resolution)
+- [x] 2.4 Implement OAuth (Google, Apple) login endpoints
+- [x] 2.5 Implement device registration and revocation endpoints
+- [x] 2.6 Set up Socket.io gateway for real-time sync events
+- [x] 2.7 Implement offline sync queue endpoint (batch upsert with conflict resolution)
 
 ## 3. Shared business logic
 
