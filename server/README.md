@@ -18,6 +18,11 @@ npm run dev
 |--------|------|-------------|
 | GET | `/health` | API liveness |
 | GET | `/health/db` | PostgreSQL connectivity |
+| POST | `/auth/register` | Create account + device session |
+| POST | `/auth/login` | Email/password login |
+| POST | `/auth/refresh` | Rotate access + refresh tokens |
+| POST | `/auth/logout` | Revoke current device session (Bearer token) |
+| GET | `/auth/me` | Current user profile (Bearer token) |
 
 Default port: **3000**
 
