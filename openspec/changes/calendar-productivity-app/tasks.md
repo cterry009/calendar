@@ -1,4 +1,4 @@
-## 1. Project scaffolding
+﻿## 1. Project scaffolding
 
 - [x] 1.1 Initialize Turborepo monorepo with `apps/mobile`, `apps/desktop`, `apps/web`, `packages/shared`, `packages/ui`, `server`
 - [x] 1.2 Configure TypeScript, ESLint, Prettier, and shared tsconfig across packages
@@ -20,7 +20,7 @@
 ## 3. Shared business logic
 
 - [x] 3.1 Define Zod schemas for Task, Schedule, Pomodoro, BlockList, FitnessEntry in `packages/shared`
-- [x] 3.2 Implement pomodoro state machine (idle → focus → short_break → long_break)
+- [x] 3.2 Implement pomodoro state machine (idle â†’ focus â†’ short_break â†’ long_break)
 - [x] 3.3 Implement estimation accuracy calculator (estimated vs actual per difficulty)
 - [x] 3.4 Implement suggestion engine with rule-based heuristics
 - [x] 3.5 Implement fitness-productivity correlation calculator
@@ -31,7 +31,7 @@
 ## 4. Web app (MVP phase 1)
 
 - [x] 4.1 Scaffold Vite + React app with Tamagui and routing
-- [ ] 4.2 Implement auth screens (login, register, OAuth callback)
+- [x] 4.2 Implement auth screens (login, register, OAuth callback)
 - [ ] 4.3 Implement calendar day/week/month views
 - [ ] 4.4 Implement task CRUD with difficulty, complexity, and time estimate fields
 - [ ] 4.5 Implement work schedule and rest period configuration UI
@@ -41,11 +41,11 @@
 - [ ] 4.9 Implement productivity dashboard with charts
 - [ ] 4.10 Implement suggestions panel
 - [x] 4.11 Implement Serotonin Mode UI (pillars, rituals, mood, score, calm theme)
-- [ ] 4.14 Implement Serotonin Detox Plan UI (onboarding, plan de inicio multi-día, checklist diaria, progreso por fase)
+- [ ] 4.14 Implement Serotonin Detox Plan UI (onboarding, plan de inicio multi-dÃ­a, checklist diaria, progreso por fase)
 - [ ] 4.12 Integrate WebSocket client for real-time sync
 - [ ] 4.13 Add IndexedDB offline storage and sync queue
 
-## 5. Mobile app — Android (phase 2)
+## 5. Mobile app â€” Android (phase 2)
 
 - [ ] 5.1 Scaffold Expo app with shared UI components
 - [ ] 5.2 Port auth, calendar, tasks, pomodoro, fitness, and analytics screens from web
@@ -56,7 +56,7 @@
 - [ ] 5.7 Implement overlay UI when blocked app is opened
 - [ ] 5.8 Test blocking during pomodoro, task focus, and work-hours modes
 
-## 6. Desktop app — Windows (phase 3)
+## 6. Desktop app â€” Windows (phase 3)
 
 - [ ] 6.1 Scaffold Tauri 2 app wrapping shared React UI
 - [ ] 6.2 Implement Tauri system tray with pomodoro quick controls
@@ -66,20 +66,20 @@
 - [ ] 6.6 Test blocking during pomodoro and work-hours on Windows
 - [ ] 6.7 Implement auto-start on boot (optional, user-configurable)
 
-## 7. Mobile — iOS y desktop — macOS (fase 6 — baja prioridad)
+## 7. Mobile â€” iOS y desktop â€” macOS (fase 6 â€” baja prioridad)
 
-> Implementación nativa en iOS y macOS pospuesta hasta completar MVP web, Android y Windows.
-> En iOS/macOS el valor inicial se entrega vía web + plan de desintoxicación sin bloqueo profundo del SO.
+> ImplementaciÃ³n nativa en iOS y macOS pospuesta hasta completar MVP web, Android y Windows.
+> En iOS/macOS el valor inicial se entrega vÃ­a web + plan de desintoxicaciÃ³n sin bloqueo profundo del SO.
 
-- [ ] 7.1 Build iOS app from Expo with platform-adapted blocking (Screen Time API or degraded mode) — **baja prioridad**
-- [ ] 7.2 Implement iOS pre-focus checklist and reminder notifications — **baja prioridad**
-- [ ] 7.3 Build macOS Tauri app with NSWorkspace-based app blocking — **baja prioridad**
-- [ ] 7.4 Test iOS degraded mode and macOS blocking flows — **baja prioridad**
+- [ ] 7.1 Build iOS app from Expo with platform-adapted blocking (Screen Time API or degraded mode) â€” **baja prioridad**
+- [ ] 7.2 Implement iOS pre-focus checklist and reminder notifications â€” **baja prioridad**
+- [ ] 7.3 Build macOS Tauri app with NSWorkspace-based app blocking â€” **baja prioridad**
+- [ ] 7.4 Test iOS degraded mode and macOS blocking flows â€” **baja prioridad**
 
 ## 8. Analytics and fitness integrations (phase 5)
 
 - [ ] 8.1 Implement nightly BullMQ job for analytics snapshot computation
-- [ ] 8.2 Integrate Apple HealthKit for iOS fitness data import — **baja prioridad (depende de fase 6 iOS)**
+- [ ] 8.2 Integrate Apple HealthKit for iOS fitness data import â€” **baja prioridad (depende de fase 6 iOS)**
 - [ ] 8.3 Integrate Google Health Connect for Android fitness data import
 - [ ] 8.4 Add CSV import for fitness data on desktop
 - [ ] 8.5 Enhance suggestion engine with fitness-productivity correlation insights
@@ -88,6 +88,7 @@
 
 - [ ] 9.1 Implement onboarding flow explaining permissions (blocking, health, notifications)
 - [ ] 9.2 Add i18n support (Spanish and English)
-- [ ] 9.3 Write end-to-end tests for critical flows (task → pomodoro → block → complete)
-- [ ] 9.4 Prepare app store listings (Google Play primero; App Store iOS — baja prioridad) and desktop installer (Windows primero; macOS — baja prioridad)
+- [ ] 9.3 Write end-to-end tests for critical flows (task â†’ pomodoro â†’ block â†’ complete)
+- [ ] 9.4 Prepare app store listings (Google Play primero; App Store iOS â€” baja prioridad) and desktop installer (Windows primero; macOS â€” baja prioridad)
 - [ ] 9.5 Set up production deployment (API, database, CDN) and monitoring
+

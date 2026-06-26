@@ -1,7 +1,17 @@
-import { defineConfig } from 'vite';
+﻿import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { tamaguiPlugin } from '@tamagui/vite-plugin';
 import path from 'path';
+
+/** Native fs watchers fail on Windows network drives (e.g. mapped V:). */
+function shouldUsePolling(root: string): boolean {
+  if (process.env.CHOKIDAR_USEPOLLING === 'true') return true;
+  if (process.env.CHOKIDAR_USEPOLLING === 'false') return false;
+  return root.startsWith('\\\\') || /^V:\\/i.test(root);
+}
+
+const projectRoot = __dirname;
+const usePolling = shouldUsePolling(projectRoot);
 
 export default defineConfig({
   plugins: [
@@ -27,5 +37,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    watch: usePolling
+      ? {
+          usePolling: true,
+          interval: 1000,
+        }
+      : undefined,
   },
 });
