@@ -18,14 +18,14 @@
 
 ## 3. Shared business logic
 
-- [ ] 3.1 Define Zod schemas for Task, Schedule, Pomodoro, BlockList, FitnessEntry in `packages/shared`
-- [ ] 3.2 Implement pomodoro state machine (idle → focus → short_break → long_break)
-- [ ] 3.3 Implement estimation accuracy calculator (estimated vs actual per difficulty)
-- [ ] 3.4 Implement suggestion engine with rule-based heuristics
-- [ ] 3.5 Implement fitness-productivity correlation calculator
+- [x] 3.1 Define Zod schemas for Task, Schedule, Pomodoro, BlockList, FitnessEntry in `packages/shared`
+- [x] 3.2 Implement pomodoro state machine (idle → focus → short_break → long_break)
+- [x] 3.3 Implement estimation accuracy calculator (estimated vs actual per difficulty)
+- [x] 3.4 Implement suggestion engine with rule-based heuristics
+- [x] 3.5 Implement fitness-productivity correlation calculator
 - [x] 3.6 Implement serotonin mode engine (pillars, rituals, score, mood check-in)
 - [x] 3.7 Write unit tests for shared logic packages
-- [ ] 3.8 Implement serotonin detox initiation plan engine (multi-day phases, daily steps, baseline audit, progress tracking)
+- [x] 3.8 Implement serotonin detox initiation plan engine (multi-day phases, daily steps, baseline audit, progress tracking)
 
 ## 4. Web app (MVP phase 1)
 
