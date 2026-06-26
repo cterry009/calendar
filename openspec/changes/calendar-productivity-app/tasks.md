@@ -34,17 +34,17 @@
 - [x] 4.2 Implement auth screens (login, register, OAuth callback)
 - [x] 4.3 Implement calendar day/week/month views
 - [x] 4.4 Implement task CRUD with difficulty, complexity, and time estimate fields
-- [ ] 4.5 Implement work schedule and rest period configuration UI
+- [x] 4.5 Implement work schedule and rest period configuration UI
 - [ ] 4.6 Implement pomodoro timer component with task linking
 - [ ] 4.7 Implement web soft-focus overlay mode
 - [ ] 4.8 Implement fitness manual logging and weekly summary view
 - [ ] 4.9 Implement productivity dashboard with charts
 - [ ] 4.10 Implement suggestions panel
 - [x] 4.11 Implement Serotonin Mode UI (pillars, rituals, mood, score, calm theme)
-- [ ] 4.14 Implement Serotonin Detox Plan UI (onboarding, plan de inicio multi-dÃ­a, checklist diaria, progreso por fase)
 - [ ] 4.12 Integrate WebSocket client for real-time sync
 - [ ] 4.13 Add IndexedDB offline storage and sync queue
-
+- [x] 4.14 Implement onboarding tutorial for new users (guided walkthrough)
+- [ ] 4.16 Implement Serotonin Detox Plan UI (onboarding, plan de inicio multi-dia, checklist diaria, progreso por fase)
 ## 5. Mobile app â€” Android (phase 2)
 
 - [ ] 5.1 Scaffold Expo app with shared UI components
@@ -91,5 +91,8 @@
 - [ ] 9.3 Write end-to-end tests for critical flows (task â†’ pomodoro â†’ block â†’ complete)
 - [ ] 9.4 Prepare app store listings (Google Play primero; App Store iOS â€” baja prioridad) and desktop installer (Windows primero; macOS â€” baja prioridad)
 - [ ] 9.5 Set up production deployment (API, database, CDN) and monitoring
+
+
+
 
 

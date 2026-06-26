@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Theme } from 'tamagui';
 import {
@@ -20,13 +20,22 @@ import {
   suggestNextRitual,
 } from '@calendar/shared';
 import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, XStack, YStack } from '@calendar/ui';
+import { OnboardingTutorial } from '../components/onboarding/OnboardingTutorial';
 import { SerotoninModePanel } from '../components/SerotoninModePanel';
 import { useAuth } from '../context/AuthContext';
+import { isTutorialCompleted, markTutorialCompleted } from '../lib/onboarding/storage';
 
 export function HomePage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [session, setSession] = useState<SerotoninSession | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  useEffect(() => {
+    if (user && !isTutorialCompleted()) {
+      setShowTutorial(true);
+    }
+  }, [user]);
 
   const calmMode = session?.active ?? false;
   const nextPillar = session ? suggestNextPillar(session.pillars) : null;
@@ -63,17 +72,34 @@ export function HomePage() {
     setSession(logMood(session, mood));
   }
 
+  function handleFinishTutorial() {
+    markTutorialCompleted();
+    setShowTutorial(false);
+  }
+
+  function handleSkipTutorial() {
+    markTutorialCompleted();
+    setShowTutorial(false);
+  }
+
   return (
     <Theme name={calmMode ? 'calm' : 'dark'}>
       <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7">
-        <XStack justifyContent="space-between" alignItems="center" gap="$4" marginBottom="$5">
+        <OnboardingTutorial open={showTutorial} onFinish={handleFinishTutorial} onSkip={handleSkipTutorial} />
+
+        <XStack justifyContent="space-between" alignItems="center" gap="$4" marginBottom="$5" flexWrap="wrap">
           <YStack>
             <Eyebrow>Authenticated session</Eyebrow>
             <Paragraph color="$muted">{user?.email ?? 'Unknown user'}</Paragraph>
           </YStack>
-          <AppButton variant="ghost" onPress={logout}>
-            Logout
-          </AppButton>
+          <XStack gap="$2" flexWrap="wrap">
+            <AppButton variant="ghost" onPress={() => setShowTutorial(true)}>
+              Ver tutorial
+            </AppButton>
+            <AppButton variant="ghost" onPress={logout}>
+              Logout
+            </AppButton>
+          </XStack>
         </XStack>
 
         <XStack
@@ -136,6 +162,23 @@ export function HomePage() {
             </YStack>
             <AppButton variant="primary" onPress={() => navigate('/tasks')}>
               Ir a tareas
+            </AppButton>
+          </AppCard>
+
+          <AppCard flex={1} minWidth={280} maxWidth={420}>
+            <H2 fontSize="$6" marginTop={0}>
+              Horarios
+            </H2>
+            <YStack gap="$2" marginBottom="$4">
+              <Paragraph color="$muted" margin={0}>
+                Configura horarios recurrentes de trabajo y descansos para cada dia de la semana.
+              </Paragraph>
+              <Paragraph color="$muted" margin={0}>
+                Estos bloques se sincronizan y aparecen en calendario junto con tus tareas.
+              </Paragraph>
+            </YStack>
+            <AppButton variant="primary" onPress={() => navigate('/schedule')}>
+              Configurar horarios
             </AppButton>
           </AppCard>
 

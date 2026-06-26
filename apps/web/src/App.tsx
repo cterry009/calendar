@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { SchedulePage } from './pages/SchedulePage';
 import { TasksPage } from './pages/TasksPage';
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/tasks" element={<TasksPage />} />
+          <Route path="/schedule" element={<SchedulePage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -23,6 +23,9 @@ export function CalendarPage() {
           <AppButton variant="ghost" onPress={() => navigate('/tasks')}>
             Ir a tareas
           </AppButton>
+          <AppButton variant="ghost" onPress={() => navigate('/schedule')}>
+            Horarios
+          </AppButton>
           <AppButton variant="ghost" onPress={() => navigate('/')}>
             Volver al inicio
           </AppButton>
