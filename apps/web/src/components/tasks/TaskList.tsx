@@ -9,9 +9,18 @@ interface TaskListProps {
   onEdit: (task: SyncTaskRecord) => void;
   onDelete: (task: SyncTaskRecord) => Promise<void>;
   onComplete: (task: SyncTaskRecord, actualMinutes: number) => Promise<void>;
+  onStartPomodoro?: (task: SyncTaskRecord) => void;
 }
 
-export function TaskList({ tasks, isBusy, emptyMessage, onEdit, onDelete, onComplete }: TaskListProps) {
+export function TaskList({
+  tasks,
+  isBusy,
+  emptyMessage,
+  onEdit,
+  onDelete,
+  onComplete,
+  onStartPomodoro,
+}: TaskListProps) {
   if (!tasks.length) {
     return (
       <AppCard>
@@ -32,6 +41,7 @@ export function TaskList({ tasks, isBusy, emptyMessage, onEdit, onDelete, onComp
           onEdit={onEdit}
           onDelete={onDelete}
           onComplete={onComplete}
+          onStartPomodoro={onStartPomodoro}
         />
       ))}
     </YStack>

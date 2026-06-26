@@ -61,6 +61,9 @@ export function TasksPage() {
         </YStack>
 
         <XStack gap="$2" flexWrap="wrap">
+          <AppButton type="button" variant="ghost" onPress={() => navigate('/pomodoro')}>
+            Pomodoro
+          </AppButton>
           <AppButton type="button" variant="ghost" onPress={() => navigate('/calendar')}>
             Calendario
           </AppButton>
@@ -146,6 +149,9 @@ export function TasksPage() {
           }}
           onDelete={handleDelete}
           onComplete={completeTask}
+          onStartPomodoro={(task) => {
+            navigate(`/pomodoro?taskId=${encodeURIComponent(task.id)}`);
+          }}
         />
       )}
 

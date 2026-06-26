@@ -167,6 +167,23 @@ export function HomePage() {
 
           <AppCard flex={1} minWidth={280} maxWidth={420}>
             <H2 fontSize="$6" marginTop={0}>
+              Pomodoro
+            </H2>
+            <YStack gap="$2" marginBottom="$4">
+              <Paragraph color="$muted" margin={0}>
+                Activa ciclos de enfoque y descanso vinculados a tareas pendientes o en progreso.
+              </Paragraph>
+              <Paragraph color="$muted" margin={0}>
+                Configura duraciones, revisa estado actual y recibe avisos al terminar cada fase.
+              </Paragraph>
+            </YStack>
+            <AppButton variant="primary" onPress={() => navigate('/pomodoro')}>
+              Abrir pomodoro
+            </AppButton>
+          </AppCard>
+
+          <AppCard flex={1} minWidth={280} maxWidth={420}>
+            <H2 fontSize="$6" marginTop={0}>
               Horarios
             </H2>
             <YStack gap="$2" marginBottom="$4">

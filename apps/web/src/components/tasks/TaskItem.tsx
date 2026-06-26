@@ -10,6 +10,7 @@ interface TaskItemProps {
   onEdit: (task: SyncTaskRecord) => void;
   onDelete: (task: SyncTaskRecord) => Promise<void>;
   onComplete: (task: SyncTaskRecord, actualMinutes: number) => Promise<void>;
+  onStartPomodoro?: (task: SyncTaskRecord) => void;
 }
 
 interface MetaBadgeProps {
@@ -31,7 +32,7 @@ function MetaBadge({ text }: MetaBadgeProps) {
   );
 }
 
-export function TaskItem({ task, isBusy, onEdit, onDelete, onComplete }: TaskItemProps) {
+export function TaskItem({ task, isBusy, onEdit, onDelete, onComplete, onStartPomodoro }: TaskItemProps) {
   const [showCompleteEditor, setShowCompleteEditor] = useState(false);
   const [actualMinutesInput, setActualMinutesInput] = useState(String(task.actualMinutes ?? task.estimatedMinutes));
   const [completeError, setCompleteError] = useState<string | null>(null);
@@ -59,6 +60,7 @@ export function TaskItem({ task, isBusy, onEdit, onDelete, onComplete }: TaskIte
   }
 
   const isCompleted = task.status === 'COMPLETED';
+  const canStartPomodoro = task.status === 'PENDING' || task.status === 'IN_PROGRESS';
 
   return (
     <AppCard>
@@ -109,6 +111,11 @@ export function TaskItem({ task, isBusy, onEdit, onDelete, onComplete }: TaskIte
         ) : null}
 
         <XStack gap="$2" justifyContent="flex-end" flexWrap="wrap">
+          {onStartPomodoro && canStartPomodoro ? (
+            <AppButton type="button" variant="ghost" disabled={isBusy} onPress={() => onStartPomodoro(task)}>
+              Iniciar pomodoro
+            </AppButton>
+          ) : null}
           {!isCompleted ? (
             <AppButton
               type="button"
