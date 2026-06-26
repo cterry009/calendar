@@ -36,8 +36,70 @@ API server:
 ```bash
 npm install --prefix server --legacy-peer-deps
 cp server/.env.example server/.env
+npm run prisma:migrate --prefix server
 npm run dev --prefix server
 ```
+
+Documentación interactiva: **http://localhost:3000/docs** (Swagger UI)
+
+## Tests
+
+### Tests unitarios y builds
+
+Desde la raíz del repo:
+
+```bash
+# Lógica compartida (Jest)
+npm test --prefix packages/shared
+
+# Builds / typecheck
+npm run build --prefix packages/shared
+npm run typecheck --prefix packages/ui
+npm run build --prefix apps/web
+npm run typecheck --prefix server
+npm run build --prefix server
+```
+
+O instala todo de una vez:
+
+```bash
+npm run install:all
+```
+
+### Smoke test de la API
+
+Requiere **Docker Desktop** en ejecución (PostgreSQL + Redis) y el servidor API levantado.
+
+```bash
+# 1. Base de datos
+docker compose up -d
+
+# 2. Migraciones (primera vez o tras cambios de schema)
+npm run prisma:migrate --prefix server
+
+# 3. Servidor (otra terminal)
+npm run start --prefix server
+
+# 4. Smoke test — auth, devices, sync
+powershell -NoProfile -File scripts/smoke-test.ps1
+```
+
+El script verifica:
+
+| Endpoint | Qué prueba |
+|----------|------------|
+| `GET /health` | API viva |
+| `GET /health/db` | Conexión PostgreSQL |
+| `POST /auth/register` | Registro (requiere `deviceLabel` + `devicePlatform`) |
+| `POST /auth/login` | Login |
+| `GET /auth/me` | Perfil con JWT |
+| `POST /devices/register` | Registro de dispositivo |
+| `GET /devices` | Listado de dispositivos |
+| `POST /auth/refresh` | Rotación de refresh token |
+| `GET /sync/pull` | Snapshot de sync |
+| `POST /sync/batch` | Creación de tarea offline |
+
+Si el smoke test falla con `Can't reach database server`, asegúrate de que Docker esté corriendo y que `server/.env` tenga el `DATABASE_URL` correcto (ver `server/.env.example`).
 
 ## Estructura
 

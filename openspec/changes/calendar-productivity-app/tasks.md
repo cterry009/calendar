@@ -15,6 +15,7 @@
 - [x] 2.5 Implement device registration and revocation endpoints
 - [x] 2.6 Set up Socket.io gateway for real-time sync events
 - [x] 2.7 Implement offline sync queue endpoint (batch upsert with conflict resolution)
+- [x] 2.8 Add Swagger/OpenAPI interactive docs at `/docs`
 
 ## 3. Shared business logic
 

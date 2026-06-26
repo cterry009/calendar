@@ -35,6 +35,14 @@ WebSocket namespace: `/sync` — connect with `auth.token` = access JWT; receive
 
 Default port: **3000**
 
+## Documentación API (Swagger)
+
+Con el servidor en ejecución, abre:
+
+**http://localhost:3000/docs**
+
+Ahí puedes explorar todos los endpoints, ver los schemas de request/response y probar rutas autenticadas con el botón **Authorize** (pega el `accessToken` JWT).
+
 ## Schema (Prisma)
 
 | Model | Purpose |

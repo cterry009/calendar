@@ -22,6 +22,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.5",
     "@nestjs/platform-socket.io": "^11.1.27",
+    "@nestjs/swagger": "^11.2.0",
     "@nestjs/websockets": "^11.1.27",
     "@prisma/client": "^6.1.0",
     "apple-signin-auth": "^2.0.0",
