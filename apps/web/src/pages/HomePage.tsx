@@ -171,6 +171,23 @@ export function HomePage() {
 
           <AppCard flex={1} minWidth={280} maxWidth={420}>
             <H2 fontSize="$6" marginTop={0}>
+              Fitness
+            </H2>
+            <YStack gap="$2" marginBottom="$4">
+              <Paragraph color="$muted" margin={0}>
+                Registra entrenamientos manuales con tipo de actividad, duracion e intensidad.
+              </Paragraph>
+              <Paragraph color="$muted" margin={0}>
+                Revisa resumen diario y semanal para detectar consistencia y volumen por actividad.
+              </Paragraph>
+            </YStack>
+            <AppButton variant="primary" onPress={() => navigate('/fitness')}>
+              Ir a fitness
+            </AppButton>
+          </AppCard>
+
+          <AppCard flex={1} minWidth={280} maxWidth={420}>
+            <H2 fontSize="$6" marginTop={0}>
               Pomodoro
             </H2>
             <YStack gap="$2" marginBottom="$4">

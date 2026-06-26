@@ -11,6 +11,7 @@ const EVENT_TYPE_LABEL: Record<CalendarEvent['type'], string> = {
   work: 'Trabajo',
   rest: 'Descanso',
   pomodoro: 'Pomodoro',
+  fitness: 'Fitness',
 };
 
 const EVENT_TYPE_COLOR: Record<CalendarEvent['type'], string> = {
@@ -18,6 +19,7 @@ const EVENT_TYPE_COLOR: Record<CalendarEvent['type'], string> = {
   work: '$success',
   rest: '$warning',
   pomodoro: '$muted',
+  fitness: '$info',
 };
 
 function formatTimeRange(start: Date, end: Date): string {

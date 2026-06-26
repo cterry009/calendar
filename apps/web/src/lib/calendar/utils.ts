@@ -2,6 +2,7 @@
   CalendarDensity,
   CalendarEvent,
   MonthDaySummary,
+  SyncFitnessEntry,
   SyncPomodoroSession,
   SyncSchedule,
   SyncSnapshot,
@@ -116,6 +117,23 @@ function pomodoroToEvent(session: SyncPomodoroSession): CalendarEvent | null {
   };
 }
 
+function fitnessToEvent(entry: SyncFitnessEntry): CalendarEvent | null {
+  const start = parseDate(entry.loggedAt);
+  if (!start) return null;
+
+  return {
+    id: `fitness-${entry.id}`,
+    type: 'fitness',
+    title: `Fitness: ${entry.activityType}`,
+    start,
+    end: addMinutes(start, Math.max(1, entry.durationMinutes)),
+    meta: {
+      durationMinutes: entry.durationMinutes,
+      intensity: entry.intensity,
+    },
+  };
+}
+
 function scheduleEventsForRange(
   schedules: SyncSchedule[],
   rangeStart: Date,
@@ -147,7 +165,7 @@ function scheduleEventsForRange(
 }
 
 export function buildEventsForRange(
-  snapshot: Pick<SyncSnapshot, 'tasks' | 'schedules' | 'pomodoroSessions'>,
+  snapshot: Pick<SyncSnapshot, 'tasks' | 'schedules' | 'pomodoroSessions' | 'fitnessEntries'>,
   rangeStart: Date,
   rangeEnd: Date,
 ): CalendarEvent[] {
@@ -167,8 +185,13 @@ export function buildEventsForRange(
     );
 
   const scheduleEvents = scheduleEventsForRange(snapshot.schedules, normalizedStart, normalizedEnd);
+  const fitnessEvents = snapshot.fitnessEntries
+    .map(fitnessToEvent)
+    .filter((event): event is CalendarEvent =>
+      Boolean(event && overlapsRange(event.start, event.end, normalizedStart, normalizedEnd)),
+    );
 
-  return [...taskEvents, ...scheduleEvents, ...pomodoroEvents].sort(
+  return [...taskEvents, ...scheduleEvents, ...pomodoroEvents, ...fitnessEvents].sort(
     (a, b) => a.start.getTime() - b.start.getTime(),
   );
 }

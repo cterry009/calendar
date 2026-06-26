@@ -2,7 +2,7 @@
 
 export type CalendarViewMode = 'day' | 'week' | 'month';
 
-export type CalendarEventType = 'task' | 'work' | 'rest' | 'pomodoro';
+export type CalendarEventType = 'task' | 'work' | 'rest' | 'pomodoro' | 'fitness';
 
 export interface SyncTask {
   id: string;
@@ -43,12 +43,25 @@ export interface SyncPomodoroSession {
   taskId: string | null;
 }
 
+export interface SyncFitnessEntry {
+  id: string;
+  activityType: string;
+  durationMinutes: number;
+  intensity: 'LOW' | 'MEDIUM' | 'HIGH';
+  notes: string | null;
+  loggedAt: string;
+  source: 'MANUAL' | 'HEALTH_CONNECT' | 'HEALTHKIT' | 'CSV_IMPORT';
+  externalId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SyncSnapshot {
   tasks: SyncTask[];
   schedules: SyncSchedule[];
   pomodoroSessions: SyncPomodoroSession[];
   blockListEntries: unknown[];
-  fitnessEntries: unknown[];
+  fitnessEntries: SyncFitnessEntry[];
   syncedAt: string;
 }
 
@@ -63,6 +76,8 @@ export interface CalendarEvent {
     estimatedMinutes?: number;
     state?: SyncPomodoroSession['state'];
     kind?: SyncSchedule['kind'];
+    durationMinutes?: number;
+    intensity?: SyncFitnessEntry['intensity'];
   };
 }
 

@@ -48,11 +48,12 @@ export function CalendarPanel() {
           tasks: data.tasks,
           schedules: data.schedules,
           pomodoroSessions: data.pomodoroSessions,
+          fitnessEntries: data.fitnessEntries,
         },
         range.start,
         range.end,
       ),
-    [data.pomodoroSessions, data.schedules, data.tasks, range.end, range.start],
+    [data.fitnessEntries, data.pomodoroSessions, data.schedules, data.tasks, range.end, range.start],
   );
 
   const dayEvents = useMemo(() => eventsForDate(events, selectedDate), [events, selectedDate]);
