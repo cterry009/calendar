@@ -111,7 +111,7 @@ export function HomePage() {
             </H2>
             <YStack gap="$2" marginBottom="$4">
               <Paragraph color="$muted" margin={0}>
-                Vistas día/semana/mes con tareas, bloques de trabajo, descansos y pomodoros.
+                Vistas dia/semana/mes con tareas, bloques de trabajo, descansos y pomodoros.
               </Paragraph>
               <Paragraph color="$muted" margin={0}>
                 Resumen semanal de horas estimadas y densidad mensual de eventos.
@@ -119,6 +119,23 @@ export function HomePage() {
             </YStack>
             <AppButton variant="primary" onPress={() => navigate('/calendar')}>
               Ir al calendario
+            </AppButton>
+          </AppCard>
+
+          <AppCard flex={1} minWidth={280} maxWidth={420}>
+            <H2 fontSize="$6" marginTop={0}>
+              Tareas
+            </H2>
+            <YStack gap="$2" marginBottom="$4">
+              <Paragraph color="$muted" margin={0}>
+                Gestiona tareas con dificultad, prioridad, complejidad y estimaciones de tiempo.
+              </Paragraph>
+              <Paragraph color="$muted" margin={0}>
+                Completa tareas registrando minutos reales para mejorar tus estimaciones.
+              </Paragraph>
+            </YStack>
+            <AppButton variant="primary" onPress={() => navigate('/tasks')}>
+              Ir a tareas
             </AppButton>
           </AppCard>
 

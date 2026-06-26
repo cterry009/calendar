@@ -1,14 +1,26 @@
-﻿export type CalendarViewMode = 'day' | 'week' | 'month';
+﻿import type { TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
+
+export type CalendarViewMode = 'day' | 'week' | 'month';
 
 export type CalendarEventType = 'task' | 'work' | 'rest' | 'pomodoro';
 
 export interface SyncTask {
   id: string;
+  clientId: string | null;
   title: string;
+  description: string | null;
   scheduledAt: string | null;
   estimatedMinutes: number;
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  actualMinutes: number | null;
+  difficulty: TaskDifficulty;
+  complexity: number;
+  priority: TaskPriority;
+  category: string | null;
+  status: TaskStatus;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
 }
 
 export interface SyncSchedule {

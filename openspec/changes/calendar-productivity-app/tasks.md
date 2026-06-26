@@ -33,7 +33,7 @@
 - [x] 4.1 Scaffold Vite + React app with Tamagui and routing
 - [x] 4.2 Implement auth screens (login, register, OAuth callback)
 - [x] 4.3 Implement calendar day/week/month views
-- [ ] 4.4 Implement task CRUD with difficulty, complexity, and time estimate fields
+- [x] 4.4 Implement task CRUD with difficulty, complexity, and time estimate fields
 - [ ] 4.5 Implement work schedule and rest period configuration UI
 - [ ] 4.6 Implement pomodoro timer component with task linking
 - [ ] 4.7 Implement web soft-focus overlay mode
@@ -91,4 +91,5 @@
 - [ ] 9.3 Write end-to-end tests for critical flows (task â†’ pomodoro â†’ block â†’ complete)
 - [ ] 9.4 Prepare app store listings (Google Play primero; App Store iOS â€” baja prioridad) and desktop installer (Windows primero; macOS â€” baja prioridad)
 - [ ] 9.5 Set up production deployment (API, database, CDN) and monitoring
+
 

@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { TasksPage } from './pages/TasksPage';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/tasks" element={<TasksPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
