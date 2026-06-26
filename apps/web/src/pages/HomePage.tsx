@@ -1,4 +1,5 @@
 ﻿import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Theme } from 'tamagui';
 import {
   MOOD_LABELS,
@@ -19,11 +20,12 @@ import {
   suggestNextRitual,
 } from '@calendar/shared';
 import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, XStack, YStack } from '@calendar/ui';
-import { useAuth } from '../context/AuthContext';
 import { SerotoninModePanel } from '../components/SerotoninModePanel';
+import { useAuth } from '../context/AuthContext';
 
 export function HomePage() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [session, setSession] = useState<SerotoninSession | null>(null);
 
   const calmMode = session?.active ?? false;
@@ -105,14 +107,19 @@ export function HomePage() {
         <XStack gap="$6" flexWrap="wrap" alignItems="flex-start">
           <AppCard flex={1} minWidth={280} maxWidth={420}>
             <H2 fontSize="$6" marginTop={0}>
-              Coming soon
+              Calendario
             </H2>
-            <YStack gap="$2" paddingLeft="$3">
-              <Paragraph color="$muted">- Task calendar (difficulty, complexity, estimate)</Paragraph>
-              <Paragraph color="$muted">- Pomodoro and distraction blocking</Paragraph>
-              <Paragraph color="$muted">- Productivity and sports metrics</Paragraph>
-              <Paragraph color="$muted">- Mobile + desktop sync</Paragraph>
+            <YStack gap="$2" marginBottom="$4">
+              <Paragraph color="$muted" margin={0}>
+                Vistas día/semana/mes con tareas, bloques de trabajo, descansos y pomodoros.
+              </Paragraph>
+              <Paragraph color="$muted" margin={0}>
+                Resumen semanal de horas estimadas y densidad mensual de eventos.
+              </Paragraph>
             </YStack>
+            <AppButton variant="primary" onPress={() => navigate('/calendar')}>
+              Ir al calendario
+            </AppButton>
           </AppCard>
 
           <YStack flex={1.4} minWidth={320}>

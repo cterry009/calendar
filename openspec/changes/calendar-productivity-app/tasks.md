@@ -32,7 +32,7 @@
 
 - [x] 4.1 Scaffold Vite + React app with Tamagui and routing
 - [x] 4.2 Implement auth screens (login, register, OAuth callback)
-- [ ] 4.3 Implement calendar day/week/month views
+- [x] 4.3 Implement calendar day/week/month views
 - [ ] 4.4 Implement task CRUD with difficulty, complexity, and time estimate fields
 - [ ] 4.5 Implement work schedule and rest period configuration UI
 - [ ] 4.6 Implement pomodoro timer component with task linking
