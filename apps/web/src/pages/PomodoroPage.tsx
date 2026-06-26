@@ -2,7 +2,8 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppButton, AppCard, Eyebrow, H1, Paragraph, XStack, YStack } from '@calendar/ui';
 import { PomodoroTimer } from '../components/pomodoro/PomodoroTimer';
-import { usePomodoro } from '../hooks/usePomodoro';
+import { usePomodoro } from '../context/PomodoroContext';
+import { useSoftFocus } from '../context/SoftFocusContext';
 import { useTasks } from '../hooks/useTasks';
 
 export function PomodoroPage() {
@@ -11,6 +12,7 @@ export function PomodoroPage() {
   const queryTaskId = searchParams.get('taskId');
 
   const pomodoro = usePomodoro();
+  const softFocus = useSoftFocus();
   const tasksData = useTasks();
 
   const availableTasks = useMemo(
@@ -104,6 +106,19 @@ export function PomodoroPage() {
               {tasksData.error}
             </Paragraph>
           ) : null}
+
+          <XStack justifyContent="space-between" alignItems="center" gap="$3" flexWrap="wrap" paddingTop="$2">
+            <Paragraph margin={0} color="$muted">
+              Overlay automatico: activo en fase FOCUS y solo como recordatorio visual.
+            </Paragraph>
+            <AppButton
+              variant="ghost"
+              onPress={() => softFocus.startManualFocus(25)}
+              disabled={pomodoro.isBlocking || softFocus.manualSoftFocus.active}
+            >
+              Activar enfoque manual (25 min)
+            </AppButton>
+          </XStack>
         </YStack>
       </AppCard>
 

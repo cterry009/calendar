@@ -23,10 +23,14 @@ import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, XStack, YStack } from '
 import { OnboardingTutorial } from '../components/onboarding/OnboardingTutorial';
 import { SerotoninModePanel } from '../components/SerotoninModePanel';
 import { useAuth } from '../context/AuthContext';
+import { usePomodoro } from '../context/PomodoroContext';
+import { useSoftFocus } from '../context/SoftFocusContext';
 import { isTutorialCompleted, markTutorialCompleted } from '../lib/onboarding/storage';
 
 export function HomePage() {
   const { user, logout } = useAuth();
+  const pomodoro = usePomodoro();
+  const softFocus = useSoftFocus();
   const navigate = useNavigate();
   const [session, setSession] = useState<SerotoninSession | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
@@ -115,8 +119,8 @@ export function HomePage() {
               Smart calendar + Serotonin Mode
             </H1>
             <Paragraph color="$muted" size="$5">
-              Reduce high-dopamine digital stimuli and promote activities that support natural balance
-              such as sunlight, exercise, social connection, and meditation.
+              Reduce high-dopamine digital stimuli and promote activities that support natural balance such as
+              sunlight, exercise, social connection, and meditation.
             </Paragraph>
           </YStack>
           {!session?.active ? (
@@ -176,10 +180,22 @@ export function HomePage() {
               <Paragraph color="$muted" margin={0}>
                 Configura duraciones, revisa estado actual y recibe avisos al terminar cada fase.
               </Paragraph>
+              <Paragraph color="$muted" margin={0}>
+                El overlay de enfoque web es un recordatorio visual y no aplica bloqueo del sistema operativo.
+              </Paragraph>
             </YStack>
-            <AppButton variant="primary" onPress={() => navigate('/pomodoro')}>
-              Abrir pomodoro
-            </AppButton>
+            <XStack gap="$2" flexWrap="wrap">
+              <AppButton variant="primary" onPress={() => navigate('/pomodoro')}>
+                Abrir pomodoro
+              </AppButton>
+              <AppButton
+                variant="ghost"
+                onPress={() => softFocus.startManualFocus(25)}
+                disabled={pomodoro.isBlocking || softFocus.manualSoftFocus.active}
+              >
+                Enfoque manual 25 min
+              </AppButton>
+            </XStack>
           </AppCard>
 
           <AppCard flex={1} minWidth={280} maxWidth={420}>
