@@ -1,6 +1,8 @@
 ﻿import { useCallback, useEffect, useState } from 'react';
-import { ApiError, apiFetch } from '../lib/api';
+import { ApiError } from '../lib/api';
+import { useSync } from '../context/SyncContext';
 import type { SyncSnapshot } from '../lib/calendar/types';
+import { useSyncRefetch } from './useSyncRefetch';
 
 interface UseCalendarDataResult {
   tasks: SyncSnapshot['tasks'];
@@ -23,6 +25,7 @@ const EMPTY_SNAPSHOT: Omit<SyncSnapshot, 'syncedAt'> = {
 };
 
 export function useCalendarData(): UseCalendarDataResult {
+  const { pullSnapshot } = useSync();
   const [snapshot, setSnapshot] = useState<Omit<SyncSnapshot, 'syncedAt'>>(EMPTY_SNAPSHOT);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,7 +36,7 @@ export function useCalendarData(): UseCalendarDataResult {
     setError(null);
 
     try {
-      const data = await apiFetch<SyncSnapshot>('/sync/pull');
+      const data = await pullSnapshot();
       setSnapshot({
         tasks: data.tasks,
         schedules: data.schedules,
@@ -45,13 +48,20 @@ export function useCalendarData(): UseCalendarDataResult {
     } catch (errorValue) {
       if (errorValue instanceof ApiError) {
         setError(errorValue.message);
+      } else if (errorValue instanceof Error) {
+        setError(errorValue.message);
       } else {
         setError('No se pudieron cargar los datos del calendario.');
       }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pullSnapshot]);
+
+  useSyncRefetch('tasks', refetch);
+  useSyncRefetch('schedules', refetch);
+  useSyncRefetch('pomodoroSessions', refetch);
+  useSyncRefetch('fitnessEntries', refetch);
 
   useEffect(() => {
     void refetch();

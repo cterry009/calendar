@@ -6,6 +6,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
+import { DetoxPage } from './pages/DetoxPage';
 import { FitnessPage } from './pages/FitnessPage';
 import { PomodoroPage } from './pages/PomodoroPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/fitness" element={<FitnessPage />} />
             <Route path="/pomodoro" element={<PomodoroPage />} />
             <Route path="/schedule" element={<SchedulePage />} />
+            <Route path="/detox" element={<DetoxPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/suggestions" element={<SuggestionsPage />} />
           </Route>

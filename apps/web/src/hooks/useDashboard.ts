@@ -1,9 +1,10 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ApiError, apiFetch } from '../lib/api';
+import { ApiError } from '../lib/api';
+import { useSync } from '../context/SyncContext';
 import { buildDashboardMetrics } from '../lib/analytics/aggregate';
 import { seedDemoData } from '../lib/analytics/seed-demo';
 import type { DashboardMetrics } from '../lib/analytics/types';
-import type { SyncSnapshot } from '../lib/calendar/types';
+import { useSyncRefetch } from './useSyncRefetch';
 
 interface UseDashboardResult {
   metrics: DashboardMetrics | null;
@@ -16,6 +17,7 @@ interface UseDashboardResult {
 }
 
 export function useDashboard(): UseDashboardResult {
+  const { pullSnapshot } = useSync();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSeeding, setIsSeeding] = useState(false);
@@ -27,7 +29,7 @@ export function useDashboard(): UseDashboardResult {
     setError(null);
 
     try {
-      const snapshot = await apiFetch<SyncSnapshot>('/sync/pull');
+      const snapshot = await pullSnapshot();
       const nextMetrics = buildDashboardMetrics({
         tasks: snapshot.tasks,
         pomodoroSessions: snapshot.pomodoroSessions,
@@ -38,13 +40,19 @@ export function useDashboard(): UseDashboardResult {
     } catch (errorValue) {
       if (errorValue instanceof ApiError) {
         setError(errorValue.message);
+      } else if (errorValue instanceof Error) {
+        setError(errorValue.message);
       } else {
         setError('No se pudo cargar el dashboard de productividad.');
       }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pullSnapshot]);
+
+  useSyncRefetch('tasks', refetch);
+  useSyncRefetch('pomodoroSessions', refetch);
+  useSyncRefetch('fitnessEntries', refetch);
 
   useEffect(() => {
     void refetch();

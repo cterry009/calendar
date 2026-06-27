@@ -1,5 +1,5 @@
 ﻿import type { PomodoroSession } from '@calendar/shared';
-import { apiFetch } from '../api';
+import { syncBatch } from '../offline/sync-client';
 import type { SyncPomodoroRecord } from './types';
 
 export interface PomodoroSyncChangeDto {
@@ -60,10 +60,7 @@ export async function syncPomodoroBatch(changes: PomodoroSyncChangeDto[]): Promi
     return { applied: {}, conflicts: {} };
   }
 
-  return apiFetch<SyncBatchResponse>('/sync/batch', {
-    method: 'POST',
-    body: JSON.stringify({ pomodoroSessions: changes }),
-  });
+  return syncBatch({ pomodoroSessions: changes });
 }
 
 export function buildCreatePomodoroPayload(session: SyncPomodoroRecord): PomodoroSyncChangeDto {

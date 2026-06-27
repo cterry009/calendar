@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ApiError, apiFetch } from '../lib/api';
-import type { SyncSnapshot } from '../lib/calendar/types';
+import { ApiError } from '../lib/api';
+import { useSync } from '../context/SyncContext';
 import {
   buildCreateFitnessPayload,
   buildDeleteFitnessPayload,
@@ -8,6 +8,7 @@ import {
   syncFitnessBatch,
 } from '../lib/fitness/sync';
 import type { FitnessFormValues, SyncFitnessRecord } from '../lib/fitness/types';
+import { useSyncRefetch } from './useSyncRefetch';
 
 interface UseFitnessResult {
   entries: SyncFitnessRecord[];
@@ -26,6 +27,7 @@ function sortEntries(items: SyncFitnessRecord[]) {
 }
 
 export function useFitness(): UseFitnessResult {
+  const { pullSnapshot } = useSync();
   const [entries, setEntries] = useState<SyncFitnessRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
@@ -37,11 +39,13 @@ export function useFitness(): UseFitnessResult {
     setError(null);
 
     try {
-      const data = await apiFetch<SyncSnapshot>('/sync/pull');
+      const data = await pullSnapshot();
       setEntries(sortEntries(data.fitnessEntries));
       setSyncedAt(data.syncedAt);
     } catch (errorValue) {
       if (errorValue instanceof ApiError) {
+        setError(errorValue.message);
+      } else if (errorValue instanceof Error) {
         setError(errorValue.message);
       } else {
         setError('No se pudieron cargar los registros de fitness.');
@@ -49,7 +53,9 @@ export function useFitness(): UseFitnessResult {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pullSnapshot]);
+
+  useSyncRefetch('fitnessEntries', refetch);
 
   useEffect(() => {
     void refetch();

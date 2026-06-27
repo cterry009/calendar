@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Theme } from 'tamagui';
 import {
@@ -20,27 +20,20 @@ import {
   suggestNextRitual,
 } from '@calendar/shared';
 import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, XStack, YStack } from '@calendar/ui';
-import { OnboardingTutorial } from '../components/onboarding/OnboardingTutorial';
 import { SerotoninModePanel } from '../components/SerotoninModePanel';
 import { SuggestionsPreview } from '../components/suggestions/SuggestionsPreview';
 import { useAuth } from '../context/AuthContext';
+import { useOnboarding } from '../context/OnboardingContext';
 import { usePomodoro } from '../context/PomodoroContext';
 import { useSoftFocus } from '../context/SoftFocusContext';
-import { isTutorialCompleted, markTutorialCompleted } from '../lib/onboarding/storage';
 
 export function HomePage() {
   const { user, logout } = useAuth();
+  const { openTutorial } = useOnboarding();
   const pomodoro = usePomodoro();
   const softFocus = useSoftFocus();
   const navigate = useNavigate();
   const [session, setSession] = useState<SerotoninSession | null>(null);
-  const [showTutorial, setShowTutorial] = useState(false);
-
-  useEffect(() => {
-    if (user && !isTutorialCompleted()) {
-      setShowTutorial(true);
-    }
-  }, [user]);
 
   const calmMode = session?.active ?? false;
   const nextPillar = session ? suggestNextPillar(session.pillars) : null;
@@ -77,28 +70,16 @@ export function HomePage() {
     setSession(logMood(session, mood));
   }
 
-  function handleFinishTutorial() {
-    markTutorialCompleted();
-    setShowTutorial(false);
-  }
-
-  function handleSkipTutorial() {
-    markTutorialCompleted();
-    setShowTutorial(false);
-  }
-
   return (
     <Theme name={calmMode ? 'calm' : 'dark'}>
       <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7">
-        <OnboardingTutorial open={showTutorial} onFinish={handleFinishTutorial} onSkip={handleSkipTutorial} />
-
         <XStack justifyContent="space-between" alignItems="center" gap="$4" marginBottom="$5" flexWrap="wrap">
           <YStack>
             <Eyebrow>Authenticated session</Eyebrow>
             <Paragraph color="$muted">{user?.email ?? 'Unknown user'}</Paragraph>
           </YStack>
           <XStack gap="$2" flexWrap="wrap">
-            <AppButton variant="ghost" onPress={() => setShowTutorial(true)}>
+            <AppButton variant="ghost" onPress={openTutorial}>
               Ver tutorial
             </AppButton>
             <AppButton variant="ghost" onPress={logout}>
@@ -114,7 +95,7 @@ export function HomePage() {
           marginBottom="$7"
           flexWrap="wrap"
         >
-          <YStack flex={1} maxWidth={640}>
+          <YStack flex={1} maxWidth={640} data-tutorial="home-hero">
             <Eyebrow>Calendar Productivity</Eyebrow>
             <H1 fontSize="$9" marginBottom="$2">
               Smart calendar + Serotonin Mode
@@ -252,7 +233,24 @@ export function HomePage() {
             </AppButton>
           </AppCard>
 
-          <YStack flex={1.4} minWidth={320}>
+          <AppCard flex={1} minWidth={280} maxWidth={420}>
+            <H2 fontSize="$6" marginTop={0}>
+              Plan detox
+            </H2>
+            <YStack gap="$2" marginBottom="$4">
+              <Paragraph color="$muted" margin={0}>
+                Programa de 7 dias para reducir estimulos digitales de alta dopamina con checklist diaria.
+              </Paragraph>
+              <Paragraph color="$muted" margin={0}>
+                Incluye horarios sugeridos por intensidad vinculados a cada fase del plan.
+              </Paragraph>
+            </YStack>
+            <AppButton variant="primary" onPress={() => navigate('/detox')}>
+              Ir al plan detox
+            </AppButton>
+          </AppCard>
+
+          <YStack flex={1.4} minWidth={320} data-tutorial="serotonin-mode">
             <SerotoninModePanel
               session={session}
               nextPillar={nextPillar}

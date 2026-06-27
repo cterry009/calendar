@@ -1,5 +1,5 @@
 ﻿import type { FitnessIntensity, FitnessSource } from '@calendar/shared';
-import { apiFetch } from '../api';
+import { syncBatch } from '../offline/sync-client';
 import type { FitnessFormValues } from './types';
 
 export interface FitnessSyncChangeDto {
@@ -38,10 +38,7 @@ export async function syncFitnessBatch(changes: FitnessSyncChangeDto[]): Promise
     return { applied: {}, conflicts: {} };
   }
 
-  return apiFetch<SyncBatchResponse>('/sync/batch', {
-    method: 'POST',
-    body: JSON.stringify({ fitnessEntries: changes }),
-  });
+  return syncBatch({ fitnessEntries: changes });
 }
 
 export function buildCreateFitnessPayload(values: FitnessFormValues): FitnessSyncChangeDto {

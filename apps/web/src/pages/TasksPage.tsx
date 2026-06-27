@@ -50,7 +50,7 @@ export function TasksPage() {
   return (
     <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
       <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$4">
-        <YStack maxWidth={760}>
+        <YStack maxWidth={760} data-tutorial="tasks-header">
           <Eyebrow>Productividad</Eyebrow>
           <H1 marginTop={0} marginBottom="$2">
             Tareas

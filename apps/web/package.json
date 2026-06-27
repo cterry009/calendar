@@ -16,6 +16,7 @@
     "react-dom": "^18.3.1",
     "react-native-web": "^0.19.13",
     "react-router-dom": "^6.30.4",
+    "socket.io-client": "^4.8.3",
     "tamagui": "^1.125.0"
   },
   "devDependencies": {

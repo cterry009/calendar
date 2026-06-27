@@ -41,11 +41,11 @@
 - [x] 4.9 Implement productivity dashboard with charts
 - [x] 4.10 Implement suggestions panel
 - [x] 4.11 Implement Serotonin Mode UI (pillars, rituals, mood, score, calm theme)
-- [ ] 4.12 Integrate WebSocket client for real-time sync
-- [ ] 4.13 Add IndexedDB offline storage and sync queue
-- [ ] 4.14 Proponer horarios diferenciados por tipo de intensidad vinculados al plan de desintoxicación serotoninérgica
-- [ ] 4.15 Implement Serotonin Detox Plan UI (onboarding, plan de inicio multi-dia, checklist diaria, progreso por fase)
-- [ ] 4.16 Implement onboarding tutorial for new users (guided walkthrough)
+- [x] 4.12 Integrate WebSocket client for real-time sync
+- [x] 4.13 Add IndexedDB offline storage and sync queue
+- [x] 4.14 Proponer horarios diferenciados por tipo de intensidad vinculados al plan de desintoxicación serotoninérgica
+- [x] 4.15 Implement Serotonin Detox Plan UI (onboarding, plan de inicio multi-dia, checklist diaria, progreso por fase)
+- [x] 4.16 Implement onboarding tutorial for new users (guided walkthrough)
 
 ## 5. Mobile app â€” Android (phase 2)
 

@@ -1,5 +1,5 @@
 ﻿import type { TaskStatus } from '@calendar/shared';
-import { apiFetch } from '../api';
+import { syncBatch } from '../offline/sync-client';
 import type { SyncTaskRecord, TaskFormValues } from './types';
 
 export interface TaskSyncChangeDto {
@@ -46,10 +46,7 @@ export async function syncTaskBatch(changes: TaskSyncChangeDto[]): Promise<SyncB
     return { applied: {}, conflicts: {} };
   }
 
-  return apiFetch<SyncBatchResponse>('/sync/batch', {
-    method: 'POST',
-    body: JSON.stringify({ tasks: changes }),
-  });
+  return syncBatch({ tasks: changes });
 }
 
 export function buildCreateTaskPayload(values: TaskFormValues): TaskSyncChangeDto {

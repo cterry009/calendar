@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ApiError, apiFetch } from '../lib/api';
-import type { SyncSnapshot } from '../lib/calendar/types';
+import { ApiError } from '../lib/api';
+import { useSync } from '../context/SyncContext';
 import {
   buildCreateSchedulePayload,
   buildDeleteSchedulePayload,
@@ -8,6 +8,7 @@ import {
   syncScheduleBatch,
 } from '../lib/schedules/sync';
 import type { ScheduleFormValues, SyncScheduleRecord } from '../lib/schedules/types';
+import { useSyncRefetch } from './useSyncRefetch';
 
 interface UseSchedulesResult {
   schedules: SyncScheduleRecord[];
@@ -31,6 +32,7 @@ function sortSchedules(items: SyncScheduleRecord[]) {
 }
 
 export function useSchedules(): UseSchedulesResult {
+  const { pullSnapshot } = useSync();
   const [schedules, setSchedules] = useState<SyncScheduleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
@@ -42,11 +44,13 @@ export function useSchedules(): UseSchedulesResult {
     setError(null);
 
     try {
-      const data = await apiFetch<SyncSnapshot>('/sync/pull');
+      const data = await pullSnapshot();
       setSchedules(sortSchedules(data.schedules as SyncScheduleRecord[]));
       setSyncedAt(data.syncedAt);
     } catch (errorValue) {
       if (errorValue instanceof ApiError) {
+        setError(errorValue.message);
+      } else if (errorValue instanceof Error) {
         setError(errorValue.message);
       } else {
         setError('No se pudieron cargar los horarios.');
@@ -54,7 +58,9 @@ export function useSchedules(): UseSchedulesResult {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pullSnapshot]);
+
+  useSyncRefetch('schedules', refetch);
 
   useEffect(() => {
     void refetch();

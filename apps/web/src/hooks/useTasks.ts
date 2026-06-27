@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ApiError, apiFetch } from '../lib/api';
-import type { SyncSnapshot } from '../lib/calendar/types';
+import { ApiError } from '../lib/api';
+import { useSync } from '../context/SyncContext';
 import {
   buildCompleteTaskPayload,
   buildCreateTaskPayload,
@@ -9,6 +9,7 @@ import {
   syncTaskBatch,
 } from '../lib/tasks/sync';
 import type { SyncTaskRecord, TaskDifficultyFilter, TaskFormValues } from '../lib/tasks/types';
+import { useSyncRefetch } from './useSyncRefetch';
 
 interface UseTasksResult {
   tasks: SyncTaskRecord[];
@@ -40,6 +41,7 @@ function sortTasks(items: SyncTaskRecord[]) {
 }
 
 export function useTasks(): UseTasksResult {
+  const { pullSnapshot } = useSync();
   const [tasks, setTasks] = useState<SyncTaskRecord[]>([]);
   const [difficultyFilter, setDifficultyFilter] = useState<TaskDifficultyFilter>('ALL');
   const [isLoading, setIsLoading] = useState(true);
@@ -52,11 +54,13 @@ export function useTasks(): UseTasksResult {
     setError(null);
 
     try {
-      const data = await apiFetch<SyncSnapshot>('/sync/pull');
+      const data = await pullSnapshot();
       setTasks(sortTasks(data.tasks as SyncTaskRecord[]));
       setSyncedAt(data.syncedAt);
     } catch (errorValue) {
       if (errorValue instanceof ApiError) {
+        setError(errorValue.message);
+      } else if (errorValue instanceof Error) {
         setError(errorValue.message);
       } else {
         setError('No se pudieron cargar las tareas.');
@@ -64,7 +68,9 @@ export function useTasks(): UseTasksResult {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pullSnapshot]);
+
+  useSyncRefetch('tasks', refetch);
 
   useEffect(() => {
     void refetch();

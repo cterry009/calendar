@@ -1,4 +1,4 @@
-﻿import { apiFetch } from '../api';
+﻿import { syncBatch } from '../offline/sync-client';
 import type { ScheduleFormValues, SyncScheduleRecord } from './types';
 
 export interface ScheduleSyncChangeDto {
@@ -34,10 +34,7 @@ export async function syncScheduleBatch(changes: ScheduleSyncChangeDto[]): Promi
     return { applied: {}, conflicts: {} };
   }
 
-  return apiFetch<SyncBatchResponse>('/sync/batch', {
-    method: 'POST',
-    body: JSON.stringify({ schedules: changes }),
-  });
+  return syncBatch({ schedules: changes });
 }
 
 export function buildCreateSchedulePayload(values: ScheduleFormValues): ScheduleSyncChangeDto {

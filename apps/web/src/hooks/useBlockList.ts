@@ -1,6 +1,8 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { BlockListKind, DevicePlatform } from '@calendar/shared';
-import { ApiError, apiFetch } from '../lib/api';
+import { ApiError } from '../lib/api';
+import { useSync } from '../context/SyncContext';
+import { useSyncRefetch } from './useSyncRefetch';
 
 export interface SyncBlockListEntry {
   id: string;
@@ -13,11 +15,6 @@ export interface SyncBlockListEntry {
   updatedAt: string;
 }
 
-interface BlockListSnapshotResponse {
-  blockListEntries: SyncBlockListEntry[];
-  syncedAt: string;
-}
-
 interface UseBlockListResult {
   entries: SyncBlockListEntry[];
   enabledEntries: SyncBlockListEntry[];
@@ -28,6 +25,7 @@ interface UseBlockListResult {
 }
 
 export function useBlockList(): UseBlockListResult {
+  const { pullSnapshot } = useSync();
   const [entries, setEntries] = useState<SyncBlockListEntry[]>([]);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,11 +36,13 @@ export function useBlockList(): UseBlockListResult {
     setError(null);
 
     try {
-      const data = await apiFetch<BlockListSnapshotResponse>('/sync/pull');
-      setEntries(data.blockListEntries ?? []);
+      const data = await pullSnapshot();
+      setEntries((data.blockListEntries as SyncBlockListEntry[]) ?? []);
       setSyncedAt(data.syncedAt);
     } catch (errorValue) {
       if (errorValue instanceof ApiError) {
+        setError(errorValue.message);
+      } else if (errorValue instanceof Error) {
         setError(errorValue.message);
       } else {
         setError('No se pudo cargar la lista de bloqueo.');
@@ -50,7 +50,9 @@ export function useBlockList(): UseBlockListResult {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pullSnapshot]);
+
+  useSyncRefetch('blockListEntries', refetch);
 
   useEffect(() => {
     void refetch();

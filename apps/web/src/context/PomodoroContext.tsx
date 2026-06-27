@@ -7,15 +7,12 @@ import {
   type PomodoroEvent,
 } from '@calendar/shared';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ApiError, apiFetch } from '../lib/api';
+import { ApiError } from '../lib/api';
+import { useSync } from './SyncContext';
 import { buildCreatePomodoroPayload, buildUpdatePomodoroPayload, syncPomodoroBatch } from '../lib/pomodoro/sync';
 import { getRemainingSeconds } from '../lib/pomodoro/timer';
 import type { PomodoroConfigFormValues, SyncPomodoroRecord } from '../lib/pomodoro/types';
-
-interface PomodoroSnapshotResponse {
-  pomodoroSessions: SyncPomodoroRecord[];
-  syncedAt: string;
-}
+import { useSyncRefetch } from '../hooks/useSyncRefetch';
 
 interface PomodoroContextValue {
   session: SyncPomodoroRecord | null;
@@ -103,6 +100,7 @@ function withRecordMetadata(base: ReturnType<typeof createPomodoroSession>, fall
 }
 
 export function PomodoroProvider({ children }: { children: ReactNode }) {
+  const { pullSnapshot } = useSync();
   const [session, setSession] = useState<SyncPomodoroRecord | null>(null);
   const [config, setConfig] = useState<PomodoroConfigFormValues>(DEFAULT_CONFIG_VALUES);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
@@ -118,8 +116,8 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const data = await apiFetch<PomodoroSnapshotResponse>('/sync/pull');
-      const nextSession = pickCurrentSession(data.pomodoroSessions ?? []);
+      const data = await pullSnapshot();
+      const nextSession = pickCurrentSession((data.pomodoroSessions ?? []) as SyncPomodoroRecord[]);
       setSession(nextSession);
       setConfig(toConfig(nextSession));
       setSyncedAt(data.syncedAt);
@@ -127,13 +125,17 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     } catch (errorValue) {
       if (errorValue instanceof ApiError) {
         setError(errorValue.message);
+      } else if (errorValue instanceof Error) {
+        setError(errorValue.message);
       } else {
         setError('No se pudo cargar la sesion pomodoro.');
       }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pullSnapshot]);
+
+  useSyncRefetch('pomodoroSessions', refetch);
 
   useEffect(() => {
     void refetch();

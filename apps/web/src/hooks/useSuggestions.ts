@@ -1,9 +1,10 @@
 import { calculateEstimationAccuracy, generateSuggestions, type Suggestion } from '@calendar/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ApiError, apiFetch } from '../lib/api';
+import { ApiError } from '../lib/api';
+import { useSync } from '../context/SyncContext';
 import { buildSuggestionInput } from '../lib/analytics/build-suggestion-input';
 import { seedDemoData } from '../lib/analytics/seed-demo';
-import type { SyncSnapshot } from '../lib/calendar/types';
+import { useSyncRefetch } from './useSyncRefetch';
 
 interface UseSuggestionsResult {
   suggestions: Suggestion[];
@@ -16,6 +17,7 @@ interface UseSuggestionsResult {
 }
 
 export function useSuggestions(): UseSuggestionsResult {
+  const { pullSnapshot } = useSync();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSeeding, setIsSeeding] = useState(false);
@@ -27,7 +29,7 @@ export function useSuggestions(): UseSuggestionsResult {
     setError(null);
 
     try {
-      const snapshot = await apiFetch<SyncSnapshot>('/sync/pull');
+      const snapshot = await pullSnapshot();
       const completedWithActual = snapshot.tasks.filter(
         (task) => task.status === 'COMPLETED' && task.actualMinutes !== null,
       );
@@ -48,13 +50,19 @@ export function useSuggestions(): UseSuggestionsResult {
     } catch (errorValue) {
       if (errorValue instanceof ApiError) {
         setError(errorValue.message);
+      } else if (errorValue instanceof Error) {
+        setError(errorValue.message);
       } else {
         setError('No se pudieron cargar las sugerencias.');
       }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pullSnapshot]);
+
+  useSyncRefetch('tasks', refetch);
+  useSyncRefetch('pomodoroSessions', refetch);
+  useSyncRefetch('fitnessEntries', refetch);
 
   useEffect(() => {
     void refetch();
