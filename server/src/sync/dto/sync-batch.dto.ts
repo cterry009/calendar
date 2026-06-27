@@ -5,6 +5,7 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   Max,
@@ -278,6 +279,23 @@ export class FitnessSyncChangeDto {
   externalId?: string;
 }
 
+export class DetoxPlanSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsDateString()
+  updatedAt!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  deleted?: boolean;
+
+  @ValidateIf((item) => !item.deleted)
+  @IsObject()
+  planData?: Record<string, unknown>;
+}
+
 export class SyncBatchDto {
   @IsOptional()
   @IsArray()
@@ -308,4 +326,10 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => FitnessSyncChangeDto)
   fitnessEntries?: FitnessSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DetoxPlanSyncChangeDto)
+  detoxPlan?: DetoxPlanSyncChangeDto[];
 }

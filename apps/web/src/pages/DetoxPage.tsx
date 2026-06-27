@@ -13,10 +13,11 @@ import { useSyncStatusMessage } from '../hooks/useSyncRefetch';
 export function DetoxPage() {
   const navigate = useNavigate();
   const syncStatus = useSyncStatusMessage();
-  const { plan, isLoading, startPlan, saveBaselineAudit, toggleChecklistItem, completeDay, resetPlan } =
+  const { plan, isLoading, isMutating, error, startPlan, saveBaselineAudit, toggleChecklistItem, completeDay, resetPlan } =
     useDetoxPlan();
-  const { createSchedule, isMutating } = useSchedules();
+  const { createSchedule, isMutating: isScheduleMutating } = useSchedules();
   const [isSavingAudit, setIsSavingAudit] = useState(false);
+  const isBusy = isMutating || isSavingAudit || isScheduleMutating;
 
   const dayPlan = plan ? getDetoxDayPlan(plan) : null;
   const needsBaselineAudit = plan?.currentDay === 1 && !plan.baselineAudit;
@@ -66,6 +67,14 @@ export function DetoxPage() {
         </AppCard>
       ) : null}
 
+      {error ? (
+        <AppCard>
+          <Paragraph color="$error" margin={0}>
+            {error}
+          </Paragraph>
+        </AppCard>
+      ) : null}
+
       {isLoading ? (
         <AppCard>
           <Paragraph margin={0}>Cargando plan...</Paragraph>
@@ -77,7 +86,7 @@ export function DetoxPage() {
               Aun no has iniciado el plan. Incluye checklist diaria, progreso por fase y horarios sugeridos segun
               la intensidad de cada etapa.
             </Paragraph>
-            <AppButton type="button" variant="primary" onPress={() => void handleStartPlan()}>
+            <AppButton type="button" variant="primary" onPress={() => void handleStartPlan()} disabled={isBusy}>
               Iniciar plan de 7 dias
             </AppButton>
           </YStack>
@@ -92,7 +101,7 @@ export function DetoxPage() {
             <>
               <DetoxDayChecklist
                 plan={plan}
-                isBusy={isSavingAudit}
+                isBusy={isBusy}
                 onToggleItem={toggleChecklistItem}
                 onCompleteDay={completeDay}
               />
@@ -114,12 +123,12 @@ export function DetoxPage() {
                 </AppCard>
               ) : null}
 
-              <DetoxScheduleProposals plan={plan} isBusy={isMutating} onApplyProposal={createSchedule} />
+              <DetoxScheduleProposals plan={plan} isBusy={isBusy} onApplyProposal={createSchedule} />
             </>
           )}
 
           <XStack gap="$2" flexWrap="wrap">
-            <AppButton type="button" variant="ghost" onPress={() => void resetPlan()}>
+            <AppButton type="button" variant="ghost" onPress={() => void resetPlan()} disabled={isBusy}>
               Reiniciar plan
             </AppButton>
           </XStack>

@@ -6,11 +6,22 @@ import {
   createDetoxPlan,
   toggleDetoxChecklistItem,
 } from '@calendar/shared';
+import { ApiError } from '../lib/api';
+import { useSync } from '../context/SyncContext';
+import type { SyncDetoxPlanRecord } from '../lib/calendar/types';
+import {
+  buildDeleteDetoxPayload,
+  buildUpsertDetoxPayload,
+  syncDetoxBatch,
+} from '../lib/detox/sync';
 import { clearDetoxPlan, loadDetoxPlan, saveDetoxPlan } from '../lib/offline/detox-store';
+import { useSyncRefetch } from './useSyncRefetch';
 
 interface UseDetoxPlanResult {
   plan: DetoxPlan | null;
   isLoading: boolean;
+  isMutating: boolean;
+  error: string | null;
   startPlan: () => Promise<void>;
   saveBaselineAudit: (screenTimeHoursEstimate: number, topDistractions: string[]) => Promise<void>;
   toggleChecklistItem: (day: number, itemId: string) => Promise<void>;
@@ -18,44 +29,130 @@ interface UseDetoxPlanResult {
   resetPlan: () => Promise<void>;
 }
 
-export function useDetoxPlan(): UseDetoxPlanResult {
-  const [plan, setPlan] = useState<DetoxPlan | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+function parsePlanRecord(record: SyncDetoxPlanRecord | null | undefined): {
+  plan: DetoxPlan | null;
+  serverRecordId: string | null;
+} {
+  if (!record?.planData || typeof record.planData !== 'object') {
+    return { plan: null, serverRecordId: null };
+  }
 
-  const persist = useCallback(async (nextPlan: DetoxPlan) => {
-    await saveDetoxPlan(nextPlan);
-    setPlan(nextPlan);
-  }, []);
+  return {
+    plan: record.planData as DetoxPlan,
+    serverRecordId: record.id,
+  };
+}
+
+export function useDetoxPlan(): UseDetoxPlanResult {
+  const { pullSnapshot } = useSync();
+  const [plan, setPlan] = useState<DetoxPlan | null>(null);
+  const [serverRecordId, setServerRecordId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isMutating, setIsMutating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadPlan = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const snapshot = await pullSnapshot();
+      const server = parsePlanRecord(snapshot.detoxPlan);
+
+      if (server.plan) {
+        await saveDetoxPlan(server.plan);
+        setPlan(server.plan);
+        setServerRecordId(server.serverRecordId);
+        return;
+      }
+
+      const local = await loadDetoxPlan();
+      setPlan(local);
+      setServerRecordId(null);
+    } catch (errorValue) {
+      const local = await loadDetoxPlan();
+      setPlan(local);
+
+      if (errorValue instanceof ApiError) {
+        setError(errorValue.message);
+      } else if (errorValue instanceof Error) {
+        setError(errorValue.message);
+      } else {
+        setError('No se pudo cargar el plan de desintoxicacion.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [pullSnapshot]);
+
+  useSyncRefetch('detoxPlan', loadPlan);
 
   useEffect(() => {
-    let mounted = true;
+    void loadPlan();
+  }, [loadPlan]);
 
-    void (async () => {
-      const stored = await loadDetoxPlan();
-      if (mounted) {
-        setPlan(stored);
-        setIsLoading(false);
+  const persist = useCallback(
+    async (nextPlan: DetoxPlan, options?: { deleted?: boolean; recordId?: string | null }) => {
+      setIsMutating(true);
+      setError(null);
+
+      try {
+        if (options?.deleted) {
+          const recordId = options.recordId ?? serverRecordId;
+          if (recordId) {
+            await syncDetoxBatch([buildDeleteDetoxPayload(recordId)]);
+          }
+          await clearDetoxPlan();
+          setPlan(null);
+          setServerRecordId(null);
+          await loadPlan();
+          return;
+        }
+
+        await saveDetoxPlan(nextPlan);
+        setPlan(nextPlan);
+
+        const response = await syncDetoxBatch([
+          buildUpsertDetoxPayload(nextPlan, options?.recordId ?? serverRecordId),
+        ]);
+
+        const appliedRecord = response.applied?.detoxPlan?.[0] as
+          | { record?: SyncDetoxPlanRecord }
+          | undefined;
+        if (appliedRecord?.record?.id) {
+          setServerRecordId(appliedRecord.record.id);
+        }
+
+        await loadPlan();
+      } catch (errorValue) {
+        if (errorValue instanceof ApiError) {
+          setError(errorValue.message);
+        } else if (errorValue instanceof Error) {
+          setError(errorValue.message);
+        } else {
+          setError('No se pudo sincronizar el plan de desintoxicacion.');
+        }
+        throw errorValue;
+      } finally {
+        setIsMutating(false);
       }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    },
+    [loadPlan, serverRecordId],
+  );
 
   const startPlan = useCallback(async () => {
-    const nextPlan = createDetoxPlan(crypto.randomUUID());
-    await persist(nextPlan);
+    await persist(createDetoxPlan(crypto.randomUUID()));
   }, [persist]);
 
   const saveBaselineAudit = useCallback(
     async (screenTimeHoursEstimate: number, topDistractions: string[]) => {
       if (!plan) return;
-      const nextPlan = completeBaselineAudit(plan, {
-        screenTimeHoursEstimate,
-        topDistractions,
-      });
-      await persist(nextPlan);
+      await persist(
+        completeBaselineAudit(plan, {
+          screenTimeHoursEstimate,
+          topDistractions,
+        }),
+      );
     },
     [persist, plan],
   );
@@ -63,8 +160,7 @@ export function useDetoxPlan(): UseDetoxPlanResult {
   const toggleChecklistItem = useCallback(
     async (day: number, itemId: string) => {
       if (!plan) return;
-      const nextPlan = toggleDetoxChecklistItem(plan, day, itemId);
-      await persist(nextPlan);
+      await persist(toggleDetoxChecklistItem(plan, day, itemId));
     },
     [persist, plan],
   );
@@ -72,20 +168,29 @@ export function useDetoxPlan(): UseDetoxPlanResult {
   const completeDay = useCallback(
     async (day: number) => {
       if (!plan) return;
-      const nextPlan = completeDetoxDay(plan, day);
-      await persist(nextPlan);
+      await persist(completeDetoxDay(plan, day));
     },
     [persist, plan],
   );
 
   const resetPlan = useCallback(async () => {
+    if (serverRecordId) {
+      await persist(plan ?? createDetoxPlan(crypto.randomUUID()), {
+        deleted: true,
+        recordId: serverRecordId,
+      });
+      return;
+    }
+
     await clearDetoxPlan();
     setPlan(null);
-  }, []);
+  }, [persist, plan, serverRecordId]);
 
   return {
     plan,
     isLoading,
+    isMutating,
+    error,
     startPlan,
     saveBaselineAudit,
     toggleChecklistItem,

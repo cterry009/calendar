@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SyncEventsService } from '../realtime/sync-events.service';
 import {
   BlockListSyncChangeDto,
+  DetoxPlanSyncChangeDto,
   FitnessSyncChangeDto,
   PomodoroSyncChangeDto,
   ScheduleSyncChangeDto,
@@ -19,7 +21,7 @@ export class SyncService {
   ) {}
 
   async pullSnapshot(userId: string) {
-    const [tasks, schedules, pomodoroSessions, blockListEntries, fitnessEntries] =
+    const [tasks, schedules, pomodoroSessions, blockListEntries, fitnessEntries, detoxPlan] =
       await Promise.all([
         this.prisma.task.findMany({
           where: { userId, deletedAt: null },
@@ -28,6 +30,7 @@ export class SyncService {
         this.prisma.pomodoroSession.findMany({ where: { userId } }),
         this.prisma.blockListEntry.findMany({ where: { userId } }),
         this.prisma.fitnessEntry.findMany({ where: { userId } }),
+        this.prisma.detoxPlan.findUnique({ where: { userId } }),
       ]);
 
     return {
@@ -36,6 +39,14 @@ export class SyncService {
       pomodoroSessions,
       blockListEntries,
       fitnessEntries,
+      detoxPlan: detoxPlan
+        ? {
+            id: detoxPlan.id,
+            planData: detoxPlan.planData,
+            updatedAt: detoxPlan.updatedAt.toISOString(),
+            createdAt: detoxPlan.createdAt.toISOString(),
+          }
+        : null,
       syncedAt: new Date().toISOString(),
     };
   }
@@ -104,6 +115,18 @@ export class SyncService {
         this.bucketResult(result, 'fitnessEntries', outcome);
         if (outcome.status === 'applied') {
           changedEntities.add('fitnessEntries');
+        }
+      }
+    }
+
+    if (dto.detoxPlan?.length) {
+      result.applied.detoxPlan = [];
+      result.conflicts.detoxPlan = [];
+      for (const change of dto.detoxPlan) {
+        const outcome = await this.applyDetoxPlanChange(userId, change);
+        this.bucketResult(result, 'detoxPlan', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('detoxPlan');
         }
       }
     }
@@ -435,6 +458,53 @@ export class SyncService {
     const record = existing
       ? await this.prisma.fitnessEntry.update({ where: { id: existing.id }, data })
       : await this.prisma.fitnessEntry.create({ data: { ...data, userId } });
+
+    return { status: 'applied', clientKey: key, record };
+  }
+
+  private async applyDetoxPlanChange(
+    userId: string,
+    change: DetoxPlanSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const existing = await this.prisma.detoxPlan.findUnique({ where: { userId } });
+    const key = change.id ?? existing?.id;
+
+    if (change.deleted) {
+      if (!existing) {
+        return { status: 'skipped', clientKey: key };
+      }
+      if (this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+        return { status: 'conflict', clientKey: key, server: existing };
+      }
+      await this.prisma.detoxPlan.delete({ where: { id: existing.id } });
+      return { status: 'applied', clientKey: key, record: { id: existing.id } };
+    }
+
+    if (!change.planData || typeof change.planData !== 'object') {
+      throw new BadRequestException('Detox plan changes require planData');
+    }
+
+    if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+      return { status: 'conflict', clientKey: key, server: existing };
+    }
+
+    const planData = change.planData as Prisma.InputJsonValue;
+
+    const record = existing
+      ? await this.prisma.detoxPlan.update({
+          where: { id: existing.id },
+          data: {
+            planData,
+            updatedAt: new Date(change.updatedAt),
+          },
+        })
+      : await this.prisma.detoxPlan.create({
+          data: {
+            userId,
+            planData,
+            updatedAt: new Date(change.updatedAt),
+          },
+        });
 
     return { status: 'applied', clientKey: key, record };
   }

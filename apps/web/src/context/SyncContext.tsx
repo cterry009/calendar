@@ -18,6 +18,10 @@ import {
 } from '../lib/offline/sync-client';
 import type { SyncBatchBody, SyncBatchResponse, SyncEntityType } from '../lib/offline/types';
 import {
+  countSyncConflicts,
+  formatSyncConflictMessage,
+} from '../lib/offline/conflicts';
+import {
   connectSyncSocket,
   disconnectSyncSocket,
   reconnectSyncSocket,
@@ -31,9 +35,11 @@ interface SyncContextValue {
   isOnline: boolean;
   pendingQueueCount: number;
   lastPullFromCache: boolean;
+  conflictMessage: string | null;
   pullSnapshot: () => Promise<SyncSnapshot>;
   batchSync: (body: SyncBatchBody) => Promise<SyncBatchResponse>;
   flushQueue: () => Promise<number>;
+  clearConflictMessage: () => void;
   registerEntityRefetch: (entity: SyncEntityType, handler: EntityRefetchHandler) => () => void;
 }
 
@@ -44,6 +50,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [isOnline, setIsOnline] = useState(isBrowserOnline());
   const [pendingQueueCount, setPendingQueueCount] = useState(0);
   const [lastPullFromCache, setLastPullFromCache] = useState(false);
+  const [conflictMessage, setConflictMessage] = useState<string | null>(null);
   const refetchHandlers = useRef(new Map<SyncEntityType, Set<EntityRefetchHandler>>());
 
   const refreshQueueCount = useCallback(async () => {
@@ -71,11 +78,19 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const batchSyncFn = useCallback(
     async (body: SyncBatchBody) => {
       const response = await syncBatch(body);
+      const conflicts = countSyncConflicts(response);
+      if (conflicts > 0) {
+        setConflictMessage(formatSyncConflictMessage(response));
+      }
       await refreshQueueCount();
       return response;
     },
     [refreshQueueCount],
   );
+
+  const clearConflictMessage = useCallback(() => {
+    setConflictMessage(null);
+  }, []);
 
   const flushQueueFn = useCallback(async () => {
     const flushed = await flushSyncQueue();
@@ -130,12 +145,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       isOnline,
       pendingQueueCount,
       lastPullFromCache,
+      conflictMessage,
       pullSnapshot,
       batchSync: batchSyncFn,
       flushQueue: flushQueueFn,
+      clearConflictMessage,
       registerEntityRefetch,
     }),
-    [batchSyncFn, flushQueueFn, isOnline, lastPullFromCache, pendingQueueCount, pullSnapshot, registerEntityRefetch],
+    [batchSyncFn, clearConflictMessage, conflictMessage, flushQueueFn, isOnline, lastPullFromCache, pendingQueueCount, pullSnapshot, registerEntityRefetch],
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;

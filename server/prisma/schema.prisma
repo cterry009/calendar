@@ -92,6 +92,7 @@ model User {
   blockListEntries   BlockListEntry[]
   fitnessEntries     FitnessEntry[]
   analyticsSnapshots AnalyticsSnapshot[]
+  detoxPlan          DetoxPlan?
 
   @@map("users")
 }
@@ -227,6 +228,20 @@ model FitnessEntry {
 
   @@index([userId, loggedAt])
   @@map("fitness_entries")
+}
+
+// ─── Serotonin detox plan ────────────────────────────────────────────────────
+
+model DetoxPlan {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  planData  Json
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("detox_plans")
 }
 
 // ─── Analytics ───────────────────────────────────────────────────────────────

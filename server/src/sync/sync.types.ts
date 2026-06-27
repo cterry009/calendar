@@ -3,7 +3,8 @@ export type SyncEntityType =
   | 'schedules'
   | 'pomodoroSessions'
   | 'blockListEntries'
-  | 'fitnessEntries';
+  | 'fitnessEntries'
+  | 'detoxPlan';
 
 export interface SyncChangeResult<T = unknown> {
   status: 'applied' | 'conflict' | 'skipped';

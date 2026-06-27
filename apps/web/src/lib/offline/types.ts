@@ -1,11 +1,14 @@
 import type { SyncSnapshot } from '../calendar/types';
 
+import type { DetoxPlan } from '@calendar/shared';
+
 export type SyncEntityType =
   | 'tasks'
   | 'schedules'
   | 'pomodoroSessions'
   | 'blockListEntries'
-  | 'fitnessEntries';
+  | 'fitnessEntries'
+  | 'detoxPlan';
 
 export interface SyncQueueItem {
   id?: number;
@@ -25,6 +28,7 @@ export interface SyncBatchBody {
   pomodoroSessions?: unknown[];
   blockListEntries?: unknown[];
   fitnessEntries?: unknown[];
+  detoxPlan?: unknown[];
 }
 
 export interface SyncBatchResponse {

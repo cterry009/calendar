@@ -235,6 +235,23 @@ export function HomePage() {
 
           <AppCard flex={1} minWidth={280} maxWidth={420}>
             <H2 fontSize="$6" marginTop={0}>
+              Lista de bloqueo
+            </H2>
+            <YStack gap="$2" marginBottom="$4">
+              <Paragraph color="$muted" margin={0}>
+                Configura apps, sitios y programas a bloquear durante foco, pomodoros o modo serotonina.
+              </Paragraph>
+              <Paragraph color="$muted" margin={0}>
+                Se sincroniza entre dispositivos para que Android y escritorio apliquen las mismas reglas.
+              </Paragraph>
+            </YStack>
+            <AppButton variant="primary" onPress={() => navigate('/blocklist')}>
+              Gestionar distracciones
+            </AppButton>
+          </AppCard>
+
+          <AppCard flex={1} minWidth={280} maxWidth={420}>
+            <H2 fontSize="$6" marginTop={0}>
               Plan detox
             </H2>
             <YStack gap="$2" marginBottom="$4">

@@ -22,6 +22,7 @@ const EMPTY_SNAPSHOT: Omit<SyncSnapshot, 'syncedAt'> = {
   pomodoroSessions: [],
   blockListEntries: [],
   fitnessEntries: [],
+  detoxPlan: null,
 };
 
 export function useCalendarData(): UseCalendarDataResult {
@@ -43,6 +44,7 @@ export function useCalendarData(): UseCalendarDataResult {
         pomodoroSessions: data.pomodoroSessions,
         blockListEntries: data.blockListEntries,
         fitnessEntries: data.fitnessEntries,
+        detoxPlan: data.detoxPlan ?? null,
       });
       setSyncedAt(data.syncedAt);
     } catch (errorValue) {
@@ -62,6 +64,7 @@ export function useCalendarData(): UseCalendarDataResult {
   useSyncRefetch('schedules', refetch);
   useSyncRefetch('pomodoroSessions', refetch);
   useSyncRefetch('fitnessEntries', refetch);
+  useSyncRefetch('detoxPlan', refetch);
 
   useEffect(() => {
     void refetch();
