@@ -2,6 +2,7 @@
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ProtectedAppLayout } from './layouts/ProtectedAppLayout';
 import { CalendarPage } from './pages/CalendarPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/fitness" element={<FitnessPage />} />
             <Route path="/pomodoro" element={<PomodoroPage />} />
             <Route path="/schedule" element={<SchedulePage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
           </Route>
         </Route>
 

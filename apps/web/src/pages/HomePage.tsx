@@ -188,6 +188,23 @@ export function HomePage() {
 
           <AppCard flex={1} minWidth={280} maxWidth={420}>
             <H2 fontSize="$6" marginTop={0}>
+              Dashboard
+            </H2>
+            <YStack gap="$2" marginBottom="$4">
+              <Paragraph color="$muted" margin={0}>
+                Visualiza tareas y pomodoros de la semana actual frente a la anterior con barras simples.
+              </Paragraph>
+              <Paragraph color="$muted" margin={0}>
+                Incluye precision de estimaciones, horas de foco y correlacion fitness-productividad.
+              </Paragraph>
+            </YStack>
+            <AppButton variant="primary" onPress={() => navigate('/dashboard')}>
+              Ir al dashboard
+            </AppButton>
+          </AppCard>
+
+          <AppCard flex={1} minWidth={280} maxWidth={420}>
+            <H2 fontSize="$6" marginTop={0}>
               Pomodoro
             </H2>
             <YStack gap="$2" marginBottom="$4">
@@ -253,3 +270,4 @@ export function HomePage() {
     </Theme>
   );
 }
+

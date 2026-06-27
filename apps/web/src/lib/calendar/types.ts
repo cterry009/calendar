@@ -40,6 +40,8 @@ export interface SyncPomodoroSession {
   focusDurationMin: number;
   state: 'IDLE' | 'FOCUS' | 'SHORT_BREAK' | 'LONG_BREAK';
   active: boolean;
+  interrupted: boolean;
+  completedCycles: number;
   taskId: string | null;
 }
 
@@ -96,3 +98,4 @@ export interface MonthDaySummary {
   pomodoroCount: number;
   density: CalendarDensity;
 }
+
