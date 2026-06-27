@@ -10,6 +10,7 @@ import { FitnessPage } from './pages/FitnessPage';
 import { PomodoroPage } from './pages/PomodoroPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { SchedulePage } from './pages/SchedulePage';
+import { SuggestionsPage } from './pages/SuggestionsPage';
 import { TasksPage } from './pages/TasksPage';
 
 export default function App() {
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/pomodoro" element={<PomodoroPage />} />
             <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/suggestions" element={<SuggestionsPage />} />
           </Route>
         </Route>
 

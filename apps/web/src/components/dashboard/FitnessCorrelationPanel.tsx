@@ -1,12 +1,12 @@
-﻿import { AppCard, H2, Paragraph, Text, YStack } from '@calendar/ui';
-import type { FitnessCorrelationReport, Suggestion } from '@calendar/shared';
+﻿import { AppButton, AppCard, H2, Paragraph, Text, YStack } from '@calendar/ui';
+import type { FitnessCorrelationReport } from '@calendar/shared';
 
 interface FitnessCorrelationPanelProps {
   report: FitnessCorrelationReport;
-  suggestions: Suggestion[];
+  onOpenSuggestions: () => void;
 }
 
-export function FitnessCorrelationPanel({ report, suggestions }: FitnessCorrelationPanelProps) {
+export function FitnessCorrelationPanel({ report, onOpenSuggestions }: FitnessCorrelationPanelProps) {
   return (
     <AppCard>
       <YStack gap="$4">
@@ -32,21 +32,9 @@ export function FitnessCorrelationPanel({ report, suggestions }: FitnessCorrelat
           <Text color={report.insight === 'positive' ? '$accent' : '$muted'}>{report.message}</Text>
         </YStack>
 
-        <YStack gap="$2">
-          <Paragraph margin={0}>Sugerencias automaticas</Paragraph>
-          {suggestions.length === 0 ? (
-            <Paragraph color="$muted" margin={0}>
-              Aun no hay suficientes patrones para generar sugerencias.
-            </Paragraph>
-          ) : (
-            suggestions.slice(0, 3).map((suggestion) => (
-              <YStack key={`${suggestion.kind}-${suggestion.title}`} gap="$1" padding="$2" borderRadius="$3" backgroundColor="rgba(255,255,255,0.03)">
-                <Text fontWeight="700">{suggestion.title}</Text>
-                <Text color="$muted">{suggestion.message}</Text>
-              </YStack>
-            ))
-          )}
-        </YStack>
+        <AppButton type="button" variant="ghost" onPress={onOpenSuggestions}>
+          Ver todas las sugerencias
+        </AppButton>
       </YStack>
     </AppCard>
   );

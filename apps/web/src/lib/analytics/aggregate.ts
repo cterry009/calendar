@@ -4,6 +4,7 @@
   generateSuggestions,
   type TaskDifficulty,
 } from '@calendar/shared';
+import { buildSuggestionInput } from './build-suggestion-input';
 import type { DashboardMetrics, DashboardSnapshot, DashboardWeekMetric, FocusByDayPoint } from './types';
 
 const DIFFICULTIES: TaskDifficulty[] = ['EASY', 'MEDIUM', 'HARD'];
@@ -73,23 +74,8 @@ export function buildDashboardMetrics(snapshot: DashboardSnapshot, now = new Dat
   const fitnessCorrelation = calculateFitnessProductivityCorrelation(productivity, fitness);
   const estimationAccuracy = calculateEstimationAccuracy(estimationRecords);
   const suggestions = generateSuggestions({
+    ...buildSuggestionInput(snapshot),
     estimationByDifficulty: estimationAccuracy.byDifficulty,
-    pomodoroSessions: completedPomodoros.map((session) => ({
-      interrupted: session.interrupted,
-      startedAt: session.startedAt ?? session.endedAt ?? new Date().toISOString(),
-      focusMinutes: session.focusDurationMin,
-    })),
-    focusStreaks: dailyPoints.map((point) => ({
-      date: point.date,
-      focusMinutes: point.focusMinutes,
-      breakMinutes: 15,
-    })),
-    productivityDays: dailyPoints.map((point) => ({
-      date: point.date,
-      tasksCompleted: point.tasksCompleted,
-      hourOfDay: 10,
-    })),
-    fitnessExerciseDays: fitness.filter((entry) => entry.exerciseMinutes > 0).map((entry) => entry.date),
   });
 
   const hasData = snapshot.tasks.length > 0 || snapshot.pomodoroSessions.length > 0 || snapshot.fitnessEntries.length > 0;

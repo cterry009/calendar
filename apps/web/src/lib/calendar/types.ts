@@ -38,6 +38,9 @@ export interface SyncPomodoroSession {
   startedAt: string | null;
   endedAt: string | null;
   focusDurationMin: number;
+  shortBreakMin: number;
+  longBreakMin: number;
+  cyclesBeforeLongBreak: number;
   state: 'IDLE' | 'FOCUS' | 'SHORT_BREAK' | 'LONG_BREAK';
   active: boolean;
   interrupted: boolean;

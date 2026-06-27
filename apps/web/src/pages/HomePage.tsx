@@ -22,6 +22,7 @@ import {
 import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, XStack, YStack } from '@calendar/ui';
 import { OnboardingTutorial } from '../components/onboarding/OnboardingTutorial';
 import { SerotoninModePanel } from '../components/SerotoninModePanel';
+import { SuggestionsPreview } from '../components/suggestions/SuggestionsPreview';
 import { useAuth } from '../context/AuthContext';
 import { usePomodoro } from '../context/PomodoroContext';
 import { useSoftFocus } from '../context/SoftFocusContext';
@@ -202,6 +203,8 @@ export function HomePage() {
               Ir al dashboard
             </AppButton>
           </AppCard>
+
+          <SuggestionsPreview />
 
           <AppCard flex={1} minWidth={280} maxWidth={420}>
             <H2 fontSize="$6" marginTop={0}>

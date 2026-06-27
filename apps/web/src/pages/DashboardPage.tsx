@@ -38,6 +38,9 @@ export function DashboardPage() {
           <AppButton type="button" variant="ghost" onPress={() => navigate('/fitness')}>
             Fitness
           </AppButton>
+          <AppButton type="button" variant="ghost" onPress={() => navigate('/suggestions')}>
+            Sugerencias
+          </AppButton>
           <AppButton type="button" variant="ghost" onPress={() => navigate('/')}>
             Inicio
           </AppButton>
@@ -118,7 +121,10 @@ export function DashboardPage() {
             </YStack>
             <YStack flex={1} minWidth={320} gap="$5">
               <CompletionByDifficultyPanel items={metrics.completionByDifficulty} />
-              <FitnessCorrelationPanel report={metrics.fitnessCorrelation} suggestions={metrics.suggestions} />
+              <FitnessCorrelationPanel
+                report={metrics.fitnessCorrelation}
+                onOpenSuggestions={() => navigate('/suggestions')}
+              />
             </YStack>
           </XStack>
         </YStack>
