@@ -1,4 +1,4 @@
-/** @see https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2077351/ */
+﻿/** @see https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2077351/ */
 /** @see https://www.health.harvard.edu/mind-and-mood/serotonin-the-natural-mood-booster */
 
 export const SEROTONIN_PILLARS = [
@@ -15,9 +15,9 @@ export type SerotoninPillar = (typeof SEROTONIN_PILLARS)[number];
 export const PILLAR_LABELS: Record<SerotoninPillar, string> = {
   outdoors: 'Aire libre / Luz solar',
   reading: 'Lectura',
-  meditation: 'Meditación',
+  meditation: 'MeditaciÃ³n',
   journaling: 'Diario / Gratitud',
-  social: 'Conexión social',
+  social: 'ConexiÃ³n social',
   exercise: 'Ejercicio',
 };
 
@@ -33,9 +33,9 @@ export type SerotoninRitual = (typeof SEROTONIN_RITUALS)[number];
 
 export const RITUAL_LABELS: Record<SerotoninRitual, { title: string; durationMin: number; description: string }> = {
   breathing: {
-    title: 'Respiración 4-7-8',
+    title: 'RespiraciÃ³n 4-7-8',
     durationMin: 3,
-    description: 'Inhala 4s, retén 7s, exhala 8s. Repite 4 ciclos.',
+    description: 'Inhala 4s, retÃ©n 7s, exhala 8s. Repite 4 ciclos.',
   },
   gratitude: {
     title: 'Nota de gratitud',
@@ -48,14 +48,14 @@ export const RITUAL_LABELS: Record<SerotoninRitual, { title: string; durationMin
     description: 'Estira cuello, hombros y espalda sin pantallas.',
   },
   sunlight: {
-    title: 'Exposición a luz',
+    title: 'ExposiciÃ³n a luz',
     durationMin: 5,
-    description: 'Sal al exterior o siéntate junto a una ventana con luz natural 15–20 min.',
+    description: 'Sal al exterior o siÃ©ntate junto a una ventana con luz natural 15â€“20 min.',
   },
   digital_pause: {
     title: 'Pausa digital',
     durationMin: 5,
-    description: 'Deja el dispositivo boca abajo y observa tu entorno sin estímulos.',
+    description: 'Deja el dispositivo boca abajo y observa tu entorno sin estÃ­mulos.',
   },
 };
 
@@ -66,7 +66,7 @@ export type MoodState = (typeof MOOD_STATES)[number];
 export const MOOD_LABELS: Record<MoodState, string> = {
   calm: 'Tranquilo',
   anxious: 'Ansioso',
-  low_energy: 'Sin energía',
+  low_energy: 'Sin energÃ­a',
   grateful: 'Agradecido',
   restless: 'Inquieto',
 };
@@ -126,7 +126,7 @@ export function updatePillarMinutes(
 ): PillarProgress[] {
   return pillars.map((p) => {
     if (p.pillar !== pillar) return p;
-    const total = p.minutes + minutes;
+    const total = Math.max(0, p.minutes + minutes);
     return {
       ...p,
       minutes: total,
@@ -200,3 +200,4 @@ function recalculateSession(
   const score = calculateSerotoninScore({ pillars, completedRituals, moodCheckIns });
   return { ...session, pillars, completedRituals, moodCheckIns, score };
 }
+

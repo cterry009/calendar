@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ConflictException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { DevicePlatform } from '@prisma/client';
@@ -28,9 +24,9 @@ export class AuthService {
   private readonly bcryptRounds: number;
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService,
-    configService: ConfigService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(JwtService) private readonly jwtService: JwtService,
+    @Inject(ConfigService) configService: ConfigService,
   ) {
     this.accessSecret = configService.getOrThrow<string>('auth.accessSecret');
     this.refreshSecret = configService.getOrThrow<string>('auth.refreshSecret');
@@ -277,3 +273,7 @@ export class AuthService {
     }
   }
 }
+
+
+
+

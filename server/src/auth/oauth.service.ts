@@ -1,5 +1,4 @@
-import {
-  Injectable,
+import { Inject, Injectable,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -19,9 +18,9 @@ export class OAuthService {
   private readonly googleClient: OAuth2Client | null;
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly authService: AuthService,
-    configService: ConfigService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(AuthService) private readonly authService: AuthService,
+    @Inject(ConfigService) configService: ConfigService,
   ) {
     this.googleClientId = configService.get<string>('auth.googleClientId') ?? '';
     this.appleClientId = configService.get<string>('auth.appleClientId') ?? '';
@@ -156,3 +155,4 @@ export class OAuthService {
     });
   }
 }
+
