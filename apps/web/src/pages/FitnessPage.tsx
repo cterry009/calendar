@@ -1,5 +1,4 @@
 ﻿import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { AppButton, AppCard, Eyebrow, H1, Paragraph, XStack, YStack } from '@calendar/ui';
 import { FitnessForm } from '../components/fitness/FitnessForm';
 import { FitnessList } from '../components/fitness/FitnessList';
@@ -9,7 +8,6 @@ import { buildDailySummary } from '../lib/fitness/summary';
 import type { FitnessFormValues, SyncFitnessRecord } from '../lib/fitness/types';
 
 export function FitnessPage() {
-  const navigate = useNavigate();
   const { entries, isLoading, isMutating, error, syncedAt, refetch, createEntry, updateEntry, deleteEntry } =
     useFitness();
 
@@ -38,29 +36,16 @@ export function FitnessPage() {
 
   return (
     <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
-      <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$4">
-        <YStack maxWidth={760}>
-          <Eyebrow>Bienestar</Eyebrow>
-          <H1 marginTop={0} marginBottom="$2">
-            Fitness manual
-          </H1>
-          <Paragraph color="$muted" margin={0}>
-            Registra actividades de ejercicio y revisa resumentes diarios y semanales para seguir tu consistencia.
-          </Paragraph>
-        </YStack>
-
-        <XStack gap="$2" flexWrap="wrap">
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/calendar')}>
-            Calendario
-          </AppButton>
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/tasks')}>
-            Tareas
-          </AppButton>
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/')}>
-            Inicio
-          </AppButton>
-        </XStack>
-      </XStack>
+      <YStack maxWidth={760}>
+        <Eyebrow>Bienestar</Eyebrow>
+        <H1 marginTop={0} marginBottom="$2">
+          Fitness manual
+        </H1>
+        <Paragraph color="$muted" margin={0}>
+          Registra actividades de ejercicio y revisa resumentes diarios y semanales para seguir tu consistencia. Los
+          descansos del calendario tambien permiten registrar fitness directamente.
+        </Paragraph>
+      </YStack>
 
       <WeeklyFitnessSummary entries={entries} referenceDate={new Date()} />
 

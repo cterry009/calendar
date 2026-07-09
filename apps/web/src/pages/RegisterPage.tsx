@@ -77,6 +77,7 @@ export function RegisterPage() {
         />
 
         <AppButton
+          type="button"
           variant="primary"
           onPress={() => formRef.current?.requestSubmit()}
           disabled={isSubmitting}

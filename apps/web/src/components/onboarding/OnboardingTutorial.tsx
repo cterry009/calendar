@@ -22,26 +22,52 @@ interface OnboardingTutorialProps {
 const TUTORIAL_STEPS: TutorialStep[] = [
   {
     title: 'Bienvenida',
-    description: 'Esta app te ayuda a planificar tareas, calendario, descansos y bienestar digital en un solo lugar.',
-    tip: 'Empieza por revisar la pagina de inicio y tus atajos principales.',
-    route: '/',
-    highlightTarget: '[data-tutorial="home-hero"]',
+    description:
+      'El calendario es el centro de la app: tus horarios de trabajo y descanso organizan todo lo demas, desde tareas hasta bloqueo de distracciones.',
+    tip: 'Usa la barra superior para moverte entre Calendario, Tareas, Fitness, Pomodoro y mas.',
+    route: '/calendar',
+    highlightTarget: '[data-tutorial="calendar-hero"]',
   },
   {
-    title: 'Tareas con estimacion',
-    description: 'Crea tareas con dificultad, complejidad y tiempo estimado para mejorar tu precision.',
-    tip: 'Al completar una tarea, registra minutos reales para tus metricas.',
-    route: '/tasks',
-    highlightTarget: '[data-tutorial="tasks-header"]',
-    actionLabel: 'Ir a tareas',
-  },
-  {
-    title: 'Calendario y horarios',
-    description: 'Combina vistas de calendario con bloques recurrentes de trabajo y descanso por dia.',
-    tip: 'Configura horarios en la pagina Horarios para crear una semana repetible.',
+    title: 'Define tus horarios',
+    description:
+      'Crea bloques recurrentes de Trabajo y Descanso por dia de la semana. Son la base: el calendario los usa para organizar tareas, fitness y bloqueo.',
+    tip: 'Un horario de trabajo y uno de descanso por dia es suficiente para empezar.',
     route: '/schedule',
     highlightTarget: '[data-tutorial="schedule-header"]',
     actionLabel: 'Ir a horarios',
+  },
+  {
+    title: 'Crea tareas desde el calendario',
+    description:
+      'En la vista Dia, cada bloque de trabajo tiene un boton "+ Agregar tarea" que crea la tarea directamente ahi, con la hora ya sugerida.',
+    tip: 'Cambia a la vista Dia y elige una fecha con un bloque de trabajo configurado.',
+    route: '/calendar',
+    highlightTarget: '[data-tutorial="day-work-block"]',
+  },
+  {
+    title: 'Registra fitness en tus descansos',
+    description:
+      'Cada bloque de descanso en la vista Dia tiene un boton "+ Registrar fitness" y muestra lo que ya registraste en esa ventana de tiempo.',
+    tip: 'La hora se sugiere automaticamente dentro del rango del descanso.',
+    route: '/calendar',
+    highlightTarget: '[data-tutorial="day-rest-block"]',
+  },
+  {
+    title: 'Bloqueo obligatorio durante el trabajo',
+    description:
+      'Mientras un horario de Trabajo esta activo, se activa automaticamente una pantalla de enfoque con tu lista de distracciones a evitar.',
+    tip: 'Configura que apps, sitios o programas quieres evitar en la Lista de bloqueo.',
+    route: '/blocklist',
+    highlightTarget: '[data-tutorial="blocklist-header"]',
+    actionLabel: 'Ir a lista de bloqueo',
+  },
+  {
+    title: 'Modo serotonina',
+    description: 'Activa un flujo de baja estimulacion para rituales, pilares y seguimiento de estado de animo.',
+    tip: 'Usalo en bloques cortos para mantener constancia sin saturarte.',
+    route: '/calendar',
+    highlightTarget: '[data-tutorial="serotonin-mode"]',
   },
   {
     title: 'Plan de desintoxicacion',
@@ -53,26 +79,18 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     actionLabel: 'Ver plan detox',
   },
   {
-    title: 'Modo serotonina',
-    description: 'Activa un flujo de baja estimulacion para rituales, pilares y seguimiento de estado de animo.',
-    tip: 'Usalo en bloques cortos para mantener constancia sin saturarte.',
-    route: '/',
-    highlightTarget: '[data-tutorial="serotonin-mode"]',
-    actionLabel: 'Volver al inicio',
-  },
-  {
     title: 'Sincronizacion en tiempo real',
     description:
       'Con tu cuenta activa, los cambios se sincronizan entre dispositivos. Si pierdes conexion, la cola local guarda tus cambios.',
     tip: 'Los datos offline se envian automaticamente al reconectar.',
-    route: '/',
+    route: '/calendar',
   },
   {
     title: 'Listo para empezar',
-    description: 'Ya conoces el recorrido principal. Puedes volver a abrir este tutorial cuando quieras.',
-    tip: 'Siguiente paso recomendado: inicia el plan de desintoxicacion o crea tu primer horario semanal.',
-    route: '/detox',
-    actionLabel: 'Iniciar plan detox',
+    description: 'Ya conoces el recorrido principal. Puedes volver a abrir este tutorial desde la barra superior.',
+    tip: 'Siguiente paso recomendado: crea tu primer horario de trabajo y descanso.',
+    route: '/schedule',
+    actionLabel: 'Ir a horarios',
   },
 ];
 

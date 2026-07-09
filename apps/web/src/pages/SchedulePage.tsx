@@ -1,5 +1,4 @@
 ﻿import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { AppButton, AppCard, Eyebrow, H1, Paragraph, XStack, YStack } from '@calendar/ui';
 import { ScheduleForm } from '../components/schedules/ScheduleForm';
 import { ScheduleList } from '../components/schedules/ScheduleList';
@@ -7,7 +6,6 @@ import { useSchedules } from '../hooks/useSchedules';
 import type { SyncScheduleRecord } from '../lib/schedules/types';
 
 export function SchedulePage() {
-  const navigate = useNavigate();
   const {
     schedules,
     isLoading,
@@ -43,27 +41,17 @@ export function SchedulePage() {
 
   return (
     <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
-      <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$4">
-        <YStack maxWidth={760} data-tutorial="schedule-header">
-          <Eyebrow>Configuracion</Eyebrow>
-          <H1 marginTop={0} marginBottom="$2">
-            Horarios de trabajo y descanso
-          </H1>
-          <Paragraph color="$muted" margin={0}>
-            Define bloques recurrentes por dia de la semana para planificar jornadas, pausas y ventanas de
-            recuperacion.
-          </Paragraph>
-        </YStack>
-
-        <XStack gap="$2" flexWrap="wrap">
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/calendar')}>
-            Calendario
-          </AppButton>
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/')}>
-            Inicio
-          </AppButton>
-        </XStack>
-      </XStack>
+      <YStack maxWidth={760} data-tutorial="schedule-header">
+        <Eyebrow>Configuracion</Eyebrow>
+        <H1 marginTop={0} marginBottom="$2">
+          Horarios de trabajo y descanso
+        </H1>
+        <Paragraph color="$muted" margin={0}>
+          Define bloques recurrentes por dia de la semana. Estos horarios son la base del calendario: los bloques de
+          trabajo activan el bloqueo de distracciones y permiten crear tareas; los de descanso permiten registrar
+          fitness.
+        </Paragraph>
+      </YStack>
 
       <AppCard>
         <YStack gap="$3">

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { PILLAR_LABELS, RITUAL_LABELS, getDetoxDayPlan } from '@calendar/shared';
 import { AppButton, AppCard, Eyebrow, H1, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { BaselineAuditForm } from '../components/detox/BaselineAuditForm';
@@ -11,7 +10,6 @@ import { useSchedules } from '../hooks/useSchedules';
 import { useSyncStatusMessage } from '../hooks/useSyncRefetch';
 
 export function DetoxPage() {
-  const navigate = useNavigate();
   const syncStatus = useSyncStatusMessage();
   const { plan, isLoading, isMutating, error, startPlan, saveBaselineAudit, toggleChecklistItem, completeDay, resetPlan } =
     useDetoxPlan();
@@ -37,27 +35,16 @@ export function DetoxPage() {
 
   return (
     <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
-      <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$4">
-        <YStack maxWidth={760} data-tutorial="detox-header">
-          <Eyebrow>Bienestar digital</Eyebrow>
-          <H1 marginTop={0} marginBottom="$2">
-            Plan de desintoxicacion serotoninergica
-          </H1>
-          <Paragraph color="$muted" margin={0}>
-            Programa de 7 dias con fases de auditoria, reduccion selectiva, reintroduccion con limites y
-            mantenimiento. Conecta con el Modo Serotonina y horarios de intensidad diferenciada.
-          </Paragraph>
-        </YStack>
-
-        <XStack gap="$2" flexWrap="wrap">
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/')}>
-            Inicio
-          </AppButton>
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/schedule')}>
-            Horarios
-          </AppButton>
-        </XStack>
-      </XStack>
+      <YStack maxWidth={760} data-tutorial="detox-header">
+        <Eyebrow>Bienestar digital</Eyebrow>
+        <H1 marginTop={0} marginBottom="$2">
+          Plan de desintoxicacion serotoninergica
+        </H1>
+        <Paragraph color="$muted" margin={0}>
+          Programa de 7 dias con fases de auditoria, reduccion selectiva, reintroduccion con limites y
+          mantenimiento. Conecta con el Modo Serotonina y horarios de intensidad diferenciada.
+        </Paragraph>
+      </YStack>
 
       {syncStatus ? (
         <AppCard>

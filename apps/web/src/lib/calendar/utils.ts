@@ -196,6 +196,22 @@ export function buildEventsForRange(
   );
 }
 
+export function isNowWithinWorkSchedule(
+  schedules: Array<Pick<SyncSchedule, 'kind' | 'dayOfWeek' | 'startMinute' | 'endMinute' | 'enabled'>>,
+  now: Date,
+): boolean {
+  const nowMinute = now.getHours() * 60 + now.getMinutes();
+  const day = now.getDay();
+  return schedules.some(
+    (schedule) =>
+      schedule.enabled &&
+      schedule.kind === 'WORK' &&
+      schedule.dayOfWeek === day &&
+      nowMinute >= schedule.startMinute &&
+      nowMinute < schedule.endMinute,
+  );
+}
+
 export function eventsForDate(events: CalendarEvent[], date: Date): CalendarEvent[] {
   const dateStart = startOfDay(date);
   const dateEnd = endOfDay(date);

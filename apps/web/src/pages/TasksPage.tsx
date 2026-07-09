@@ -49,29 +49,16 @@ export function TasksPage() {
 
   return (
     <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
-      <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$4">
-        <YStack maxWidth={760} data-tutorial="tasks-header">
-          <Eyebrow>Productividad</Eyebrow>
-          <H1 marginTop={0} marginBottom="$2">
-            Tareas
-          </H1>
-          <Paragraph color="$muted" margin={0}>
-            Crea, edita y completa tareas con dificultad, complejidad y seguimiento de minutos reales.
-          </Paragraph>
-        </YStack>
-
-        <XStack gap="$2" flexWrap="wrap">
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/pomodoro')}>
-            Pomodoro
-          </AppButton>
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/calendar')}>
-            Calendario
-          </AppButton>
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/')}>
-            Inicio
-          </AppButton>
-        </XStack>
-      </XStack>
+      <YStack maxWidth={760} data-tutorial="tasks-header">
+        <Eyebrow>Productividad</Eyebrow>
+        <H1 marginTop={0} marginBottom="$2">
+          Tareas
+        </H1>
+        <Paragraph color="$muted" margin={0}>
+          Crea, edita y completa tareas con dificultad, complejidad y seguimiento de minutos reales. Las tareas
+          tambien se pueden crear directamente desde un bloque de trabajo en el calendario.
+        </Paragraph>
+      </YStack>
 
       <AppCard>
         <YStack gap="$3">

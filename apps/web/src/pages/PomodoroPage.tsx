@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { AppButton, AppCard, Eyebrow, H1, Paragraph, XStack, YStack } from '@calendar/ui';
 import { PomodoroTimer } from '../components/pomodoro/PomodoroTimer';
 import { usePomodoro } from '../context/PomodoroContext';
@@ -7,7 +7,6 @@ import { useSoftFocus } from '../context/SoftFocusContext';
 import { useTasks } from '../hooks/useTasks';
 
 export function PomodoroPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryTaskId = searchParams.get('taskId');
 
@@ -47,29 +46,15 @@ export function PomodoroPage() {
 
   return (
     <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
-      <XStack justifyContent="space-between" alignItems="flex-start" gap="$4" flexWrap="wrap">
-        <YStack maxWidth={760}>
-          <Eyebrow>Productividad</Eyebrow>
-          <H1 marginTop={0} marginBottom="$2">
-            Temporizador pomodoro
-          </H1>
-          <Paragraph color="$muted" margin={0}>
-            Vincula tus ciclos de enfoque y descanso a una tarea para mejorar trazabilidad y consistencia.
-          </Paragraph>
-        </YStack>
-
-        <XStack gap="$2" flexWrap="wrap">
-          <AppButton variant="ghost" onPress={() => navigate('/tasks')}>
-            Tareas
-          </AppButton>
-          <AppButton variant="ghost" onPress={() => navigate('/calendar')}>
-            Calendario
-          </AppButton>
-          <AppButton variant="ghost" onPress={() => navigate('/')}>
-            Inicio
-          </AppButton>
-        </XStack>
-      </XStack>
+      <YStack maxWidth={760}>
+        <Eyebrow>Productividad</Eyebrow>
+        <H1 marginTop={0} marginBottom="$2">
+          Temporizador pomodoro
+        </H1>
+        <Paragraph color="$muted" margin={0}>
+          Vincula tus ciclos de enfoque y descanso a una tarea para mejorar trazabilidad y consistencia.
+        </Paragraph>
+      </YStack>
 
       <AppCard>
         <YStack gap="$3">

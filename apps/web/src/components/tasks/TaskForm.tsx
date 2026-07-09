@@ -8,6 +8,8 @@ import { FormField } from './FormField';
 interface TaskFormProps {
   mode: 'create' | 'edit';
   initialTask?: SyncTaskRecord;
+  /** Prefills "scheduledAt" in create mode (e.g. a calendar work block's start time). Ignored in edit mode. */
+  initialScheduledAt?: string | null;
   isSubmitting: boolean;
   onSubmit: (values: TaskFormValues) => Promise<void>;
   onCancel: () => void;
@@ -36,11 +38,11 @@ function toDateTimeLocal(isoDate: string | null): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function defaultDraft(task?: SyncTaskRecord): TaskFormDraft {
+function defaultDraft(task?: SyncTaskRecord, initialScheduledAt?: string | null): TaskFormDraft {
   return {
     title: task?.title ?? '',
     description: task?.description ?? '',
-    scheduledAt: toDateTimeLocal(task?.scheduledAt ?? null),
+    scheduledAt: toDateTimeLocal(task?.scheduledAt ?? initialScheduledAt ?? null),
     estimatedMinutes: String(task?.estimatedMinutes ?? 30),
     actualMinutes: task?.actualMinutes == null ? '' : String(task.actualMinutes),
     difficulty: task?.difficulty ?? 'MEDIUM',
@@ -51,14 +53,14 @@ function defaultDraft(task?: SyncTaskRecord): TaskFormDraft {
   };
 }
 
-export function TaskForm({ mode, initialTask, isSubmitting, onSubmit, onCancel }: TaskFormProps) {
-  const [draft, setDraft] = useState<TaskFormDraft>(() => defaultDraft(initialTask));
+export function TaskForm({ mode, initialTask, initialScheduledAt, isSubmitting, onSubmit, onCancel }: TaskFormProps) {
+  const [draft, setDraft] = useState<TaskFormDraft>(() => defaultDraft(initialTask, initialScheduledAt));
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setDraft(defaultDraft(initialTask));
+    setDraft(defaultDraft(initialTask, initialScheduledAt));
     setError(null);
-  }, [initialTask, mode]);
+  }, [initialTask, initialScheduledAt, mode]);
 
   const title = useMemo(
     () => (mode === 'create' ? 'Nueva tarea' : `Editar: ${initialTask?.title ?? 'tarea'}`),

@@ -3,6 +3,7 @@ import type { CalendarDensity, MonthDaySummary } from '../../lib/calendar/types'
 
 interface MonthViewProps {
   days: MonthDaySummary[];
+  onSelectDay: (date: Date) => void;
 }
 
 const DENSITY_COLOR: Record<CalendarDensity, string> = {
@@ -14,7 +15,7 @@ const DENSITY_COLOR: Record<CalendarDensity, string> = {
 
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
-export function MonthView({ days }: MonthViewProps) {
+export function MonthView({ days, onSelectDay }: MonthViewProps) {
   return (
     <AppCard>
       <YStack gap="$4">
@@ -42,6 +43,9 @@ export function MonthView({ days }: MonthViewProps) {
               borderWidth={1}
               borderColor={day.inCurrentMonth ? '$borderColor' : 'transparent'}
               backgroundColor={day.inCurrentMonth ? 'rgba(255,255,255,0.03)' : 'transparent'}
+              cursor="pointer"
+              hoverStyle={{ borderColor: '$accent' }}
+              onPress={() => onSelectDay(day.date)}
             >
               <Text color={day.inCurrentMonth ? '$color' : '$muted'}>{day.date.getDate()}</Text>
               <YStack marginTop="auto" gap="$1">

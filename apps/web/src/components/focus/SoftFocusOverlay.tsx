@@ -28,16 +28,25 @@ export function SoftFocusOverlay() {
   const tasksData = useTasks();
 
   const isPomodoroBlocking = pomodoro.isBlocking;
+  const isManualFocus = !isPomodoroBlocking && softFocus.manualSoftFocus.active;
+  const isWorkHoursBlocking = !isPomodoroBlocking && !isManualFocus && softFocus.isWorkHoursActive;
   const isVisible = softFocus.isOverlayVisible;
 
   const timerLabel = useMemo(() => {
     if (isPomodoroBlocking) {
       return pomodoro.remainingSeconds;
     }
-    return softFocus.manualRemainingSeconds;
-  }, [isPomodoroBlocking, pomodoro.remainingSeconds, softFocus.manualRemainingSeconds]);
+    if (isManualFocus) {
+      return softFocus.manualRemainingSeconds;
+    }
+    return null;
+  }, [isManualFocus, isPomodoroBlocking, pomodoro.remainingSeconds, softFocus.manualRemainingSeconds]);
 
-  const phaseLabel = isPomodoroBlocking ? 'Enfoque pomodoro activo' : 'Modo enfoque manual';
+  const phaseLabel = isPomodoroBlocking
+    ? 'Enfoque pomodoro activo'
+    : isManualFocus
+      ? 'Modo enfoque manual'
+      : 'Bloqueo obligatorio: horario de trabajo activo';
   const taskTitle = useMemo(() => {
     const taskId = pomodoro.session?.taskId;
     if (!taskId) {
@@ -72,6 +81,11 @@ export function SoftFocusOverlay() {
       return;
     }
 
+    if (isWorkHoursBlocking) {
+      softFocus.dismissWorkHoursFocus();
+      return;
+    }
+
     softFocus.stopManualFocus();
   }
 
@@ -102,13 +116,21 @@ export function SoftFocusOverlay() {
           Recordatorio visual de enfoque
         </Text>
 
-        <Text fontSize={64} fontWeight="800" lineHeight={72}>
-          {formatTimer(timerLabel)}
-        </Text>
+        {timerLabel !== null ? (
+          <Text fontSize={64} fontWeight="800" lineHeight={72}>
+            {formatTimer(timerLabel)}
+          </Text>
+        ) : null}
 
         <Paragraph margin={0} color="$muted">
           {phaseLabel}
         </Paragraph>
+
+        {isWorkHoursBlocking ? (
+          <Paragraph margin={0} color="$muted">
+            Este bloqueo permanece activo mientras dure tu horario de trabajo configurado.
+          </Paragraph>
+        ) : null}
 
         {taskTitle ? (
           <Paragraph margin={0}>

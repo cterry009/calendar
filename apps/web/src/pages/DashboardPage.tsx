@@ -20,32 +20,15 @@ export function DashboardPage() {
 
   return (
     <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
-      <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$4">
-        <YStack maxWidth={760}>
-          <Eyebrow>Analitica</Eyebrow>
-          <H1 marginTop={0} marginBottom="$2">
-            Dashboard de productividad
-          </H1>
-          <Paragraph color="$muted" margin={0}>
-            Revisa rendimiento semanal, precision de estimaciones, foco diario y correlacion con fitness.
-          </Paragraph>
-        </YStack>
-
-        <XStack gap="$2" flexWrap="wrap">
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/tasks')}>
-            Tareas
-          </AppButton>
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/fitness')}>
-            Fitness
-          </AppButton>
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/suggestions')}>
-            Sugerencias
-          </AppButton>
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/')}>
-            Inicio
-          </AppButton>
-        </XStack>
-      </XStack>
+      <YStack maxWidth={760}>
+        <Eyebrow>Analitica</Eyebrow>
+        <H1 marginTop={0} marginBottom="$2">
+          Dashboard de productividad
+        </H1>
+        <Paragraph color="$muted" margin={0}>
+          Revisa rendimiento semanal, precision de estimaciones, foco diario y correlacion con fitness.
+        </Paragraph>
+      </YStack>
 
       <XStack gap="$2" flexWrap="wrap">
         <AppButton type="button" variant="primary" onPress={() => void handleSeedDemo()} disabled={isLoading || isSeeding}>

@@ -1,6 +1,8 @@
 ﻿import { useMemo, useState } from 'react';
 import { AppButton, AppCard, H2, Paragraph, YStack } from '@calendar/ui';
 import { useCalendarData } from '../../hooks/useCalendarData';
+import { useFitness } from '../../hooks/useFitness';
+import { useTasks } from '../../hooks/useTasks';
 import type { CalendarViewMode } from '../../lib/calendar/types';
 import {
   buildEventsForRange,
@@ -38,6 +40,23 @@ export function CalendarPanel() {
   const [mode, setMode] = useState<CalendarViewMode>('week');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const data = useCalendarData();
+  const tasksData = useTasks();
+  const fitnessData = useFitness();
+
+  function selectDay(date: Date) {
+    setSelectedDate(startOfDay(date));
+    setMode('day');
+  }
+
+  async function handleCreateTask(values: Parameters<typeof tasksData.createTask>[0]) {
+    await tasksData.createTask(values);
+    await data.refetch();
+  }
+
+  async function handleCreateFitness(values: Parameters<typeof fitnessData.createEntry>[0]) {
+    await fitnessData.createEntry(values);
+    await data.refetch();
+  }
 
   const range = useMemo(() => getRangeForMode(mode, selectedDate), [mode, selectedDate]);
 
@@ -94,13 +113,36 @@ export function CalendarPanel() {
         </AppCard>
       ) : null}
 
+      {tasksData.error ? (
+        <AppCard>
+          <Paragraph color="$error" margin={0}>
+            {tasksData.error}
+          </Paragraph>
+        </AppCard>
+      ) : null}
+
+      {fitnessData.error ? (
+        <AppCard>
+          <Paragraph color="$error" margin={0}>
+            {fitnessData.error}
+          </Paragraph>
+        </AppCard>
+      ) : null}
+
       {!data.isLoading && !data.error ? (
         mode === 'day' ? (
-          <DayView selectedDate={selectedDate} events={dayEvents} />
+          <DayView
+            selectedDate={selectedDate}
+            events={dayEvents}
+            onCreateTask={handleCreateTask}
+            isCreatingTask={tasksData.isMutating}
+            onCreateFitness={handleCreateFitness}
+            isCreatingFitness={fitnessData.isMutating}
+          />
         ) : mode === 'week' ? (
-          <WeekView days={weekSummary} />
+          <WeekView days={weekSummary} onSelectDay={selectDay} />
         ) : (
-          <MonthView days={monthSummary} />
+          <MonthView days={monthSummary} onSelectDay={selectDay} />
         )
       ) : null}
 
