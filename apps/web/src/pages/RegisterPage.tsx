@@ -42,7 +42,10 @@ export function RegisterPage() {
       title="Create account"
       linkSlot={
         <Paragraph color="$muted">
-          Already have an account? <Link to="/login">Sign in</Link>
+          Already have an account?{' '}
+          <Link to="/login" style={{ color: '#4fb6a6', fontWeight: 600, textDecoration: 'none' }}>
+            Sign in
+          </Link>
         </Paragraph>
       }
     >

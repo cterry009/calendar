@@ -83,7 +83,7 @@ export function SoftFocusOverlay() {
       right={0}
       bottom={0}
       zIndex={9999}
-      backgroundColor="rgba(7, 12, 23, 0.94)"
+      backgroundColor="rgba(18, 21, 27, 0.94)"
       justifyContent="center"
       alignItems="center"
       padding="$6"
@@ -92,9 +92,9 @@ export function SoftFocusOverlay() {
         width="100%"
         maxWidth={860}
         borderWidth={1}
-        borderColor="rgba(255,255,255,0.16)"
+        borderColor="rgba(234,240,238,0.14)"
         borderRadius="$8"
-        backgroundColor="rgba(23, 30, 51, 0.92)"
+        backgroundColor="rgba(33, 40, 54, 0.92)"
         padding="$6"
         gap="$4"
       >
@@ -102,7 +102,7 @@ export function SoftFocusOverlay() {
           Recordatorio visual de enfoque
         </Text>
 
-        <Text fontSize={64} fontWeight="800" lineHeight={72}>
+        <Text fontSize={64} fontWeight="700" lineHeight={72} color="$accent" fontVariant={['tabular-nums']}>
           {formatTimer(timerLabel)}
         </Text>
 
