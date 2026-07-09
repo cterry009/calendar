@@ -67,6 +67,7 @@
 - [ ] 5.12 Decide and enforce a single primary UI language (Spanish) across all pages ahead of full i18n (10.2), fixing the current English/Spanish mix on the Home page
 - [ ] 5.13 Establish visual hierarchy on the Home page: group daily-driver actions (Calendar, Tasks, Pomodoro) separately from setup/config screens (Schedule, Block List)
 - [ ] 5.14 Decide whether to add a light theme / `prefers-color-scheme` support alongside the existing dark/calm themes, or intentionally commit to dark-only as part of the focus/dopamine-reduction branding
+- [ ] 5.15 Auto-split a general WORK schedule range into pomodoro/short-break/long-break sub-blocks (chunks of 4-5 pomodoros, max 4 long breaks per range) with a live preview on the schedule form and a mini-timeline on the calendar day view; add a self-reported concentration check-in during focus sessions that adapts the estimated pomodoro length over time
 
 ## 6. Mobile app â€” Android (phase 2)
 
