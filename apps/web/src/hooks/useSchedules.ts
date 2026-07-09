@@ -18,6 +18,7 @@ interface UseSchedulesResult {
   syncedAt: string | null;
   refetch: () => Promise<void>;
   createSchedule: (values: ScheduleFormValues) => Promise<void>;
+  createSchedules: (valuesList: ScheduleFormValues[]) => Promise<void>;
   updateSchedule: (scheduleId: string, values: ScheduleFormValues) => Promise<void>;
   deleteSchedule: (scheduleId: string) => Promise<void>;
 }
@@ -95,6 +96,13 @@ export function useSchedules(): UseSchedulesResult {
     [executeMutation],
   );
 
+  const createSchedules = useCallback(
+    async (valuesList: ScheduleFormValues[]) => {
+      await executeMutation(valuesList.map((values) => buildCreateSchedulePayload(values)));
+    },
+    [executeMutation],
+  );
+
   const updateSchedule = useCallback(
     async (scheduleId: string, values: ScheduleFormValues) => {
       await executeMutation([buildUpdateSchedulePayload(scheduleId, values)]);
@@ -118,9 +126,21 @@ export function useSchedules(): UseSchedulesResult {
       syncedAt,
       refetch,
       createSchedule,
+      createSchedules,
       updateSchedule,
       deleteSchedule,
     }),
-    [createSchedule, deleteSchedule, error, isLoading, isMutating, refetch, schedules, syncedAt, updateSchedule],
+    [
+      createSchedule,
+      createSchedules,
+      deleteSchedule,
+      error,
+      isLoading,
+      isMutating,
+      refetch,
+      schedules,
+      syncedAt,
+      updateSchedule,
+    ],
   );
 }

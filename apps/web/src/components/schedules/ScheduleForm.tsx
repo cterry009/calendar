@@ -21,13 +21,13 @@ interface ScheduleFormProps {
   mode: 'create' | 'edit';
   initialSchedule?: SyncScheduleRecord;
   isSubmitting: boolean;
-  onSubmit: (values: ScheduleFormValues) => Promise<void>;
+  onSubmit: (valuesList: ScheduleFormValues[]) => Promise<void>;
   onCancel: () => void;
 }
 
 interface ScheduleFormDraft {
   kind: ScheduleFormValues['kind'];
-  dayOfWeek: number;
+  dayOfWeeks: number[];
   startTime: string;
   endTime: string;
   label: string;
@@ -37,7 +37,7 @@ interface ScheduleFormDraft {
 function defaultDraft(schedule?: SyncScheduleRecord): ScheduleFormDraft {
   return {
     kind: schedule?.kind ?? 'WORK',
-    dayOfWeek: schedule?.dayOfWeek ?? 1,
+    dayOfWeeks: [schedule?.dayOfWeek ?? 1],
     startTime: minuteToTimeValue(schedule?.startMinute ?? 9 * 60),
     endTime: minuteToTimeValue(schedule?.endMinute ?? 18 * 60),
     label: schedule?.label ?? '',
@@ -86,6 +86,22 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
     setDraft((current) => ({ ...current, [field]: value }));
   }
 
+  function toggleDay(day: number) {
+    if (mode === 'edit') {
+      setField('dayOfWeeks', [day]);
+      return;
+    }
+
+    setDraft((current) => {
+      const isSelected = current.dayOfWeeks.includes(day);
+      if (isSelected) {
+        if (current.dayOfWeeks.length === 1) return current;
+        return { ...current, dayOfWeeks: current.dayOfWeeks.filter((value) => value !== day) };
+      }
+      return { ...current, dayOfWeeks: [...current.dayOfWeeks, day].sort((a, b) => a - b) };
+    });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -103,14 +119,21 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
       return;
     }
 
-    await onSubmit({
-      kind: draft.kind,
-      dayOfWeek: draft.dayOfWeek,
-      startMinute,
-      endMinute,
-      label: draft.label.trim() || null,
-      enabled: draft.enabled,
-    });
+    if (draft.dayOfWeeks.length === 0) {
+      setError('Selecciona al menos un dia.');
+      return;
+    }
+
+    await onSubmit(
+      draft.dayOfWeeks.map((dayOfWeek) => ({
+        kind: draft.kind,
+        dayOfWeek,
+        startMinute,
+        endMinute,
+        label: draft.label.trim() || null,
+        enabled: draft.enabled,
+      })),
+    );
   }
 
   return (
@@ -137,14 +160,19 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
         </YStack>
 
         <YStack gap="$2">
-          <Paragraph margin={0}>Dia de la semana</Paragraph>
+          <Paragraph margin={0}>{mode === 'create' ? 'Dias de la semana' : 'Dia de la semana'}</Paragraph>
+          {mode === 'create' ? (
+            <Paragraph margin={0} size="$2" color="$muted">
+              Selecciona uno o mas dias: se creara este mismo horario para cada dia elegido.
+            </Paragraph>
+          ) : null}
           <XStack gap="$2" flexWrap="wrap">
             {DAY_NAMES_ES.map((dayName, index) => (
               <AppButton
                 key={dayName}
                 type="button"
-                variant={draft.dayOfWeek === index ? 'primary' : 'ghost'}
-                onPress={() => setField('dayOfWeek', index)}
+                variant={draft.dayOfWeeks.includes(index) ? 'primary' : 'ghost'}
+                onPress={() => toggleDay(index)}
               >
                 {dayName}
               </AppButton>
@@ -234,7 +262,13 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
             Cancelar
           </AppButton>
           <AppButton type="submit" variant="primary" disabled={isSubmitting}>
-            {isSubmitting ? 'Guardando...' : mode === 'create' ? 'Crear horario' : 'Guardar cambios'}
+            {isSubmitting
+              ? 'Guardando...'
+              : mode === 'create'
+                ? draft.dayOfWeeks.length > 1
+                  ? `Crear ${draft.dayOfWeeks.length} horarios`
+                  : 'Crear horario'
+                : 'Guardar cambios'}
           </AppButton>
         </XStack>
       </YStack>

@@ -13,7 +13,7 @@ export function SchedulePage() {
     error,
     syncedAt,
     refetch,
-    createSchedule,
+    createSchedules,
     updateSchedule,
     deleteSchedule,
   } = useSchedules();
@@ -21,14 +21,14 @@ export function SchedulePage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<SyncScheduleRecord | null>(null);
 
-  async function handleCreate(values: Parameters<typeof createSchedule>[0]) {
-    await createSchedule(values);
+  async function handleCreate(valuesList: Parameters<typeof createSchedules>[0]) {
+    await createSchedules(valuesList);
     setShowCreateForm(false);
   }
 
-  async function handleUpdate(values: Parameters<typeof updateSchedule>[1]) {
-    if (!editingSchedule) return;
-    await updateSchedule(editingSchedule.id, values);
+  async function handleUpdate(valuesList: Parameters<typeof updateSchedule>[1][]) {
+    if (!editingSchedule || valuesList.length === 0) return;
+    await updateSchedule(editingSchedule.id, valuesList[0]);
     setEditingSchedule(null);
   }
 
