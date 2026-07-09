@@ -1,10 +1,11 @@
-﻿import { useMemo } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { usePomodoro } from '../../context/PomodoroContext';
 import { useSoftFocus } from '../../context/SoftFocusContext';
 import { useBlockList } from '../../hooks/useBlockList';
 import { useTasks } from '../../hooks/useTasks';
+import { recordFocusFeedbackSample } from '../../lib/pomodoro/planner';
 import { formatTimer } from '../../lib/pomodoro/timer';
 
 const FOCUS_REMINDER_KINDS = new Set(['WEBSITE', 'DESKTOP_APP', 'MOBILE_APP']);
@@ -26,6 +27,7 @@ export function SoftFocusOverlay() {
   const softFocus = useSoftFocus();
   const blockList = useBlockList();
   const tasksData = useTasks();
+  const [feedbackSavedFor, setFeedbackSavedFor] = useState<string | null>(null);
 
   const isPomodoroBlocking = pomodoro.isBlocking;
   const isManualFocus = !isPomodoroBlocking && softFocus.manualSoftFocus.active;
@@ -66,6 +68,15 @@ export function SoftFocusOverlay() {
         })),
     [blockList.enabledEntries],
   );
+
+  const plannedFocusMin = pomodoro.phaseDurationMinutes ?? pomodoro.config.focusDurationMin;
+  const feedbackKey = pomodoro.session ? `${pomodoro.session.id}-${pomodoro.session.completedCycles}` : null;
+
+  function handleRecordFeedback(fraction: number) {
+    if (!feedbackKey) return;
+    recordFocusFeedbackSample(Math.max(1, Math.round(plannedFocusMin * fraction)));
+    setFeedbackSavedFor(feedbackKey);
+  }
 
   if (!isVisible || typeof document === 'undefined') {
     return null;
@@ -168,6 +179,36 @@ export function SoftFocusOverlay() {
           Aviso: este modo solo muestra recordatorios visuales en web y no bloquea aplicaciones ni sitios a nivel
           sistema operativo.
         </Paragraph>
+
+        {isPomodoroBlocking ? (
+          <YStack gap="$2" borderTopWidth={1} borderTopColor="rgba(255,255,255,0.12)" paddingTop="$4">
+            {feedbackSavedFor === feedbackKey ? (
+              <Paragraph margin={0} color="$success" size="$2">
+                Gracias, usaremos esto para ajustar la duracion sugerida del pomodoro.
+              </Paragraph>
+            ) : (
+              <>
+                <Text fontWeight="700" size="$2">
+                  ¿Cuanto llevas concentrado de verdad en este pomodoro?
+                </Text>
+                <XStack gap="$2" flexWrap="wrap">
+                  <AppButton variant="ghost" onPress={() => handleRecordFeedback(1)}>
+                    Todo ({plannedFocusMin} min)
+                  </AppButton>
+                  <AppButton variant="ghost" onPress={() => handleRecordFeedback(0.75)}>
+                    Casi todo
+                  </AppButton>
+                  <AppButton variant="ghost" onPress={() => handleRecordFeedback(0.5)}>
+                    La mitad
+                  </AppButton>
+                  <AppButton variant="ghost" onPress={() => handleRecordFeedback(0.25)}>
+                    Poco
+                  </AppButton>
+                </XStack>
+              </>
+            )}
+          </YStack>
+        ) : null}
 
         <XStack justifyContent="flex-end" marginTop="$2">
           <AppButton variant="ghost" onPress={() => void handleExit()} disabled={pomodoro.isMutating}>

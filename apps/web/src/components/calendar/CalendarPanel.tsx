@@ -1,5 +1,7 @@
 ﻿import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppButton, AppCard, H2, Paragraph, YStack } from '@calendar/ui';
+import { usePomodoro } from '../../context/PomodoroContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
 import { useFitness } from '../../hooks/useFitness';
 import { useTasks } from '../../hooks/useTasks';
@@ -42,6 +44,8 @@ export function CalendarPanel() {
   const data = useCalendarData();
   const tasksData = useTasks();
   const fitnessData = useFitness();
+  const pomodoro = usePomodoro();
+  const navigate = useNavigate();
 
   function selectDay(date: Date) {
     setSelectedDate(startOfDay(date));
@@ -56,6 +60,11 @@ export function CalendarPanel() {
   async function handleCreateFitness(values: Parameters<typeof fitnessData.createEntry>[0]) {
     await fitnessData.createEntry(values);
     await data.refetch();
+  }
+
+  async function handleStartFocusSegment(focusDurationMin: number) {
+    await pomodoro.start(undefined, { focusDurationMin });
+    navigate('/pomodoro');
   }
 
   const range = useMemo(() => getRangeForMode(mode, selectedDate), [mode, selectedDate]);
@@ -138,6 +147,8 @@ export function CalendarPanel() {
             isCreatingTask={tasksData.isMutating}
             onCreateFitness={handleCreateFitness}
             isCreatingFitness={fitnessData.isMutating}
+            onStartFocusSegment={handleStartFocusSegment}
+            isStartingFocus={pomodoro.isMutating}
           />
         ) : mode === 'week' ? (
           <WeekView days={weekSummary} onSelectDay={selectDay} />

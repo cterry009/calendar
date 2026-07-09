@@ -38,6 +38,14 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     actionLabel: 'Ir a horarios',
   },
   {
+    title: 'Plan de pomodoros automatico',
+    description:
+      'Solo defines la hora de inicio y fin de tu jornada. La app divide ese rango en bloques de 4-5 pomodoros con descansos cortos, separados por hasta 4 descansos largos.',
+    tip: 'Mientras trabajas, registra cuanto pudiste concentrarte realmente: la duracion sugerida del pomodoro se ajusta con el tiempo.',
+    route: '/calendar',
+    highlightTarget: '[data-tutorial="day-work-block"]',
+  },
+  {
     title: 'Crea tareas desde el calendario',
     description:
       'En la vista Dia, cada bloque de trabajo tiene un boton "+ Agregar tarea" que crea la tarea directamente ahi, con la hora ya sugerida.',

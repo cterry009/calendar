@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { AppButton, AppCard, H2, Paragraph, XStack, YStack } from '@calendar/ui';
+import { AppButton, AppCard, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Checkbox, Input, Label } from 'tamagui';
 import { DAY_NAMES_ES, SCHEDULE_KIND_LABELS } from '../../lib/schedules/labels';
 import {
@@ -9,6 +9,13 @@ import {
   type ScheduleFormValues,
   type SyncScheduleRecord,
 } from '../../lib/schedules/types';
+import {
+  MAX_LONG_BREAKS,
+  countSegmentsByType,
+  estimateFocusDurationMin,
+  generateFocusPlan,
+  loadFocusFeedbackHistory,
+} from '../../lib/pomodoro/planner';
 
 interface ScheduleFormProps {
   mode: 'create' | 'edit';
@@ -51,6 +58,29 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
     () => (mode === 'create' ? 'Nuevo horario' : `Editar horario: ${initialSchedule?.label ?? 'sin etiqueta'}`),
     [initialSchedule?.label, mode],
   );
+
+  const focusEstimateMin = useMemo(() => estimateFocusDurationMin(loadFocusFeedbackHistory()), []);
+
+  const focusPlanPreview = useMemo(() => {
+    if (draft.kind !== 'WORK') return null;
+
+    const startMinute = timeValueToMinute(draft.startTime);
+    const endMinute = timeValueToMinute(draft.endTime);
+    if (startMinute === null || endMinute === null || endMinute <= startMinute) return null;
+
+    const plan = generateFocusPlan(startMinute, endMinute, focusEstimateMin);
+    if (plan.length === 0) return { plan, pomodoros: 0, shortBreaks: 0, longBreaks: 0, pomodoroMin: focusEstimateMin };
+
+    const firstPomodoro = plan.find((segment) => segment.type === 'pomodoro');
+
+    return {
+      plan,
+      pomodoros: countSegmentsByType(plan, 'pomodoro'),
+      shortBreaks: countSegmentsByType(plan, 'short-break'),
+      longBreaks: countSegmentsByType(plan, 'long-break'),
+      pomodoroMin: firstPomodoro ? firstPomodoro.endMinute - firstPomodoro.startMinute : focusEstimateMin,
+    };
+  }, [draft.kind, draft.startTime, draft.endTime, focusEstimateMin]);
 
   function setField<Key extends keyof ScheduleFormDraft>(field: Key, value: ScheduleFormDraft[Key]) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -145,6 +175,31 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
             />
           </YStack>
         </XStack>
+
+        {draft.kind === 'WORK' ? (
+          <AppCard backgroundColor="rgba(255,255,255,0.04)">
+            <YStack gap="$2">
+              <Text fontWeight="700">Plan de enfoque automatico</Text>
+              {focusPlanPreview && focusPlanPreview.pomodoros > 0 ? (
+                <>
+                  <Paragraph margin={0} color="$muted">
+                    {focusPlanPreview.pomodoros} pomodoros de {focusPlanPreview.pomodoroMin} min ·{' '}
+                    {focusPlanPreview.shortBreaks} descansos cortos de 5 min · {focusPlanPreview.longBreaks} descansos
+                    largos (max {MAX_LONG_BREAKS})
+                  </Paragraph>
+                  <Paragraph margin={0} size="$2" color="$muted">
+                    La duracion del pomodoro se ajusta con el tiempo segun cuanto reportes que te concentras.
+                  </Paragraph>
+                </>
+              ) : (
+                <Paragraph margin={0} color="$muted">
+                  Define un rango de al menos 25 minutos para generar el plan de pomodoros y descansos
+                  automaticamente.
+                </Paragraph>
+              )}
+            </YStack>
+          </AppCard>
+        ) : null}
 
         <YStack gap="$2">
           <Label htmlFor="schedule-label">Etiqueta (opcional)</Label>
