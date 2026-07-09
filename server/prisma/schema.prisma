@@ -156,6 +156,12 @@ model Schedule {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
+  // User-tunable auto-pomodoro plan for WORK schedules; null = use the app's adaptive default.
+  pomodoroMin       Int?
+  shortBreakMin     Int?
+  longBreakMin      Int?
+  pomodorosPerChunk Int?
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, kind])

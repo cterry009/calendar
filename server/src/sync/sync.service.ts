@@ -283,6 +283,10 @@ export class SyncService {
       endMinute: change.endMinute,
       label: change.label ?? null,
       enabled: change.enabled ?? true,
+      pomodoroMin: change.pomodoroMin ?? null,
+      shortBreakMin: change.shortBreakMin ?? null,
+      longBreakMin: change.longBreakMin ?? null,
+      pomodorosPerChunk: change.pomodorosPerChunk ?? null,
       updatedAt: new Date(change.updatedAt),
     };
 

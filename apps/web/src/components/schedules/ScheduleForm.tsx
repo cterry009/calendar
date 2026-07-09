@@ -10,6 +10,9 @@ import {
   type SyncScheduleRecord,
 } from '../../lib/schedules/types';
 import {
+  DEFAULT_LONG_BREAK_MIN,
+  DEFAULT_POMODOROS_PER_CHUNK,
+  DEFAULT_SHORT_BREAK_MIN,
   MAX_LONG_BREAKS,
   countSegmentsByType,
   estimateFocusDurationMin,
@@ -32,6 +35,10 @@ interface ScheduleFormDraft {
   endTime: string;
   label: string;
   enabled: boolean;
+  pomodoroMin: number;
+  shortBreakMin: number;
+  longBreakMin: number;
+  pomodorosPerChunk: number;
 }
 
 function defaultDraft(schedule?: SyncScheduleRecord): ScheduleFormDraft {
@@ -42,6 +49,10 @@ function defaultDraft(schedule?: SyncScheduleRecord): ScheduleFormDraft {
     endTime: minuteToTimeValue(schedule?.endMinute ?? 18 * 60),
     label: schedule?.label ?? '',
     enabled: schedule?.enabled ?? true,
+    pomodoroMin: schedule?.pomodoroMin ?? estimateFocusDurationMin(loadFocusFeedbackHistory()),
+    shortBreakMin: schedule?.shortBreakMin ?? DEFAULT_SHORT_BREAK_MIN,
+    longBreakMin: schedule?.longBreakMin ?? DEFAULT_LONG_BREAK_MIN,
+    pomodorosPerChunk: schedule?.pomodorosPerChunk ?? DEFAULT_POMODOROS_PER_CHUNK,
   };
 }
 
@@ -59,8 +70,6 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
     [initialSchedule?.label, mode],
   );
 
-  const focusEstimateMin = useMemo(() => estimateFocusDurationMin(loadFocusFeedbackHistory()), []);
-
   const focusPlanPreview = useMemo(() => {
     if (draft.kind !== 'WORK') return null;
 
@@ -68,19 +77,28 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
     const endMinute = timeValueToMinute(draft.endTime);
     if (startMinute === null || endMinute === null || endMinute <= startMinute) return null;
 
-    const plan = generateFocusPlan(startMinute, endMinute, focusEstimateMin);
-    if (plan.length === 0) return { plan, pomodoros: 0, shortBreaks: 0, longBreaks: 0, pomodoroMin: focusEstimateMin };
-
-    const firstPomodoro = plan.find((segment) => segment.type === 'pomodoro');
+    const plan = generateFocusPlan(startMinute, endMinute, {
+      pomodoroMin: draft.pomodoroMin,
+      shortBreakMin: draft.shortBreakMin,
+      longBreakMin: draft.longBreakMin,
+      pomodorosPerChunk: draft.pomodorosPerChunk,
+    });
 
     return {
       plan,
       pomodoros: countSegmentsByType(plan, 'pomodoro'),
       shortBreaks: countSegmentsByType(plan, 'short-break'),
       longBreaks: countSegmentsByType(plan, 'long-break'),
-      pomodoroMin: firstPomodoro ? firstPomodoro.endMinute - firstPomodoro.startMinute : focusEstimateMin,
     };
-  }, [draft.kind, draft.startTime, draft.endTime, focusEstimateMin]);
+  }, [
+    draft.kind,
+    draft.startTime,
+    draft.endTime,
+    draft.pomodoroMin,
+    draft.shortBreakMin,
+    draft.longBreakMin,
+    draft.pomodorosPerChunk,
+  ]);
 
   function setField<Key extends keyof ScheduleFormDraft>(field: Key, value: ScheduleFormDraft[Key]) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -124,6 +142,24 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
       return;
     }
 
+    if (draft.kind === 'WORK') {
+      const planValues = [draft.pomodoroMin, draft.shortBreakMin, draft.longBreakMin, draft.pomodorosPerChunk];
+      if (planValues.some((value) => !Number.isInteger(value) || value < 1)) {
+        setError('Los valores del plan de enfoque deben ser numeros enteros mayores o iguales a 1.');
+        return;
+      }
+    }
+
+    const planFields =
+      draft.kind === 'WORK'
+        ? {
+            pomodoroMin: draft.pomodoroMin,
+            shortBreakMin: draft.shortBreakMin,
+            longBreakMin: draft.longBreakMin,
+            pomodorosPerChunk: draft.pomodorosPerChunk,
+          }
+        : { pomodoroMin: null, shortBreakMin: null, longBreakMin: null, pomodorosPerChunk: null };
+
     await onSubmit(
       draft.dayOfWeeks.map((dayOfWeek) => ({
         kind: draft.kind,
@@ -132,6 +168,7 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
         endMinute,
         label: draft.label.trim() || null,
         enabled: draft.enabled,
+        ...planFields,
       })),
     );
   }
@@ -206,23 +243,69 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
 
         {draft.kind === 'WORK' ? (
           <AppCard backgroundColor="rgba(255,255,255,0.04)">
-            <YStack gap="$2">
-              <Text fontWeight="700">Plan de enfoque automatico</Text>
+            <YStack gap="$3">
+              <YStack gap="$1">
+                <Text fontWeight="700">Plan de enfoque automatico</Text>
+                <Paragraph margin={0} size="$2" color="$muted">
+                  Ajusta la duracion del pomodoro, los descansos y cuantos pomodoros forman un bloque de trabajo.
+                </Paragraph>
+              </YStack>
+
+              <XStack gap="$3" flexWrap="wrap">
+                <YStack minWidth={150} gap="$1">
+                  <Label htmlFor="schedule-pomodoro-min">Pomodoro (min)</Label>
+                  <Input
+                    id="schedule-pomodoro-min"
+                    type="number"
+                    min={1}
+                    value={String(draft.pomodoroMin)}
+                    onChangeText={(value: string) => setField('pomodoroMin', Number(value || 0))}
+                  />
+                </YStack>
+
+                <YStack minWidth={150} gap="$1">
+                  <Label htmlFor="schedule-short-break-min">Descanso corto (min)</Label>
+                  <Input
+                    id="schedule-short-break-min"
+                    type="number"
+                    min={1}
+                    value={String(draft.shortBreakMin)}
+                    onChangeText={(value: string) => setField('shortBreakMin', Number(value || 0))}
+                  />
+                </YStack>
+
+                <YStack minWidth={150} gap="$1">
+                  <Label htmlFor="schedule-long-break-min">Descanso largo (min)</Label>
+                  <Input
+                    id="schedule-long-break-min"
+                    type="number"
+                    min={1}
+                    value={String(draft.longBreakMin)}
+                    onChangeText={(value: string) => setField('longBreakMin', Number(value || 0))}
+                  />
+                </YStack>
+
+                <YStack minWidth={150} gap="$1">
+                  <Label htmlFor="schedule-pomodoros-per-chunk">Pomodoros por bloque</Label>
+                  <Input
+                    id="schedule-pomodoros-per-chunk"
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={String(draft.pomodorosPerChunk)}
+                    onChangeText={(value: string) => setField('pomodorosPerChunk', Number(value || 0))}
+                  />
+                </YStack>
+              </XStack>
+
               {focusPlanPreview && focusPlanPreview.pomodoros > 0 ? (
-                <>
-                  <Paragraph margin={0} color="$muted">
-                    {focusPlanPreview.pomodoros} pomodoros de {focusPlanPreview.pomodoroMin} min ·{' '}
-                    {focusPlanPreview.shortBreaks} descansos cortos de 5 min · {focusPlanPreview.longBreaks} descansos
-                    largos (max {MAX_LONG_BREAKS})
-                  </Paragraph>
-                  <Paragraph margin={0} size="$2" color="$muted">
-                    La duracion del pomodoro se ajusta con el tiempo segun cuanto reportes que te concentras.
-                  </Paragraph>
-                </>
+                <Paragraph margin={0} color="$muted">
+                  {focusPlanPreview.pomodoros} pomodoros · {focusPlanPreview.shortBreaks} descansos cortos ·{' '}
+                  {focusPlanPreview.longBreaks} descansos largos (max {MAX_LONG_BREAKS})
+                </Paragraph>
               ) : (
                 <Paragraph margin={0} color="$muted">
-                  Define un rango de al menos 25 minutos para generar el plan de pomodoros y descansos
-                  automaticamente.
+                  El rango es muy corto para al menos un pomodoro con esta configuracion.
                 </Paragraph>
               )}
             </YStack>

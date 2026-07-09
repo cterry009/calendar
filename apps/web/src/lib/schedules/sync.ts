@@ -11,6 +11,10 @@ export interface ScheduleSyncChangeDto {
   endMinute?: number;
   label?: string;
   enabled?: boolean;
+  pomodoroMin?: number;
+  shortBreakMin?: number;
+  longBreakMin?: number;
+  pomodorosPerChunk?: number;
 }
 
 interface SyncBatchResponse {
@@ -26,6 +30,10 @@ function buildUpsertPayload(values: ScheduleFormValues): Omit<ScheduleSyncChange
     endMinute: values.endMinute,
     label: values.label?.trim() || undefined,
     enabled: values.enabled,
+    pomodoroMin: values.pomodoroMin ?? undefined,
+    shortBreakMin: values.shortBreakMin ?? undefined,
+    longBreakMin: values.longBreakMin ?? undefined,
+    pomodorosPerChunk: values.pomodorosPerChunk ?? undefined,
   };
 }
 
@@ -68,5 +76,9 @@ export function mapSyncSchedule(schedule: SyncScheduleRecord): ScheduleFormValue
     endMinute: schedule.endMinute,
     label: schedule.label,
     enabled: schedule.enabled,
+    pomodoroMin: schedule.pomodoroMin,
+    shortBreakMin: schedule.shortBreakMin,
+    longBreakMin: schedule.longBreakMin,
+    pomodorosPerChunk: schedule.pomodorosPerChunk,
   };
 }

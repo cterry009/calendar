@@ -6,111 +6,94 @@ export interface FocusPlanSegment {
   endMinute: number;
 }
 
+export interface FocusPlanConfig {
+  pomodoroMin: number;
+  shortBreakMin: number;
+  longBreakMin: number;
+  pomodorosPerChunk: number;
+}
+
 export const FOCUS_ESTIMATE_MIN_MIN = 25;
 export const FOCUS_ESTIMATE_MIN_MAX = 35;
 export const FOCUS_ESTIMATE_DEFAULT_MIN = 25;
-export const SHORT_BREAK_MIN = 5;
-export const LONG_BREAK_MIN = 20;
-export const LONG_BREAK_MIN_MAX = 30;
+export const DEFAULT_SHORT_BREAK_MIN = 5;
+export const DEFAULT_LONG_BREAK_MIN = 20;
+export const DEFAULT_POMODOROS_PER_CHUNK = 4;
 export const MAX_LONG_BREAKS = 4;
-export const MIN_POMODOROS_PER_CHUNK = 4;
-export const MAX_POMODOROS_PER_CHUNK = 5;
 
-interface ChunkPlan {
-  chunks: number;
-  pomodorosPerChunk: number;
-  totalMinutes: number;
-}
+export const DEFAULT_FOCUS_PLAN_CONFIG: FocusPlanConfig = {
+  pomodoroMin: FOCUS_ESTIMATE_DEFAULT_MIN,
+  shortBreakMin: DEFAULT_SHORT_BREAK_MIN,
+  longBreakMin: DEFAULT_LONG_BREAK_MIN,
+  pomodorosPerChunk: DEFAULT_POMODOROS_PER_CHUNK,
+};
 
 function boundEstimate(estimateMin: number): number {
   return Math.max(FOCUS_ESTIMATE_MIN_MIN, Math.min(FOCUS_ESTIMATE_MIN_MAX, Math.round(estimateMin)));
 }
 
-/** Finds the (chunks x pomodorosPerChunk) combo that fits `totalMinutes`, maximizing total pomodoros. */
-function planChunks(totalMinutes: number, estimateMin: number): ChunkPlan | null {
-  let best: ChunkPlan | null = null;
+function sanitizeConfig(config: FocusPlanConfig): FocusPlanConfig {
+  return {
+    pomodoroMin: Math.max(1, Math.round(config.pomodoroMin)),
+    shortBreakMin: Math.max(1, Math.round(config.shortBreakMin)),
+    longBreakMin: Math.max(1, Math.round(config.longBreakMin)),
+    pomodorosPerChunk: Math.max(1, Math.round(config.pomodorosPerChunk)),
+  };
+}
+
+/** Finds the largest chunk count (capped at MAX_LONG_BREAKS + 1) that fits `totalMinutes` at this config. */
+function planChunkCount(totalMinutes: number, config: FocusPlanConfig): number {
+  const chunkLength =
+    config.pomodorosPerChunk * config.pomodoroMin + (config.pomodorosPerChunk - 1) * config.shortBreakMin;
   const maxChunks = MAX_LONG_BREAKS + 1;
 
   for (let chunks = maxChunks; chunks >= 1; chunks -= 1) {
-    for (const pomodorosPerChunk of [MAX_POMODOROS_PER_CHUNK, MIN_POMODOROS_PER_CHUNK]) {
-      const chunkLength = pomodorosPerChunk * estimateMin + (pomodorosPerChunk - 1) * SHORT_BREAK_MIN;
-      const total = chunks * chunkLength + (chunks - 1) * LONG_BREAK_MIN;
-      if (total > totalMinutes) continue;
-
-      const candidatePomodoros = chunks * pomodorosPerChunk;
-      const bestPomodoros = best ? best.chunks * best.pomodorosPerChunk : -1;
-
-      if (!best || candidatePomodoros > bestPomodoros || (candidatePomodoros === bestPomodoros && total > best.totalMinutes)) {
-        best = { chunks, pomodorosPerChunk, totalMinutes: total };
-      }
-    }
+    const total = chunks * chunkLength + (chunks - 1) * config.longBreakMin;
+    if (total <= totalMinutes) return chunks;
   }
 
-  return best;
+  return 0;
 }
 
-function buildChunkedSegments(startMinute: number, plan: ChunkPlan, estimateMin: number, totalMinutes: number): FocusPlanSegment[] {
-  let leftover = totalMinutes - plan.totalMinutes;
-  let longBreakMin = LONG_BREAK_MIN;
-  let estimate = estimateMin;
-
-  const longBreakCount = plan.chunks - 1;
-  if (leftover > 0 && longBreakCount > 0) {
-    const maxBoostPerBreak = LONG_BREAK_MIN_MAX - LONG_BREAK_MIN;
-    const boostPerBreak = Math.min(Math.floor(leftover / longBreakCount), maxBoostPerBreak);
-    if (boostPerBreak > 0) {
-      longBreakMin += boostPerBreak;
-      leftover -= boostPerBreak * longBreakCount;
-    }
-  }
-
-  const totalPomodoros = plan.chunks * plan.pomodorosPerChunk;
-  if (leftover > 0 && estimate < FOCUS_ESTIMATE_MIN_MAX) {
-    const maxBoost = FOCUS_ESTIMATE_MIN_MAX - estimate;
-    const boostPerPomodoro = Math.min(Math.floor(leftover / totalPomodoros), maxBoost);
-    if (boostPerPomodoro > 0) {
-      estimate += boostPerPomodoro;
-    }
-  }
-
+function buildChunkedSegments(startMinute: number, chunks: number, config: FocusPlanConfig): FocusPlanSegment[] {
   const segments: FocusPlanSegment[] = [];
   let cursor = startMinute;
 
-  for (let chunkIndex = 0; chunkIndex < plan.chunks; chunkIndex += 1) {
-    for (let pomodoroIndex = 0; pomodoroIndex < plan.pomodorosPerChunk; pomodoroIndex += 1) {
-      segments.push({ type: 'pomodoro', startMinute: cursor, endMinute: cursor + estimate });
-      cursor += estimate;
+  for (let chunkIndex = 0; chunkIndex < chunks; chunkIndex += 1) {
+    for (let pomodoroIndex = 0; pomodoroIndex < config.pomodorosPerChunk; pomodoroIndex += 1) {
+      segments.push({ type: 'pomodoro', startMinute: cursor, endMinute: cursor + config.pomodoroMin });
+      cursor += config.pomodoroMin;
 
-      if (pomodoroIndex < plan.pomodorosPerChunk - 1) {
-        segments.push({ type: 'short-break', startMinute: cursor, endMinute: cursor + SHORT_BREAK_MIN });
-        cursor += SHORT_BREAK_MIN;
+      if (pomodoroIndex < config.pomodorosPerChunk - 1) {
+        segments.push({ type: 'short-break', startMinute: cursor, endMinute: cursor + config.shortBreakMin });
+        cursor += config.shortBreakMin;
       }
     }
 
-    if (chunkIndex < plan.chunks - 1) {
-      segments.push({ type: 'long-break', startMinute: cursor, endMinute: cursor + longBreakMin });
-      cursor += longBreakMin;
+    if (chunkIndex < chunks - 1) {
+      segments.push({ type: 'long-break', startMinute: cursor, endMinute: cursor + config.longBreakMin });
+      cursor += config.longBreakMin;
     }
   }
 
   return segments;
 }
 
-/** Fallback for ranges too short to fit a full 4-pomodoro chunk: pack as many pomodoros as fit, short breaks only. */
-function buildGreedySegments(startMinute: number, totalMinutes: number, estimateMin: number): FocusPlanSegment[] {
+/** Fallback for ranges too short to fit a full chunk: pack as many pomodoros as fit, short breaks only. */
+function buildGreedySegments(startMinute: number, totalMinutes: number, config: FocusPlanConfig): FocusPlanSegment[] {
   const segments: FocusPlanSegment[] = [];
   let cursor = startMinute;
   let remaining = totalMinutes;
 
-  while (remaining >= estimateMin) {
-    segments.push({ type: 'pomodoro', startMinute: cursor, endMinute: cursor + estimateMin });
-    cursor += estimateMin;
-    remaining -= estimateMin;
+  while (remaining >= config.pomodoroMin) {
+    segments.push({ type: 'pomodoro', startMinute: cursor, endMinute: cursor + config.pomodoroMin });
+    cursor += config.pomodoroMin;
+    remaining -= config.pomodoroMin;
 
-    if (remaining >= SHORT_BREAK_MIN + estimateMin) {
-      segments.push({ type: 'short-break', startMinute: cursor, endMinute: cursor + SHORT_BREAK_MIN });
-      cursor += SHORT_BREAK_MIN;
-      remaining -= SHORT_BREAK_MIN;
+    if (remaining >= config.shortBreakMin + config.pomodoroMin) {
+      segments.push({ type: 'short-break', startMinute: cursor, endMinute: cursor + config.shortBreakMin });
+      cursor += config.shortBreakMin;
+      remaining -= config.shortBreakMin;
     } else {
       break;
     }
@@ -120,25 +103,26 @@ function buildGreedySegments(startMinute: number, totalMinutes: number, estimate
 }
 
 /**
- * Splits a general work range into pomodoro / short-break / long-break segments.
- * Prefers chunks of 4-5 pomodoros separated by long breaks, capped at 4 long breaks per range
- * (falls back to a single greedy chunk when the range is too short for that).
+ * Splits a general work range into pomodoro / short-break / long-break segments using an
+ * explicit, user-editable config (pomodoro length, break lengths, pomodoros per chunk).
+ * Chunks are capped at MAX_LONG_BREAKS long breaks per range (falls back to a single greedy
+ * chunk when the range is too short to fit one full configured chunk).
  */
 export function generateFocusPlan(
   startMinute: number,
   endMinute: number,
-  estimateMin: number = FOCUS_ESTIMATE_DEFAULT_MIN,
+  config: FocusPlanConfig = DEFAULT_FOCUS_PLAN_CONFIG,
 ): FocusPlanSegment[] {
   const totalMinutes = endMinute - startMinute;
-  if (totalMinutes < FOCUS_ESTIMATE_MIN_MIN) return [];
+  const safeConfig = sanitizeConfig(config);
+  if (totalMinutes < safeConfig.pomodoroMin) return [];
 
-  const estimate = boundEstimate(estimateMin);
-  const plan = planChunks(totalMinutes, estimate);
-  if (plan) {
-    return buildChunkedSegments(startMinute, plan, estimate, totalMinutes);
+  const chunks = planChunkCount(totalMinutes, safeConfig);
+  if (chunks > 0) {
+    return buildChunkedSegments(startMinute, chunks, safeConfig);
   }
 
-  return buildGreedySegments(startMinute, totalMinutes, estimate);
+  return buildGreedySegments(startMinute, totalMinutes, safeConfig);
 }
 
 export function countSegmentsByType(plan: FocusPlanSegment[], type: FocusSegmentType): number {

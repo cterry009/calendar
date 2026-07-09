@@ -156,7 +156,13 @@ function scheduleEventsForRange(
         title: schedule.label ?? (schedule.kind === 'WORK' ? 'Bloque de trabajo' : 'Descanso'),
         start,
         end,
-        meta: { kind: schedule.kind },
+        meta: {
+          kind: schedule.kind,
+          pomodoroMin: schedule.pomodoroMin,
+          shortBreakMin: schedule.shortBreakMin,
+          longBreakMin: schedule.longBreakMin,
+          pomodorosPerChunk: schedule.pomodorosPerChunk,
+        },
       });
     }
   }

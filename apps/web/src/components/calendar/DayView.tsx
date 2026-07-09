@@ -7,6 +7,9 @@ import { isSameDay } from '../../lib/calendar/utils';
 import type { FitnessFormValues } from '../../lib/fitness/types';
 import type { TaskFormValues } from '../../lib/tasks/types';
 import {
+  DEFAULT_LONG_BREAK_MIN,
+  DEFAULT_POMODOROS_PER_CHUNK,
+  DEFAULT_SHORT_BREAK_MIN,
   MAX_LONG_BREAKS,
   countSegmentsByType,
   estimateFocusDurationMin,
@@ -111,11 +114,19 @@ function FocusPlanTimeline({
   onStartFocusSegment: (focusDurationMin: number) => Promise<void>;
   isStartingFocus: boolean;
 }) {
-  const focusEstimateMin = useMemo(() => estimateFocusDurationMin(loadFocusFeedbackHistory()), []);
+  const planConfig = useMemo(
+    () => ({
+      pomodoroMin: block.meta?.pomodoroMin ?? estimateFocusDurationMin(loadFocusFeedbackHistory()),
+      shortBreakMin: block.meta?.shortBreakMin ?? DEFAULT_SHORT_BREAK_MIN,
+      longBreakMin: block.meta?.longBreakMin ?? DEFAULT_LONG_BREAK_MIN,
+      pomodorosPerChunk: block.meta?.pomodorosPerChunk ?? DEFAULT_POMODOROS_PER_CHUNK,
+    }),
+    [block.meta?.pomodoroMin, block.meta?.shortBreakMin, block.meta?.longBreakMin, block.meta?.pomodorosPerChunk],
+  );
 
   const plan = useMemo(
-    () => generateFocusPlan(minuteOfDay(block.start), minuteOfDay(block.end), focusEstimateMin),
-    [block.start, block.end, focusEstimateMin],
+    () => generateFocusPlan(minuteOfDay(block.start), minuteOfDay(block.end), planConfig),
+    [block.start, block.end, planConfig],
   );
 
   if (plan.length === 0) return null;

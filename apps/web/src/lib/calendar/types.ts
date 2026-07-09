@@ -31,6 +31,10 @@ export interface SyncSchedule {
   endMinute: number;
   label: string | null;
   enabled: boolean;
+  pomodoroMin: number | null;
+  shortBreakMin: number | null;
+  longBreakMin: number | null;
+  pomodorosPerChunk: number | null;
 }
 
 export interface SyncPomodoroSession {
@@ -91,6 +95,10 @@ export interface CalendarEvent {
     kind?: SyncSchedule['kind'];
     durationMinutes?: number;
     intensity?: SyncFitnessEntry['intensity'];
+    pomodoroMin?: number | null;
+    shortBreakMin?: number | null;
+    longBreakMin?: number | null;
+    pomodorosPerChunk?: number | null;
   };
 }
 

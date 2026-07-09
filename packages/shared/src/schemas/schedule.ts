@@ -9,6 +9,10 @@ export const ScheduleSchema = z.object({
   endMinute: z.number().int().min(0).max(1439),
   label: z.string().max(120).optional().nullable(),
   enabled: z.boolean().default(true),
+  pomodoroMin: z.number().int().min(1).optional().nullable(),
+  shortBreakMin: z.number().int().min(1).optional().nullable(),
+  longBreakMin: z.number().int().min(1).optional().nullable(),
+  pomodorosPerChunk: z.number().int().min(1).max(12).optional().nullable(),
 });
 
 export const CreateScheduleSchema = ScheduleSchema.omit({ id: true });

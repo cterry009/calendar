@@ -18,6 +18,10 @@ function toFormValues(proposal: DetoxScheduleProposal): ScheduleFormValues {
     endMinute: proposal.endMinute,
     label: proposal.label,
     enabled: true,
+    pomodoroMin: null,
+    shortBreakMin: null,
+    longBreakMin: null,
+    pomodorosPerChunk: null,
   };
 }
 

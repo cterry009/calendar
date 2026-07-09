@@ -133,6 +133,27 @@ export class ScheduleSyncChangeDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  pomodoroMin?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  shortBreakMin?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  longBreakMin?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  pomodorosPerChunk?: number;
 }
 
 export class PomodoroSyncChangeDto {
