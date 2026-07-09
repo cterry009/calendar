@@ -60,7 +60,7 @@
 - [ ] 5.5 Surface overcommitment warnings on the calendar using the existing estimation-accuracy calculator when scheduled task time exceeds the configured work-schedule capacity for the day
 - [ ] 5.6 Extend the suggestion engine to propose open time slots respecting work schedule/rest periods (assistive slot suggestions, not full auto-scheduling), and surface suggestions inline on the task form and calendar instead of only on the Suggestions page
 - [ ] 5.7 Add a "hard mode" (non-cancelable) option to block-list entries, specified now so Android (6.6) and Windows (7.3) blocking implementations share one behavior instead of diverging
-- [ ] 5.8 Build a shared "friction" overlay (brief breathing/mindfulness pause) as a softer alternative to a hard block, reused by the focus-blocking overlay (6.7/7.5) and as the serotonin-detox intervention when opening a high-dopamine app
+- [ ] 5.8 Build a shared "friction" overlay (brief breathing/mindfulness pause) as a softer alternative to a hard block, reused by the focus-blocking overlay (6.7/7.6) and as the serotonin-detox intervention when opening a high-dopamine app
 - [ ] 5.9 Extend block-list trigger conditions beyond session-based (pomodoro/task/work-hours) to include location and Wi-Fi network conditions
 - [ ] 5.10 Add "quality of screen time" tracking to Serotonin Mode: score temptations avoided (blocked-app opens declined) alongside pillar activities logged, not just activity minutes
 - [ ] 5.11 Add a lightweight visual reward/streak view for completed pomodoro sessions on the Pomodoro page, closing the loop between finishing a session and seeing progress without a trip to the dashboard
@@ -86,8 +86,9 @@
 - [ ] 7.3 Build Rust sidecar for process blocking (configured desktop apps)
 - [ ] 7.4 Implement hosts-file / DNS-based website blocking during focus
 - [ ] 7.5 Implement block-list management UI for sites and desktop apps
-- [ ] 7.6 Test blocking during pomodoro and work-hours on Windows
-- [ ] 7.7 Implement auto-start on boot (optional, user-configurable)
+- [ ] 7.6 Implement notification overlay shown when a blocked app or site is opened (parity with Android 6.7)
+- [ ] 7.7 Test blocking during pomodoro and work-hours on Windows
+- [ ] 7.8 Implement auto-start on boot (optional, user-configurable)
 
 ## 8. Mobile â€” iOS y desktop â€” macOS (fase 6 â€” baja prioridad)
 
