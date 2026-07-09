@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AppButton, AppCard, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Checkbox, Input, Label } from 'tamagui';
 import { DAY_NAMES_ES, SCHEDULE_KIND_LABELS } from '../../lib/schedules/labels';
@@ -10,28 +10,22 @@ import {
   type SyncScheduleRecord,
 } from '../../lib/schedules/types';
 import {
+  DEFAULT_CHUNKS,
   DEFAULT_LONG_BREAK_MIN,
   DEFAULT_POMODOROS_PER_CHUNK,
   DEFAULT_SHORT_BREAK_MIN,
   MAX_CHUNKS,
   MAX_LONG_BREAKS,
+  MINUTES_PER_DAY,
   availableFocusMinutes,
+  computeEndMinuteForConfig,
   computeMaxChunks,
   countSegmentsByType,
   estimateFocusDurationMin,
   generateFocusPlan,
   loadFocusFeedbackHistory,
-  requiredMinutesForConfig,
   type FocusPlanConfig,
 } from '../../lib/pomodoro/planner';
-
-function formatMinutes(totalMinutes: number): string {
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours === 0) return `${minutes} min`;
-  if (minutes === 0) return `${hours} h`;
-  return `${hours} h ${minutes} min`;
-}
 
 interface ScheduleFormProps {
   mode: 'create' | 'edit';
@@ -62,12 +56,23 @@ function defaultDraft(schedule?: SyncScheduleRecord): ScheduleFormDraft {
   const shortBreakMin = schedule?.shortBreakMin ?? DEFAULT_SHORT_BREAK_MIN;
   const longBreakMin = schedule?.longBreakMin ?? DEFAULT_LONG_BREAK_MIN;
   const pomodorosPerChunk = schedule?.pomodorosPerChunk ?? DEFAULT_POMODOROS_PER_CHUNK;
-  const autoChunks = computeMaxChunks(availableFocusMinutes(startMinute, endMinute), {
-    pomodoroMin,
-    shortBreakMin,
-    longBreakMin,
-    pomodorosPerChunk,
-  });
+
+  // For a schedule that predates the "chunks drive the schedule" model (no stored chunk count),
+  // seed from how many chunks its existing start/end range used to fit, so editing it doesn't
+  // suddenly shrink an established workday. Brand-new schedules just get a sensible default.
+  const chunks =
+    schedule?.chunks ??
+    (schedule
+      ? Math.max(
+          1,
+          computeMaxChunks(availableFocusMinutes(startMinute, endMinute), {
+            pomodoroMin,
+            shortBreakMin,
+            longBreakMin,
+            pomodorosPerChunk,
+          }),
+        )
+      : DEFAULT_CHUNKS);
 
   return {
     kind: schedule?.kind ?? 'WORK',
@@ -80,64 +85,30 @@ function defaultDraft(schedule?: SyncScheduleRecord): ScheduleFormDraft {
     shortBreakMin,
     longBreakMin,
     pomodorosPerChunk,
-    chunks: schedule?.chunks ?? Math.max(1, autoChunks),
+    chunks,
   };
 }
 
 export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, onCancel }: ScheduleFormProps) {
   const [draft, setDraft] = useState<ScheduleFormDraft>(() => defaultDraft(initialSchedule));
   const [error, setError] = useState<string | null>(null);
-  const [chunksTouched, setChunksTouched] = useState(false);
 
   useEffect(() => {
     setDraft(defaultDraft(initialSchedule));
-    // Respect an already-persisted chunk count (a deliberate prior choice) instead of silently
-    // overwriting it the moment the form opens; only auto-fit when there's no stored value yet.
-    setChunksTouched(initialSchedule?.chunks != null);
     setError(null);
   }, [initialSchedule, mode]);
-
-  // Keep "cantidad de bloques" auto-fit to the current range/config until the user edits it directly.
-  useEffect(() => {
-    if (chunksTouched || draft.kind !== 'WORK') return;
-
-    const startMinute = timeValueToMinute(draft.startTime);
-    const endMinute = timeValueToMinute(draft.endTime);
-    if (startMinute === null || endMinute === null || endMinute <= startMinute) return;
-
-    const autoChunks = Math.max(
-      1,
-      computeMaxChunks(availableFocusMinutes(startMinute, endMinute), {
-        pomodoroMin: draft.pomodoroMin,
-        shortBreakMin: draft.shortBreakMin,
-        longBreakMin: draft.longBreakMin,
-        pomodorosPerChunk: draft.pomodorosPerChunk,
-      }),
-    );
-
-    setDraft((current) => (current.chunks === autoChunks ? current : { ...current, chunks: autoChunks }));
-  }, [
-    chunksTouched,
-    draft.kind,
-    draft.startTime,
-    draft.endTime,
-    draft.pomodoroMin,
-    draft.shortBreakMin,
-    draft.longBreakMin,
-    draft.pomodorosPerChunk,
-  ]);
 
   const title = useMemo(
     () => (mode === 'create' ? 'Nuevo horario' : `Editar horario: ${initialSchedule?.label ?? 'sin etiqueta'}`),
     [initialSchedule?.label, mode],
   );
 
+  // For WORK schedules the end time is a function of the block config, not a separate input.
   const focusPlanPreview = useMemo(() => {
     if (draft.kind !== 'WORK') return null;
 
     const startMinute = timeValueToMinute(draft.startTime);
-    const endMinute = timeValueToMinute(draft.endTime);
-    if (startMinute === null || endMinute === null || endMinute <= startMinute) return null;
+    if (startMinute === null) return null;
 
     const config: FocusPlanConfig = {
       pomodoroMin: draft.pomodoroMin,
@@ -147,23 +118,20 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
       chunks: draft.chunks,
     };
 
+    const endMinute = computeEndMinuteForConfig(startMinute, config);
     const plan = generateFocusPlan(startMinute, endMinute, config);
-    const available = availableFocusMinutes(startMinute, endMinute);
-    const required = requiredMinutesForConfig(config);
 
     return {
       plan,
+      endMinute,
       pomodoros: countSegmentsByType(plan, 'pomodoro'),
       shortBreaks: countSegmentsByType(plan, 'short-break'),
       longBreaks: countSegmentsByType(plan, 'long-break'),
-      available,
-      required,
-      fits: required <= available,
+      overflowsDay: endMinute > MINUTES_PER_DAY - 1,
     };
   }, [
     draft.kind,
     draft.startTime,
-    draft.endTime,
     draft.pomodoroMin,
     draft.shortBreakMin,
     draft.longBreakMin,
@@ -196,15 +164,8 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
     setError(null);
 
     const startMinute = timeValueToMinute(draft.startTime);
-    const endMinute = timeValueToMinute(draft.endTime);
-
-    if (startMinute === null || endMinute === null) {
+    if (startMinute === null) {
       setError('El formato de hora debe ser HH:MM.');
-      return;
-    }
-
-    if (endMinute <= startMinute) {
-      setError('La hora de fin debe ser mayor que la hora de inicio.');
       return;
     }
 
@@ -212,6 +173,12 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
       setError('Selecciona al menos un dia.');
       return;
     }
+
+    let endMinute: number;
+    let planFields: Pick<
+      ScheduleFormValues,
+      'pomodoroMin' | 'shortBreakMin' | 'longBreakMin' | 'pomodorosPerChunk' | 'chunks'
+    >;
 
     if (draft.kind === 'WORK') {
       const planValues = [draft.pomodoroMin, draft.shortBreakMin, draft.longBreakMin, draft.pomodorosPerChunk, draft.chunks];
@@ -225,26 +192,43 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
         return;
       }
 
-      if (focusPlanPreview && !focusPlanPreview.fits) {
+      const config: FocusPlanConfig = {
+        pomodoroMin: draft.pomodoroMin,
+        shortBreakMin: draft.shortBreakMin,
+        longBreakMin: draft.longBreakMin,
+        pomodorosPerChunk: draft.pomodorosPerChunk,
+        chunks: draft.chunks,
+      };
+      endMinute = computeEndMinuteForConfig(startMinute, config);
+
+      if (endMinute > MINUTES_PER_DAY - 1) {
         setError(
-          `La cantidad de bloques no cabe en el horario: necesitas ${formatMinutes(focusPlanPreview.required)} y ` +
-            `solo hay ${formatMinutes(focusPlanPreview.available)} disponibles (se descuenta el almuerzo de 12:30 a ` +
-            '13:30 si tu horario lo cubre). Reduce la cantidad de bloques, los pomodoros por bloque o las duraciones.',
+          `Con esta configuracion el horario terminaria a las ${minuteToTimeValue(endMinute)}, despues de ` +
+            'medianoche. Reduce la cantidad de bloques, los pomodoros por bloque o las duraciones.',
         );
         return;
       }
-    }
 
-    const planFields =
-      draft.kind === 'WORK'
-        ? {
-            pomodoroMin: draft.pomodoroMin,
-            shortBreakMin: draft.shortBreakMin,
-            longBreakMin: draft.longBreakMin,
-            pomodorosPerChunk: draft.pomodorosPerChunk,
-            chunks: draft.chunks,
-          }
-        : { pomodoroMin: null, shortBreakMin: null, longBreakMin: null, pomodorosPerChunk: null, chunks: null };
+      planFields = {
+        pomodoroMin: draft.pomodoroMin,
+        shortBreakMin: draft.shortBreakMin,
+        longBreakMin: draft.longBreakMin,
+        pomodorosPerChunk: draft.pomodorosPerChunk,
+        chunks: draft.chunks,
+      };
+    } else {
+      const parsedEnd = timeValueToMinute(draft.endTime);
+      if (parsedEnd === null) {
+        setError('El formato de hora debe ser HH:MM.');
+        return;
+      }
+      if (parsedEnd <= startMinute) {
+        setError('La hora de fin debe ser mayor que la hora de inicio.');
+        return;
+      }
+      endMinute = parsedEnd;
+      planFields = { pomodoroMin: null, shortBreakMin: null, longBreakMin: null, pomodorosPerChunk: null, chunks: null };
+    }
 
     await onSubmit(
       draft.dayOfWeeks.map((dayOfWeek) => ({
@@ -315,25 +299,46 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
             />
           </YStack>
 
-          <YStack flex={1} minWidth={180} gap="$2">
-            <Label htmlFor="schedule-end-time">Hora fin</Label>
-            <Input
-              id="schedule-end-time"
-              type="time"
-              value={draft.endTime}
-              onChangeText={(value: string) => setField('endTime', value)}
-              required
-            />
-          </YStack>
+          {draft.kind === 'WORK' ? (
+            <YStack flex={1} minWidth={180} gap="$2">
+              <Label htmlFor="schedule-end-time-computed">Hora fin (calculada)</Label>
+              <XStack
+                id="schedule-end-time-computed"
+                minHeight={42}
+                borderRadius="$3"
+                borderWidth={1}
+                borderColor="$borderColor"
+                backgroundColor="rgba(255,255,255,0.03)"
+                paddingHorizontal="$3"
+                alignItems="center"
+              >
+                <Text fontWeight="700">
+                  {focusPlanPreview ? minuteToTimeValue(focusPlanPreview.endMinute) : '--:--'}
+                </Text>
+              </XStack>
+            </YStack>
+          ) : (
+            <YStack flex={1} minWidth={180} gap="$2">
+              <Label htmlFor="schedule-end-time">Hora fin</Label>
+              <Input
+                id="schedule-end-time"
+                type="time"
+                value={draft.endTime}
+                onChangeText={(value: string) => setField('endTime', value)}
+                required
+              />
+            </YStack>
+          )}
         </XStack>
 
         {draft.kind === 'WORK' ? (
           <AppCard backgroundColor="rgba(255,255,255,0.04)">
             <YStack gap="$3">
               <YStack gap="$1">
-                <Text fontWeight="700">Plan de enfoque automatico</Text>
+                <Text fontWeight="700">Plan de enfoque</Text>
                 <Paragraph margin={0} size="$2" color="$muted">
-                  Ajusta la duracion del pomodoro, los descansos y cuantos pomodoros forman un bloque de trabajo.
+                  Define la duracion del pomodoro, los descansos y la cantidad de bloques: la hora de fin se calcula
+                  automaticamente a partir de esto (no al reves).
                 </Paragraph>
               </YStack>
 
@@ -391,38 +396,30 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
                     min={1}
                     max={MAX_CHUNKS}
                     value={String(draft.chunks)}
-                    onChangeText={(value: string) => {
-                      setChunksTouched(true);
-                      setField('chunks', Number(value || 0));
-                    }}
+                    onChangeText={(value: string) => setField('chunks', Number(value || 0))}
                   />
                 </YStack>
               </XStack>
 
               <Paragraph margin={0} size="$2" color="$muted">
-                El horario descuenta automaticamente la hora de almuerzo (12:30 - 13:30) si tu rango la cubre; no se
-                asignan pomodoros ni descansos en esa hora.
+                Si el plan cruza el almuerzo (12:30 - 13:30), esa hora se salta automaticamente: no se asignan
+                pomodoros ni descansos ahi, y la hora de fin se estira lo necesario.
               </Paragraph>
 
               {focusPlanPreview && focusPlanPreview.pomodoros > 0 ? (
                 <YStack gap="$1">
                   <Paragraph margin={0} color="$muted">
                     {focusPlanPreview.pomodoros} pomodoros · {focusPlanPreview.shortBreaks} descansos cortos ·{' '}
-                    {focusPlanPreview.longBreaks} descansos largos (max {MAX_LONG_BREAKS})
+                    {focusPlanPreview.longBreaks} descansos largos (max {MAX_LONG_BREAKS}) · termina a las{' '}
+                    {minuteToTimeValue(focusPlanPreview.endMinute)}
                   </Paragraph>
-                  {!focusPlanPreview.fits ? (
+                  {focusPlanPreview.overflowsDay ? (
                     <Paragraph margin={0} size="$2" color="$error">
-                      No cabe en el horario: necesitas {formatMinutes(focusPlanPreview.required)} y hay{' '}
-                      {formatMinutes(focusPlanPreview.available)} disponibles. Reduce la cantidad de bloques u otros
-                      valores.
+                      Esta configuracion termina despues de medianoche. Reduce la cantidad de bloques u otros valores.
                     </Paragraph>
                   ) : null}
                 </YStack>
-              ) : (
-                <Paragraph margin={0} color="$muted">
-                  El rango es muy corto para al menos un pomodoro con esta configuracion.
-                </Paragraph>
-              )}
+              ) : null}
             </YStack>
           </AppCard>
         ) : null}

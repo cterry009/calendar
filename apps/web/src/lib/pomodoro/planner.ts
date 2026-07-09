@@ -22,6 +22,8 @@ export const DEFAULT_LONG_BREAK_MIN = 20;
 export const DEFAULT_POMODOROS_PER_CHUNK = 4;
 export const MAX_LONG_BREAKS = 4;
 export const MAX_CHUNKS = MAX_LONG_BREAKS + 1;
+export const DEFAULT_CHUNKS = 3;
+export const MINUTES_PER_DAY = 24 * 60;
 
 /** Fixed daily window during which no work/pomodoro block may be scheduled (e.g. lunch). */
 export const EXCLUDED_WORK_WINDOWS: Array<{ startMinute: number; endMinute: number }> = [
@@ -158,6 +160,19 @@ function buildChunkedSegments(startMinute: number, chunks: number, config: Focus
   }
 
   return segments;
+}
+
+/**
+ * Derives the end-of-schedule minute needed to fit `config.chunks` blocks starting at
+ * `startMinute` -- the schedule's total duration is a function of the block config, not the
+ * other way around. Automatically stretches across the fixed excluded window (e.g. lunch) if
+ * the blocks land on it, same as the segment placement itself.
+ */
+export function computeEndMinuteForConfig(startMinute: number, config: FocusPlanConfig): number {
+  const safeConfig = sanitizeConfig(config);
+  const segments = buildChunkedSegments(startMinute, safeConfig.chunks, safeConfig);
+  if (segments.length === 0) return startMinute;
+  return segments[segments.length - 1].endMinute;
 }
 
 /** Fallback for ranges too short to fit a full chunk: pack as many pomodoros as fit, short breaks only. */
