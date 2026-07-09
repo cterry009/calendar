@@ -287,6 +287,7 @@ export class SyncService {
       shortBreakMin: change.shortBreakMin ?? null,
       longBreakMin: change.longBreakMin ?? null,
       pomodorosPerChunk: change.pomodorosPerChunk ?? null,
+      chunks: change.chunks ?? null,
       updatedAt: new Date(change.updatedAt),
     };
 

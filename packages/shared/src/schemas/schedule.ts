@@ -13,6 +13,7 @@ export const ScheduleSchema = z.object({
   shortBreakMin: z.number().int().min(1).optional().nullable(),
   longBreakMin: z.number().int().min(1).optional().nullable(),
   pomodorosPerChunk: z.number().int().min(1).max(12).optional().nullable(),
+  chunks: z.number().int().min(1).max(5).optional().nullable(),
 });
 
 export const CreateScheduleSchema = ScheduleSchema.omit({ id: true });

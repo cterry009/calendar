@@ -161,6 +161,7 @@ model Schedule {
   shortBreakMin     Int?
   longBreakMin      Int?
   pomodorosPerChunk Int?
+  chunks            Int? // number of pomodoro blocks (separated by long breaks); must fit within startMinute..endMinute
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

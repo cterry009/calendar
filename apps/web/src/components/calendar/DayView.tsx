@@ -11,6 +11,8 @@ import {
   DEFAULT_POMODOROS_PER_CHUNK,
   DEFAULT_SHORT_BREAK_MIN,
   MAX_LONG_BREAKS,
+  availableFocusMinutes,
+  computeMaxChunks,
   countSegmentsByType,
   estimateFocusDurationMin,
   generateFocusPlan,
@@ -33,12 +35,14 @@ const SEGMENT_LABEL: Record<FocusPlanSegment['type'], string> = {
   pomodoro: 'Pomodoro',
   'short-break': 'Descanso corto',
   'long-break': 'Descanso largo',
+  excluded: 'Almuerzo',
 };
 
 const SEGMENT_COLOR: Record<FocusPlanSegment['type'], string> = {
   pomodoro: '$success',
   'short-break': '$muted',
   'long-break': '$warning',
+  excluded: '$error',
 };
 
 function minuteOfDay(date: Date): number {
@@ -114,15 +118,28 @@ function FocusPlanTimeline({
   onStartFocusSegment: (focusDurationMin: number) => Promise<void>;
   isStartingFocus: boolean;
 }) {
-  const planConfig = useMemo(
-    () => ({
+  const planConfig = useMemo(() => {
+    const base = {
       pomodoroMin: block.meta?.pomodoroMin ?? estimateFocusDurationMin(loadFocusFeedbackHistory()),
       shortBreakMin: block.meta?.shortBreakMin ?? DEFAULT_SHORT_BREAK_MIN,
       longBreakMin: block.meta?.longBreakMin ?? DEFAULT_LONG_BREAK_MIN,
       pomodorosPerChunk: block.meta?.pomodorosPerChunk ?? DEFAULT_POMODOROS_PER_CHUNK,
-    }),
-    [block.meta?.pomodoroMin, block.meta?.shortBreakMin, block.meta?.longBreakMin, block.meta?.pomodorosPerChunk],
-  );
+    };
+
+    const chunks =
+      block.meta?.chunks ??
+      Math.max(1, computeMaxChunks(availableFocusMinutes(minuteOfDay(block.start), minuteOfDay(block.end)), base));
+
+    return { ...base, chunks };
+  }, [
+    block.meta?.pomodoroMin,
+    block.meta?.shortBreakMin,
+    block.meta?.longBreakMin,
+    block.meta?.pomodorosPerChunk,
+    block.meta?.chunks,
+    block.start,
+    block.end,
+  ]);
 
   const plan = useMemo(
     () => generateFocusPlan(minuteOfDay(block.start), minuteOfDay(block.end), planConfig),

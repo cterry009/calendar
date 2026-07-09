@@ -12,6 +12,7 @@ export interface SyncScheduleRecord {
   shortBreakMin: number | null;
   longBreakMin: number | null;
   pomodorosPerChunk: number | null;
+  chunks: number | null;
 }
 
 export interface ScheduleFormValues {
@@ -25,6 +26,7 @@ export interface ScheduleFormValues {
   shortBreakMin: number | null;
   longBreakMin: number | null;
   pomodorosPerChunk: number | null;
+  chunks: number | null;
 }
 
 export const SCHEDULE_KINDS: ScheduleKind[] = ['WORK', 'REST'];

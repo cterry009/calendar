@@ -154,6 +154,12 @@ export class ScheduleSyncChangeDto {
   @Min(1)
   @Max(12)
   pomodorosPerChunk?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  chunks?: number;
 }
 
 export class PomodoroSyncChangeDto {

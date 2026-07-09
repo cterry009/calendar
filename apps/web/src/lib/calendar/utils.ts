@@ -162,6 +162,7 @@ function scheduleEventsForRange(
           shortBreakMin: schedule.shortBreakMin,
           longBreakMin: schedule.longBreakMin,
           pomodorosPerChunk: schedule.pomodorosPerChunk,
+          chunks: schedule.chunks,
         },
       });
     }

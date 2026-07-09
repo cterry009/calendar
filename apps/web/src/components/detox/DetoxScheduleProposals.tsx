@@ -22,6 +22,7 @@ function toFormValues(proposal: DetoxScheduleProposal): ScheduleFormValues {
     shortBreakMin: null,
     longBreakMin: null,
     pomodorosPerChunk: null,
+    chunks: null,
   };
 }
 

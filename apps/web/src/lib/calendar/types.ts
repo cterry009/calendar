@@ -35,6 +35,7 @@ export interface SyncSchedule {
   shortBreakMin: number | null;
   longBreakMin: number | null;
   pomodorosPerChunk: number | null;
+  chunks: number | null;
 }
 
 export interface SyncPomodoroSession {
@@ -99,6 +100,7 @@ export interface CalendarEvent {
     shortBreakMin?: number | null;
     longBreakMin?: number | null;
     pomodorosPerChunk?: number | null;
+    chunks?: number | null;
   };
 }
 
