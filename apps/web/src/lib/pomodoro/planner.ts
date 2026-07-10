@@ -14,16 +14,25 @@ export interface FocusPlanConfig {
   chunks: number;
 }
 
-export const FOCUS_ESTIMATE_MIN_MIN = 25;
-export const FOCUS_ESTIMATE_MIN_MAX = 35;
-export const FOCUS_ESTIMATE_DEFAULT_MIN = 25;
-export const DEFAULT_SHORT_BREAK_MIN = 5;
-export const DEFAULT_LONG_BREAK_MIN = 20;
+export const FOCUS_ESTIMATE_MIN_MIN = 30;
+export const FOCUS_ESTIMATE_MIN_MAX = 45;
+export const FOCUS_ESTIMATE_DEFAULT_MIN = 30;
+export const SHORT_BREAK_MIN_MIN = 5;
+export const SHORT_BREAK_MIN_MAX = 10;
+export const LONG_BREAK_MIN_MIN = 20;
+export const LONG_BREAK_MIN_MAX = 30;
+export const DEFAULT_SHORT_BREAK_MIN = SHORT_BREAK_MIN_MIN;
+export const DEFAULT_LONG_BREAK_MIN = LONG_BREAK_MIN_MIN;
 export const DEFAULT_POMODOROS_PER_CHUNK = 4;
 export const MAX_LONG_BREAKS = 4;
 export const MAX_CHUNKS = MAX_LONG_BREAKS + 1;
 export const DEFAULT_CHUNKS = 3;
 export const MINUTES_PER_DAY = 24 * 60;
+
+// Reference range of "total focus time in a block" used to scale the long-break suggestion --
+// a short block (few/short pomodoros) only needs the minimum long break, a long one the maximum.
+const TYPICAL_MIN_POMODOROS_PER_CHUNK = 3;
+const TYPICAL_MAX_POMODOROS_PER_CHUNK = 6;
 
 /** Fixed daily window during which no work/pomodoro block may be scheduled (e.g. lunch). */
 export const EXCLUDED_WORK_WINDOWS: Array<{ startMinute: number; endMinute: number }> = [
@@ -98,6 +107,26 @@ export const DEFAULT_FOCUS_PLAN_CONFIG: FocusPlanConfig = {
 
 function boundEstimate(estimateMin: number): number {
   return Math.max(FOCUS_ESTIMATE_MIN_MIN, Math.min(FOCUS_ESTIMATE_MIN_MAX, Math.round(estimateMin)));
+}
+
+/** Maps `value` from [fromMin, fromMax] to [toMin, toMax], clamped at both ends. */
+function scaleClamped(value: number, fromMin: number, fromMax: number, toMin: number, toMax: number): number {
+  if (fromMax <= fromMin) return toMin;
+  const ratio = Math.max(0, Math.min(1, (value - fromMin) / (fromMax - fromMin)));
+  return Math.round(toMin + ratio * (toMax - toMin));
+}
+
+/** Suggests a short-break length (5-10min) that scales with pomodoro length (30-45min). */
+export function estimateShortBreakMin(pomodoroMin: number): number {
+  return scaleClamped(pomodoroMin, FOCUS_ESTIMATE_MIN_MIN, FOCUS_ESTIMATE_MIN_MAX, SHORT_BREAK_MIN_MIN, SHORT_BREAK_MIN_MAX);
+}
+
+/** Suggests a long-break length (20-30min) that scales with total focus time in a block. */
+export function estimateLongBreakMin(pomodoroMin: number, pomodorosPerChunk: number): number {
+  const totalFocusMin = pomodoroMin * pomodorosPerChunk;
+  const typicalMinFocus = FOCUS_ESTIMATE_MIN_MIN * TYPICAL_MIN_POMODOROS_PER_CHUNK;
+  const typicalMaxFocus = FOCUS_ESTIMATE_MIN_MAX * TYPICAL_MAX_POMODOROS_PER_CHUNK;
+  return scaleClamped(totalFocusMin, typicalMinFocus, typicalMaxFocus, LONG_BREAK_MIN_MIN, LONG_BREAK_MIN_MAX);
 }
 
 function sanitizeConfig(config: FocusPlanConfig): FocusPlanConfig {
@@ -257,9 +286,9 @@ export interface SchedulePlanFields {
  */
 export function resolveFocusPlanConfig(schedule: SchedulePlanFields): FocusPlanConfig {
   const pomodoroMin = schedule.pomodoroMin ?? estimateFocusDurationMin(loadFocusFeedbackHistory());
-  const shortBreakMin = schedule.shortBreakMin ?? DEFAULT_SHORT_BREAK_MIN;
-  const longBreakMin = schedule.longBreakMin ?? DEFAULT_LONG_BREAK_MIN;
   const pomodorosPerChunk = schedule.pomodorosPerChunk ?? DEFAULT_POMODOROS_PER_CHUNK;
+  const shortBreakMin = schedule.shortBreakMin ?? estimateShortBreakMin(pomodoroMin);
+  const longBreakMin = schedule.longBreakMin ?? estimateLongBreakMin(pomodoroMin, pomodorosPerChunk);
   const chunks =
     schedule.chunks ??
     Math.max(

@@ -11,9 +11,7 @@ import {
 } from '../../lib/schedules/types';
 import {
   DEFAULT_CHUNKS,
-  DEFAULT_LONG_BREAK_MIN,
   DEFAULT_POMODOROS_PER_CHUNK,
-  DEFAULT_SHORT_BREAK_MIN,
   MAX_CHUNKS,
   MAX_LONG_BREAKS,
   MINUTES_PER_DAY,
@@ -22,6 +20,8 @@ import {
   computeMaxChunks,
   countSegmentsByType,
   estimateFocusDurationMin,
+  estimateLongBreakMin,
+  estimateShortBreakMin,
   generateFocusPlan,
   loadFocusFeedbackHistory,
   type FocusPlanConfig,
@@ -53,9 +53,9 @@ function defaultDraft(schedule?: SyncScheduleRecord): ScheduleFormDraft {
   const startMinute = schedule?.startMinute ?? 9 * 60;
   const endMinute = schedule?.endMinute ?? 18 * 60;
   const pomodoroMin = schedule?.pomodoroMin ?? estimateFocusDurationMin(loadFocusFeedbackHistory());
-  const shortBreakMin = schedule?.shortBreakMin ?? DEFAULT_SHORT_BREAK_MIN;
-  const longBreakMin = schedule?.longBreakMin ?? DEFAULT_LONG_BREAK_MIN;
   const pomodorosPerChunk = schedule?.pomodorosPerChunk ?? DEFAULT_POMODOROS_PER_CHUNK;
+  const shortBreakMin = schedule?.shortBreakMin ?? estimateShortBreakMin(pomodoroMin);
+  const longBreakMin = schedule?.longBreakMin ?? estimateLongBreakMin(pomodoroMin, pomodorosPerChunk);
 
   // For a schedule that predates the "chunks drive the schedule" model (no stored chunk count),
   // seed from how many chunks its existing start/end range used to fit, so editing it doesn't
@@ -92,11 +92,33 @@ function defaultDraft(schedule?: SyncScheduleRecord): ScheduleFormDraft {
 export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, onCancel }: ScheduleFormProps) {
   const [draft, setDraft] = useState<ScheduleFormDraft>(() => defaultDraft(initialSchedule));
   const [error, setError] = useState<string | null>(null);
+  const [shortBreakTouched, setShortBreakTouched] = useState(false);
+  const [longBreakTouched, setLongBreakTouched] = useState(false);
 
   useEffect(() => {
     setDraft(defaultDraft(initialSchedule));
+    // Respect an already-persisted break length (a deliberate prior choice) instead of silently
+    // overwriting it the moment the form opens; only auto-suggest when there's no stored value.
+    setShortBreakTouched(initialSchedule?.shortBreakMin != null);
+    setLongBreakTouched(initialSchedule?.longBreakMin != null);
     setError(null);
   }, [initialSchedule, mode]);
+
+  // Keep short/long break auto-suggested from pomodoro length (+ pomodoros per block for the
+  // long break) until the user edits either field directly.
+  useEffect(() => {
+    if (draft.kind !== 'WORK') return;
+
+    setDraft((current) => {
+      const nextShortBreak = shortBreakTouched ? current.shortBreakMin : estimateShortBreakMin(current.pomodoroMin);
+      const nextLongBreak = longBreakTouched
+        ? current.longBreakMin
+        : estimateLongBreakMin(current.pomodoroMin, current.pomodorosPerChunk);
+
+      if (nextShortBreak === current.shortBreakMin && nextLongBreak === current.longBreakMin) return current;
+      return { ...current, shortBreakMin: nextShortBreak, longBreakMin: nextLongBreak };
+    });
+  }, [draft.kind, draft.pomodoroMin, draft.pomodorosPerChunk, shortBreakTouched, longBreakTouched]);
 
   const title = useMemo(
     () => (mode === 'create' ? 'Nuevo horario' : `Editar horario: ${initialSchedule?.label ?? 'sin etiqueta'}`),
@@ -337,8 +359,10 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
               <YStack gap="$1">
                 <Text fontWeight="700">Plan de enfoque</Text>
                 <Paragraph margin={0} size="$2" color="$muted">
-                  Define la duracion del pomodoro, los descansos y la cantidad de bloques: la hora de fin se calcula
-                  automaticamente a partir de esto (no al reves).
+                  Define la duracion del pomodoro (sugerido 30-45 min) y la cantidad de bloques: la hora de fin se
+                  calcula automaticamente a partir de esto (no al reves). Los descansos se sugieren solos --
+                  corto 5-10 min, largo 20-30 min -- segun el pomodoro y los pomodoros por bloque, hasta que los
+                  edites tu mismo.
                 </Paragraph>
               </YStack>
 
@@ -361,7 +385,10 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
                     type="number"
                     min={1}
                     value={String(draft.shortBreakMin)}
-                    onChangeText={(value: string) => setField('shortBreakMin', Number(value || 0))}
+                    onChangeText={(value: string) => {
+                      setShortBreakTouched(true);
+                      setField('shortBreakMin', Number(value || 0));
+                    }}
                   />
                 </YStack>
 
@@ -372,7 +399,10 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
                     type="number"
                     min={1}
                     value={String(draft.longBreakMin)}
-                    onChangeText={(value: string) => setField('longBreakMin', Number(value || 0))}
+                    onChangeText={(value: string) => {
+                      setLongBreakTouched(true);
+                      setField('longBreakMin', Number(value || 0));
+                    }}
                   />
                 </YStack>
 
