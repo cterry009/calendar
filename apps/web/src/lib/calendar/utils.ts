@@ -97,7 +97,11 @@ function taskToEvent(task: SyncTask): CalendarEvent | null {
     start,
     end: addMinutes(start, duration),
     taskId: task.id,
-    meta: { estimatedMinutes: task.estimatedMinutes },
+    meta: {
+      estimatedMinutes: task.estimatedMinutes,
+      estimatedPomodoros: task.estimatedPomodoros,
+      createdAt: task.createdAt,
+    },
   };
 }
 

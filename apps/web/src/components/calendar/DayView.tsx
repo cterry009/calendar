@@ -34,7 +34,7 @@ interface DayViewProps {
   isCreatingTask: boolean;
   onCreateFitness: (values: FitnessFormValues) => Promise<void>;
   isCreatingFitness: boolean;
-  onStartFocusSegment: (focusDurationMin: number) => Promise<void>;
+  onStartFocusSegment: (focusDurationMin: number, taskId?: string) => Promise<void>;
   isStartingFocus: boolean;
 }
 
@@ -59,6 +59,11 @@ function clampIntoBlock(date: Date, block: CalendarEvent): Date {
 }
 
 function EventRow({ event }: { event: CalendarEvent }) {
+  // A task's pomodoros land in whichever of the block's slots are free, so its nominal
+  // start-to-start+estimate range may not match clock time once breaks fall in between --
+  // show the pomodoro count instead, which is what's actually true regardless of placement.
+  const pomodoros = event.type === 'task' ? event.meta?.estimatedPomodoros : null;
+
   return (
     <XStack
       justifyContent="space-between"
@@ -78,7 +83,7 @@ function EventRow({ event }: { event: CalendarEvent }) {
       </YStack>
 
       <Text fontSize="$3" color="$muted">
-        {formatTimeRange(event.start, event.end)}
+        {pomodoros ? `${pomodoros} pomodoro${pomodoros === 1 ? '' : 's'}` : formatTimeRange(event.start, event.end)}
       </Text>
     </XStack>
   );
@@ -92,7 +97,7 @@ function FocusPlanSummary({
 }: {
   block: CalendarEvent;
   isToday: boolean;
-  onStartFocusSegment: (focusDurationMin: number) => Promise<void>;
+  onStartFocusSegment: (focusDurationMin: number, taskId?: string) => Promise<void>;
   isStartingFocus: boolean;
 }) {
   const planConfig = useMemo(

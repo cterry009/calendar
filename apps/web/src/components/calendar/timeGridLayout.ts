@@ -20,6 +20,9 @@ export interface GridBar {
   color: string;
   lane: 'background' | 'foreground';
   interactive?: boolean;
+  /** Set when this bar is a pomodoro segment claimed by a task, so starting it can be linked
+   * back to that task. */
+  taskId?: string;
 }
 
 export function minuteOfDay(date: Date): number {
@@ -32,8 +35,17 @@ export function minuteToLabel(minute: number): string {
   return `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 }
 
+function pomodoroUnitsFor(task: CalendarEvent, pomodoroMin: number): number {
+  if (task.meta?.estimatedPomodoros) return Math.max(1, task.meta.estimatedPomodoros);
+  const minutes = task.meta?.estimatedMinutes ?? task.end.getTime() - task.start.getTime();
+  return Math.max(1, Math.round(minutes / pomodoroMin));
+}
+
 /** Expands a day's work/rest blocks (into their auto pomodoro-plan segments) and other events
- * (tasks/fitness/pomodoro sessions) into positioned-ready grid bars. */
+ * (tasks/fitness/pomodoro sessions) into positioned-ready grid bars. Tasks scheduled inside a
+ * work block automatically claim that block's next available pomodoro segments in order (oldest
+ * task first), splitting across whatever breaks fall in between -- a 3-pomodoro task shows up as
+ * 3 separate labeled slots, not one solid bar that would run straight through a break. */
 export function buildDayBars(events: CalendarEvent[]): GridBar[] {
   const blocks = events
     .filter((event) => event.type === 'work' || event.type === 'rest')
@@ -41,6 +53,7 @@ export function buildDayBars(events: CalendarEvent[]): GridBar[] {
   const otherEvents = events.filter((event) => event.type !== 'work' && event.type !== 'rest');
 
   const result: GridBar[] = [];
+  const consumedTaskIds = new Set<string>();
 
   for (const block of blocks) {
     if (block.type === 'work') {
@@ -55,17 +68,49 @@ export function buildDayBars(events: CalendarEvent[]): GridBar[] {
       });
       const plan = generateFocusPlan(minuteOfDay(block.start), minuteOfDay(block.end), config);
 
-      plan.forEach((segment, index) => {
-        result.push({
-          id: `${block.id}-segment-${index}`,
-          label: SEGMENT_LABEL[segment.type],
-          detail: `${minuteToLabel(segment.startMinute)} - ${minuteToLabel(segment.endMinute)}`,
-          startMinute: segment.startMinute,
-          endMinute: segment.endMinute,
-          color: SEGMENT_COLOR[segment.type],
-          lane: 'background',
-          interactive: segment.type === 'pomodoro',
+      const blockTasks = otherEvents
+        .filter((event) => event.type === 'task' && event.start >= block.start && event.start < block.end)
+        .sort((a, b) => (a.meta?.createdAt ?? '').localeCompare(b.meta?.createdAt ?? '') || a.id.localeCompare(b.id))
+        .map((task) => {
+          const totalUnits = pomodoroUnitsFor(task, config.pomodoroMin);
+          return { task, totalUnits, remaining: totalUnits };
         });
+
+      let queueIndex = 0;
+
+      plan.forEach((segment, index) => {
+        const current = queueIndex < blockTasks.length ? blockTasks[queueIndex] : null;
+
+        if (segment.type === 'pomodoro' && current) {
+          const position = current.totalUnits - current.remaining + 1;
+
+          result.push({
+            id: `${block.id}-segment-${index}`,
+            label: current.task.title,
+            detail: `Pomodoro ${position}/${current.totalUnits} · ${minuteToLabel(segment.startMinute)} - ${minuteToLabel(segment.endMinute)}`,
+            startMinute: segment.startMinute,
+            endMinute: segment.endMinute,
+            color: EVENT_TYPE_COLOR.task,
+            lane: 'background',
+            interactive: true,
+            taskId: current.task.id,
+          });
+
+          consumedTaskIds.add(current.task.id);
+          current.remaining -= 1;
+          if (current.remaining <= 0) queueIndex += 1;
+        } else {
+          result.push({
+            id: `${block.id}-segment-${index}`,
+            label: SEGMENT_LABEL[segment.type],
+            detail: `${minuteToLabel(segment.startMinute)} - ${minuteToLabel(segment.endMinute)}`,
+            startMinute: segment.startMinute,
+            endMinute: segment.endMinute,
+            color: SEGMENT_COLOR[segment.type],
+            lane: 'background',
+            interactive: segment.type === 'pomodoro',
+          });
+        }
       });
     } else {
       result.push({
@@ -81,6 +126,8 @@ export function buildDayBars(events: CalendarEvent[]): GridBar[] {
   }
 
   for (const event of otherEvents) {
+    if (event.type === 'task' && consumedTaskIds.has(event.id)) continue;
+
     result.push({
       id: event.id,
       label: event.title,

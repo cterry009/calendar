@@ -11,6 +11,7 @@ export interface SyncTask {
   description: string | null;
   scheduledAt: string | null;
   estimatedMinutes: number;
+  estimatedPomodoros: number | null;
   actualMinutes: number | null;
   difficulty: TaskDifficulty;
   complexity: number;
@@ -92,6 +93,8 @@ export interface CalendarEvent {
   taskId?: string;
   meta?: {
     estimatedMinutes?: number;
+    estimatedPomodoros?: number | null;
+    createdAt?: string;
     state?: SyncPomodoroSession['state'];
     kind?: SyncSchedule['kind'];
     durationMinutes?: number;

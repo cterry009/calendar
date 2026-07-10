@@ -69,8 +69,8 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
     await data.refetch();
   }
 
-  async function handleStartFocusSegment(focusDurationMin: number) {
-    await pomodoro.start(undefined, { focusDurationMin });
+  async function handleStartFocusSegment(focusDurationMin: number, taskId?: string) {
+    await pomodoro.start(taskId, { focusDurationMin });
     navigate('/pomodoro');
   }
 

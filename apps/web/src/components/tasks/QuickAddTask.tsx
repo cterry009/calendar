@@ -28,8 +28,9 @@ function stripMatch(text: string, match: RegExpExecArray): string {
 
 interface ExtractedEstimate {
   title: string;
-  estimatedMinutes: number;
-  estimatedPomodoros: number;
+  // Null means no estimate was typed at all -- the caller must ask for one rather than guess.
+  estimatedMinutes: number | null;
+  estimatedPomodoros: number | null;
 }
 
 function extractEstimate(text: string, pomodoroLengthMin: number): ExtractedEstimate {
@@ -57,8 +58,7 @@ function extractEstimate(text: string, pomodoroLengthMin: number): ExtractedEsti
     };
   }
 
-  // No estimate typed -- default to a single pomodoro's worth of this block's own length.
-  return { title: text.trim(), estimatedMinutes: pomodoroLengthMin, estimatedPomodoros: 1 };
+  return { title: text.trim(), estimatedMinutes: null, estimatedPomodoros: null };
 }
 
 /** One-line "type and go" task entry, Todoist/Things-style: title + optional inline estimate in
@@ -80,7 +80,7 @@ export function QuickAddTask({ isSubmitting, initialScheduledAt, pomodoroLengthM
         isSubmitting={isSubmitting}
         initialScheduledAt={initialScheduledAt}
         initialTitle={parsed.title}
-        initialEstimatedPomodoros={parsed.estimatedPomodoros}
+        initialEstimatedPomodoros={parsed.estimatedPomodoros ?? undefined}
         pomodoroLengthMin={pomodoroLengthMin}
         onSubmit={async (values) => {
           await onSubmit(values);
@@ -103,6 +103,11 @@ export function QuickAddTask({ isSubmitting, initialScheduledAt, pomodoroLengthM
     }
 
     const { title, estimatedMinutes, estimatedPomodoros } = extractEstimate(trimmed, pomodoroLengthMin);
+    if (estimatedMinutes === null || estimatedPomodoros === null) {
+      setError('Indica cuanto va a durar: "3 pomodoros" o "45min", por ejemplo.');
+      return;
+    }
+
     const complexity = estimateTaskComplexity({ title, estimatedMinutes });
 
     await onSubmit({

@@ -14,7 +14,7 @@ interface DayTimeGridProps {
   blocks: CalendarEvent[];
   otherEvents: CalendarEvent[];
   isToday: boolean;
-  onStartFocusSegment: (focusDurationMin: number) => Promise<void>;
+  onStartFocusSegment: (focusDurationMin: number, taskId?: string) => Promise<void>;
   isStartingFocus: boolean;
 }
 
@@ -146,7 +146,7 @@ export function DayTimeGrid({
                 overflow="hidden"
                 cursor={canStart ? 'pointer' : 'default'}
                 opacity={canStart && isStartingFocus ? 0.6 : 1}
-                onPress={canStart ? () => void onStartFocusSegment(bar.endMinute - bar.startMinute) : undefined}
+                onPress={canStart ? () => void onStartFocusSegment(bar.endMinute - bar.startMinute, bar.taskId) : undefined}
               >
                 {bar.height >= 18 ? (
                   <Text fontSize="$3" color={bar.color} fontWeight={isCurrent ? '800' : '600'} lineHeight={18}>
