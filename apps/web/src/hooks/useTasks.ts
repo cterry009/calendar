@@ -41,7 +41,7 @@ function sortTasks(items: SyncTaskRecord[]) {
 }
 
 export function useTasks(): UseTasksResult {
-  const { pullSnapshot } = useSync();
+  const { pullSnapshot, notifyEntityChanged } = useSync();
   const [tasks, setTasks] = useState<SyncTaskRecord[]>([]);
   const [difficultyFilter, setDifficultyFilter] = useState<TaskDifficultyFilter>('ALL');
   const [isLoading, setIsLoading] = useState(true);
@@ -84,6 +84,10 @@ export function useTasks(): UseTasksResult {
       try {
         await syncTaskBatch(changes);
         await refetch();
+        // Other hooks on the same page (e.g. the calendar's own task data, or the sidebar
+        // TaskManager if this mutation came from the calendar's quick-add) won't see this
+        // change until their WebSocket echo arrives -- notify them directly instead.
+        notifyEntityChanged('tasks');
       } catch (errorValue) {
         if (errorValue instanceof ApiError) {
           setError(errorValue.message);
@@ -95,7 +99,7 @@ export function useTasks(): UseTasksResult {
         setIsMutating(false);
       }
     },
-    [refetch],
+    [notifyEntityChanged, refetch],
   );
 
   const createTask = useCallback(

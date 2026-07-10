@@ -5,7 +5,6 @@ import { useOnboarding } from '../context/OnboardingContext';
 
 const NAV_LINKS: { to: string; label: string }[] = [
   { to: '/calendar', label: 'Calendario' },
-  { to: '/tasks', label: 'Tareas' },
   { to: '/fitness', label: 'Fitness' },
   { to: '/pomodoro', label: 'Pomodoro' },
   { to: '/dashboard', label: 'Dashboard' },

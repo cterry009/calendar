@@ -24,7 +24,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     title: 'Bienvenida',
     description:
       'El calendario es el centro de la app: tus horarios de trabajo y descanso organizan todo lo demas, desde tareas hasta bloqueo de distracciones.',
-    tip: 'Usa la barra superior para moverte entre Calendario, Tareas, Fitness, Pomodoro y mas.',
+    tip: 'Usa la barra superior para moverte entre Calendario, Fitness, Pomodoro y mas.',
     route: '/calendar',
     highlightTarget: '[data-tutorial="calendar-hero"]',
   },
@@ -47,7 +47,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     title: 'Crea tareas desde el calendario',
     description:
-      'En la vista Dia, cada bloque de trabajo tiene un boton "+ Agregar tarea" que crea la tarea directamente ahi, con la hora ya sugerida.',
+      'En la vista Dia, cada bloque de trabajo tiene una casilla para escribir la tarea directamente ahi (ej. "Enviar reporte 45min"): la hora, la complejidad y la dificultad se sugieren solas.',
     tip: 'Cambia a la vista Dia y elige una fecha con un bloque de trabajo configurado.',
     route: '/calendar',
     highlightTarget: '[data-tutorial="day-work-block"]',

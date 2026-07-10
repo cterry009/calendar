@@ -24,6 +24,7 @@ import { MiniMonthCalendar } from '../components/calendar/MiniMonthCalendar';
 import type { CalendarViewMode } from '../lib/calendar/types';
 import { startOfDay } from '../lib/calendar/utils';
 import { ScheduleManager } from '../components/schedules/ScheduleManager';
+import { TaskManager } from '../components/tasks/TaskManager';
 import { SerotoninModePanel } from '../components/SerotoninModePanel';
 import { SuggestionsPreview } from '../components/suggestions/SuggestionsPreview';
 
@@ -110,6 +111,9 @@ export function CalendarPage() {
             </AppCard>
             <YStack data-tutorial="schedule-header">
               <ScheduleManager />
+            </YStack>
+            <YStack data-tutorial="tasks-header">
+              <TaskManager />
             </YStack>
             <SuggestionsPreview />
             <YStack data-tutorial="serotonin-mode">

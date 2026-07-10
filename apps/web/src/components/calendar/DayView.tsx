@@ -3,7 +3,7 @@ import { AppButton, AppCard, H2, H3, Paragraph, Text, XStack, YStack } from '@ca
 import { DayTimeGrid } from './DayTimeGrid';
 import { EVENT_TYPE_COLOR, EVENT_TYPE_LABEL } from './eventStyles';
 import { FitnessForm } from '../fitness/FitnessForm';
-import { TaskForm } from '../tasks/TaskForm';
+import { QuickAddTask } from '../tasks/QuickAddTask';
 import type { CalendarEvent } from '../../lib/calendar/types';
 import { isSameDay } from '../../lib/calendar/utils';
 import type { FitnessFormValues } from '../../lib/fitness/types';
@@ -141,7 +141,6 @@ export function DayView({
   onStartFocusSegment,
   isStartingFocus,
 }: DayViewProps) {
-  const [openTaskFormBlockId, setOpenTaskFormBlockId] = useState<string | null>(null);
   const [openFitnessFormBlockId, setOpenFitnessFormBlockId] = useState<string | null>(null);
   const isSelectedDateToday = isSameDay(selectedDate, new Date());
 
@@ -153,11 +152,6 @@ export function DayView({
   const unassignedEvents = otherEvents.filter(
     (event) => !blocks.some((block) => isWithinBlock(event, block)),
   );
-
-  async function handleCreateTask(values: TaskFormValues) {
-    await onCreateTask(values);
-    setOpenTaskFormBlockId(null);
-  }
 
   async function handleCreateFitness(values: FitnessFormValues) {
     await onCreateFitness(values);
@@ -257,19 +251,11 @@ export function DayView({
               )}
 
               {isWork ? (
-                openTaskFormBlockId === block.id ? (
-                  <TaskForm
-                    mode="create"
-                    isSubmitting={isCreatingTask}
-                    initialScheduledAt={block.start.toISOString()}
-                    onSubmit={handleCreateTask}
-                    onCancel={() => setOpenTaskFormBlockId(null)}
-                  />
-                ) : (
-                  <AppButton variant="small" alignSelf="flex-start" onPress={() => setOpenTaskFormBlockId(block.id)}>
-                    + Agregar tarea
-                  </AppButton>
-                )
+                <QuickAddTask
+                  isSubmitting={isCreatingTask}
+                  initialScheduledAt={block.start.toISOString()}
+                  onSubmit={onCreateTask}
+                />
               ) : openFitnessFormBlockId === block.id ? (
                 <FitnessForm
                   mode="create"

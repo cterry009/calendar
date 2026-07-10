@@ -1,6 +1,12 @@
 ﻿import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AppButton, AppCard, H2, Paragraph, XStack, YStack } from '@calendar/ui';
 import { Label, TextArea } from 'tamagui';
+import {
+  computeHeuristicComplexity,
+  difficultyFromComplexity,
+  estimateTaskComplexity,
+  recordComplexityFeedbackSample,
+} from '../../lib/tasks/complexity';
 import { TASK_DIFFICULTY_LABELS, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '../../lib/tasks/labels';
 import { TASK_DIFFICULTIES, TASK_PRIORITIES, TASK_STATUSES, type SyncTaskRecord, type TaskFormValues } from '../../lib/tasks/types';
 import { FormField } from './FormField';
@@ -10,6 +16,8 @@ interface TaskFormProps {
   initialTask?: SyncTaskRecord;
   /** Prefills "scheduledAt" in create mode (e.g. a calendar work block's start time). Ignored in edit mode. */
   initialScheduledAt?: string | null;
+  /** Prefills "title" in create mode (e.g. text already typed into the quick-add bar). Ignored in edit mode. */
+  initialTitle?: string;
   isSubmitting: boolean;
   onSubmit: (values: TaskFormValues) => Promise<void>;
   onCancel: () => void;
@@ -38,29 +46,67 @@ function toDateTimeLocal(isoDate: string | null): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function defaultDraft(task?: SyncTaskRecord, initialScheduledAt?: string | null): TaskFormDraft {
+function defaultDraft(task?: SyncTaskRecord, initialScheduledAt?: string | null, initialTitle?: string): TaskFormDraft {
+  const title = task?.title ?? initialTitle ?? '';
+  const estimatedMinutes = task?.estimatedMinutes ?? 30;
+  const complexity = task?.complexity ?? estimateTaskComplexity({ title, estimatedMinutes });
+
   return {
-    title: task?.title ?? '',
+    title,
     description: task?.description ?? '',
     scheduledAt: toDateTimeLocal(task?.scheduledAt ?? initialScheduledAt ?? null),
-    estimatedMinutes: String(task?.estimatedMinutes ?? 30),
+    estimatedMinutes: String(estimatedMinutes),
     actualMinutes: task?.actualMinutes == null ? '' : String(task.actualMinutes),
-    difficulty: task?.difficulty ?? 'MEDIUM',
-    complexity: String(task?.complexity ?? 5),
+    difficulty: task?.difficulty ?? difficultyFromComplexity(complexity),
+    complexity: String(complexity),
     priority: task?.priority ?? 'MEDIUM',
     category: task?.category ?? '',
     status: task?.status ?? 'PENDING',
   };
 }
 
-export function TaskForm({ mode, initialTask, initialScheduledAt, isSubmitting, onSubmit, onCancel }: TaskFormProps) {
-  const [draft, setDraft] = useState<TaskFormDraft>(() => defaultDraft(initialTask, initialScheduledAt));
+export function TaskForm({
+  mode,
+  initialTask,
+  initialScheduledAt,
+  initialTitle,
+  isSubmitting,
+  onSubmit,
+  onCancel,
+}: TaskFormProps) {
+  const [draft, setDraft] = useState<TaskFormDraft>(() => defaultDraft(initialTask, initialScheduledAt, initialTitle));
   const [error, setError] = useState<string | null>(null);
+  // Once the user touches complexity/difficulty directly, stop overwriting it with new
+  // suggestions as they keep typing the title/description. Editing an existing task never
+  // auto-suggests -- its stored values are already a real (possibly user-set) signal.
+  const [complexityTouched, setComplexityTouched] = useState(mode === 'edit');
+  const [difficultyTouched, setDifficultyTouched] = useState(mode === 'edit');
 
   useEffect(() => {
-    setDraft(defaultDraft(initialTask, initialScheduledAt));
+    setDraft(defaultDraft(initialTask, initialScheduledAt, initialTitle));
     setError(null);
-  }, [initialTask, initialScheduledAt, mode]);
+    setComplexityTouched(mode === 'edit');
+    setDifficultyTouched(mode === 'edit');
+  }, [initialTask, initialScheduledAt, initialTitle, mode]);
+
+  useEffect(() => {
+    if (mode !== 'create' || (complexityTouched && difficultyTouched)) return;
+
+    const suggested = estimateTaskComplexity({
+      title: draft.title,
+      description: draft.description,
+      estimatedMinutes: Number(draft.estimatedMinutes) || null,
+    });
+
+    setDraft((current) => ({
+      ...current,
+      complexity: complexityTouched ? current.complexity : String(suggested),
+      difficulty: difficultyTouched ? current.difficulty : difficultyFromComplexity(suggested),
+    }));
+    // Re-suggest only when the underlying text/duration changes, not on every keystroke into
+    // complexity/difficulty themselves (those are handled by the touched flags instead).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, draft.title, draft.description, draft.estimatedMinutes, complexityTouched, difficultyTouched]);
 
   const title = useMemo(
     () => (mode === 'create' ? 'Nueva tarea' : `Editar: ${initialTask?.title ?? 'tarea'}`),
@@ -69,6 +115,8 @@ export function TaskForm({ mode, initialTask, initialScheduledAt, isSubmitting, 
 
   function setField<Key extends keyof TaskFormDraft>(field: Key, value: TaskFormDraft[Key]) {
     setDraft((current) => ({ ...current, [field]: value }));
+    if (field === 'complexity') setComplexityTouched(true);
+    if (field === 'difficulty') setDifficultyTouched(true);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -99,6 +147,17 @@ export function TaskForm({ mode, initialTask, initialScheduledAt, isSubmitting, 
     if (actualMinutes !== null && (!Number.isInteger(actualMinutes) || actualMinutes < 0)) {
       setError('Los minutos reales deben ser un entero mayor o igual a 0.');
       return;
+    }
+
+    if (mode === 'create') {
+      // Compare against the raw (un-adjusted) heuristic so the adaptive bias doesn't compound
+      // on top of a previous correction.
+      const rawHeuristic = computeHeuristicComplexity({
+        title: trimmedTitle,
+        description: draft.description,
+        estimatedMinutes,
+      });
+      recordComplexityFeedbackSample(rawHeuristic, complexity);
     }
 
     const scheduledAt = draft.scheduledAt ? new Date(draft.scheduledAt).toISOString() : null;
@@ -177,7 +236,7 @@ export function TaskForm({ mode, initialTask, initialScheduledAt, isSubmitting, 
           <YStack minWidth={180} flex={1}>
             <FormField
               id="task-complexity"
-              label="Complejidad (1-10)"
+              label={mode === 'create' ? 'Complejidad (1-10, sugerida)' : 'Complejidad (1-10)'}
               type="number"
               value={draft.complexity}
               onChangeText={(value: string) => setField('complexity', value)}
@@ -188,6 +247,13 @@ export function TaskForm({ mode, initialTask, initialScheduledAt, isSubmitting, 
           </YStack>
         </XStack>
 
+        {mode === 'create' ? (
+          <Paragraph margin={0} size="$2" color="$muted">
+            La complejidad y la dificultad se sugieren solas segun el titulo, la descripcion y los minutos
+            estimados (y se ajustan con tus correcciones anteriores). Podes cambiarlas.
+          </Paragraph>
+        ) : null}
+
         <FormField
           id="task-category"
           label="Categoria"
@@ -197,7 +263,7 @@ export function TaskForm({ mode, initialTask, initialScheduledAt, isSubmitting, 
         />
 
         <YStack gap="$2">
-          <Paragraph margin={0}>Dificultad</Paragraph>
+          <Paragraph margin={0}>{mode === 'create' ? 'Dificultad (sugerida)' : 'Dificultad'}</Paragraph>
           <XStack gap="$2" flexWrap="wrap">
             {TASK_DIFFICULTIES.map((difficulty) => (
               <AppButton

@@ -11,7 +11,6 @@ import { FitnessPage } from './pages/FitnessPage';
 import { PomodoroPage } from './pages/PomodoroPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { SuggestionsPage } from './pages/SuggestionsPage';
-import { TasksPage } from './pages/TasksPage';
 
 export default function App() {
   return (
@@ -25,7 +24,7 @@ export default function App() {
           <Route element={<ProtectedAppLayout />}>
             <Route path="/" element={<Navigate to="/calendar" replace />} />
             <Route path="/calendar" element={<CalendarPage />} />
-            <Route path="/tasks" element={<TasksPage />} />
+            <Route path="/tasks" element={<Navigate to="/calendar" replace />} />
             <Route path="/fitness" element={<FitnessPage />} />
             <Route path="/pomodoro" element={<PomodoroPage />} />
             <Route path="/schedule" element={<Navigate to="/calendar" replace />} />
