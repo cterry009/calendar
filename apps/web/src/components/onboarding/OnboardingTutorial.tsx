@@ -31,11 +31,10 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     title: 'Define tus horarios',
     description:
-      'Crea bloques recurrentes de Trabajo y Descanso por dia de la semana. Son la base: el calendario los usa para organizar tareas, fitness y bloqueo.',
+      'Haz clic en "Horarios" arriba del calendario para crear bloques recurrentes de Trabajo y Descanso por dia de la semana. Son la base: el calendario los usa para organizar tareas, fitness y bloqueo.',
     tip: 'Un horario de trabajo y uno de descanso por dia es suficiente para empezar.',
-    route: '/schedule',
+    route: '/calendar',
     highlightTarget: '[data-tutorial="schedule-header"]',
-    actionLabel: 'Ir a horarios',
   },
   {
     title: 'Plan de pomodoros automatico',
@@ -96,9 +95,9 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     title: 'Listo para empezar',
     description: 'Ya conoces el recorrido principal. Puedes volver a abrir este tutorial desde la barra superior.',
-    tip: 'Siguiente paso recomendado: crea tu primer horario de trabajo y descanso.',
-    route: '/schedule',
-    actionLabel: 'Ir a horarios',
+    tip: 'Siguiente paso recomendado: crea tu primer horario de trabajo y descanso desde el boton "Horarios".',
+    route: '/calendar',
+    highlightTarget: '[data-tutorial="schedule-header"]',
   },
 ];
 

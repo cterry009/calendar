@@ -10,7 +10,6 @@ import { DetoxPage } from './pages/DetoxPage';
 import { FitnessPage } from './pages/FitnessPage';
 import { PomodoroPage } from './pages/PomodoroPage';
 import { RegisterPage } from './pages/RegisterPage';
-import { SchedulePage } from './pages/SchedulePage';
 import { SuggestionsPage } from './pages/SuggestionsPage';
 import { TasksPage } from './pages/TasksPage';
 
@@ -29,7 +28,7 @@ export default function App() {
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/fitness" element={<FitnessPage />} />
             <Route path="/pomodoro" element={<PomodoroPage />} />
-            <Route path="/schedule" element={<SchedulePage />} />
+            <Route path="/schedule" element={<Navigate to="/calendar" replace />} />
             <Route path="/blocklist" element={<BlockListPage />} />
             <Route path="/detox" element={<DetoxPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />

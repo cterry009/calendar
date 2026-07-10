@@ -9,7 +9,6 @@ const NAV_LINKS: { to: string; label: string }[] = [
   { to: '/fitness', label: 'Fitness' },
   { to: '/pomodoro', label: 'Pomodoro' },
   { to: '/dashboard', label: 'Dashboard' },
-  { to: '/schedule', label: 'Horarios' },
   { to: '/blocklist', label: 'Bloqueo' },
   { to: '/detox', label: 'Detox' },
 ];

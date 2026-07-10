@@ -20,11 +20,13 @@ import {
 } from '@calendar/shared';
 import { AppButton, Eyebrow, H1, Paragraph, XStack, YStack } from '@calendar/ui';
 import { CalendarPanel } from '../components/calendar/CalendarPanel';
+import { ScheduleManager } from '../components/schedules/ScheduleManager';
 import { SerotoninModePanel } from '../components/SerotoninModePanel';
 import { SuggestionsPreview } from '../components/suggestions/SuggestionsPreview';
 
 export function CalendarPage() {
   const [session, setSession] = useState<SerotoninSession | null>(null);
+  const [showScheduleManager, setShowScheduleManager] = useState(false);
 
   const calmMode = session?.active ?? false;
   const nextPillar = session ? suggestNextPillar(session.pillars) : null;
@@ -76,16 +78,27 @@ export function CalendarPage() {
               trabajo.
             </Paragraph>
           </YStack>
-          {!session?.active ? (
-            <AppButton variant="primary" onPress={startMode}>
-              Activate Serotonin Mode
+          <XStack gap="$2" flexWrap="wrap">
+            <AppButton
+              variant={showScheduleManager ? 'primary' : 'ghost'}
+              data-tutorial="schedule-header"
+              onPress={() => setShowScheduleManager((value) => !value)}
+            >
+              {showScheduleManager ? 'Ocultar horarios' : 'Horarios'}
             </AppButton>
-          ) : (
-            <AppButton variant="ghost" onPress={stopMode}>
-              End mode
-            </AppButton>
-          )}
+            {!session?.active ? (
+              <AppButton variant="primary" onPress={startMode}>
+                Activate Serotonin Mode
+              </AppButton>
+            ) : (
+              <AppButton variant="ghost" onPress={stopMode}>
+                End mode
+              </AppButton>
+            )}
+          </XStack>
         </XStack>
+
+        {showScheduleManager ? <ScheduleManager /> : null}
 
         <XStack gap="$5" flexWrap="wrap" alignItems="flex-start">
           <YStack flex={2} minWidth={360}>
