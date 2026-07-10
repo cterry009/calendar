@@ -18,14 +18,19 @@ import {
   suggestNextPillar,
   suggestNextRitual,
 } from '@calendar/shared';
-import { AppButton, Eyebrow, H1, Paragraph, XStack, YStack } from '@calendar/ui';
+import { AppButton, AppCard, Eyebrow, H1, Paragraph, XStack, YStack } from '@calendar/ui';
 import { CalendarPanel } from '../components/calendar/CalendarPanel';
+import { MiniMonthCalendar } from '../components/calendar/MiniMonthCalendar';
+import type { CalendarViewMode } from '../lib/calendar/types';
+import { startOfDay } from '../lib/calendar/utils';
 import { ScheduleManager } from '../components/schedules/ScheduleManager';
 import { SerotoninModePanel } from '../components/SerotoninModePanel';
 import { SuggestionsPreview } from '../components/suggestions/SuggestionsPreview';
 
 export function CalendarPage() {
   const [session, setSession] = useState<SerotoninSession | null>(null);
+  const [mode, setMode] = useState<CalendarViewMode>('week');
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
 
   const calmMode = session?.active ?? false;
   const nextPillar = session ? suggestNextPillar(session.pillars) : null;
@@ -90,10 +95,19 @@ export function CalendarPage() {
 
         <XStack gap="$5" flexWrap="wrap" alignItems="flex-start">
           <YStack flex={2} minWidth={360}>
-            <CalendarPanel />
+            <CalendarPanel mode={mode} selectedDate={selectedDate} onModeChange={setMode} onChangeDate={setSelectedDate} />
           </YStack>
 
           <YStack flex={1} minWidth={300} gap="$5">
+            <AppCard>
+              <MiniMonthCalendar
+                selectedDate={selectedDate}
+                onSelectDate={(date) => {
+                  setSelectedDate(startOfDay(date));
+                  setMode('day');
+                }}
+              />
+            </AppCard>
             <YStack data-tutorial="schedule-header">
               <ScheduleManager />
             </YStack>

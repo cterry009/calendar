@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+﻿import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppButton, AppCard, H2, Paragraph, YStack } from '@calendar/ui';
 import { usePomodoro } from '../../context/PomodoroContext';
@@ -7,6 +7,7 @@ import { useFitness } from '../../hooks/useFitness';
 import { useTasks } from '../../hooks/useTasks';
 import type { CalendarViewMode } from '../../lib/calendar/types';
 import {
+  addDays,
   buildEventsForRange,
   buildMonthSummary,
   buildWeekTaskSummary,
@@ -20,6 +21,7 @@ import {
 import { CalendarToolbar } from './CalendarToolbar';
 import { DayView } from './DayView';
 import { MonthView } from './MonthView';
+import { WeekTimeGrid } from './WeekTimeGrid';
 import { WeekView } from './WeekView';
 
 function getRangeForMode(mode: CalendarViewMode, selectedDate: Date): { start: Date; end: Date } {
@@ -38,9 +40,14 @@ function getRangeForMode(mode: CalendarViewMode, selectedDate: Date): { start: D
   };
 }
 
-export function CalendarPanel() {
-  const [mode, setMode] = useState<CalendarViewMode>('week');
-  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
+interface CalendarPanelProps {
+  mode: CalendarViewMode;
+  selectedDate: Date;
+  onModeChange: (mode: CalendarViewMode) => void;
+  onChangeDate: (date: Date) => void;
+}
+
+export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }: CalendarPanelProps) {
   const data = useCalendarData();
   const tasksData = useTasks();
   const fitnessData = useFitness();
@@ -48,8 +55,8 @@ export function CalendarPanel() {
   const navigate = useNavigate();
 
   function selectDay(date: Date) {
-    setSelectedDate(startOfDay(date));
-    setMode('day');
+    onChangeDate(startOfDay(date));
+    onModeChange('day');
   }
 
   async function handleCreateTask(values: Parameters<typeof tasksData.createTask>[0]) {
@@ -85,6 +92,10 @@ export function CalendarPanel() {
   );
 
   const dayEvents = useMemo(() => eventsForDate(events, selectedDate), [events, selectedDate]);
+  const weekDays = useMemo(() => {
+    const weekStart = getStartOfWeek(selectedDate);
+    return Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
+  }, [selectedDate]);
   const weekSummary = useMemo(() => buildWeekTaskSummary(data.tasks, selectedDate), [data.tasks, selectedDate]);
   const monthSummary = useMemo(
     () => buildMonthSummary({ tasks: data.tasks, pomodoroSessions: data.pomodoroSessions }, selectedDate),
@@ -96,8 +107,8 @@ export function CalendarPanel() {
       <CalendarToolbar
         mode={mode}
         selectedDate={selectedDate}
-        onModeChange={setMode}
-        onChangeDate={setSelectedDate}
+        onModeChange={onModeChange}
+        onChangeDate={onChangeDate}
       />
 
       {data.isLoading ? (
@@ -154,7 +165,10 @@ export function CalendarPanel() {
             <WeekView days={weekSummary} onSelectDay={selectDay} />
           </YStack>
         ) : mode === 'week' ? (
-          <WeekView days={weekSummary} onSelectDay={selectDay} />
+          <YStack gap="$4">
+            <WeekTimeGrid weekDays={weekDays} events={events} onSelectDay={selectDay} />
+            <WeekView days={weekSummary} onSelectDay={selectDay} />
+          </YStack>
         ) : (
           <MonthView days={monthSummary} onSelectDay={selectDay} />
         )
