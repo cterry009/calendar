@@ -123,6 +123,10 @@ model Task {
   description      String?
   scheduledAt      DateTime?
   estimatedMinutes Int
+  // How many pomodoros the user actually said ("3 pomodoros") -- kept alongside estimatedMinutes
+  // so the count shown back to them never drifts from what they typed, regardless of which
+  // pomodoro length was used to convert it. Null for tasks created before this field existed.
+  estimatedPomodoros Int?
   actualMinutes    Int?
   difficulty       TaskDifficulty @default(MEDIUM)
   complexity       Int            @default(5) // 1–10

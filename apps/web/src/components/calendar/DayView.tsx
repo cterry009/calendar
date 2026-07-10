@@ -8,7 +8,24 @@ import type { CalendarEvent } from '../../lib/calendar/types';
 import { isSameDay } from '../../lib/calendar/utils';
 import type { FitnessFormValues } from '../../lib/fitness/types';
 import type { TaskFormValues } from '../../lib/tasks/types';
-import { MAX_LONG_BREAKS, countSegmentsByType, generateFocusPlan, resolveFocusPlanConfig } from '../../lib/pomodoro/planner';
+import {
+  MAX_LONG_BREAKS,
+  countSegmentsByType,
+  generateFocusPlan,
+  resolveFocusPlanConfig,
+} from '../../lib/pomodoro/planner';
+
+function pomodoroLengthForBlock(block: CalendarEvent): number {
+  return resolveFocusPlanConfig({
+    startMinute: minuteOfDay(block.start),
+    endMinute: minuteOfDay(block.end),
+    pomodoroMin: block.meta?.pomodoroMin ?? null,
+    shortBreakMin: block.meta?.shortBreakMin ?? null,
+    longBreakMin: block.meta?.longBreakMin ?? null,
+    pomodorosPerChunk: block.meta?.pomodorosPerChunk ?? null,
+    chunks: block.meta?.chunks ?? null,
+  }).pomodoroMin;
+}
 
 interface DayViewProps {
   selectedDate: Date;
@@ -254,6 +271,7 @@ export function DayView({
                 <QuickAddTask
                   isSubmitting={isCreatingTask}
                   initialScheduledAt={block.start.toISOString()}
+                  pomodoroLengthMin={pomodoroLengthForBlock(block)}
                   onSubmit={onCreateTask}
                 />
               ) : openFitnessFormBlockId === block.id ? (

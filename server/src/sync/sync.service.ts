@@ -210,6 +210,7 @@ export class SyncService {
       description: change.description ?? null,
       scheduledAt: change.scheduledAt ? new Date(change.scheduledAt) : null,
       estimatedMinutes: change.estimatedMinutes,
+      estimatedPomodoros: change.estimatedPomodoros ?? null,
       actualMinutes: change.actualMinutes ?? null,
       difficulty: change.difficulty,
       complexity: change.complexity,

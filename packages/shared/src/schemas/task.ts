@@ -12,6 +12,7 @@ export const TaskSchema = z.object({
   description: z.string().max(5000).optional().nullable(),
   scheduledAt: z.string().datetime().optional().nullable(),
   estimatedMinutes: z.number().int().min(1),
+  estimatedPomodoros: z.number().int().min(1).optional().nullable(),
   actualMinutes: z.number().int().min(0).optional().nullable(),
   difficulty: TaskDifficultySchema.default('MEDIUM'),
   complexity: z.number().int().min(1).max(10).default(5),

@@ -47,7 +47,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     title: 'Crea tareas desde el calendario',
     description:
-      'En la vista Dia, cada bloque de trabajo tiene una casilla para escribir la tarea directamente ahi (ej. "Enviar reporte 45min"): la hora, la complejidad y la dificultad se sugieren solas.',
+      'En la vista Dia, cada bloque de trabajo tiene una casilla para escribir la tarea directamente ahi (ej. "Preparar informe 3 pomodoros"): la duracion, la complejidad y la dificultad se sugieren solas.',
     tip: 'Cambia a la vista Dia y elige una fecha con un bloque de trabajo configurado.',
     route: '/calendar',
     highlightTarget: '[data-tutorial="day-work-block"]',

@@ -3,6 +3,7 @@ import { AppButton, AppCard, Paragraph, Text, XStack, YStack } from '@calendar/u
 import { Input } from 'tamagui';
 import { TASK_DIFFICULTY_LABELS, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '../../lib/tasks/labels';
 import type { SyncTaskRecord } from '../../lib/tasks/types';
+import { estimateFocusDurationMin } from '../../lib/pomodoro/planner';
 
 interface TaskItemProps {
   task: SyncTaskRecord;
@@ -61,6 +62,10 @@ export function TaskItem({ task, isBusy, onEdit, onDelete, onComplete, onStartPo
 
   const isCompleted = task.status === 'COMPLETED';
   const canStartPomodoro = task.status === 'PENDING' || task.status === 'IN_PROGRESS';
+  // Shows exactly the count the user typed ("3 pomodoros" -> 3, always, no re-derivation).
+  // Only tasks that predate this field fall back to a best-effort estimate for display.
+  const estimatedPomodoros =
+    task.estimatedPomodoros ?? Math.max(1, Math.round(task.estimatedMinutes / estimateFocusDurationMin()));
 
   return (
     <AppCard>
@@ -87,7 +92,7 @@ export function TaskItem({ task, isBusy, onEdit, onDelete, onComplete, onStartPo
 
         <XStack gap="$3" flexWrap="wrap">
           <MetaBadge text={`Programada: ${scheduledAtLabel}`} />
-          <MetaBadge text={`Estimado: ${task.estimatedMinutes} min`} />
+          <MetaBadge text={`Estimado: ${estimatedPomodoros} pomodoro${estimatedPomodoros === 1 ? '' : 's'} (~${task.estimatedMinutes} min)`} />
           {task.actualMinutes != null ? <MetaBadge text={`Real: ${task.actualMinutes} min`} /> : null}
           {task.category ? <MetaBadge text={`Categoria: ${task.category}`} /> : null}
         </XStack>

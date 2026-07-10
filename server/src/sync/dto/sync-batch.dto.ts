@@ -63,6 +63,11 @@ export class TaskSyncChangeDto {
 
   @IsOptional()
   @IsInt()
+  @Min(1)
+  estimatedPomodoros?: number;
+
+  @IsOptional()
+  @IsInt()
   @Min(0)
   actualMinutes?: number;
 
