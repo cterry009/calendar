@@ -167,18 +167,34 @@ export function DayView({
   return (
     <AppCard>
       <YStack gap="$4">
-        <YStack gap="$1">
-          <H2 margin={0} fontSize="$6" textTransform="capitalize">
-            Agenda del dia
-          </H2>
-          <Paragraph color="$muted" margin={0}>
-            {selectedDate.toLocaleDateString('es-ES', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-            })}
-          </Paragraph>
-        </YStack>
+        <XStack alignItems="center" gap="$4" flexWrap="wrap">
+          <YStack alignItems="center" minWidth={84}>
+            <Text fontSize="$3" color="$muted" textTransform="uppercase" letterSpacing={1}>
+              {selectedDate.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '')}
+            </Text>
+            <Text
+              fontSize={64}
+              fontWeight="800"
+              lineHeight={64}
+              color={isSelectedDateToday ? '$primary' : '$color'}
+            >
+              {selectedDate.getDate()}
+            </Text>
+          </YStack>
+
+          <YStack gap="$1">
+            <H2 margin={0} fontSize="$6" textTransform="capitalize">
+              Agenda del dia
+            </H2>
+            <Paragraph color="$muted" margin={0} textTransform="capitalize">
+              {selectedDate.toLocaleDateString('es-ES', {
+                weekday: 'long',
+                month: 'long',
+                year: 'numeric',
+              })}
+            </Paragraph>
+          </YStack>
+        </XStack>
 
         {blocks.length === 0 && unassignedEvents.length === 0 ? (
           <Paragraph color="$muted" margin={0}>

@@ -4,11 +4,11 @@ import type { CalendarEvent } from '../../lib/calendar/types';
 import { generateFocusPlan, resolveFocusPlanConfig } from '../../lib/pomodoro/planner';
 import { EVENT_TYPE_COLOR, SEGMENT_COLOR, SEGMENT_LABEL } from './eventStyles';
 
-const ROW_HEIGHT_PX = 64;
+const ROW_HEIGHT_PX = 96;
 const GRID_HEIGHT_PX = ROW_HEIGHT_PX * 24;
-const VISIBLE_HEIGHT_PX = 560;
-const MIN_BAR_HEIGHT_PX = 18;
-const HOUR_LABEL_WIDTH_PX = 52;
+const VISIBLE_HEIGHT_PX = 760;
+const MIN_BAR_HEIGHT_PX = 24;
+const HOUR_LABEL_WIDTH_PX = 64;
 
 /**
  * Heights based purely on duration would either make 5-minute breaks illegibly thin or, if
@@ -163,8 +163,8 @@ export function DayTimeGrid({
       <XStack height={GRID_HEIGHT_PX}>
         <YStack width={HOUR_LABEL_WIDTH_PX} flexShrink={0}>
           {Array.from({ length: 24 }, (_, hour) => (
-            <YStack key={hour} height={ROW_HEIGHT_PX} paddingLeft="$1" paddingTop="$1">
-              <Text fontSize="$1" color="$muted">
+            <YStack key={hour} height={ROW_HEIGHT_PX} paddingLeft="$2" paddingTop="$1">
+              <Text fontSize="$2" color="$muted">
                 {String(hour).padStart(2, '0')}:00
               </Text>
             </YStack>
@@ -198,25 +198,25 @@ export function DayTimeGrid({
                 right={4}
                 height={bar.height}
                 title={`${bar.label} · ${bar.detail}`}
-                borderRadius="$2"
-                borderWidth={isCurrent ? 2 : 1}
+                borderRadius="$3"
+                borderWidth={isCurrent ? 3 : 1}
                 borderColor={isCurrent ? '$primary' : bar.color}
-                backgroundColor={isCurrent ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)'}
-                paddingHorizontal="$2"
-                paddingVertical={bar.height >= 20 ? 2 : 0}
+                backgroundColor={isCurrent ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.03)'}
+                paddingHorizontal="$3"
+                paddingVertical={bar.height >= 30 ? 4 : 0}
                 overflow="hidden"
                 cursor={canStart ? 'pointer' : 'default'}
                 opacity={canStart && isStartingFocus ? 0.6 : 1}
                 onPress={canStart ? () => void onStartFocusSegment(bar.endMinute - bar.startMinute) : undefined}
               >
-                {bar.height >= 13 ? (
-                  <Text fontSize="$1" color={bar.color} fontWeight={isCurrent ? '700' : '400'} lineHeight={13}>
+                {bar.height >= 18 ? (
+                  <Text fontSize="$3" color={bar.color} fontWeight={isCurrent ? '800' : '600'} lineHeight={18}>
                     {canStart ? '▶ ' : ''}
                     {bar.label}
                   </Text>
                 ) : null}
-                {bar.height >= 34 ? (
-                  <Text fontSize="$1" color="$muted">
+                {bar.height >= 50 ? (
+                  <Text fontSize="$2" color="$muted">
                     {bar.detail}
                   </Text>
                 ) : null}
@@ -229,20 +229,25 @@ export function DayTimeGrid({
               key={bar.id}
               position="absolute"
               top={bar.top}
-              left={18}
-              right={4}
+              left={22}
+              right={6}
               height={bar.height}
               title={`${bar.label} · ${bar.detail}`}
-              borderRadius="$2"
+              borderRadius="$3"
               backgroundColor={bar.color}
-              paddingHorizontal="$2"
-              paddingVertical={bar.height >= 20 ? 2 : 0}
+              paddingHorizontal="$3"
+              paddingVertical={bar.height >= 30 ? 4 : 0}
               overflow="hidden"
               zIndex={2}
             >
-              {bar.height >= 13 ? (
-                <Text fontSize="$1" fontWeight="700" color="#0a0f14" lineHeight={13}>
+              {bar.height >= 18 ? (
+                <Text fontSize="$3" fontWeight="800" color="#0a0f14" lineHeight={18}>
                   {bar.label}
+                </Text>
+              ) : null}
+              {bar.height >= 50 ? (
+                <Text fontSize="$2" color="#0a0f14" opacity={0.8}>
+                  {bar.detail}
                 </Text>
               ) : null}
             </YStack>

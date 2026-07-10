@@ -43,8 +43,6 @@ interface ScheduleFormDraft {
   label: string;
   enabled: boolean;
   pomodoroMin: number;
-  shortBreakMin: number;
-  longBreakMin: number;
   pomodorosPerChunk: number;
   chunks: number;
 }
@@ -82,8 +80,6 @@ function defaultDraft(schedule?: SyncScheduleRecord): ScheduleFormDraft {
     label: schedule?.label ?? '',
     enabled: schedule?.enabled ?? true,
     pomodoroMin,
-    shortBreakMin,
-    longBreakMin,
     pomodorosPerChunk,
     chunks,
   };
@@ -92,33 +88,19 @@ function defaultDraft(schedule?: SyncScheduleRecord): ScheduleFormDraft {
 export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, onCancel }: ScheduleFormProps) {
   const [draft, setDraft] = useState<ScheduleFormDraft>(() => defaultDraft(initialSchedule));
   const [error, setError] = useState<string | null>(null);
-  const [shortBreakTouched, setShortBreakTouched] = useState(false);
-  const [longBreakTouched, setLongBreakTouched] = useState(false);
 
   useEffect(() => {
     setDraft(defaultDraft(initialSchedule));
-    // Respect an already-persisted break length (a deliberate prior choice) instead of silently
-    // overwriting it the moment the form opens; only auto-suggest when there's no stored value.
-    setShortBreakTouched(initialSchedule?.shortBreakMin != null);
-    setLongBreakTouched(initialSchedule?.longBreakMin != null);
     setError(null);
   }, [initialSchedule, mode]);
 
-  // Keep short/long break auto-suggested from pomodoro length (+ pomodoros per block for the
-  // long break) until the user edits either field directly.
-  useEffect(() => {
-    if (draft.kind !== 'WORK') return;
-
-    setDraft((current) => {
-      const nextShortBreak = shortBreakTouched ? current.shortBreakMin : estimateShortBreakMin(current.pomodoroMin);
-      const nextLongBreak = longBreakTouched
-        ? current.longBreakMin
-        : estimateLongBreakMin(current.pomodoroMin, current.pomodorosPerChunk);
-
-      if (nextShortBreak === current.shortBreakMin && nextLongBreak === current.longBreakMin) return current;
-      return { ...current, shortBreakMin: nextShortBreak, longBreakMin: nextLongBreak };
-    });
-  }, [draft.kind, draft.pomodoroMin, draft.pomodorosPerChunk, shortBreakTouched, longBreakTouched]);
+  // Breaks are never entered by hand -- always derived from the pomodoro length and pomodoros
+  // per block, same formula the calendar grid and the pomodoro auto-start use.
+  const shortBreakMin = useMemo(() => estimateShortBreakMin(draft.pomodoroMin), [draft.pomodoroMin]);
+  const longBreakMin = useMemo(
+    () => estimateLongBreakMin(draft.pomodoroMin, draft.pomodorosPerChunk),
+    [draft.pomodoroMin, draft.pomodorosPerChunk],
+  );
 
   const title = useMemo(
     () => (mode === 'create' ? 'Nuevo horario' : `Editar horario: ${initialSchedule?.label ?? 'sin etiqueta'}`),
@@ -134,8 +116,8 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
 
     const config: FocusPlanConfig = {
       pomodoroMin: draft.pomodoroMin,
-      shortBreakMin: draft.shortBreakMin,
-      longBreakMin: draft.longBreakMin,
+      shortBreakMin,
+      longBreakMin,
       pomodorosPerChunk: draft.pomodorosPerChunk,
       chunks: draft.chunks,
     };
@@ -151,15 +133,7 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
       longBreaks: countSegmentsByType(plan, 'long-break'),
       overflowsDay: endMinute > MINUTES_PER_DAY - 1,
     };
-  }, [
-    draft.kind,
-    draft.startTime,
-    draft.pomodoroMin,
-    draft.shortBreakMin,
-    draft.longBreakMin,
-    draft.pomodorosPerChunk,
-    draft.chunks,
-  ]);
+  }, [draft.kind, draft.startTime, draft.pomodoroMin, shortBreakMin, longBreakMin, draft.pomodorosPerChunk, draft.chunks]);
 
   function setField<Key extends keyof ScheduleFormDraft>(field: Key, value: ScheduleFormDraft[Key]) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -203,7 +177,7 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
     >;
 
     if (draft.kind === 'WORK') {
-      const planValues = [draft.pomodoroMin, draft.shortBreakMin, draft.longBreakMin, draft.pomodorosPerChunk, draft.chunks];
+      const planValues = [draft.pomodoroMin, shortBreakMin, longBreakMin, draft.pomodorosPerChunk, draft.chunks];
       if (planValues.some((value) => !Number.isInteger(value) || value < 1)) {
         setError('Los valores del plan de enfoque deben ser numeros enteros mayores o iguales a 1.');
         return;
@@ -216,8 +190,8 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
 
       const config: FocusPlanConfig = {
         pomodoroMin: draft.pomodoroMin,
-        shortBreakMin: draft.shortBreakMin,
-        longBreakMin: draft.longBreakMin,
+        shortBreakMin,
+        longBreakMin,
         pomodorosPerChunk: draft.pomodorosPerChunk,
         chunks: draft.chunks,
       };
@@ -233,8 +207,8 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
 
       planFields = {
         pomodoroMin: draft.pomodoroMin,
-        shortBreakMin: draft.shortBreakMin,
-        longBreakMin: draft.longBreakMin,
+        shortBreakMin,
+        longBreakMin,
         pomodorosPerChunk: draft.pomodorosPerChunk,
         chunks: draft.chunks,
       };
@@ -360,9 +334,8 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
                 <Text fontWeight="700">Plan de enfoque</Text>
                 <Paragraph margin={0} size="$2" color="$muted">
                   Define la duracion del pomodoro (sugerido 30-45 min) y la cantidad de bloques: la hora de fin se
-                  calcula automaticamente a partir de esto (no al reves). Los descansos se sugieren solos --
-                  corto 5-10 min, largo 20-30 min -- segun el pomodoro y los pomodoros por bloque, hasta que los
-                  edites tu mismo.
+                  calcula automaticamente a partir de esto (no al reves). Los descansos no se editan a mano: se
+                  calculan solos -- corto 5-10 min, largo 20-30 min -- segun el pomodoro y los pomodoros por bloque.
                 </Paragraph>
               </YStack>
 
@@ -379,31 +352,35 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
                 </YStack>
 
                 <YStack minWidth={150} gap="$1">
-                  <Label htmlFor="schedule-short-break-min">Descanso corto (min)</Label>
-                  <Input
+                  <Label htmlFor="schedule-short-break-min">Descanso corto (auto)</Label>
+                  <XStack
                     id="schedule-short-break-min"
-                    type="number"
-                    min={1}
-                    value={String(draft.shortBreakMin)}
-                    onChangeText={(value: string) => {
-                      setShortBreakTouched(true);
-                      setField('shortBreakMin', Number(value || 0));
-                    }}
-                  />
+                    minHeight={42}
+                    borderRadius="$3"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                    backgroundColor="rgba(255,255,255,0.03)"
+                    paddingHorizontal="$3"
+                    alignItems="center"
+                  >
+                    <Text fontWeight="700">{shortBreakMin} min</Text>
+                  </XStack>
                 </YStack>
 
                 <YStack minWidth={150} gap="$1">
-                  <Label htmlFor="schedule-long-break-min">Descanso largo (min)</Label>
-                  <Input
+                  <Label htmlFor="schedule-long-break-min">Descanso largo (auto)</Label>
+                  <XStack
                     id="schedule-long-break-min"
-                    type="number"
-                    min={1}
-                    value={String(draft.longBreakMin)}
-                    onChangeText={(value: string) => {
-                      setLongBreakTouched(true);
-                      setField('longBreakMin', Number(value || 0));
-                    }}
-                  />
+                    minHeight={42}
+                    borderRadius="$3"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                    backgroundColor="rgba(255,255,255,0.03)"
+                    paddingHorizontal="$3"
+                    alignItems="center"
+                  >
+                    <Text fontWeight="700">{longBreakMin} min</Text>
+                  </XStack>
                 </YStack>
 
                 <YStack minWidth={150} gap="$1">

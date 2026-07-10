@@ -140,16 +140,19 @@ export function CalendarPanel() {
 
       {!data.isLoading && !data.error ? (
         mode === 'day' ? (
-          <DayView
-            selectedDate={selectedDate}
-            events={dayEvents}
-            onCreateTask={handleCreateTask}
-            isCreatingTask={tasksData.isMutating}
-            onCreateFitness={handleCreateFitness}
-            isCreatingFitness={fitnessData.isMutating}
-            onStartFocusSegment={handleStartFocusSegment}
-            isStartingFocus={pomodoro.isMutating}
-          />
+          <YStack gap="$4">
+            <DayView
+              selectedDate={selectedDate}
+              events={dayEvents}
+              onCreateTask={handleCreateTask}
+              isCreatingTask={tasksData.isMutating}
+              onCreateFitness={handleCreateFitness}
+              isCreatingFitness={fitnessData.isMutating}
+              onStartFocusSegment={handleStartFocusSegment}
+              isStartingFocus={pomodoro.isMutating}
+            />
+            <WeekView days={weekSummary} onSelectDay={selectDay} />
+          </YStack>
         ) : mode === 'week' ? (
           <WeekView days={weekSummary} onSelectDay={selectDay} />
         ) : (
