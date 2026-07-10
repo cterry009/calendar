@@ -2,6 +2,15 @@ import type { CalendarEvent } from '../../lib/calendar/types';
 import { generateFocusPlan, resolveFocusPlanConfig } from '../../lib/pomodoro/planner';
 import { EVENT_TYPE_COLOR, SEGMENT_COLOR, SEGMENT_LABEL } from './eventStyles';
 
+export const ZOOM_MIN = 0.5;
+export const ZOOM_MAX = 2.5;
+export const ZOOM_STEP = 0.25;
+export const DEFAULT_ZOOM = 1;
+
+export function clampZoom(zoom: number): number {
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
+}
+
 export interface GridBar {
   id: string;
   label: string;

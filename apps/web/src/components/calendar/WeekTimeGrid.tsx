@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, XStack, YStack } from '@calendar/ui';
 import type { CalendarEvent } from '../../lib/calendar/types';
 import { eventsForDate, isSameDay } from '../../lib/calendar/utils';
-import { buildDayBars, layoutBars, minuteOfDay } from './timeGridLayout';
+import { buildDayBars, clampZoom, DEFAULT_ZOOM, layoutBars, minuteOfDay, ZOOM_STEP } from './timeGridLayout';
+import { ZoomControls } from './ZoomControls';
 
-const ROW_HEIGHT_PX = 48;
-const GRID_HEIGHT_PX = ROW_HEIGHT_PX * 24;
+const BASE_ROW_HEIGHT_PX = 48;
 const VISIBLE_HEIGHT_PX = 640;
-const MIN_BAR_HEIGHT_PX = 16;
+const BASE_MIN_BAR_HEIGHT_PX = 16;
 const HOUR_LABEL_WIDTH_PX = 56;
 const DAY_COLUMN_MIN_WIDTH_PX = 120;
 
@@ -22,6 +22,11 @@ interface WeekTimeGridProps {
 export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const today = useMemo(() => new Date(), []);
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+
+  const rowHeightPx = BASE_ROW_HEIGHT_PX * zoom;
+  const gridHeightPx = rowHeightPx * 24;
+  const minBarHeightPx = BASE_MIN_BAR_HEIGHT_PX * zoom;
 
   const dayColumns = useMemo(
     () =>
@@ -29,34 +34,56 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
         const bars = buildDayBars(eventsForDate(events, date));
         const backgroundBars = layoutBars(
           bars.filter((bar) => bar.lane === 'background').sort((a, b) => a.startMinute - b.startMinute),
-          ROW_HEIGHT_PX,
-          MIN_BAR_HEIGHT_PX,
-          GRID_HEIGHT_PX,
+          rowHeightPx,
+          minBarHeightPx,
+          gridHeightPx,
         );
         const foregroundBars = layoutBars(
           bars.filter((bar) => bar.lane === 'foreground').sort((a, b) => a.startMinute - b.startMinute),
-          ROW_HEIGHT_PX,
-          MIN_BAR_HEIGHT_PX,
-          GRID_HEIGHT_PX,
+          rowHeightPx,
+          minBarHeightPx,
+          gridHeightPx,
         );
         return { date, isToday: isSameDay(date, today), backgroundBars, foregroundBars };
       }),
-    [weekDays, events, today],
+    [weekDays, events, today, rowHeightPx, minBarHeightPx, gridHeightPx],
   );
 
   useEffect(() => {
     if (!scrollRef.current) return;
     const allBars = dayColumns.flatMap((column) => [...column.backgroundBars, ...column.foregroundBars]);
     const anchorMinute = allBars.length > 0 ? Math.min(...allBars.map((bar) => bar.startMinute)) : 7 * 60;
-    scrollRef.current.scrollTop = Math.max(0, (anchorMinute / 60) * ROW_HEIGHT_PX - ROW_HEIGHT_PX);
-    // Only re-anchor when the viewed week changes, not on every bar recompute.
+    scrollRef.current.scrollTop = Math.max(0, (anchorMinute / 60) * rowHeightPx - rowHeightPx);
+    // Re-anchor when the viewed week or zoom level changes, not on every bar recompute.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekDays[0]?.toISOString()]);
+  }, [weekDays[0]?.toISOString(), zoom]);
+
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) return undefined;
+    function handleWheel(event: WheelEvent) {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      event.preventDefault();
+      setZoom((current) => clampZoom(current + (event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP)));
+    }
+    node.addEventListener('wheel', handleWheel, { passive: false });
+    return () => node.removeEventListener('wheel', handleWheel);
+  }, []);
 
   const nowMinute = minuteOfDay(new Date());
 
   return (
-    <YStack borderRadius="$4" borderWidth={1} borderColor="$borderColor" overflow="hidden">
+    <YStack gap="$2">
+      <XStack justifyContent="flex-end">
+        <ZoomControls
+          zoom={zoom}
+          onZoomIn={() => setZoom((current) => clampZoom(current + ZOOM_STEP))}
+          onZoomOut={() => setZoom((current) => clampZoom(current - ZOOM_STEP))}
+          onReset={() => setZoom(DEFAULT_ZOOM)}
+        />
+      </XStack>
+
+      <YStack borderRadius="$4" borderWidth={1} borderColor="$borderColor" overflow="hidden">
       <XStack borderBottomWidth={1} borderBottomColor="$borderColor">
         <YStack width={HOUR_LABEL_WIDTH_PX} flexShrink={0} />
         {dayColumns.map((column) => (
@@ -91,10 +118,10 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
       </XStack>
 
       <YStack ref={scrollRef as never} maxHeight={VISIBLE_HEIGHT_PX} overflow="scroll">
-        <XStack height={GRID_HEIGHT_PX}>
+        <XStack height={gridHeightPx}>
           <YStack width={HOUR_LABEL_WIDTH_PX} flexShrink={0}>
             {Array.from({ length: 24 }, (_, hour) => (
-              <YStack key={hour} height={ROW_HEIGHT_PX} paddingLeft="$1" paddingTop="$1">
+              <YStack key={hour} height={rowHeightPx} paddingLeft="$1" paddingTop="$1">
                 <Text fontSize="$1" color="$muted">
                   {String(hour).padStart(2, '0')}:00
                 </Text>
@@ -115,10 +142,10 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
                 <YStack
                   key={hour}
                   position="absolute"
-                  top={hour * ROW_HEIGHT_PX}
+                  top={hour * rowHeightPx}
                   left={0}
                   right={0}
-                  height={ROW_HEIGHT_PX}
+                  height={rowHeightPx}
                   borderTopWidth={1}
                   borderTopColor="rgba(255,255,255,0.06)"
                 />
@@ -174,7 +201,7 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
               {column.isToday ? (
                 <YStack
                   position="absolute"
-                  top={(nowMinute / 60) * ROW_HEIGHT_PX}
+                  top={(nowMinute / 60) * rowHeightPx}
                   left={0}
                   right={0}
                   height={2}
@@ -185,6 +212,7 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
             </YStack>
           ))}
         </XStack>
+      </YStack>
       </YStack>
     </YStack>
   );
