@@ -26,7 +26,6 @@ import { SuggestionsPreview } from '../components/suggestions/SuggestionsPreview
 
 export function CalendarPage() {
   const [session, setSession] = useState<SerotoninSession | null>(null);
-  const [showScheduleManager, setShowScheduleManager] = useState(false);
 
   const calmMode = session?.active ?? false;
   const nextPillar = session ? suggestNextPillar(session.pillars) : null;
@@ -78,27 +77,16 @@ export function CalendarPage() {
               trabajo.
             </Paragraph>
           </YStack>
-          <XStack gap="$2" flexWrap="wrap">
-            <AppButton
-              variant={showScheduleManager ? 'primary' : 'ghost'}
-              data-tutorial="schedule-header"
-              onPress={() => setShowScheduleManager((value) => !value)}
-            >
-              {showScheduleManager ? 'Ocultar horarios' : 'Horarios'}
+          {!session?.active ? (
+            <AppButton variant="primary" onPress={startMode}>
+              Activate Serotonin Mode
             </AppButton>
-            {!session?.active ? (
-              <AppButton variant="primary" onPress={startMode}>
-                Activate Serotonin Mode
-              </AppButton>
-            ) : (
-              <AppButton variant="ghost" onPress={stopMode}>
-                End mode
-              </AppButton>
-            )}
-          </XStack>
+          ) : (
+            <AppButton variant="ghost" onPress={stopMode}>
+              End mode
+            </AppButton>
+          )}
         </XStack>
-
-        {showScheduleManager ? <ScheduleManager /> : null}
 
         <XStack gap="$5" flexWrap="wrap" alignItems="flex-start">
           <YStack flex={2} minWidth={360}>
@@ -106,6 +94,9 @@ export function CalendarPage() {
           </YStack>
 
           <YStack flex={1} minWidth={300} gap="$5">
+            <YStack data-tutorial="schedule-header">
+              <ScheduleManager />
+            </YStack>
             <SuggestionsPreview />
             <YStack data-tutorial="serotonin-mode">
               <SerotoninModePanel

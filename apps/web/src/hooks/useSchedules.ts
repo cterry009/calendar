@@ -33,7 +33,7 @@ function sortSchedules(items: SyncScheduleRecord[]) {
 }
 
 export function useSchedules(): UseSchedulesResult {
-  const { pullSnapshot } = useSync();
+  const { pullSnapshot, notifyEntityChanged } = useSync();
   const [schedules, setSchedules] = useState<SyncScheduleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
@@ -75,6 +75,10 @@ export function useSchedules(): UseSchedulesResult {
       try {
         await syncScheduleBatch(changes);
         await refetch();
+        // Other hooks on the same page (e.g. the calendar's own schedule/task data) won't see
+        // this change until their WebSocket echo arrives (or never, if it raced the socket
+        // connecting) -- notify them directly instead of waiting on that round-trip.
+        notifyEntityChanged('schedules');
       } catch (errorValue) {
         if (errorValue instanceof ApiError) {
           setError(errorValue.message);
@@ -86,7 +90,7 @@ export function useSchedules(): UseSchedulesResult {
         setIsMutating(false);
       }
     },
-    [refetch],
+    [notifyEntityChanged, refetch],
   );
 
   const createSchedule = useCallback(

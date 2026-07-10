@@ -1,18 +1,14 @@
 import { useMemo, useState } from 'react';
 import { AppButton, AppCard, H2, H3, Paragraph, Text, XStack, YStack } from '@calendar/ui';
+import { DayTimeGrid } from './DayTimeGrid';
+import { EVENT_TYPE_COLOR, EVENT_TYPE_LABEL } from './eventStyles';
 import { FitnessForm } from '../fitness/FitnessForm';
 import { TaskForm } from '../tasks/TaskForm';
 import type { CalendarEvent } from '../../lib/calendar/types';
 import { isSameDay } from '../../lib/calendar/utils';
 import type { FitnessFormValues } from '../../lib/fitness/types';
 import type { TaskFormValues } from '../../lib/tasks/types';
-import {
-  MAX_LONG_BREAKS,
-  countSegmentsByType,
-  generateFocusPlan,
-  resolveFocusPlanConfig,
-  type FocusPlanSegment,
-} from '../../lib/pomodoro/planner';
+import { MAX_LONG_BREAKS, countSegmentsByType, generateFocusPlan, resolveFocusPlanConfig } from '../../lib/pomodoro/planner';
 
 interface DayViewProps {
   selectedDate: Date;
@@ -25,39 +21,9 @@ interface DayViewProps {
   isStartingFocus: boolean;
 }
 
-const SEGMENT_LABEL: Record<FocusPlanSegment['type'], string> = {
-  pomodoro: 'Pomodoro',
-  'short-break': 'Descanso corto',
-  'long-break': 'Descanso largo',
-  excluded: 'Almuerzo',
-};
-
-const SEGMENT_COLOR: Record<FocusPlanSegment['type'], string> = {
-  pomodoro: '$success',
-  'short-break': '$muted',
-  'long-break': '$warning',
-  excluded: '$error',
-};
-
 function minuteOfDay(date: Date): number {
   return date.getHours() * 60 + date.getMinutes();
 }
-
-const EVENT_TYPE_LABEL: Record<CalendarEvent['type'], string> = {
-  task: 'Tarea',
-  work: 'Trabajo',
-  rest: 'Descanso',
-  pomodoro: 'Pomodoro',
-  fitness: 'Fitness',
-};
-
-const EVENT_TYPE_COLOR: Record<CalendarEvent['type'], string> = {
-  task: '$accent',
-  work: '$success',
-  rest: '$warning',
-  pomodoro: '$muted',
-  fitness: '$info',
-};
 
 function formatTimeRange(start: Date, end: Date): string {
   const startLabel = start.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
@@ -101,7 +67,7 @@ function EventRow({ event }: { event: CalendarEvent }) {
   );
 }
 
-function FocusPlanTimeline({
+function FocusPlanSummary({
   block,
   isToday,
   onStartFocusSegment,
@@ -147,47 +113,21 @@ function FocusPlanTimeline({
   const pomodoros = countSegmentsByType(plan, 'pomodoro');
 
   return (
-    <YStack gap="$2">
+    <XStack gap="$3" alignItems="center" flexWrap="wrap">
       <Text fontSize="$2" color="$muted">
         Plan automatico: {pomodoros} pomodoros · {longBreaks}/{MAX_LONG_BREAKS} descansos largos
       </Text>
 
-      <XStack gap="$1" flexWrap="wrap">
-        {plan.map((segment, index) => {
-          const isCurrent = segment === currentSegment;
-          return (
-            <YStack
-              key={`${segment.type}-${index}`}
-              paddingHorizontal="$2"
-              paddingVertical="$1"
-              borderRadius="$2"
-              borderWidth={isCurrent ? 2 : 1}
-              borderColor={isCurrent ? '$primary' : SEGMENT_COLOR[segment.type]}
-              backgroundColor={isCurrent ? 'rgba(255,255,255,0.08)' : 'transparent'}
-              minWidth={72}
-            >
-              <Text fontSize="$1" color={SEGMENT_COLOR[segment.type]} fontWeight={isCurrent ? '700' : '400'}>
-                {SEGMENT_LABEL[segment.type]}
-              </Text>
-              <Text fontSize="$1" color="$muted">
-                {segment.endMinute - segment.startMinute} min
-              </Text>
-            </YStack>
-          );
-        })}
-      </XStack>
-
       {currentSegment?.type === 'pomodoro' ? (
         <AppButton
           variant="small"
-          alignSelf="flex-start"
           disabled={isStartingFocus}
           onPress={() => void onStartFocusSegment(currentSegment.endMinute - currentSegment.startMinute)}
         >
           Iniciar pomodoro ({currentSegment.endMinute - currentSegment.startMinute} min)
         </AppButton>
       ) : null}
-    </YStack>
+    </XStack>
   );
 }
 
@@ -244,7 +184,16 @@ export function DayView({
           <Paragraph color="$muted" margin={0}>
             Sin eventos para este dia. Define horarios de trabajo y descanso para empezar a planificar.
           </Paragraph>
-        ) : null}
+        ) : (
+          <DayTimeGrid
+            selectedDate={selectedDate}
+            blocks={blocks}
+            otherEvents={otherEvents}
+            isToday={isSelectedDateToday}
+            onStartFocusSegment={onStartFocusSegment}
+            isStartingFocus={isStartingFocus}
+          />
+        )}
 
         {blocks.map((block) => {
           const items = otherEvents.filter((event) => isWithinBlock(event, block));
@@ -271,7 +220,7 @@ export function DayView({
               </YStack>
 
               {isWork ? (
-                <FocusPlanTimeline
+                <FocusPlanSummary
                   block={block}
                   isToday={isSelectedDateToday}
                   onStartFocusSegment={onStartFocusSegment}
