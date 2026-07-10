@@ -29,7 +29,6 @@ interface PomodoroContextValue {
   start: (taskId?: string | null, overrideConfig?: Partial<PomodoroConfigFormValues>) => Promise<void>;
   cancel: () => Promise<void>;
   reset: () => Promise<void>;
-  updateConfig: (values: PomodoroConfigFormValues) => Promise<void>;
   toggleNotifications: (enabled: boolean) => Promise<void>;
 }
 
@@ -216,30 +215,6 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     await transitionSession({ type: 'RESET' }, false);
   }, [transitionSession]);
 
-  const updateConfig = useCallback(
-    async (values: PomodoroConfigFormValues) => {
-      if (session?.active) {
-        return;
-      }
-
-      const normalized = sanitizeConfig(values);
-      setConfig(normalized);
-
-      if (!session) {
-        return;
-      }
-
-      const nextSession: SyncPomodoroRecord = {
-        ...session,
-        ...normalized,
-        updatedAt: new Date().toISOString(),
-      };
-
-      await persistSession(nextSession, false);
-    },
-    [persistSession, session],
-  );
-
   const toggleNotifications = useCallback(async (enabled: boolean) => {
     if (!enabled) {
       setNotificationsEnabled(false);
@@ -354,7 +329,6 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       start,
       cancel,
       reset,
-      updateConfig,
       toggleNotifications,
     }),
     [
@@ -370,7 +344,6 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       start,
       syncedAt,
       cancel,
-      updateConfig,
       toggleNotifications,
     ],
   );

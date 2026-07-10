@@ -240,6 +240,41 @@ export function countSegmentsByType(plan: FocusPlanSegment[], type: FocusSegment
   return plan.filter((segment) => segment.type === type).length;
 }
 
+export interface SchedulePlanFields {
+  startMinute: number;
+  endMinute: number;
+  pomodoroMin: number | null;
+  shortBreakMin: number | null;
+  longBreakMin: number | null;
+  pomodorosPerChunk: number | null;
+  chunks: number | null;
+}
+
+/**
+ * Resolves a WORK schedule's stored (possibly null, for schedules saved before this feature)
+ * plan fields into a concrete FocusPlanConfig -- the single source of truth used both to render
+ * the calendar's Day view timeline and to decide when a pomodoro should auto-start.
+ */
+export function resolveFocusPlanConfig(schedule: SchedulePlanFields): FocusPlanConfig {
+  const pomodoroMin = schedule.pomodoroMin ?? estimateFocusDurationMin(loadFocusFeedbackHistory());
+  const shortBreakMin = schedule.shortBreakMin ?? DEFAULT_SHORT_BREAK_MIN;
+  const longBreakMin = schedule.longBreakMin ?? DEFAULT_LONG_BREAK_MIN;
+  const pomodorosPerChunk = schedule.pomodorosPerChunk ?? DEFAULT_POMODOROS_PER_CHUNK;
+  const chunks =
+    schedule.chunks ??
+    Math.max(
+      1,
+      computeMaxChunks(availableFocusMinutes(schedule.startMinute, schedule.endMinute), {
+        pomodoroMin,
+        shortBreakMin,
+        longBreakMin,
+        pomodorosPerChunk,
+      }),
+    );
+
+  return { pomodoroMin, shortBreakMin, longBreakMin, pomodorosPerChunk, chunks };
+}
+
 // ─── Adaptive pomodoro-length estimate from self-reported concentration ──────
 
 const FEEDBACK_STORAGE_KEY = 'calendar:focus-feedback-history';

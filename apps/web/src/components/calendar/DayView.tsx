@@ -7,16 +7,10 @@ import { isSameDay } from '../../lib/calendar/utils';
 import type { FitnessFormValues } from '../../lib/fitness/types';
 import type { TaskFormValues } from '../../lib/tasks/types';
 import {
-  DEFAULT_LONG_BREAK_MIN,
-  DEFAULT_POMODOROS_PER_CHUNK,
-  DEFAULT_SHORT_BREAK_MIN,
   MAX_LONG_BREAKS,
-  availableFocusMinutes,
-  computeMaxChunks,
   countSegmentsByType,
-  estimateFocusDurationMin,
   generateFocusPlan,
-  loadFocusFeedbackHistory,
+  resolveFocusPlanConfig,
   type FocusPlanSegment,
 } from '../../lib/pomodoro/planner';
 
@@ -118,28 +112,27 @@ function FocusPlanTimeline({
   onStartFocusSegment: (focusDurationMin: number) => Promise<void>;
   isStartingFocus: boolean;
 }) {
-  const planConfig = useMemo(() => {
-    const base = {
-      pomodoroMin: block.meta?.pomodoroMin ?? estimateFocusDurationMin(loadFocusFeedbackHistory()),
-      shortBreakMin: block.meta?.shortBreakMin ?? DEFAULT_SHORT_BREAK_MIN,
-      longBreakMin: block.meta?.longBreakMin ?? DEFAULT_LONG_BREAK_MIN,
-      pomodorosPerChunk: block.meta?.pomodorosPerChunk ?? DEFAULT_POMODOROS_PER_CHUNK,
-    };
-
-    const chunks =
-      block.meta?.chunks ??
-      Math.max(1, computeMaxChunks(availableFocusMinutes(minuteOfDay(block.start), minuteOfDay(block.end)), base));
-
-    return { ...base, chunks };
-  }, [
-    block.meta?.pomodoroMin,
-    block.meta?.shortBreakMin,
-    block.meta?.longBreakMin,
-    block.meta?.pomodorosPerChunk,
-    block.meta?.chunks,
-    block.start,
-    block.end,
-  ]);
+  const planConfig = useMemo(
+    () =>
+      resolveFocusPlanConfig({
+        startMinute: minuteOfDay(block.start),
+        endMinute: minuteOfDay(block.end),
+        pomodoroMin: block.meta?.pomodoroMin ?? null,
+        shortBreakMin: block.meta?.shortBreakMin ?? null,
+        longBreakMin: block.meta?.longBreakMin ?? null,
+        pomodorosPerChunk: block.meta?.pomodorosPerChunk ?? null,
+        chunks: block.meta?.chunks ?? null,
+      }),
+    [
+      block.meta?.pomodoroMin,
+      block.meta?.shortBreakMin,
+      block.meta?.longBreakMin,
+      block.meta?.pomodorosPerChunk,
+      block.meta?.chunks,
+      block.start,
+      block.end,
+    ],
+  );
 
   const plan = useMemo(
     () => generateFocusPlan(minuteOfDay(block.start), minuteOfDay(block.end), planConfig),

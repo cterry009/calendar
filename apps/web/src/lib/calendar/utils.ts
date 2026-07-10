@@ -203,20 +203,29 @@ export function buildEventsForRange(
   );
 }
 
+export function findActiveWorkSchedule<T extends Pick<SyncSchedule, 'kind' | 'dayOfWeek' | 'startMinute' | 'endMinute' | 'enabled'>>(
+  schedules: T[],
+  now: Date,
+): T | null {
+  const nowMinute = now.getHours() * 60 + now.getMinutes();
+  const day = now.getDay();
+  return (
+    schedules.find(
+      (schedule) =>
+        schedule.enabled &&
+        schedule.kind === 'WORK' &&
+        schedule.dayOfWeek === day &&
+        nowMinute >= schedule.startMinute &&
+        nowMinute < schedule.endMinute,
+    ) ?? null
+  );
+}
+
 export function isNowWithinWorkSchedule(
   schedules: Array<Pick<SyncSchedule, 'kind' | 'dayOfWeek' | 'startMinute' | 'endMinute' | 'enabled'>>,
   now: Date,
 ): boolean {
-  const nowMinute = now.getHours() * 60 + now.getMinutes();
-  const day = now.getDay();
-  return schedules.some(
-    (schedule) =>
-      schedule.enabled &&
-      schedule.kind === 'WORK' &&
-      schedule.dayOfWeek === day &&
-      nowMinute >= schedule.startMinute &&
-      nowMinute < schedule.endMinute,
-  );
+  return findActiveWorkSchedule(schedules, now) !== null;
 }
 
 export function eventsForDate(events: CalendarEvent[], date: Date): CalendarEvent[] {

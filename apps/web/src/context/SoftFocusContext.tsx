@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSchedules } from '../hooks/useSchedules';
-import { isNowWithinWorkSchedule } from '../lib/calendar/utils';
+import { findActiveWorkSchedule, isNowWithinWorkSchedule } from '../lib/calendar/utils';
+import { generateFocusPlan, resolveFocusPlanConfig } from '../lib/pomodoro/planner';
 import { usePomodoro } from './PomodoroContext';
 
 interface ManualSoftFocusState {
@@ -120,6 +121,46 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
       setWorkHoursDismissed(false);
     }
   }, [rawIsWorkHoursActive, workHoursDismissed]);
+
+  // Pomodoros activate on their own: whenever "now" lands inside a pomodoro segment of the
+  // active WORK schedule's auto-plan, start a session for it -- no manual "Iniciar" needed.
+  // A ref (not state) tracks the last segment we already started, so this only fires once per
+  // segment instead of on every tick, and a manual cancel during that segment isn't overridden.
+  const autoStartedSegmentKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (pomodoro.session?.active) return;
+
+    const nowDate = new Date(now);
+    const activeSchedule = findActiveWorkSchedule(schedules, nowDate);
+    if (!activeSchedule) return;
+
+    const config = resolveFocusPlanConfig({
+      startMinute: activeSchedule.startMinute,
+      endMinute: activeSchedule.endMinute,
+      pomodoroMin: activeSchedule.pomodoroMin,
+      shortBreakMin: activeSchedule.shortBreakMin,
+      longBreakMin: activeSchedule.longBreakMin,
+      pomodorosPerChunk: activeSchedule.pomodorosPerChunk,
+      chunks: activeSchedule.chunks,
+    });
+
+    const plan = generateFocusPlan(activeSchedule.startMinute, activeSchedule.endMinute, config);
+    const nowMinute = nowDate.getHours() * 60 + nowDate.getMinutes();
+    const currentSegment = plan.find((segment) => nowMinute >= segment.startMinute && nowMinute < segment.endMinute);
+    if (!currentSegment || currentSegment.type !== 'pomodoro') return;
+
+    const segmentKey = `${activeSchedule.id}-${nowDate.toDateString()}-${currentSegment.startMinute}`;
+    if (autoStartedSegmentKeyRef.current === segmentKey) return;
+
+    autoStartedSegmentKeyRef.current = segmentKey;
+    void pomodoro.start(undefined, {
+      focusDurationMin: currentSegment.endMinute - currentSegment.startMinute,
+      shortBreakMin: config.shortBreakMin,
+      longBreakMin: config.longBreakMin,
+      cyclesBeforeLongBreak: config.pomodorosPerChunk,
+    });
+  }, [now, pomodoro, schedules]);
 
   const isWorkHoursActive = rawIsWorkHoursActive && !workHoursDismissed;
 

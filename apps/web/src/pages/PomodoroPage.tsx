@@ -124,7 +124,6 @@ export function PomodoroPage() {
         onStart={pomodoro.start}
         onCancel={pomodoro.cancel}
         onReset={pomodoro.reset}
-        onUpdateConfig={pomodoro.updateConfig}
         onToggleNotifications={pomodoro.toggleNotifications}
       />
     </YStack>
