@@ -148,7 +148,7 @@ model Schedule {
   id          String       @id @default(cuid())
   userId      String
   kind        ScheduleKind
-  dayOfWeek   Int // 0 = Sunday … 6 = Saturday
+  daysOfWeek  Int[] // 0 = Sunday … 6 = Saturday; days this recurring schedule applies to
   startMinute Int // minutes from midnight (0–1439)
   endMinute   Int
   label       String?

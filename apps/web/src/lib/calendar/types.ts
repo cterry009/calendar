@@ -26,7 +26,7 @@ export interface SyncTask {
 export interface SyncSchedule {
   id: string;
   kind: 'WORK' | 'REST';
-  dayOfWeek: number;
+  daysOfWeek: number[];
   startMinute: number;
   endMinute: number;
   label: string | null;

@@ -13,7 +13,7 @@ interface DetoxScheduleProposalsProps {
 function toFormValues(proposal: DetoxScheduleProposal): ScheduleFormValues {
   return {
     kind: proposal.kind,
-    dayOfWeek: proposal.dayOfWeek,
+    daysOfWeek: [proposal.dayOfWeek],
     startMinute: proposal.startMinute,
     endMinute: proposal.endMinute,
     label: proposal.label,

@@ -31,7 +31,7 @@ interface ScheduleFormProps {
   mode: 'create' | 'edit';
   initialSchedule?: SyncScheduleRecord;
   isSubmitting: boolean;
-  onSubmit: (valuesList: ScheduleFormValues[]) => Promise<void>;
+  onSubmit: (values: ScheduleFormValues) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -74,7 +74,7 @@ function defaultDraft(schedule?: SyncScheduleRecord): ScheduleFormDraft {
 
   return {
     kind: schedule?.kind ?? 'WORK',
-    dayOfWeeks: [schedule?.dayOfWeek ?? 1],
+    dayOfWeeks: schedule?.daysOfWeek ?? [1],
     startTime: minuteToTimeValue(startMinute),
     endTime: minuteToTimeValue(endMinute),
     label: schedule?.label ?? '',
@@ -140,11 +140,6 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
   }
 
   function toggleDay(day: number) {
-    if (mode === 'edit') {
-      setField('dayOfWeeks', [day]);
-      return;
-    }
-
     setDraft((current) => {
       const isSelected = current.dayOfWeeks.includes(day);
       if (isSelected) {
@@ -226,17 +221,15 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
       planFields = { pomodoroMin: null, shortBreakMin: null, longBreakMin: null, pomodorosPerChunk: null, chunks: null };
     }
 
-    await onSubmit(
-      draft.dayOfWeeks.map((dayOfWeek) => ({
-        kind: draft.kind,
-        dayOfWeek,
-        startMinute,
-        endMinute,
-        label: draft.label.trim() || null,
-        enabled: draft.enabled,
-        ...planFields,
-      })),
-    );
+    await onSubmit({
+      kind: draft.kind,
+      daysOfWeek: draft.dayOfWeeks,
+      startMinute,
+      endMinute,
+      label: draft.label.trim() || null,
+      enabled: draft.enabled,
+      ...planFields,
+    });
   }
 
   return (
@@ -263,12 +256,10 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
         </YStack>
 
         <YStack gap="$2">
-          <Paragraph margin={0}>{mode === 'create' ? 'Dias de la semana' : 'Dia de la semana'}</Paragraph>
-          {mode === 'create' ? (
-            <Paragraph margin={0} size="$2" color="$muted">
-              Selecciona uno o mas dias: se creara este mismo horario para cada dia elegido.
-            </Paragraph>
-          ) : null}
+          <Paragraph margin={0}>Dias de la semana</Paragraph>
+          <Paragraph margin={0} size="$2" color="$muted">
+            Selecciona uno o mas dias: este horario se aplicara a todos los dias elegidos como un unico bloque.
+          </Paragraph>
           <XStack gap="$2" flexWrap="wrap">
             {DAY_NAMES_ES.map((dayName, index) => (
               <AppButton
@@ -464,13 +455,7 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
             Cancelar
           </AppButton>
           <AppButton type="submit" variant="primary" disabled={isSubmitting}>
-            {isSubmitting
-              ? 'Guardando...'
-              : mode === 'create'
-                ? draft.dayOfWeeks.length > 1
-                  ? `Crear ${draft.dayOfWeeks.length} horarios`
-                  : 'Crear horario'
-                : 'Guardar cambios'}
+            {isSubmitting ? 'Guardando...' : mode === 'create' ? 'Crear horario' : 'Guardar cambios'}
           </AppButton>
         </XStack>
       </YStack>

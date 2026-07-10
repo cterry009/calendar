@@ -30,7 +30,7 @@ describe('zod schemas', () => {
   it('validates schedule windows', () => {
     const parsed = CreateScheduleSchema.parse({
       kind: 'WORK',
-      dayOfWeek: 1,
+      daysOfWeek: [1, 3, 5],
       startMinute: 540,
       endMinute: 1020,
     });

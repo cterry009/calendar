@@ -3,23 +3,23 @@ import { AppButton, AppCard, H2, Paragraph, XStack, YStack } from '@calendar/ui'
 import { ScheduleForm } from './ScheduleForm';
 import { ScheduleList } from './ScheduleList';
 import { useSchedules } from '../../hooks/useSchedules';
-import type { SyncScheduleRecord } from '../../lib/schedules/types';
+import type { ScheduleFormValues, SyncScheduleRecord } from '../../lib/schedules/types';
 
 export function ScheduleManager() {
-  const { schedules, isLoading, isMutating, error, syncedAt, refetch, createSchedules, updateSchedule, deleteSchedule } =
+  const { schedules, isLoading, isMutating, error, syncedAt, refetch, createSchedule, updateSchedule, deleteSchedule } =
     useSchedules();
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<SyncScheduleRecord | null>(null);
 
-  async function handleCreate(valuesList: Parameters<typeof createSchedules>[0]) {
-    await createSchedules(valuesList);
+  async function handleCreate(values: ScheduleFormValues) {
+    await createSchedule(values);
     setShowCreateForm(false);
   }
 
-  async function handleUpdate(valuesList: Parameters<typeof updateSchedule>[1][]) {
-    if (!editingSchedule || valuesList.length === 0) return;
-    await updateSchedule(editingSchedule.id, valuesList[0]);
+  async function handleUpdate(values: ScheduleFormValues) {
+    if (!editingSchedule) return;
+    await updateSchedule(editingSchedule.id, values);
     setEditingSchedule(null);
   }
 

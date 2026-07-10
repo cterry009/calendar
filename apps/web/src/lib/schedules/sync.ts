@@ -6,7 +6,7 @@ export interface ScheduleSyncChangeDto {
   updatedAt: string;
   deleted?: boolean;
   kind?: ScheduleFormValues['kind'];
-  dayOfWeek?: number;
+  daysOfWeek?: number[];
   startMinute?: number;
   endMinute?: number;
   label?: string;
@@ -26,7 +26,7 @@ interface SyncBatchResponse {
 function buildUpsertPayload(values: ScheduleFormValues): Omit<ScheduleSyncChangeDto, 'id' | 'updatedAt'> {
   return {
     kind: values.kind,
-    dayOfWeek: values.dayOfWeek,
+    daysOfWeek: values.daysOfWeek,
     startMinute: values.startMinute,
     endMinute: values.endMinute,
     label: values.label?.trim() || undefined,
@@ -73,7 +73,7 @@ export function buildDeleteSchedulePayload(scheduleId: string): ScheduleSyncChan
 export function mapSyncSchedule(schedule: SyncScheduleRecord): ScheduleFormValues {
   return {
     kind: schedule.kind,
-    dayOfWeek: schedule.dayOfWeek,
+    daysOfWeek: schedule.daysOfWeek,
     startMinute: schedule.startMinute,
     endMinute: schedule.endMinute,
     label: schedule.label,

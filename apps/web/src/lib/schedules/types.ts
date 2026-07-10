@@ -3,7 +3,7 @@
 export interface SyncScheduleRecord {
   id: string;
   kind: ScheduleKind;
-  dayOfWeek: number;
+  daysOfWeek: number[];
   startMinute: number;
   endMinute: number;
   label: string | null;
@@ -17,7 +17,7 @@ export interface SyncScheduleRecord {
 
 export interface ScheduleFormValues {
   kind: ScheduleKind;
-  dayOfWeek: number;
+  daysOfWeek: number[];
   startMinute: number;
   endMinute: number;
   label: string | null;

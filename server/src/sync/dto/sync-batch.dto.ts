@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -109,10 +110,12 @@ export class ScheduleSyncChangeDto {
   kind?: ScheduleKind;
 
   @ValidateIf((item) => !item.deleted)
-  @IsInt()
-  @Min(0)
-  @Max(6)
-  dayOfWeek?: number;
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  daysOfWeek?: number[];
 
   @ValidateIf((item) => !item.deleted)
   @IsInt()

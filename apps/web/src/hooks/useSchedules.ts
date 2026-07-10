@@ -18,14 +18,18 @@ interface UseSchedulesResult {
   syncedAt: string | null;
   refetch: () => Promise<void>;
   createSchedule: (values: ScheduleFormValues) => Promise<void>;
-  createSchedules: (valuesList: ScheduleFormValues[]) => Promise<void>;
   updateSchedule: (scheduleId: string, values: ScheduleFormValues) => Promise<void>;
   deleteSchedule: (scheduleId: string) => Promise<void>;
 }
 
+function earliestDay(daysOfWeek: number[]): number {
+  return Math.min(...daysOfWeek);
+}
+
 function sortSchedules(items: SyncScheduleRecord[]) {
   return [...items].sort((a, b) => {
-    if (a.dayOfWeek !== b.dayOfWeek) return a.dayOfWeek - b.dayOfWeek;
+    const dayDiff = earliestDay(a.daysOfWeek) - earliestDay(b.daysOfWeek);
+    if (dayDiff !== 0) return dayDiff;
     if (a.startMinute !== b.startMinute) return a.startMinute - b.startMinute;
     if (a.kind !== b.kind) return a.kind === 'WORK' ? -1 : 1;
     return a.id.localeCompare(b.id);
@@ -100,13 +104,6 @@ export function useSchedules(): UseSchedulesResult {
     [executeMutation],
   );
 
-  const createSchedules = useCallback(
-    async (valuesList: ScheduleFormValues[]) => {
-      await executeMutation(valuesList.map((values) => buildCreateSchedulePayload(values)));
-    },
-    [executeMutation],
-  );
-
   const updateSchedule = useCallback(
     async (scheduleId: string, values: ScheduleFormValues) => {
       await executeMutation([buildUpdateSchedulePayload(scheduleId, values)]);
@@ -130,13 +127,11 @@ export function useSchedules(): UseSchedulesResult {
       syncedAt,
       refetch,
       createSchedule,
-      createSchedules,
       updateSchedule,
       deleteSchedule,
     }),
     [
       createSchedule,
-      createSchedules,
       deleteSchedule,
       error,
       isLoading,

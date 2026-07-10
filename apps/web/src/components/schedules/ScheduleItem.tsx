@@ -1,6 +1,15 @@
 ﻿import { AppButton, AppCard, Paragraph, Text, XStack, YStack } from '@calendar/ui';
-import { DAY_NAMES_ES, SCHEDULE_KIND_LABELS, SCHEDULE_STATUS_LABELS } from '../../lib/schedules/labels';
+import { SCHEDULE_KIND_LABELS, SCHEDULE_STATUS_LABELS } from '../../lib/schedules/labels';
 import { minuteToTimeValue, type SyncScheduleRecord } from '../../lib/schedules/types';
+
+const DAY_ABBREVIATIONS_ES = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+
+function formatDaysOfWeek(daysOfWeek: number[]): string {
+  return [...daysOfWeek]
+    .sort((a, b) => a - b)
+    .map((day) => DAY_ABBREVIATIONS_ES[day])
+    .join(', ');
+}
 
 interface ScheduleItemProps {
   schedule: SyncScheduleRecord;
@@ -37,7 +46,7 @@ export function ScheduleItem({ schedule, isBusy, onEdit, onDelete }: ScheduleIte
               {schedule.label?.trim() || `${SCHEDULE_KIND_LABELS[schedule.kind]} recurrente`}
             </Paragraph>
             <Paragraph margin={0} color="$muted">
-              {DAY_NAMES_ES[schedule.dayOfWeek]} · {startLabel} - {endLabel}
+              {formatDaysOfWeek(schedule.daysOfWeek)} · {startLabel} - {endLabel}
             </Paragraph>
           </YStack>
 

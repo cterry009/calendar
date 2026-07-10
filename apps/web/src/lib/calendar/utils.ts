@@ -144,7 +144,7 @@ function scheduleEventsForRange(
     const current = startOfDay(cursor);
 
     for (const schedule of schedules) {
-      if (!schedule.enabled || schedule.dayOfWeek !== current.getDay()) continue;
+      if (!schedule.enabled || !schedule.daysOfWeek.includes(current.getDay())) continue;
 
       const start = minuteToDate(current, schedule.startMinute);
       const end = minuteToDate(current, schedule.endMinute);
@@ -203,7 +203,7 @@ export function buildEventsForRange(
   );
 }
 
-export function findActiveWorkSchedule<T extends Pick<SyncSchedule, 'kind' | 'dayOfWeek' | 'startMinute' | 'endMinute' | 'enabled'>>(
+export function findActiveWorkSchedule<T extends Pick<SyncSchedule, 'kind' | 'daysOfWeek' | 'startMinute' | 'endMinute' | 'enabled'>>(
   schedules: T[],
   now: Date,
 ): T | null {
@@ -214,7 +214,7 @@ export function findActiveWorkSchedule<T extends Pick<SyncSchedule, 'kind' | 'da
       (schedule) =>
         schedule.enabled &&
         schedule.kind === 'WORK' &&
-        schedule.dayOfWeek === day &&
+        schedule.daysOfWeek.includes(day) &&
         nowMinute >= schedule.startMinute &&
         nowMinute < schedule.endMinute,
     ) ?? null
@@ -222,7 +222,7 @@ export function findActiveWorkSchedule<T extends Pick<SyncSchedule, 'kind' | 'da
 }
 
 export function isNowWithinWorkSchedule(
-  schedules: Array<Pick<SyncSchedule, 'kind' | 'dayOfWeek' | 'startMinute' | 'endMinute' | 'enabled'>>,
+  schedules: Array<Pick<SyncSchedule, 'kind' | 'daysOfWeek' | 'startMinute' | 'endMinute' | 'enabled'>>,
   now: Date,
 ): boolean {
   return findActiveWorkSchedule(schedules, now) !== null;
