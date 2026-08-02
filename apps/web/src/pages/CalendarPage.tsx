@@ -18,9 +18,10 @@ import {
   suggestNextPillar,
   suggestNextRitual,
 } from '@calendar/shared';
-import { AppButton, AppCard, Eyebrow, H1, Paragraph, XStack, YStack } from '@calendar/ui';
+import { AppButton, AppCard, XStack, YStack } from '@calendar/ui';
 import { CalendarPanel } from '../components/calendar/CalendarPanel';
 import { MiniMonthCalendar } from '../components/calendar/MiniMonthCalendar';
+import { PageHeader } from '../components/PageHeader';
 import type { CalendarViewMode } from '../lib/calendar/types';
 import { startOfDay } from '../lib/calendar/utils';
 import { ScheduleManager } from '../components/schedules/ScheduleManager';
@@ -71,28 +72,24 @@ export function CalendarPage() {
   return (
     <Theme name={calmMode ? 'calm' : 'dark'}>
       <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
-        <XStack justifyContent="space-between" alignItems="flex-start" gap="$4" flexWrap="wrap">
-          <YStack maxWidth={700} data-tutorial="calendar-hero">
-            <Eyebrow>Planificacion</Eyebrow>
-            <H1 marginTop={0} marginBottom="$2">
-              Calendario de productividad
-            </H1>
-            <Paragraph color="$muted" margin={0}>
-              Tus horarios de trabajo y descanso son la base: crea tareas desde un bloque de trabajo, registra
-              fitness desde un descanso, y el bloqueo de distracciones se activa automaticamente durante el
-              trabajo.
-            </Paragraph>
-          </YStack>
-          {!session?.active ? (
-            <AppButton variant="primary" onPress={startMode}>
-              Activate Serotonin Mode
-            </AppButton>
-          ) : (
-            <AppButton variant="ghost" onPress={stopMode}>
-              End mode
-            </AppButton>
-          )}
-        </XStack>
+        <PageHeader
+          eyebrow="Planificacion"
+          title="Calendario de productividad"
+          description="Tus horarios de trabajo y descanso son la base: crea tareas desde un bloque de trabajo, registra fitness desde un descanso, y el bloqueo de distracciones se activa automaticamente durante el trabajo."
+          tutorialId="calendar-hero"
+          maxWidth={700}
+          actions={
+            !session?.active ? (
+              <AppButton variant="primary" onPress={startMode}>
+                Activate Serotonin Mode
+              </AppButton>
+            ) : (
+              <AppButton variant="ghost" onPress={stopMode}>
+                End mode
+              </AppButton>
+            )
+          }
+        />
 
         <XStack gap="$5" flexWrap="wrap" alignItems="flex-start">
           <YStack flex={2} minWidth={360}>

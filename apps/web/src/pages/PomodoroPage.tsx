@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AppButton, AppCard, Eyebrow, H1, Paragraph, XStack, YStack } from '@calendar/ui';
+import { AppButton, AppCard, Paragraph, XStack, YStack } from '@calendar/ui';
+import { PageHeader } from '../components/PageHeader';
 import { PomodoroTimer } from '../components/pomodoro/PomodoroTimer';
 import { usePomodoro } from '../context/PomodoroContext';
 import { useSoftFocus } from '../context/SoftFocusContext';
@@ -46,15 +47,11 @@ export function PomodoroPage() {
 
   return (
     <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
-      <YStack maxWidth={760}>
-        <Eyebrow>Productividad</Eyebrow>
-        <H1 marginTop={0} marginBottom="$2">
-          Temporizador pomodoro
-        </H1>
-        <Paragraph color="$muted" margin={0}>
-          Vincula tus ciclos de enfoque y descanso a una tarea para mejorar trazabilidad y consistencia.
-        </Paragraph>
-      </YStack>
+      <PageHeader
+        eyebrow="Productividad"
+        title="Temporizador pomodoro"
+        description="Vincula tus ciclos de enfoque y descanso a una tarea para mejorar trazabilidad y consistencia."
+      />
 
       <AppCard>
         <YStack gap="$3">

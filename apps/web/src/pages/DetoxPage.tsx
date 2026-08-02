@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { PILLAR_LABELS, RITUAL_LABELS, getDetoxDayPlan } from '@calendar/shared';
-import { AppButton, AppCard, Eyebrow, H1, Paragraph, Text, XStack, YStack } from '@calendar/ui';
+import { AppButton, AppCard, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { BaselineAuditForm } from '../components/detox/BaselineAuditForm';
 import { DetoxDayChecklist } from '../components/detox/DetoxDayChecklist';
 import { DetoxPhaseProgress } from '../components/detox/DetoxPhaseProgress';
 import { DetoxScheduleProposals } from '../components/detox/DetoxScheduleProposals';
+import { PageHeader } from '../components/PageHeader';
+import { StatusCard } from '../components/StatusCard';
 import { useDetoxPlan } from '../hooks/useDetoxPlan';
 import { useSchedules } from '../hooks/useSchedules';
 import { useSyncStatusMessage } from '../hooks/useSyncRefetch';
@@ -35,37 +37,19 @@ export function DetoxPage() {
 
   return (
     <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
-      <YStack maxWidth={760} data-tutorial="detox-header">
-        <Eyebrow>Bienestar digital</Eyebrow>
-        <H1 marginTop={0} marginBottom="$2">
-          Plan de desintoxicacion serotoninergica
-        </H1>
-        <Paragraph color="$muted" margin={0}>
-          Programa de 7 dias con fases de auditoria, reduccion selectiva, reintroduccion con limites y
-          mantenimiento. Conecta con el Modo Serotonina y horarios de intensidad diferenciada.
-        </Paragraph>
-      </YStack>
+      <PageHeader
+        eyebrow="Bienestar digital"
+        title="Plan de desintoxicacion serotoninergica"
+        description="Programa de 7 dias con fases de auditoria, reduccion selectiva, reintroduccion con limites y mantenimiento. Conecta con el Modo Serotonina y horarios de intensidad diferenciada."
+        tutorialId="detox-header"
+      />
 
-      {syncStatus ? (
-        <AppCard>
-          <Paragraph margin={0} color="$muted">
-            {syncStatus}
-          </Paragraph>
-        </AppCard>
-      ) : null}
+      {syncStatus ? <StatusCard tone="muted" message={syncStatus} /> : null}
 
-      {error ? (
-        <AppCard>
-          <Paragraph color="$error" margin={0}>
-            {error}
-          </Paragraph>
-        </AppCard>
-      ) : null}
+      {error ? <StatusCard tone="error" message={error} /> : null}
 
       {isLoading ? (
-        <AppCard>
-          <Paragraph margin={0}>Cargando plan...</Paragraph>
-        </AppCard>
+        <StatusCard tone="loading" message="Cargando plan..." />
       ) : !plan ? (
         <AppCard>
           <YStack gap="$3">

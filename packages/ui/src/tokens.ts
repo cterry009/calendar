@@ -4,7 +4,9 @@ export const palette = {
   background: '#0f1419',
   backgroundCalm: '#121a22',
   surface: '#1a2332',
+  surfaceHover: '#212d40',
   surfaceCalm: '#1c2836',
+  surfaceHoverCalm: '#223347',
   text: '#e8eef4',
   textMuted: '#8b9cb3',
   accent: '#5b9fd4',
@@ -13,6 +15,8 @@ export const palette = {
   success: '#4caf82',
   border: 'rgba(255,255,255,0.06)',
   borderCalm: 'rgba(126,184,162,0.25)',
+  // Tinted shadow instead of flat black — carries the background's blue hue.
+  shadow: 'rgba(8,14,24,0.45)',
 } as const;
 
 export const space = {
@@ -58,8 +62,10 @@ export const calendarThemes = {
     accent: palette.accent,
     accentBackground: palette.accentSoft,
     surface: palette.surface,
+    surfaceHover: palette.surfaceHover,
     muted: palette.textMuted,
     success: palette.success,
+    shadowColor: palette.shadow,
   },
   calm: {
     background: palette.backgroundCalm,
@@ -74,8 +80,10 @@ export const calendarThemes = {
     accent: palette.accentCalm,
     accentBackground: 'rgba(126,184,162,0.15)',
     surface: palette.surfaceCalm,
+    surfaceHover: palette.surfaceHoverCalm,
     muted: palette.textMuted,
     success: palette.success,
+    shadowColor: palette.shadow,
   },
 } as const;
 
