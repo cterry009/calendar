@@ -6,11 +6,16 @@ export interface ScheduleSyncChangeDto {
   updatedAt: string;
   deleted?: boolean;
   kind?: ScheduleFormValues['kind'];
-  dayOfWeek?: number;
+  daysOfWeek?: number[];
   startMinute?: number;
   endMinute?: number;
   label?: string;
   enabled?: boolean;
+  pomodoroMin?: number;
+  shortBreakMin?: number;
+  longBreakMin?: number;
+  pomodorosPerChunk?: number;
+  chunks?: number;
 }
 
 interface SyncBatchResponse {
@@ -21,11 +26,16 @@ interface SyncBatchResponse {
 function buildUpsertPayload(values: ScheduleFormValues): Omit<ScheduleSyncChangeDto, 'id' | 'updatedAt'> {
   return {
     kind: values.kind,
-    dayOfWeek: values.dayOfWeek,
+    daysOfWeek: values.daysOfWeek,
     startMinute: values.startMinute,
     endMinute: values.endMinute,
     label: values.label?.trim() || undefined,
     enabled: values.enabled,
+    pomodoroMin: values.pomodoroMin ?? undefined,
+    shortBreakMin: values.shortBreakMin ?? undefined,
+    longBreakMin: values.longBreakMin ?? undefined,
+    pomodorosPerChunk: values.pomodorosPerChunk ?? undefined,
+    chunks: values.chunks ?? undefined,
   };
 }
 
@@ -63,10 +73,15 @@ export function buildDeleteSchedulePayload(scheduleId: string): ScheduleSyncChan
 export function mapSyncSchedule(schedule: SyncScheduleRecord): ScheduleFormValues {
   return {
     kind: schedule.kind,
-    dayOfWeek: schedule.dayOfWeek,
+    daysOfWeek: schedule.daysOfWeek,
     startMinute: schedule.startMinute,
     endMinute: schedule.endMinute,
     label: schedule.label,
     enabled: schedule.enabled,
+    pomodoroMin: schedule.pomodoroMin,
+    shortBreakMin: schedule.shortBreakMin,
+    longBreakMin: schedule.longBreakMin,
+    pomodorosPerChunk: schedule.pomodorosPerChunk,
+    chunks: schedule.chunks,
   };
 }

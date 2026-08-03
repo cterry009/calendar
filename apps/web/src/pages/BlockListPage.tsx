@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AppButton, AppCard, Eyebrow, H1, Paragraph, XStack, YStack } from '@calendar/ui';
+import { AppButton, AppCard, Paragraph, XStack, YStack } from '@calendar/ui';
 import { BlockListForm } from '../components/blocklist/BlockListForm';
 import { BlockListList } from '../components/blocklist/BlockListList';
+import { PageHeader } from '../components/PageHeader';
+import { StatusCard } from '../components/StatusCard';
 import { useBlockList } from '../hooks/useBlockList';
 import type { SyncBlockListRecord } from '../lib/blocklist/types';
 
 export function BlockListPage() {
-  const navigate = useNavigate();
   const {
     entries,
     isLoading,
@@ -25,27 +25,12 @@ export function BlockListPage() {
 
   return (
     <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
-      <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$4">
-        <YStack maxWidth={760} data-tutorial="blocklist-header">
-          <Eyebrow>Enfoque</Eyebrow>
-          <H1 marginTop={0} marginBottom="$2">
-            Lista de distracciones
-          </H1>
-          <Paragraph color="$muted" margin={0}>
-            Gestiona apps, sitios y programas de escritorio que quieres bloquear durante pomodoros, tareas de foco o
-            modo serotonina. Los clientes nativos aplican estas reglas en el sistema operativo.
-          </Paragraph>
-        </YStack>
-
-        <XStack gap="$2" flexWrap="wrap">
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/pomodoro')}>
-            Pomodoro
-          </AppButton>
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/')}>
-            Inicio
-          </AppButton>
-        </XStack>
-      </XStack>
+      <PageHeader
+        eyebrow="Enfoque"
+        title="Lista de distracciones"
+        description="Gestiona apps, sitios y programas de escritorio que quieres bloquear durante pomodoros, bloques de trabajo del calendario o modo serotonina. Los clientes nativos aplican estas reglas en el sistema operativo."
+        tutorialId="blocklist-header"
+      />
 
       <AppCard>
         <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
@@ -66,13 +51,7 @@ export function BlockListPage() {
         </XStack>
       </AppCard>
 
-      {error ? (
-        <AppCard>
-          <Paragraph color="$error" margin={0}>
-            {error}
-          </Paragraph>
-        </AppCard>
-      ) : null}
+      {error ? <StatusCard tone="error" message={error} /> : null}
 
       {showCreateForm ? (
         <BlockListForm
@@ -100,9 +79,7 @@ export function BlockListPage() {
       ) : null}
 
       {isLoading ? (
-        <AppCard>
-          <Paragraph margin={0}>Cargando lista de bloqueo...</Paragraph>
-        </AppCard>
+        <StatusCard tone="loading" message="Cargando lista de bloqueo..." />
       ) : (
         <BlockListList
           entries={entries}

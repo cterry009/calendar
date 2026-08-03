@@ -210,6 +210,7 @@ export class SyncService {
       description: change.description ?? null,
       scheduledAt: change.scheduledAt ? new Date(change.scheduledAt) : null,
       estimatedMinutes: change.estimatedMinutes,
+      estimatedPomodoros: change.estimatedPomodoros ?? null,
       actualMinutes: change.actualMinutes ?? null,
       difficulty: change.difficulty,
       complexity: change.complexity,
@@ -263,12 +264,12 @@ export class SyncService {
 
     if (
       change.kind === undefined ||
-      change.dayOfWeek === undefined ||
+      change.daysOfWeek === undefined ||
       change.startMinute === undefined ||
       change.endMinute === undefined
     ) {
       throw new BadRequestException(
-        'Schedule changes require kind, dayOfWeek, startMinute, and endMinute',
+        'Schedule changes require kind, daysOfWeek, startMinute, and endMinute',
       );
     }
 
@@ -278,11 +279,16 @@ export class SyncService {
 
     const data = {
       kind: change.kind,
-      dayOfWeek: change.dayOfWeek,
+      daysOfWeek: change.daysOfWeek,
       startMinute: change.startMinute,
       endMinute: change.endMinute,
       label: change.label ?? null,
       enabled: change.enabled ?? true,
+      pomodoroMin: change.pomodoroMin ?? null,
+      shortBreakMin: change.shortBreakMin ?? null,
+      longBreakMin: change.longBreakMin ?? null,
+      pomodorosPerChunk: change.pomodorosPerChunk ?? null,
+      chunks: change.chunks ?? null,
       updatedAt: new Date(change.updatedAt),
     };
 

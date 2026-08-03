@@ -13,11 +13,16 @@ interface DetoxScheduleProposalsProps {
 function toFormValues(proposal: DetoxScheduleProposal): ScheduleFormValues {
   return {
     kind: proposal.kind,
-    dayOfWeek: proposal.dayOfWeek,
+    daysOfWeek: [proposal.dayOfWeek],
     startMinute: proposal.startMinute,
     endMinute: proposal.endMinute,
     label: proposal.label,
     enabled: true,
+    pomodoroMin: null,
+    shortBreakMin: null,
+    longBreakMin: null,
+    pomodorosPerChunk: null,
+    chunks: null,
   };
 }
 

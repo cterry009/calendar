@@ -3,6 +3,7 @@ import type { WeekDaySummary } from '../../lib/calendar/types';
 
 interface WeekViewProps {
   days: WeekDaySummary[];
+  onSelectDay: (date: Date) => void;
 }
 
 function formatHours(minutes: number): string {
@@ -17,7 +18,7 @@ function indicator(count: number): string {
   return '••••';
 }
 
-export function WeekView({ days }: WeekViewProps) {
+export function WeekView({ days, onSelectDay }: WeekViewProps) {
   return (
     <AppCard>
       <YStack gap="$4">
@@ -35,6 +36,9 @@ export function WeekView({ days }: WeekViewProps) {
               padding="$3"
               borderRadius="$3"
               backgroundColor="rgba(255,255,255,0.03)"
+              cursor="pointer"
+              hoverStyle={{ borderColor: '$accent', borderWidth: 1 }}
+              onPress={() => onSelectDay(day.date)}
             >
               <Text fontWeight="700" textTransform="capitalize">
                 {day.date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })}

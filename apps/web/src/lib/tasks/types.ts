@@ -7,6 +7,7 @@ export interface SyncTaskRecord {
   description: string | null;
   scheduledAt: string | null;
   estimatedMinutes: number;
+  estimatedPomodoros: number | null;
   actualMinutes: number | null;
   difficulty: TaskDifficulty;
   complexity: number;
@@ -24,6 +25,7 @@ export interface TaskFormValues {
   description: string | null;
   scheduledAt: string | null;
   estimatedMinutes: number;
+  estimatedPomodoros: number | null;
   actualMinutes: number | null;
   difficulty: TaskDifficulty;
   complexity: number;

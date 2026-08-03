@@ -12,6 +12,8 @@ import { FormField } from '../tasks/FormField';
 interface FitnessFormProps {
   mode: 'create' | 'edit';
   initialEntry?: SyncFitnessRecord;
+  /** Prefills "loggedAt" in create mode (e.g. clamped into a calendar rest block's time range). Ignored in edit mode. */
+  initialLoggedAt?: string;
   isSubmitting: boolean;
   onSubmit: (values: FitnessFormValues) => Promise<void>;
   onCancel: () => void;
@@ -35,24 +37,24 @@ function toDateTimeLocal(isoDate: string): string {
   )}`;
 }
 
-function defaultDraft(entry?: SyncFitnessRecord): FitnessFormDraft {
+function defaultDraft(entry?: SyncFitnessRecord, initialLoggedAt?: string): FitnessFormDraft {
   return {
     activityType: entry?.activityType ?? '',
     durationMinutes: String(entry?.durationMinutes ?? 30),
     intensity: entry?.intensity ?? 'MEDIUM',
     notes: entry?.notes ?? '',
-    loggedAt: entry ? toDateTimeLocal(entry.loggedAt) : toDateTimeLocal(new Date().toISOString()),
+    loggedAt: toDateTimeLocal(entry?.loggedAt ?? initialLoggedAt ?? new Date().toISOString()),
   };
 }
 
-export function FitnessForm({ mode, initialEntry, isSubmitting, onSubmit, onCancel }: FitnessFormProps) {
-  const [draft, setDraft] = useState<FitnessFormDraft>(() => defaultDraft(initialEntry));
+export function FitnessForm({ mode, initialEntry, initialLoggedAt, isSubmitting, onSubmit, onCancel }: FitnessFormProps) {
+  const [draft, setDraft] = useState<FitnessFormDraft>(() => defaultDraft(initialEntry, initialLoggedAt));
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setDraft(defaultDraft(initialEntry));
+    setDraft(defaultDraft(initialEntry, initialLoggedAt));
     setError(null);
-  }, [initialEntry, mode]);
+  }, [initialEntry, initialLoggedAt, mode]);
 
   const title = useMemo(
     () => (mode === 'create' ? 'Nuevo registro fitness' : `Editar: ${initialEntry?.activityType ?? 'actividad'}`),

@@ -3,20 +3,30 @@
 export interface SyncScheduleRecord {
   id: string;
   kind: ScheduleKind;
-  dayOfWeek: number;
+  daysOfWeek: number[];
   startMinute: number;
   endMinute: number;
   label: string | null;
   enabled: boolean;
+  pomodoroMin: number | null;
+  shortBreakMin: number | null;
+  longBreakMin: number | null;
+  pomodorosPerChunk: number | null;
+  chunks: number | null;
 }
 
 export interface ScheduleFormValues {
   kind: ScheduleKind;
-  dayOfWeek: number;
+  daysOfWeek: number[];
   startMinute: number;
   endMinute: number;
   label: string | null;
   enabled: boolean;
+  pomodoroMin: number | null;
+  shortBreakMin: number | null;
+  longBreakMin: number | null;
+  pomodorosPerChunk: number | null;
+  chunks: number | null;
 }
 
 export const SCHEDULE_KINDS: ScheduleKind[] = ['WORK', 'REST'];
