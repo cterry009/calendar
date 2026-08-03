@@ -46,6 +46,14 @@
 - [x] 4.14 Proponer horarios diferenciados por tipo de intensidad vinculados al plan de desintoxicación serotoninérgica
 - [x] 4.15 Implement Serotonin Detox Plan UI (onboarding, plan de inicio multi-dia, checklist diaria, progreso por fase)
 - [x] 4.16 Implement onboarding tutorial for new users (guided walkthrough)
+- [x] 4.17 Make the calendar the app's hub: remove the button-grid home page, drill down month/week to day, persistent nav, mandatory full-screen blocking for the duration of any enabled WORK schedule
+- [x] 4.18 Allow one schedule record to cover multiple weekdays at once
+- [x] 4.19 Auto-split WORK schedule blocks into pomodoro/short-break/long-break segments, with break length auto-calculated from pomodoro length and pomodoros-per-chunk, and a fixed lunch-hour exclusion
+- [x] 4.20 Let users customize the auto pomodoro plan per schedule (block count, pomodoros per chunk); derive a WORK schedule's end time from its block config
+- [x] 4.21 Require an explicit task estimate expressed in pomodoros (not raw minutes) and auto-split tasks across multiple pomodoro slots when the estimate exceeds one pomodoro
+- [x] 4.22 Natural-language one-line task quick-add in the calendar, with auto-suggested complexity from title/description keywords
+- [x] 4.23 Add zoom to the calendar day/week time grids
+- [x] 4.24 Apply a shared design-system refresh across every page: distinctive heading font and tracking, corrected button hover/press/focus states, unified `PageHeader`/`StatusCard` components replacing duplicated header and loading/error markup across pages
 
 ## 5. Mobile app â€” Android (phase 2)
 

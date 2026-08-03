@@ -15,11 +15,15 @@ The system SHALL provide week and month views that summarize task density and sc
 - **THEN** the system displays seven days with task indicators and total estimated hours per day
 
 ### Requirement: Work schedule configuration
-The system SHALL allow users to define recurring work hours per day of the week (e.g., Mon–Fri 09:00–18:00).
+The system SHALL allow users to define recurring work hours covering one or more days of the week in a single schedule record (e.g., Mon–Fri 09:00–18:00 as one entry), with the end time optionally derived from the configured pomodoro block plan rather than entered manually.
 
-#### Scenario: Set work hours
-- **WHEN** user configures work hours for a weekday
-- **THEN** the system stores the schedule and highlights work blocks in the calendar
+#### Scenario: Set work hours across multiple days
+- **WHEN** user configures a work schedule for Monday through Friday in one step
+- **THEN** the system stores a single schedule covering all five days and highlights work blocks in the calendar for each
+
+#### Scenario: Fixed lunch window excluded from work blocks
+- **WHEN** a work schedule's range overlaps the fixed 12:30–13:30 window
+- **THEN** the system excludes that window from focus/pomodoro planning within the block
 
 ### Requirement: Rest schedule configuration
 The system SHALL allow users to define recurring rest/break windows within work hours.
