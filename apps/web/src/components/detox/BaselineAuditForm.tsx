@@ -49,7 +49,14 @@ export function BaselineAuditForm({ isSubmitting, onSubmit }: BaselineAuditFormP
             step={0.5}
             value={screenTime}
             onChange={(event) => setScreenTime(event.target.value)}
-            style={{ padding: 10, borderRadius: 8, border: '1px solid #333', background: '#111', color: '#fff' }}
+            style={{
+              padding: 10,
+              borderRadius: 8,
+              border: '1px solid #2a323f',
+              background: '#1b212b',
+              color: '#eaf0ee',
+              fontFamily: 'Inter, sans-serif',
+            }}
           />
         </YStack>
 
@@ -60,7 +67,14 @@ export function BaselineAuditForm({ isSubmitting, onSubmit }: BaselineAuditFormP
             value={distractions}
             onChange={(event) => setDistractions(event.target.value)}
             placeholder={'Instagram\nYouTube\nTikTok'}
-            style={{ padding: 10, borderRadius: 8, border: '1px solid #333', background: '#111', color: '#fff' }}
+            style={{
+              padding: 10,
+              borderRadius: 8,
+              border: '1px solid #2a323f',
+              background: '#1b212b',
+              color: '#eaf0ee',
+              fontFamily: 'Inter, sans-serif',
+            }}
           />
         </YStack>
 

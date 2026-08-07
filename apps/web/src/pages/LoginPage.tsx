@@ -38,7 +38,10 @@ export function LoginPage() {
       title="Sign in"
       linkSlot={
         <Paragraph color="$muted">
-          No account yet? <Link to="/register">Create one</Link>
+          No account yet?{' '}
+          <Link to="/register" style={{ color: '#4fb6a6', fontWeight: 600, textDecoration: 'none' }}>
+            Create one
+          </Link>
         </Paragraph>
       }
     >

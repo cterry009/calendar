@@ -67,7 +67,13 @@ export function PomodoroTimer({
             {POMODORO_STATE_LABELS[currentState]}
           </Text>
 
-          <Text fontSize={72} fontWeight="700" letterSpacing={2}>
+          <Text
+            fontSize={72}
+            fontWeight="600"
+            letterSpacing={1}
+            color={isActive ? '$accent' : '$color'}
+            fontVariant={['tabular-nums']}
+          >
             {formatTimer(remainingSeconds)}
           </Text>
 

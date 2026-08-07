@@ -64,7 +64,14 @@ export function BlockListForm({ mode, initialEntry, isSubmitting, onSubmit, onCa
             <select
               value={draft.kind}
               onChange={(event) => setField('kind', event.target.value as BlockListFormValues['kind'])}
-              style={{ padding: 10, borderRadius: 8, border: '1px solid #333', background: '#111', color: '#fff' }}
+              style={{
+                padding: 10,
+                borderRadius: 8,
+                border: '1px solid #2a323f',
+                background: '#1b212b',
+                color: '#eaf0ee',
+                fontFamily: 'Inter, sans-serif',
+              }}
             >
               {BLOCK_LIST_KINDS.map((kind) => (
                 <option key={kind} value={kind}>
@@ -94,7 +101,14 @@ export function BlockListForm({ mode, initialEntry, isSubmitting, onSubmit, onCa
               onChange={(event) =>
                 setField('platform', (event.target.value || null) as BlockListFormValues['platform'])
               }
-              style={{ padding: 10, borderRadius: 8, border: '1px solid #333', background: '#111', color: '#fff' }}
+              style={{
+                padding: 10,
+                borderRadius: 8,
+                border: '1px solid #2a323f',
+                background: '#1b212b',
+                color: '#eaf0ee',
+                fontFamily: 'Inter, sans-serif',
+              }}
             >
               <option value="">Todas</option>
               {BLOCK_LIST_PLATFORMS.map((platform) => (
