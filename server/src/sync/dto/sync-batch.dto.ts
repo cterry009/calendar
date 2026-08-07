@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -62,6 +63,11 @@ export class TaskSyncChangeDto {
 
   @IsOptional()
   @IsInt()
+  @Min(1)
+  estimatedPomodoros?: number;
+
+  @IsOptional()
+  @IsInt()
   @Min(0)
   actualMinutes?: number;
 
@@ -109,10 +115,12 @@ export class ScheduleSyncChangeDto {
   kind?: ScheduleKind;
 
   @ValidateIf((item) => !item.deleted)
-  @IsInt()
-  @Min(0)
-  @Max(6)
-  dayOfWeek?: number;
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  daysOfWeek?: number[];
 
   @ValidateIf((item) => !item.deleted)
   @IsInt()
@@ -133,6 +141,33 @@ export class ScheduleSyncChangeDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  pomodoroMin?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  shortBreakMin?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  longBreakMin?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  pomodorosPerChunk?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  chunks?: number;
 }
 
 export class PomodoroSyncChangeDto {

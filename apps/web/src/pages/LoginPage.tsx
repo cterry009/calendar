@@ -66,7 +66,12 @@ export function LoginPage() {
           required
         />
 
-        <AppButton variant="primary" onPress={() => formRef.current?.requestSubmit()} disabled={isSubmitting}>
+        <AppButton
+          type="button"
+          variant="primary"
+          onPress={() => formRef.current?.requestSubmit()}
+          disabled={isSubmitting}
+        >
           {isSubmitting ? 'Signing in...' : 'Sign in'}
         </AppButton>
       </YStack>

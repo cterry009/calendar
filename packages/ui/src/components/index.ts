@@ -1,27 +1,28 @@
-import { styled, Button as TamaguiButton, Card as TamaguiCard, Text, YStack, XStack, H1, H2, H3, Paragraph } from 'tamagui';
-import { radius } from '../tokens';
+import { styled, Button as TamaguiButton, Card as TamaguiCard, Text, YStack, XStack, H1 as TamaguiH1, H2 as TamaguiH2, H3 as TamaguiH3, Paragraph } from 'tamagui';
 
 export const AppButton = styled(TamaguiButton, {
   name: 'AppButton',
-  borderRadius: radius[3],
-  fontFamily: '$body',
+  borderRadius: '$3',
   fontWeight: '600',
   cursor: 'pointer',
   animation: 'quick',
+  focusStyle: { outlineColor: '$accent', outlineWidth: 2, outlineStyle: 'solid', outlineOffset: 2 },
+  pressStyle: { scale: 0.98 },
   variants: {
     variant: {
       primary: {
         backgroundColor: '$accent',
-        color: '#12151b',
-        hoverStyle: { opacity: 0.9 },
-        pressStyle: { opacity: 0.85, scale: 0.98 },
+        color: '#0a0f14',
+        hoverStyle: { backgroundColor: '$accent', opacity: 0.9 },
+        pressStyle: { backgroundColor: '$accent', opacity: 0.85, scale: 0.98 },
       },
       ghost: {
         backgroundColor: 'transparent',
         color: '$color',
         borderWidth: 1,
-        borderColor: '$borderColor',
-        hoverStyle: { borderColor: '$borderColorHover' },
+        borderColor: 'rgba(255,255,255,0.15)',
+        hoverStyle: { borderColor: '$accent', backgroundColor: 'rgba(255,255,255,0.04)' },
+        pressStyle: { backgroundColor: 'rgba(255,255,255,0.08)', scale: 0.98 },
       },
       small: {
         backgroundColor: '$accentBackground',
@@ -29,13 +30,17 @@ export const AppButton = styled(TamaguiButton, {
         paddingHorizontal: '$3',
         paddingVertical: '$2',
         fontSize: '$3',
+        hoverStyle: { backgroundColor: '$accentBackground', opacity: 0.85 },
+        pressStyle: { backgroundColor: '$accentBackground', opacity: 0.75, scale: 0.98 },
       },
       mood: {
-        backgroundColor: '$accentBackground',
+        backgroundColor: 'rgba(255,255,255,0.06)',
         color: '$color',
         fontWeight: '500',
         flex: 1,
         minWidth: 120,
+        hoverStyle: { backgroundColor: 'rgba(255,255,255,0.1)' },
+        pressStyle: { backgroundColor: 'rgba(255,255,255,0.14)', scale: 0.98 },
       },
     },
   } as const,
@@ -49,21 +54,23 @@ export const AppCard = styled(TamaguiCard, {
   backgroundColor: '$surface',
   borderWidth: 1,
   borderColor: '$borderColor',
-  borderRadius: radius[5],
+  borderRadius: '$5',
   padding: '$6',
   elevate: false,
-  shadowColor: '$shadowColor',
-  shadowRadius: 24,
-  shadowOffset: { width: 0, height: 8 },
+  animation: 'quick',
   variants: {
     variant: {
       default: {},
       serotonin: {
-        backgroundColor: '$surfaceRaised',
-        borderColor: '$borderColorHover',
+        borderColor: '$borderColor',
       },
       idle: {
         opacity: 0.9,
+      },
+      interactive: {
+        cursor: 'pointer',
+        hoverStyle: { borderColor: '$borderColorHover', backgroundColor: '$surfaceHover' },
+        pressStyle: { scale: 0.995 },
       },
     },
   } as const,
@@ -73,7 +80,6 @@ export const AppCard = styled(TamaguiCard, {
 });
 
 export const Eyebrow = styled(Text, {
-  fontFamily: '$body',
   textTransform: 'uppercase',
   letterSpacing: 2,
   fontSize: '$2',
@@ -83,11 +89,26 @@ export const Eyebrow = styled(Text, {
 });
 
 export const ScoreDisplay = styled(Text, {
-  fontFamily: '$heading',
   fontSize: 40,
-  fontWeight: '600',
+  fontWeight: '700',
   color: '$accent',
-  fontVariant: ['tabular-nums'],
+  fontFamily: '$body',
+  fontVariantNumeric: 'tabular-nums',
 });
 
-export { Text, YStack, XStack, H1, H2, H3, Paragraph };
+export const H1 = styled(TamaguiH1, {
+  fontWeight: '700',
+  letterSpacing: '$9',
+});
+
+export const H2 = styled(TamaguiH2, {
+  fontWeight: '600',
+  letterSpacing: '$7',
+});
+
+export const H3 = styled(TamaguiH3, {
+  fontWeight: '600',
+  letterSpacing: '$6',
+});
+
+export { Text, YStack, XStack, Paragraph };

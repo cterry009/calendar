@@ -1,11 +1,13 @@
 ﻿import { useNavigate } from 'react-router-dom';
-import { AppButton, AppCard, Eyebrow, H1, Paragraph, XStack, YStack } from '@calendar/ui';
+import { AppButton, Paragraph, XStack, YStack } from '@calendar/ui';
 import { CompletionByDifficultyPanel } from '../components/dashboard/CompletionByDifficultyPanel';
 import { EstimationAccuracyPanel } from '../components/dashboard/EstimationAccuracyPanel';
 import { FitnessCorrelationPanel } from '../components/dashboard/FitnessCorrelationPanel';
 import { FocusHoursChart } from '../components/dashboard/FocusHoursChart';
 import { MetricCard } from '../components/dashboard/MetricCard';
 import { WeekComparisonPanel } from '../components/dashboard/WeekComparisonPanel';
+import { PageHeader } from '../components/PageHeader';
+import { StatusCard } from '../components/StatusCard';
 import { useDashboard } from '../hooks/useDashboard';
 
 export function DashboardPage() {
@@ -20,65 +22,31 @@ export function DashboardPage() {
 
   return (
     <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
-      <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$4">
-        <YStack maxWidth={760}>
-          <Eyebrow>Analitica</Eyebrow>
-          <H1 marginTop={0} marginBottom="$2">
-            Dashboard de productividad
-          </H1>
-          <Paragraph color="$muted" margin={0}>
-            Revisa rendimiento semanal, precision de estimaciones, foco diario y correlacion con fitness.
-          </Paragraph>
-        </YStack>
+      <PageHeader
+        eyebrow="Analitica"
+        title="Dashboard de productividad"
+        description="Revisa rendimiento semanal, precision de estimaciones, foco diario y correlacion con fitness."
+        actions={
+          <>
+            <AppButton type="button" variant="primary" onPress={() => void handleSeedDemo()} disabled={isLoading || isSeeding}>
+              {isSeeding ? 'Generando datos...' : 'Generar datos de ejemplo'}
+            </AppButton>
+            <AppButton type="button" variant="ghost" onPress={() => void refetch()} disabled={isLoading || isSeeding}>
+              {isLoading ? 'Cargando...' : 'Refrescar'}
+            </AppButton>
+          </>
+        }
+      />
 
-        <XStack gap="$2" flexWrap="wrap">
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/tasks')}>
-            Tareas
-          </AppButton>
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/fitness')}>
-            Fitness
-          </AppButton>
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/suggestions')}>
-            Sugerencias
-          </AppButton>
-          <AppButton type="button" variant="ghost" onPress={() => navigate('/')}>
-            Inicio
-          </AppButton>
-        </XStack>
-      </XStack>
+      {error ? <StatusCard tone="error" message={error} /> : null}
 
-      <XStack gap="$2" flexWrap="wrap">
-        <AppButton type="button" variant="primary" onPress={() => void handleSeedDemo()} disabled={isLoading || isSeeding}>
-          {isSeeding ? 'Generando datos...' : 'Generar datos de ejemplo'}
-        </AppButton>
-        <AppButton type="button" variant="ghost" onPress={() => void refetch()} disabled={isLoading || isSeeding}>
-          {isLoading ? 'Cargando...' : 'Refrescar'}
-        </AppButton>
-      </XStack>
-
-      {error ? (
-        <AppCard>
-          <Paragraph margin={0} color="$error">
-            {error}
-          </Paragraph>
-        </AppCard>
-      ) : null}
-
-      {isLoading ? (
-        <AppCard>
-          <Paragraph margin={0}>Cargando dashboard...</Paragraph>
-        </AppCard>
-      ) : null}
+      {isLoading ? <StatusCard tone="loading" message="Cargando dashboard..." /> : null}
 
       {isEmpty ? (
-        <AppCard>
-          <YStack gap="$3">
-            <Paragraph margin={0}>Todavia no hay datos para mostrar el dashboard.</Paragraph>
-            <Paragraph color="$muted" margin={0}>
-              Genera datos de ejemplo para visualizar metricas semanales y graficas sin cargar datos manuales.
-            </Paragraph>
-          </YStack>
-        </AppCard>
+        <StatusCard
+          message="Todavia no hay datos para mostrar el dashboard."
+          detail="Genera datos de ejemplo para visualizar metricas semanales y graficas sin cargar datos manuales."
+        />
       ) : null}
 
       {!isLoading && metrics && metrics.hasData ? (

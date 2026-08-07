@@ -11,6 +11,7 @@ export interface SyncTask {
   description: string | null;
   scheduledAt: string | null;
   estimatedMinutes: number;
+  estimatedPomodoros: number | null;
   actualMinutes: number | null;
   difficulty: TaskDifficulty;
   complexity: number;
@@ -26,11 +27,16 @@ export interface SyncTask {
 export interface SyncSchedule {
   id: string;
   kind: 'WORK' | 'REST';
-  dayOfWeek: number;
+  daysOfWeek: number[];
   startMinute: number;
   endMinute: number;
   label: string | null;
   enabled: boolean;
+  pomodoroMin: number | null;
+  shortBreakMin: number | null;
+  longBreakMin: number | null;
+  pomodorosPerChunk: number | null;
+  chunks: number | null;
 }
 
 export interface SyncPomodoroSession {
@@ -87,10 +93,17 @@ export interface CalendarEvent {
   taskId?: string;
   meta?: {
     estimatedMinutes?: number;
+    estimatedPomodoros?: number | null;
+    createdAt?: string;
     state?: SyncPomodoroSession['state'];
     kind?: SyncSchedule['kind'];
     durationMinutes?: number;
     intensity?: SyncFitnessEntry['intensity'];
+    pomodoroMin?: number | null;
+    shortBreakMin?: number | null;
+    longBreakMin?: number | null;
+    pomodorosPerChunk?: number | null;
+    chunks?: number | null;
   };
 }
 

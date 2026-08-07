@@ -26,10 +26,9 @@ interface PomodoroContextValue {
   error: string | null;
   syncedAt: string | null;
   refetch: () => Promise<void>;
-  start: (taskId?: string | null) => Promise<void>;
+  start: (taskId?: string | null, overrideConfig?: Partial<PomodoroConfigFormValues>) => Promise<void>;
   cancel: () => Promise<void>;
   reset: () => Promise<void>;
-  updateConfig: (values: PomodoroConfigFormValues) => Promise<void>;
   toggleNotifications: (enabled: boolean) => Promise<void>;
 }
 
@@ -166,9 +165,9 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   );
 
   const transitionSession = useCallback(
-    async (event: PomodoroEvent, createIfMissing = false) => {
-      const currentConfig = sanitizeConfig(config);
-      const currentMachine = session
+    async (event: PomodoroEvent, createIfMissing = false, overrideConfig?: Partial<PomodoroConfigFormValues>) => {
+      const currentConfig = { ...sanitizeConfig(config), ...overrideConfig };
+      let currentMachine = session
         ? session
         : createIfMissing
           ? createPomodoroSession(crypto.randomUUID(), currentConfig)
@@ -176,6 +175,10 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
 
       if (!currentMachine) {
         return;
+      }
+
+      if (overrideConfig && event.type === 'START' && currentMachine.state === 'IDLE') {
+        currentMachine = { ...currentMachine, ...overrideConfig };
       }
 
       const nextMachine = transitionPomodoro(currentMachine, event);
@@ -191,13 +194,14 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   );
 
   const start = useCallback(
-    async (taskId?: string | null) => {
+    async (taskId?: string | null, overrideConfig?: Partial<PomodoroConfigFormValues>) => {
       await transitionSession(
         {
           type: 'START',
           taskId: taskId || undefined,
         },
         true,
+        overrideConfig,
       );
     },
     [transitionSession],
@@ -210,30 +214,6 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   const reset = useCallback(async () => {
     await transitionSession({ type: 'RESET' }, false);
   }, [transitionSession]);
-
-  const updateConfig = useCallback(
-    async (values: PomodoroConfigFormValues) => {
-      if (session?.active) {
-        return;
-      }
-
-      const normalized = sanitizeConfig(values);
-      setConfig(normalized);
-
-      if (!session) {
-        return;
-      }
-
-      const nextSession: SyncPomodoroRecord = {
-        ...session,
-        ...normalized,
-        updatedAt: new Date().toISOString(),
-      };
-
-      await persistSession(nextSession, false);
-    },
-    [persistSession, session],
-  );
 
   const toggleNotifications = useCallback(async (enabled: boolean) => {
     if (!enabled) {
@@ -349,7 +329,6 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       start,
       cancel,
       reset,
-      updateConfig,
       toggleNotifications,
     }),
     [
@@ -365,7 +344,6 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       start,
       syncedAt,
       cancel,
-      updateConfig,
       toggleNotifications,
     ],
   );

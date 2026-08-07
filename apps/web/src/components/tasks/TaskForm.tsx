@@ -1,13 +1,30 @@
-﻿import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AppButton, AppCard, H2, Paragraph, XStack, YStack } from '@calendar/ui';
 import { Label, TextArea } from 'tamagui';
+import {
+  computeHeuristicComplexity,
+  difficultyFromComplexity,
+  estimateTaskComplexity,
+  recordComplexityFeedbackSample,
+} from '../../lib/tasks/complexity';
 import { TASK_DIFFICULTY_LABELS, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '../../lib/tasks/labels';
 import { TASK_DIFFICULTIES, TASK_PRIORITIES, TASK_STATUSES, type SyncTaskRecord, type TaskFormValues } from '../../lib/tasks/types';
+import { estimateFocusDurationMin } from '../../lib/pomodoro/planner';
 import { FormField } from './FormField';
 
 interface TaskFormProps {
   mode: 'create' | 'edit';
   initialTask?: SyncTaskRecord;
+  /** Prefills "scheduledAt" in create mode (e.g. a calendar work block's start time). Ignored in edit mode. */
+  initialScheduledAt?: string | null;
+  /** Prefills "title" in create mode (e.g. text already typed into the quick-add bar). Ignored in edit mode. */
+  initialTitle?: string;
+  /** Prefills "pomodoros estimados" in create mode (e.g. already parsed from the quick-add bar's
+   * "4 pomodoros"). Ignored in edit mode. */
+  initialEstimatedPomodoros?: number;
+  /** The pomodoro length to convert "pomodoros estimados" to/from minutes -- the calendar work
+   * block's own length when opened from there, otherwise the app's adaptive default. */
+  pomodoroLengthMin?: number;
   isSubmitting: boolean;
   onSubmit: (values: TaskFormValues) => Promise<void>;
   onCancel: () => void;
@@ -17,7 +34,9 @@ interface TaskFormDraft {
   title: string;
   description: string;
   scheduledAt: string;
-  estimatedMinutes: string;
+  // Pomodoros, not minutes, is the primary unit the user enters -- the calendar already
+  // organizes time in pomodoro blocks, so tasks are sized the same way.
+  estimatedPomodoros: string;
   actualMinutes: string;
   difficulty: TaskFormValues['difficulty'];
   complexity: string;
@@ -36,29 +55,87 @@ function toDateTimeLocal(isoDate: string | null): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function defaultDraft(task?: SyncTaskRecord): TaskFormDraft {
+function defaultDraft(
+  task: SyncTaskRecord | undefined,
+  initialScheduledAt: string | null | undefined,
+  initialTitle: string | undefined,
+  initialEstimatedPomodoros: number | undefined,
+  pomodoroLengthMin: number,
+): TaskFormDraft {
+  const title = task?.title ?? initialTitle ?? '';
+  // Default a brand-new task to a single pomodoro's worth of this block's own length.
+  const estimatedMinutes = task?.estimatedMinutes ?? (initialEstimatedPomodoros ?? 1) * pomodoroLengthMin;
+  // Legacy tasks (created before estimatedPomodoros existed) fall back to a best-effort
+  // conversion; anything created since always has a real, exact count.
+  const estimatedPomodoros =
+    task?.estimatedPomodoros ?? initialEstimatedPomodoros ?? Math.max(1, Math.round(estimatedMinutes / pomodoroLengthMin));
+  const complexity = task?.complexity ?? estimateTaskComplexity({ title, estimatedMinutes });
+
   return {
-    title: task?.title ?? '',
+    title,
     description: task?.description ?? '',
-    scheduledAt: toDateTimeLocal(task?.scheduledAt ?? null),
-    estimatedMinutes: String(task?.estimatedMinutes ?? 30),
+    scheduledAt: toDateTimeLocal(task?.scheduledAt ?? initialScheduledAt ?? null),
+    estimatedPomodoros: String(estimatedPomodoros),
     actualMinutes: task?.actualMinutes == null ? '' : String(task.actualMinutes),
-    difficulty: task?.difficulty ?? 'MEDIUM',
-    complexity: String(task?.complexity ?? 5),
+    difficulty: task?.difficulty ?? difficultyFromComplexity(complexity),
+    complexity: String(complexity),
     priority: task?.priority ?? 'MEDIUM',
     category: task?.category ?? '',
     status: task?.status ?? 'PENDING',
   };
 }
 
-export function TaskForm({ mode, initialTask, isSubmitting, onSubmit, onCancel }: TaskFormProps) {
-  const [draft, setDraft] = useState<TaskFormDraft>(() => defaultDraft(initialTask));
+export function TaskForm({
+  mode,
+  initialTask,
+  initialScheduledAt,
+  initialTitle,
+  initialEstimatedPomodoros,
+  pomodoroLengthMin,
+  isSubmitting,
+  onSubmit,
+  onCancel,
+}: TaskFormProps) {
+  const pomodoroLength = pomodoroLengthMin ?? estimateFocusDurationMin();
+  const [draft, setDraft] = useState<TaskFormDraft>(() =>
+    defaultDraft(initialTask, initialScheduledAt, initialTitle, initialEstimatedPomodoros, pomodoroLength),
+  );
   const [error, setError] = useState<string | null>(null);
+  // Once the user touches complexity/difficulty directly, stop overwriting it with new
+  // suggestions as they keep typing the title/description. Editing an existing task never
+  // auto-suggests -- its stored values are already a real (possibly user-set) signal.
+  const [complexityTouched, setComplexityTouched] = useState(mode === 'edit');
+  const [difficultyTouched, setDifficultyTouched] = useState(mode === 'edit');
 
   useEffect(() => {
-    setDraft(defaultDraft(initialTask));
+    setDraft(defaultDraft(initialTask, initialScheduledAt, initialTitle, initialEstimatedPomodoros, pomodoroLength));
     setError(null);
-  }, [initialTask, mode]);
+    setComplexityTouched(mode === 'edit');
+    setDifficultyTouched(mode === 'edit');
+    // pomodoroLength intentionally excluded -- it shouldn't reset an in-progress draft on its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTask, initialScheduledAt, initialTitle, initialEstimatedPomodoros, mode]);
+
+  const estimatedMinutesPreview = (Number(draft.estimatedPomodoros) || 1) * pomodoroLength;
+
+  useEffect(() => {
+    if (mode !== 'create' || (complexityTouched && difficultyTouched)) return;
+
+    const suggested = estimateTaskComplexity({
+      title: draft.title,
+      description: draft.description,
+      estimatedMinutes: estimatedMinutesPreview,
+    });
+
+    setDraft((current) => ({
+      ...current,
+      complexity: complexityTouched ? current.complexity : String(suggested),
+      difficulty: difficultyTouched ? current.difficulty : difficultyFromComplexity(suggested),
+    }));
+    // Re-suggest only when the underlying text/duration changes, not on every keystroke into
+    // complexity/difficulty themselves (those are handled by the touched flags instead).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, draft.title, draft.description, draft.estimatedPomodoros, complexityTouched, difficultyTouched]);
 
   const title = useMemo(
     () => (mode === 'create' ? 'Nueva tarea' : `Editar: ${initialTask?.title ?? 'tarea'}`),
@@ -67,6 +144,8 @@ export function TaskForm({ mode, initialTask, isSubmitting, onSubmit, onCancel }
 
   function setField<Key extends keyof TaskFormDraft>(field: Key, value: TaskFormDraft[Key]) {
     setDraft((current) => ({ ...current, [field]: value }));
+    if (field === 'complexity') setComplexityTouched(true);
+    if (field === 'difficulty') setDifficultyTouched(true);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -74,7 +153,7 @@ export function TaskForm({ mode, initialTask, isSubmitting, onSubmit, onCancel }
     setError(null);
 
     const trimmedTitle = draft.title.trim();
-    const estimatedMinutes = Number(draft.estimatedMinutes);
+    const estimatedPomodoros = Number(draft.estimatedPomodoros);
     const complexity = Number(draft.complexity);
     const actualMinutesRaw = draft.actualMinutes.trim();
     const actualMinutes = actualMinutesRaw ? Number(actualMinutesRaw) : null;
@@ -84,8 +163,8 @@ export function TaskForm({ mode, initialTask, isSubmitting, onSubmit, onCancel }
       return;
     }
 
-    if (!Number.isInteger(estimatedMinutes) || estimatedMinutes < 1) {
-      setError('La estimacion debe ser un entero mayor o igual a 1.');
+    if (!Number.isInteger(estimatedPomodoros) || estimatedPomodoros < 1) {
+      setError('La estimacion en pomodoros debe ser de al menos 1.');
       return;
     }
 
@@ -99,6 +178,19 @@ export function TaskForm({ mode, initialTask, isSubmitting, onSubmit, onCancel }
       return;
     }
 
+    const estimatedMinutes = estimatedPomodoros * pomodoroLength;
+
+    if (mode === 'create') {
+      // Compare against the raw (un-adjusted) heuristic so the adaptive bias doesn't compound
+      // on top of a previous correction.
+      const rawHeuristic = computeHeuristicComplexity({
+        title: trimmedTitle,
+        description: draft.description,
+        estimatedMinutes,
+      });
+      recordComplexityFeedbackSample(rawHeuristic, complexity);
+    }
+
     const scheduledAt = draft.scheduledAt ? new Date(draft.scheduledAt).toISOString() : null;
 
     await onSubmit({
@@ -106,6 +198,7 @@ export function TaskForm({ mode, initialTask, isSubmitting, onSubmit, onCancel }
       description: draft.description.trim() || null,
       scheduledAt,
       estimatedMinutes,
+      estimatedPomodoros,
       actualMinutes,
       difficulty: draft.difficulty,
       complexity,
@@ -151,16 +244,19 @@ export function TaskForm({ mode, initialTask, isSubmitting, onSubmit, onCancel }
         />
 
         <XStack gap="$3" flexWrap="wrap">
-          <YStack minWidth={180} flex={1}>
+          <YStack minWidth={180} flex={1} gap="$2">
             <FormField
-              id="task-estimated-minutes"
-              label="Minutos estimados"
+              id="task-estimated-pomodoros"
+              label="Pomodoros estimados"
               type="number"
-              value={draft.estimatedMinutes}
-              onChangeText={(value: string) => setField('estimatedMinutes', value)}
+              value={draft.estimatedPomodoros}
+              onChangeText={(value: string) => setField('estimatedPomodoros', value)}
               min={1}
               required
             />
+            <Paragraph margin={0} size="$2" color="$muted">
+              ≈ {estimatedMinutesPreview} min (pomodoro de {pomodoroLength} min)
+            </Paragraph>
           </YStack>
           <YStack minWidth={180} flex={1}>
             <FormField
@@ -175,7 +271,7 @@ export function TaskForm({ mode, initialTask, isSubmitting, onSubmit, onCancel }
           <YStack minWidth={180} flex={1}>
             <FormField
               id="task-complexity"
-              label="Complejidad (1-10)"
+              label={mode === 'create' ? 'Complejidad (1-10, sugerida)' : 'Complejidad (1-10)'}
               type="number"
               value={draft.complexity}
               onChangeText={(value: string) => setField('complexity', value)}
@@ -186,6 +282,13 @@ export function TaskForm({ mode, initialTask, isSubmitting, onSubmit, onCancel }
           </YStack>
         </XStack>
 
+        {mode === 'create' ? (
+          <Paragraph margin={0} size="$2" color="$muted">
+            La complejidad y la dificultad se sugieren solas segun el titulo, la descripcion y los pomodoros
+            estimados (y se ajustan con tus correcciones anteriores). Podes cambiarlas.
+          </Paragraph>
+        ) : null}
+
         <FormField
           id="task-category"
           label="Categoria"
@@ -195,7 +298,7 @@ export function TaskForm({ mode, initialTask, isSubmitting, onSubmit, onCancel }
         />
 
         <YStack gap="$2">
-          <Paragraph margin={0}>Dificultad</Paragraph>
+          <Paragraph margin={0}>{mode === 'create' ? 'Dificultad (sugerida)' : 'Dificultad'}</Paragraph>
           <XStack gap="$2" flexWrap="wrap">
             {TASK_DIFFICULTIES.map((difficulty) => (
               <AppButton
@@ -260,4 +363,3 @@ export function TaskForm({ mode, initialTask, isSubmitting, onSubmit, onCancel }
     </AppCard>
   );
 }
-

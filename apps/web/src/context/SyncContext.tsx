@@ -41,6 +41,7 @@ interface SyncContextValue {
   flushQueue: () => Promise<number>;
   clearConflictMessage: () => void;
   registerEntityRefetch: (entity: SyncEntityType, handler: EntityRefetchHandler) => () => void;
+  notifyEntityChanged: (entity: SyncEntityType) => void;
 }
 
 const SyncContext = createContext<SyncContextValue | undefined>(undefined);
@@ -67,6 +68,18 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const current = refetchHandlers.current.get(entity);
       current?.delete(handler);
     };
+  }, []);
+
+  // Fires every hook registered for this entity, same as a WebSocket echo would. Called directly
+  // right after a local mutation succeeds, so other hooks on the same page (e.g. the calendar's
+  // own data alongside the schedule-editing panel) update immediately instead of waiting on the
+  // WebSocket round-trip (or missing it entirely if the socket hadn't finished connecting yet).
+  const notifyEntityChanged = useCallback((entity: SyncEntityType) => {
+    const handlers = refetchHandlers.current.get(entity);
+    if (!handlers) return;
+    for (const handler of handlers) {
+      void handler();
+    }
   }, []);
 
   const pullSnapshot = useCallback(async () => {
@@ -151,8 +164,20 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       flushQueue: flushQueueFn,
       clearConflictMessage,
       registerEntityRefetch,
+      notifyEntityChanged,
     }),
-    [batchSyncFn, clearConflictMessage, conflictMessage, flushQueueFn, isOnline, lastPullFromCache, pendingQueueCount, pullSnapshot, registerEntityRefetch],
+    [
+      batchSyncFn,
+      clearConflictMessage,
+      conflictMessage,
+      flushQueueFn,
+      isOnline,
+      lastPullFromCache,
+      notifyEntityChanged,
+      pendingQueueCount,
+      pullSnapshot,
+      registerEntityRefetch,
+    ],
   );
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;

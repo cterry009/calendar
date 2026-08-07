@@ -11,6 +11,7 @@ export interface TaskSyncChangeDto {
   description?: string;
   scheduledAt?: string;
   estimatedMinutes?: number;
+  estimatedPomodoros?: number;
   actualMinutes?: number;
   difficulty?: TaskFormValues['difficulty'];
   complexity?: number;
@@ -31,6 +32,7 @@ function buildUpsertPayload(values: TaskFormValues): Omit<TaskSyncChangeDto, 'id
     description: values.description?.trim() || undefined,
     scheduledAt: values.scheduledAt || undefined,
     estimatedMinutes: values.estimatedMinutes,
+    estimatedPomodoros: values.estimatedPomodoros ?? undefined,
     actualMinutes: values.actualMinutes ?? undefined,
     difficulty: values.difficulty,
     complexity: values.complexity,
@@ -84,6 +86,7 @@ export function buildCompleteTaskPayload(
     description: task.description ?? undefined,
     scheduledAt: task.scheduledAt ?? undefined,
     estimatedMinutes: task.estimatedMinutes,
+    estimatedPomodoros: task.estimatedPomodoros ?? undefined,
     difficulty: task.difficulty,
     complexity: task.complexity,
     priority: task.priority,

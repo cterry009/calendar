@@ -97,7 +97,11 @@ function taskToEvent(task: SyncTask): CalendarEvent | null {
     start,
     end: addMinutes(start, duration),
     taskId: task.id,
-    meta: { estimatedMinutes: task.estimatedMinutes },
+    meta: {
+      estimatedMinutes: task.estimatedMinutes,
+      estimatedPomodoros: task.estimatedPomodoros,
+      createdAt: task.createdAt,
+    },
   };
 }
 
@@ -144,7 +148,7 @@ function scheduleEventsForRange(
     const current = startOfDay(cursor);
 
     for (const schedule of schedules) {
-      if (!schedule.enabled || schedule.dayOfWeek !== current.getDay()) continue;
+      if (!schedule.enabled || !schedule.daysOfWeek.includes(current.getDay())) continue;
 
       const start = minuteToDate(current, schedule.startMinute);
       const end = minuteToDate(current, schedule.endMinute);
@@ -156,7 +160,14 @@ function scheduleEventsForRange(
         title: schedule.label ?? (schedule.kind === 'WORK' ? 'Bloque de trabajo' : 'Descanso'),
         start,
         end,
-        meta: { kind: schedule.kind },
+        meta: {
+          kind: schedule.kind,
+          pomodoroMin: schedule.pomodoroMin,
+          shortBreakMin: schedule.shortBreakMin,
+          longBreakMin: schedule.longBreakMin,
+          pomodorosPerChunk: schedule.pomodorosPerChunk,
+          chunks: schedule.chunks,
+        },
       });
     }
   }
@@ -194,6 +205,31 @@ export function buildEventsForRange(
   return [...taskEvents, ...scheduleEvents, ...pomodoroEvents, ...fitnessEvents].sort(
     (a, b) => a.start.getTime() - b.start.getTime(),
   );
+}
+
+export function findActiveWorkSchedule<T extends Pick<SyncSchedule, 'kind' | 'daysOfWeek' | 'startMinute' | 'endMinute' | 'enabled'>>(
+  schedules: T[],
+  now: Date,
+): T | null {
+  const nowMinute = now.getHours() * 60 + now.getMinutes();
+  const day = now.getDay();
+  return (
+    schedules.find(
+      (schedule) =>
+        schedule.enabled &&
+        schedule.kind === 'WORK' &&
+        schedule.daysOfWeek.includes(day) &&
+        nowMinute >= schedule.startMinute &&
+        nowMinute < schedule.endMinute,
+    ) ?? null
+  );
+}
+
+export function isNowWithinWorkSchedule(
+  schedules: Array<Pick<SyncSchedule, 'kind' | 'daysOfWeek' | 'startMinute' | 'endMinute' | 'enabled'>>,
+  now: Date,
+): boolean {
+  return findActiveWorkSchedule(schedules, now) !== null;
 }
 
 export function eventsForDate(events: CalendarEvent[], date: Date): CalendarEvent[] {

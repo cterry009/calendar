@@ -22,9 +22,14 @@ interface UseSchedulesResult {
   deleteSchedule: (scheduleId: string) => Promise<void>;
 }
 
+function earliestDay(daysOfWeek: number[]): number {
+  return Math.min(...daysOfWeek);
+}
+
 function sortSchedules(items: SyncScheduleRecord[]) {
   return [...items].sort((a, b) => {
-    if (a.dayOfWeek !== b.dayOfWeek) return a.dayOfWeek - b.dayOfWeek;
+    const dayDiff = earliestDay(a.daysOfWeek) - earliestDay(b.daysOfWeek);
+    if (dayDiff !== 0) return dayDiff;
     if (a.startMinute !== b.startMinute) return a.startMinute - b.startMinute;
     if (a.kind !== b.kind) return a.kind === 'WORK' ? -1 : 1;
     return a.id.localeCompare(b.id);
@@ -32,7 +37,7 @@ function sortSchedules(items: SyncScheduleRecord[]) {
 }
 
 export function useSchedules(): UseSchedulesResult {
-  const { pullSnapshot } = useSync();
+  const { pullSnapshot, notifyEntityChanged } = useSync();
   const [schedules, setSchedules] = useState<SyncScheduleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
@@ -74,6 +79,10 @@ export function useSchedules(): UseSchedulesResult {
       try {
         await syncScheduleBatch(changes);
         await refetch();
+        // Other hooks on the same page (e.g. the calendar's own schedule/task data) won't see
+        // this change until their WebSocket echo arrives (or never, if it raced the socket
+        // connecting) -- notify them directly instead of waiting on that round-trip.
+        notifyEntityChanged('schedules');
       } catch (errorValue) {
         if (errorValue instanceof ApiError) {
           setError(errorValue.message);
@@ -85,7 +94,7 @@ export function useSchedules(): UseSchedulesResult {
         setIsMutating(false);
       }
     },
-    [refetch],
+    [notifyEntityChanged, refetch],
   );
 
   const createSchedule = useCallback(
@@ -121,6 +130,16 @@ export function useSchedules(): UseSchedulesResult {
       updateSchedule,
       deleteSchedule,
     }),
-    [createSchedule, deleteSchedule, error, isLoading, isMutating, refetch, schedules, syncedAt, updateSchedule],
+    [
+      createSchedule,
+      deleteSchedule,
+      error,
+      isLoading,
+      isMutating,
+      refetch,
+      schedules,
+      syncedAt,
+      updateSchedule,
+    ],
   );
 }

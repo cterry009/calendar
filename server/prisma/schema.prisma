@@ -123,6 +123,10 @@ model Task {
   description      String?
   scheduledAt      DateTime?
   estimatedMinutes Int
+  // How many pomodoros the user actually said ("3 pomodoros") -- kept alongside estimatedMinutes
+  // so the count shown back to them never drifts from what they typed, regardless of which
+  // pomodoro length was used to convert it. Null for tasks created before this field existed.
+  estimatedPomodoros Int?
   actualMinutes    Int?
   difficulty       TaskDifficulty @default(MEDIUM)
   complexity       Int            @default(5) // 1–10
@@ -148,13 +152,20 @@ model Schedule {
   id          String       @id @default(cuid())
   userId      String
   kind        ScheduleKind
-  dayOfWeek   Int // 0 = Sunday … 6 = Saturday
+  daysOfWeek  Int[] // 0 = Sunday … 6 = Saturday; days this recurring schedule applies to
   startMinute Int // minutes from midnight (0–1439)
   endMinute   Int
   label       String?
   enabled     Boolean      @default(true)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+
+  // User-tunable auto-pomodoro plan for WORK schedules; null = use the app's adaptive default.
+  pomodoroMin       Int?
+  shortBreakMin     Int?
+  longBreakMin      Int?
+  pomodorosPerChunk Int?
+  chunks            Int? // number of pomodoro blocks (separated by long breaks); must fit within startMinute..endMinute
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

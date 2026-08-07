@@ -1,36 +1,76 @@
 import { defaultConfig } from '@tamagui/config/v4';
 import { createFont, createTamagui } from 'tamagui';
-import { calendarThemes, fontSize } from './tokens';
+import { calendarThemes } from './tokens';
 
 const darkTheme = (defaultConfig.themes as Record<string, Record<string, unknown>>).dark;
 
-const scale = (multiplier: number, offset = 0) =>
-  Object.fromEntries(Object.entries(fontSize).map(([key, value]) => [key, Math.round(Number(value) * multiplier) + offset]));
+const fontFamily = 'Outfit, -apple-system, system-ui, "Segoe UI", sans-serif';
 
-/** Body/UI text — quiet, precise, carries the data-heavy surfaces (timers, forms, lists). */
-const bodyFont = createFont({
-  family: '"Inter", -apple-system, system-ui, "Segoe UI", sans-serif',
-  size: fontSize,
-  lineHeight: scale(1.4, 4),
-  weight: { 1: '400', 4: '400', 6: '600' },
-  letterSpacing: { 1: 0, 4: 0, 6: -0.2 },
-});
+const sizes = {
+  1: 11,
+  2: 12,
+  3: 13,
+  4: 14,
+  true: 14,
+  5: 16,
+  6: 18,
+  7: 20,
+  8: 23,
+  9: 30,
+  10: 46,
+  11: 55,
+  12: 62,
+  13: 72,
+  14: 92,
+  15: 114,
+  16: 134,
+} as const;
 
-/** Display headings — warm, humanist serif that carries the product's character. */
-const headingFont = createFont({
-  family: '"Fraunces", Georgia, serif',
-  size: scale(1.3),
-  lineHeight: scale(1.5, 4),
-  weight: { 1: '500', 4: '500', 6: '600' },
-  letterSpacing: { 1: 0, 4: 0 },
+// Negative tracking on large display sizes gives headlines presence; small
+// labels get slightly positive tracking so they read cleanly in caps/eyebrows.
+const letterSpacing = {
+  1: 0.2,
+  2: 0.1,
+  3: 0,
+  4: 0,
+  true: 0,
+  5: 0,
+  6: -0.1,
+  7: -0.2,
+  8: -0.3,
+  9: -0.5,
+  10: -0.8,
+  11: -1,
+  12: -1.2,
+  13: -1.4,
+  14: -1.6,
+  15: -1.8,
+  16: -2,
+} as const;
+
+const weight = {
+  1: '400',
+  4: '400',
+  6: '500',
+  8: '600',
+  10: '700',
+  12: '800',
+} as const;
+
+const appFont = createFont({
+  family: fontFamily,
+  size: sizes,
+  lineHeight: Object.fromEntries(Object.entries(sizes).map(([k, v]) => [k, +v + 10])) as typeof sizes,
+  letterSpacing,
+  weight,
 });
 
 export const tamaguiConfig = createTamagui({
   ...defaultConfig,
   fonts: {
     ...defaultConfig.fonts,
-    body: bodyFont,
-    heading: headingFont,
+    body: appFont,
+    heading: appFont,
   },
   themes: {
     ...defaultConfig.themes,

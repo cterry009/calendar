@@ -1,8 +1,13 @@
-﻿import { useMemo, useState } from 'react';
+﻿import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppButton, AppCard, H2, Paragraph, YStack } from '@calendar/ui';
+import { usePomodoro } from '../../context/PomodoroContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
+import { useFitness } from '../../hooks/useFitness';
+import { useTasks } from '../../hooks/useTasks';
 import type { CalendarViewMode } from '../../lib/calendar/types';
 import {
+  addDays,
   buildEventsForRange,
   buildMonthSummary,
   buildWeekTaskSummary,
@@ -16,6 +21,7 @@ import {
 import { CalendarToolbar } from './CalendarToolbar';
 import { DayView } from './DayView';
 import { MonthView } from './MonthView';
+import { WeekTimeGrid } from './WeekTimeGrid';
 import { WeekView } from './WeekView';
 
 function getRangeForMode(mode: CalendarViewMode, selectedDate: Date): { start: Date; end: Date } {
@@ -34,10 +40,39 @@ function getRangeForMode(mode: CalendarViewMode, selectedDate: Date): { start: D
   };
 }
 
-export function CalendarPanel() {
-  const [mode, setMode] = useState<CalendarViewMode>('week');
-  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
+interface CalendarPanelProps {
+  mode: CalendarViewMode;
+  selectedDate: Date;
+  onModeChange: (mode: CalendarViewMode) => void;
+  onChangeDate: (date: Date) => void;
+}
+
+export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }: CalendarPanelProps) {
   const data = useCalendarData();
+  const tasksData = useTasks();
+  const fitnessData = useFitness();
+  const pomodoro = usePomodoro();
+  const navigate = useNavigate();
+
+  function selectDay(date: Date) {
+    onChangeDate(startOfDay(date));
+    onModeChange('day');
+  }
+
+  async function handleCreateTask(values: Parameters<typeof tasksData.createTask>[0]) {
+    await tasksData.createTask(values);
+    await data.refetch();
+  }
+
+  async function handleCreateFitness(values: Parameters<typeof fitnessData.createEntry>[0]) {
+    await fitnessData.createEntry(values);
+    await data.refetch();
+  }
+
+  async function handleStartFocusSegment(focusDurationMin: number, taskId?: string) {
+    await pomodoro.start(taskId, { focusDurationMin });
+    navigate('/pomodoro');
+  }
 
   const range = useMemo(() => getRangeForMode(mode, selectedDate), [mode, selectedDate]);
 
@@ -57,6 +92,10 @@ export function CalendarPanel() {
   );
 
   const dayEvents = useMemo(() => eventsForDate(events, selectedDate), [events, selectedDate]);
+  const weekDays = useMemo(() => {
+    const weekStart = getStartOfWeek(selectedDate);
+    return Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
+  }, [selectedDate]);
   const weekSummary = useMemo(() => buildWeekTaskSummary(data.tasks, selectedDate), [data.tasks, selectedDate]);
   const monthSummary = useMemo(
     () => buildMonthSummary({ tasks: data.tasks, pomodoroSessions: data.pomodoroSessions }, selectedDate),
@@ -68,8 +107,8 @@ export function CalendarPanel() {
       <CalendarToolbar
         mode={mode}
         selectedDate={selectedDate}
-        onModeChange={setMode}
-        onChangeDate={setSelectedDate}
+        onModeChange={onModeChange}
+        onChangeDate={onChangeDate}
       />
 
       {data.isLoading ? (
@@ -94,13 +133,44 @@ export function CalendarPanel() {
         </AppCard>
       ) : null}
 
+      {tasksData.error ? (
+        <AppCard>
+          <Paragraph color="$error" margin={0}>
+            {tasksData.error}
+          </Paragraph>
+        </AppCard>
+      ) : null}
+
+      {fitnessData.error ? (
+        <AppCard>
+          <Paragraph color="$error" margin={0}>
+            {fitnessData.error}
+          </Paragraph>
+        </AppCard>
+      ) : null}
+
       {!data.isLoading && !data.error ? (
         mode === 'day' ? (
-          <DayView selectedDate={selectedDate} events={dayEvents} />
+          <YStack gap="$4">
+            <DayView
+              selectedDate={selectedDate}
+              events={dayEvents}
+              onCreateTask={handleCreateTask}
+              isCreatingTask={tasksData.isMutating}
+              onCreateFitness={handleCreateFitness}
+              isCreatingFitness={fitnessData.isMutating}
+              onStartFocusSegment={handleStartFocusSegment}
+              isStartingFocus={pomodoro.isMutating}
+            />
+            <WeekView days={weekSummary} onSelectDay={selectDay} />
+          </YStack>
         ) : mode === 'week' ? (
-          <WeekView days={weekSummary} />
+          <YStack gap="$4">
+            <WeekTimeGrid weekDays={weekDays} events={events} onSelectDay={selectDay} />
+            <WeekView days={weekSummary} onSelectDay={selectDay} />
+          </YStack>
         ) : (
-          <MonthView days={monthSummary} />
+          <MonthView days={monthSummary} onSelectDay={selectDay} />
         )
       ) : null}
 
