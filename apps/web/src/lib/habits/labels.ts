@@ -10,15 +10,19 @@ export const HABIT_TYPE_DESCRIPTIONS: Record<HabitType, string> = {
   NEGATIVE: 'Un habito que queres evitar o reducir, como redes sociales o azucar.',
 };
 
-// A small preset palette in the app's own muted register, not mhabit's literal colors -- picked
-// to read as "the same app" alongside the rest of the Emerald Focus theme.
+// mhabit gives every habit a vivid, distinct color (its list is a color-coded table, not a
+// monochrome one) -- a single muted accent reads as "everything looks the same" at a glance.
+// Saturation/lightness tuned to stay legible on the dark Emerald Focus background instead of
+// copying mhabit's literal (light-background) hex values.
 export const HABIT_COLORS = [
-  '#4ee0a0',
-  '#6fb7f0',
-  '#e0b64c',
-  '#e88a76',
-  '#c68ce8',
-  '#8fe3c0',
+  '#4ee0a0', // green (default accent)
+  '#e0b64c', // amber
+  '#e8654f', // coral
+  '#8f7fe8', // indigo
+  '#c65fe0', // magenta
+  '#f0954a', // orange
+  '#4ecde0', // teal
+  '#9aa5a0', // gray
 ] as const;
 
 export const DEFAULT_HABIT_COLOR: string = HABIT_COLORS[0];

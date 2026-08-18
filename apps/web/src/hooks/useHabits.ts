@@ -43,7 +43,7 @@ interface UseHabitsResult {
   updateHabit: (habitId: string, values: HabitFormValues) => Promise<void>;
   archiveHabit: (habitId: string, archived: boolean) => Promise<void>;
   deleteHabit: (habitId: string) => Promise<void>;
-  checkIn: (habitId: string, values: HabitCheckInValues) => Promise<void>;
+  checkIn: (habitId: string, values: HabitCheckInValues, journalContent?: string) => Promise<void>;
   deleteCheckIn: (recordId: string) => Promise<void>;
   recordsForHabit: (habitId: string) => SyncHabitRecord[];
   addJournalEntry: (habitId: string, content: string, recordId?: string) => Promise<void>;
@@ -137,12 +137,20 @@ export function useHabits(): UseHabitsResult {
   );
 
   const checkIn = useCallback(
-    (habitId: string, values: HabitCheckInValues) => {
+    (habitId: string, values: HabitCheckInValues, journalContent?: string) => {
       const existing = findRecordForDate(records, habitId, values.date.slice(0, 10));
-      return runMutation(
-        () => syncHabitRecordBatch([buildCheckInPayload(habitId, values, existing?.id)]),
-        'No se pudo registrar el habito.',
-      );
+      return runMutation(async () => {
+        const response = await syncHabitRecordBatch([buildCheckInPayload(habitId, values, existing?.id)]);
+
+        const trimmedContent = journalContent?.trim();
+        if (trimmedContent) {
+          const applied = response.applied.habitRecords?.[0] as { record?: { id?: string } } | undefined;
+          const recordId = applied?.record?.id ?? existing?.id;
+          if (recordId) {
+            await syncJournalEntryBatch([buildCreateJournalEntryPayload(habitId, trimmedContent, recordId)]);
+          }
+        }
+      }, 'No se pudo registrar el habito.');
     },
     [records, runMutation],
   );

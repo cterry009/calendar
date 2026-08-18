@@ -2,12 +2,13 @@ import { useMemo, useState } from 'react';
 import { AppButton, AppCard, Paragraph, XStack, YStack } from '@calendar/ui';
 import { HabitDetail } from '../components/habits/HabitDetail';
 import { HabitForm } from '../components/habits/HabitForm';
-import { HabitListItem } from '../components/habits/HabitListItem';
+import { HabitTable } from '../components/habits/HabitTable';
 import { HabitTodayCard } from '../components/habits/HabitTodayCard';
 import { PageHeader } from '../components/PageHeader';
 import { StatusCard } from '../components/StatusCard';
 import { useHabits, type HabitWithScore } from '../hooks/useHabits';
 import type { SyncHabit } from '../lib/calendar/types';
+import { todayKey } from '../lib/habits/today';
 import type { HabitCheckInValues } from '../lib/habits/types';
 
 type HabitsTab = 'today' | 'all';
@@ -15,6 +16,7 @@ type HabitsTab = 'today' | 'all';
 export function HabitsPage() {
   const {
     habits,
+    records,
     isLoading,
     isMutating,
     error,
@@ -56,6 +58,10 @@ export function HabitsPage() {
 
   async function handleCheckIn(habitId: string, values: HabitCheckInValues) {
     await checkIn(habitId, values);
+  }
+
+  async function handleSkip(habitId: string, reason: string) {
+    await checkIn(habitId, { date: todayKey(), value: 0, status: 'SKIPPED' }, reason);
   }
 
   if (editingHabit || (showCreateForm && !selectedHabit)) {
@@ -157,23 +163,19 @@ export function HabitsPage() {
               records={recordsForHabit(habit.id)}
               isBusy={isMutating}
               onCheckIn={(values) => handleCheckIn(habit.id, values)}
+              onSkip={(reason) => handleSkip(habit.id, reason)}
               onRemoveCheckIn={deleteCheckIn}
               onOpenDetail={() => setSelectedHabitId(habit.id)}
             />
           ))}
         </YStack>
       ) : (
-        <YStack gap="$3">
-          {habits.map((habit) => (
-            <HabitListItem
-              key={habit.id}
-              habit={habit}
-              records={recordsForHabit(habit.id)}
-              onOpenDetail={() => setSelectedHabitId(habit.id)}
-              onCellPress={(values) => handleCheckIn(habit.id, values)}
-            />
-          ))}
-        </YStack>
+        <HabitTable
+          habits={habits}
+          records={records}
+          onOpenDetail={(habitId) => setSelectedHabitId(habitId)}
+          onCellPress={(habitId, values) => void handleCheckIn(habitId, values)}
+        />
       )}
 
       {syncedAt ? (
