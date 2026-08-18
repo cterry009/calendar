@@ -1,17 +1,24 @@
 import { defaultConfig } from '@tamagui/config/v4';
+import { createAnimations } from '@tamagui/animations-css';
 import { createFont, createTamagui } from 'tamagui';
 import { calendarThemes } from './tokens';
 
 const darkTheme = (defaultConfig.themes as Record<string, Record<string, unknown>>).dark;
 
 const fontFamily = 'Outfit, -apple-system, system-ui, "Segoe UI", sans-serif';
+// Editorial serif reserved for display headings — pairs with the geometric
+// Outfit sans used everywhere else for a deliberate, premium contrast.
+const headingFontFamily = 'Fraunces, Georgia, serif';
 
+// `true` is what Paragraph/Text/Button resolve to when no explicit size is
+// set — kept at 16px (not 14) so default body copy clears the 16px minimum
+// for comfortable reading instead of relying on every call site to opt in.
 const sizes = {
   1: 11,
   2: 12,
   3: 13,
   4: 14,
-  true: 14,
+  true: 16,
   5: 16,
   6: 18,
   7: 20,
@@ -65,12 +72,28 @@ const appFont = createFont({
   weight,
 });
 
+const headingFont = createFont({
+  family: headingFontFamily,
+  size: sizes,
+  lineHeight: Object.fromEntries(Object.entries(sizes).map(([k, v]) => [k, +v + 10])) as typeof sizes,
+  letterSpacing,
+  weight,
+});
+
+// Slight overshoot spring — gives buttons/cards a "magnetic" settle instead of
+// a flat linear/ease-in snap. Kept alongside the existing named curves.
+const appAnimations = createAnimations({
+  ...(defaultConfig.animations as { animations: Record<string, string> }).animations,
+  magnetic: 'cubic-bezier(0.34, 1.56, 0.64, 1) 320ms',
+});
+
 export const tamaguiConfig = createTamagui({
   ...defaultConfig,
+  animations: appAnimations,
   fonts: {
     ...defaultConfig.fonts,
     body: appFont,
-    heading: appFont,
+    heading: headingFont,
   },
   themes: {
     ...defaultConfig.themes,

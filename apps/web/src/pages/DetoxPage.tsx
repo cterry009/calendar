@@ -13,7 +13,7 @@ import { useSyncStatusMessage } from '../hooks/useSyncRefetch';
 
 export function DetoxPage() {
   const syncStatus = useSyncStatusMessage();
-  const { plan, isLoading, isMutating, error, startPlan, saveBaselineAudit, toggleChecklistItem, completeDay, resetPlan } =
+  const { plan, isLoading, isMutating, error, saveBaselineAudit, toggleChecklistItem, completeDay, resetPlan } =
     useDetoxPlan();
   const { createSchedule, isMutating: isScheduleMutating } = useSchedules();
   const [isSavingAudit, setIsSavingAudit] = useState(false);
@@ -21,10 +21,6 @@ export function DetoxPage() {
 
   const dayPlan = plan ? getDetoxDayPlan(plan) : null;
   const needsBaselineAudit = plan?.currentDay === 1 && !plan.baselineAudit;
-
-  async function handleStartPlan() {
-    await startPlan();
-  }
 
   async function handleAudit(screenTimeHoursEstimate: number, topDistractions: string[]) {
     setIsSavingAudit(true);
@@ -48,20 +44,8 @@ export function DetoxPage() {
 
       {error ? <StatusCard tone="error" message={error} /> : null}
 
-      {isLoading ? (
-        <StatusCard tone="loading" message="Cargando plan..." />
-      ) : !plan ? (
-        <AppCard>
-          <YStack gap="$3">
-            <Paragraph margin={0}>
-              Aun no has iniciado el plan. Incluye checklist diaria, progreso por fase y horarios sugeridos segun
-              la intensidad de cada etapa.
-            </Paragraph>
-            <AppButton type="button" variant="primary" onPress={() => void handleStartPlan()} disabled={isBusy}>
-              Iniciar plan de 7 dias
-            </AppButton>
-          </YStack>
-        </AppCard>
+      {isLoading || !plan ? (
+        <StatusCard tone="loading" message="Preparando tu plan de 7 dias..." />
       ) : (
         <YStack gap="$5">
           <DetoxPhaseProgress plan={plan} />

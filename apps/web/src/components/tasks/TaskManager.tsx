@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { AppButton, AppCard, H2, Paragraph, XStack, YStack } from '@calendar/ui';
 import { TaskForm } from './TaskForm';
 import { TaskList } from './TaskList';
+import { usePanel } from '../../context/PanelContext';
 import { useTasks } from '../../hooks/useTasks';
 import { TASK_DIFFICULTY_FILTER_LABELS } from '../../lib/tasks/labels';
 import { TASK_DIFFICULTIES, type SyncTaskRecord, type TaskDifficultyFilter } from '../../lib/tasks/types';
@@ -12,7 +12,7 @@ const DIFFICULTY_FILTERS: TaskDifficultyFilter[] = ['ALL', ...TASK_DIFFICULTIES]
 /** Task list, filters, edit and complete -- creation lives in the calendar's quick-add
  * (per work block), not here, so this stays focused on managing what's already there. */
 export function TaskManager() {
-  const navigate = useNavigate();
+  const { openPanel } = usePanel();
   const {
     filteredTasks,
     difficultyFilter,
@@ -100,7 +100,7 @@ export function TaskManager() {
             onEdit={setEditingTask}
             onDelete={handleDelete}
             onComplete={completeTask}
-            onStartPomodoro={(task) => navigate(`/pomodoro?taskId=${encodeURIComponent(task.id)}`)}
+            onStartPomodoro={(task) => openPanel('pomodoro', { taskId: task.id })}
           />
         )}
 

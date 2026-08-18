@@ -19,7 +19,7 @@ export function PageHeader({ eyebrow, title, description, actions, tutorialId, m
       flexWrap="wrap"
       data-tutorial={tutorialId}
     >
-      <YStack maxWidth={maxWidth} gap="$1">
+      <YStack maxWidth={maxWidth} minWidth={0} flexShrink={1} gap="$1">
         <Eyebrow>{eyebrow}</Eyebrow>
         <H1 marginTop={0} marginBottom={description ? '$1' : 0}>
           {title}

@@ -1,6 +1,6 @@
 ﻿import type { ComponentProps } from 'react';
-import { YStack } from '@calendar/ui';
-import { Input, Label } from 'tamagui';
+import { Label, YStack } from '@calendar/ui';
+import { Input } from 'tamagui';
 
 type InputProps = ComponentProps<typeof Input>;
 

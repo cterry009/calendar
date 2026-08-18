@@ -180,12 +180,12 @@ export function DayTimeGrid({
               zIndex={2}
             >
               {bar.height >= 18 ? (
-                <Text fontSize="$3" fontWeight="800" color="#0a0f14" lineHeight={18}>
+                <Text fontSize="$3" fontWeight="800" color="#0a1c13" lineHeight={18}>
                   {bar.label}
                 </Text>
               ) : null}
               {bar.height >= 50 ? (
-                <Text fontSize="$2" color="#0a0f14" opacity={0.8}>
+                <Text fontSize="$2" color="#0a1c13" opacity={0.8}>
                   {bar.detail}
                 </Text>
               ) : null}

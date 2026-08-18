@@ -29,6 +29,13 @@ function MetaBadge({ text }: MetaBadgeProps) {
 }
 
 export function FitnessItem({ entry, isBusy, onEdit, onDelete }: FitnessItemProps) {
+  async function handleDelete() {
+    if (!window.confirm(`Eliminar el registro de "${entry.activityType}"? Esta accion no se puede deshacer.`)) {
+      return;
+    }
+    await onDelete(entry);
+  }
+
   return (
     <AppCard>
       <YStack gap="$3">
@@ -59,7 +66,7 @@ export function FitnessItem({ entry, isBusy, onEdit, onDelete }: FitnessItemProp
           <AppButton type="button" variant="ghost" disabled={isBusy} onPress={() => onEdit(entry)}>
             Editar
           </AppButton>
-          <AppButton type="button" variant="ghost" disabled={isBusy} onPress={() => void onDelete(entry)}>
+          <AppButton type="button" variant="danger" disabled={isBusy} onPress={() => void handleDelete()}>
             Eliminar
           </AppButton>
         </XStack>

@@ -20,7 +20,7 @@ export function MetricCard({ title, value, subtitle, tone = 'accent' }: MetricCa
         <Paragraph color="$muted" margin={0}>
           {title}
         </Paragraph>
-        <Text fontSize="$10" fontWeight="700" color={TONE_COLORS[tone]} fontVariantNumeric="tabular-nums">
+        <Text fontSize="$10" fontWeight="700" color={TONE_COLORS[tone]} fontVariant={['tabular-nums']}>
           {value}
         </Text>
         <Paragraph color="$muted" margin={0}>

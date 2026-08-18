@@ -34,6 +34,23 @@ export interface TaskFormValues {
   status: TaskStatus;
 }
 
+/** Base for a partial update (e.g. only `scheduledAt`) -- `updateTask` takes the full form shape. */
+export function taskToFormValues(task: SyncTaskRecord): TaskFormValues {
+  return {
+    title: task.title,
+    description: task.description,
+    scheduledAt: task.scheduledAt,
+    estimatedMinutes: task.estimatedMinutes,
+    estimatedPomodoros: task.estimatedPomodoros,
+    actualMinutes: task.actualMinutes,
+    difficulty: task.difficulty,
+    complexity: task.complexity,
+    priority: task.priority,
+    category: task.category,
+    status: task.status,
+  };
+}
+
 export type TaskDifficultyFilter = 'ALL' | TaskDifficulty;
 
 export const TASK_DIFFICULTIES: TaskDifficulty[] = ['EASY', 'MEDIUM', 'HARD'];

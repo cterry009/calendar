@@ -1,13 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { OnboardingTutorial } from '../components/onboarding/OnboardingTutorial';
 import { useAuth } from './AuthContext';
 import { isTutorialCompleted, markTutorialCompleted } from '../lib/onboarding/storage';
@@ -22,22 +13,13 @@ const OnboardingContext = createContext<OnboardingContextValue | undefined>(unde
 
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [pendingRoute, setPendingRoute] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && !isTutorialCompleted()) {
       setIsOpen(true);
     }
   }, [user]);
-
-  useEffect(() => {
-    if (pendingRoute && location.pathname === pendingRoute) {
-      setPendingRoute(null);
-    }
-  }, [location.pathname, pendingRoute]);
 
   const openTutorial = useCallback(() => {
     setIsOpen(true);
@@ -46,16 +28,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const closeTutorial = useCallback(() => {
     markTutorialCompleted();
     setIsOpen(false);
-    setPendingRoute(null);
   }, []);
-
-  const handleNavigate = useCallback(
-    (route: string) => {
-      setPendingRoute(route);
-      navigate(route);
-    },
-    [navigate],
-  );
 
   const value = useMemo(
     () => ({
@@ -69,14 +42,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   return (
     <OnboardingContext.Provider value={value}>
       {children}
-      <OnboardingTutorial
-        open={isOpen}
-        currentPath={location.pathname}
-        pendingRoute={pendingRoute}
-        onNavigate={handleNavigate}
-        onFinish={closeTutorial}
-        onSkip={closeTutorial}
-      />
+      <OnboardingTutorial open={isOpen} onFinish={closeTutorial} />
     </OnboardingContext.Provider>
   );
 }

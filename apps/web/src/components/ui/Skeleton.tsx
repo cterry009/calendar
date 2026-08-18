@@ -15,12 +15,11 @@ export function Skeleton({ width, height, borderRadius = 8, lines, lineHeight = 
         {Array.from({ length: lines }).map((_, index) => (
           <YStack
             key={index}
+            className="skeleton-pulse"
             width={index === lines - 1 ? '60%' : '100%'}
             height={lineHeight}
             borderRadius={borderRadius}
-            backgroundColor="rgba(255,255,255,0.06)"
-            animation="quick"
-            opacity={0.6}
+            backgroundColor="rgba(255,255,255,0.08)"
           />
         ))}
       </YStack>
@@ -29,12 +28,11 @@ export function Skeleton({ width, height, borderRadius = 8, lines, lineHeight = 
 
   return (
     <YStack
+      className="skeleton-pulse"
       width={width ?? '100%'}
       height={height ?? 24}
       borderRadius={borderRadius}
-      backgroundColor="rgba(255,255,255,0.06)"
-      animation="quick"
-      opacity={0.6}
+      backgroundColor="rgba(255,255,255,0.08)"
     />
   );
 }

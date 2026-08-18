@@ -1,5 +1,4 @@
-﻿import { useNavigate } from 'react-router-dom';
-import { AppButton, Paragraph, XStack, YStack } from '@calendar/ui';
+﻿import { AppButton, Paragraph, XStack, YStack } from '@calendar/ui';
 import { CompletionByDifficultyPanel } from '../components/dashboard/CompletionByDifficultyPanel';
 import { EstimationAccuracyPanel } from '../components/dashboard/EstimationAccuracyPanel';
 import { FitnessCorrelationPanel } from '../components/dashboard/FitnessCorrelationPanel';
@@ -8,10 +7,11 @@ import { MetricCard } from '../components/dashboard/MetricCard';
 import { WeekComparisonPanel } from '../components/dashboard/WeekComparisonPanel';
 import { PageHeader } from '../components/PageHeader';
 import { StatusCard } from '../components/StatusCard';
+import { usePanel } from '../context/PanelContext';
 import { useDashboard } from '../hooks/useDashboard';
 
 export function DashboardPage() {
-  const navigate = useNavigate();
+  const { openPanel } = usePanel();
   const { metrics, isLoading, isSeeding, error, syncedAt, refetch, seedDemo } = useDashboard();
 
   const isEmpty = !isLoading && metrics && !metrics.hasData;
@@ -91,7 +91,7 @@ export function DashboardPage() {
               <CompletionByDifficultyPanel items={metrics.completionByDifficulty} />
               <FitnessCorrelationPanel
                 report={metrics.fitnessCorrelation}
-                onOpenSuggestions={() => navigate('/suggestions')}
+                onOpenSuggestions={() => openPanel('suggestions')}
               />
             </YStack>
           </XStack>

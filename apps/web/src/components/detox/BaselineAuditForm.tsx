@@ -51,11 +51,11 @@ export function BaselineAuditForm({ isSubmitting, onSubmit }: BaselineAuditFormP
             onChange={(event) => setScreenTime(event.target.value)}
             style={{
               padding: 10,
-              borderRadius: 8,
-              border: '1px solid #2a323f',
-              background: '#1b212b',
-              color: '#eaf0ee',
-              fontFamily: 'Inter, sans-serif',
+              borderRadius: 14,
+              border: '1px solid rgba(180,255,220,0.18)',
+              background: '#2a3931',
+              color: '#f2f7f4',
+              fontFamily: "'Outfit', -apple-system, system-ui, sans-serif",
             }}
           />
         </YStack>
@@ -69,11 +69,11 @@ export function BaselineAuditForm({ isSubmitting, onSubmit }: BaselineAuditFormP
             placeholder={'Instagram\nYouTube\nTikTok'}
             style={{
               padding: 10,
-              borderRadius: 8,
-              border: '1px solid #2a323f',
-              background: '#1b212b',
-              color: '#eaf0ee',
-              fontFamily: 'Inter, sans-serif',
+              borderRadius: 14,
+              border: '1px solid rgba(180,255,220,0.18)',
+              background: '#2a3931',
+              color: '#f2f7f4',
+              fontFamily: "'Outfit', -apple-system, system-ui, sans-serif",
             }}
           />
         </YStack>

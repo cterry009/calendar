@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { AppButton, AppCard, H2, Paragraph, XStack, YStack } from '@calendar/ui';
-import { Checkbox, Input, Label } from 'tamagui';
+import { AppButton, AppCard, H2, Label, Paragraph, XStack, YStack } from '@calendar/ui';
+import { Checkbox, Input } from 'tamagui';
 import { BLOCK_LIST_KIND_LABELS, BLOCK_LIST_PLATFORM_LABELS } from '../../lib/blocklist/labels';
 import {
   BLOCK_LIST_KINDS,
@@ -66,11 +66,11 @@ export function BlockListForm({ mode, initialEntry, isSubmitting, onSubmit, onCa
               onChange={(event) => setField('kind', event.target.value as BlockListFormValues['kind'])}
               style={{
                 padding: 10,
-                borderRadius: 8,
-                border: '1px solid #2a323f',
-                background: '#1b212b',
-                color: '#eaf0ee',
-                fontFamily: 'Inter, sans-serif',
+                borderRadius: 14,
+                border: '1px solid rgba(180,255,220,0.18)',
+                background: '#2a3931',
+                color: '#f2f7f4',
+                fontFamily: "'Outfit', -apple-system, system-ui, sans-serif",
               }}
             >
               {BLOCK_LIST_KINDS.map((kind) => (
@@ -103,11 +103,11 @@ export function BlockListForm({ mode, initialEntry, isSubmitting, onSubmit, onCa
               }
               style={{
                 padding: 10,
-                borderRadius: 8,
-                border: '1px solid #2a323f',
-                background: '#1b212b',
-                color: '#eaf0ee',
-                fontFamily: 'Inter, sans-serif',
+                borderRadius: 14,
+                border: '1px solid rgba(180,255,220,0.18)',
+                background: '#2a3931',
+                color: '#f2f7f4',
+                fontFamily: "'Outfit', -apple-system, system-ui, sans-serif",
               }}
             >
               <option value="">Todas</option>

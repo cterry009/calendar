@@ -37,6 +37,14 @@ export function ScheduleItem({ schedule, isBusy, onEdit, onDelete }: ScheduleIte
   const startLabel = minuteToTimeValue(schedule.startMinute);
   const endLabel = minuteToTimeValue(schedule.endMinute);
 
+  async function handleDelete() {
+    const name = schedule.label?.trim() || `${SCHEDULE_KIND_LABELS[schedule.kind]} recurrente`;
+    if (!window.confirm(`Eliminar "${name}"? Esta accion no se puede deshacer.`)) {
+      return;
+    }
+    await onDelete(schedule);
+  }
+
   return (
     <AppCard>
       <YStack gap="$3">
@@ -60,7 +68,7 @@ export function ScheduleItem({ schedule, isBusy, onEdit, onDelete }: ScheduleIte
           <AppButton type="button" variant="ghost" disabled={isBusy} onPress={() => onEdit(schedule)}>
             Editar
           </AppButton>
-          <AppButton type="button" variant="ghost" disabled={isBusy} onPress={() => void onDelete(schedule)}>
+          <AppButton type="button" variant="danger" disabled={isBusy} onPress={() => void handleDelete()}>
             Eliminar
           </AppButton>
         </XStack>

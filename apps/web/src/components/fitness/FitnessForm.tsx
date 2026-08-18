@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { AppButton, AppCard, H2, Paragraph, XStack, YStack } from '@calendar/ui';
-import { Label, TextArea } from 'tamagui';
+import { AppButton, AppCard, H2, Label, Paragraph, XStack, YStack } from '@calendar/ui';
+import { TextArea } from 'tamagui';
 import { FITNESS_INTENSITY_LABELS } from '../../lib/fitness/labels';
 import {
   FITNESS_INTENSITIES,

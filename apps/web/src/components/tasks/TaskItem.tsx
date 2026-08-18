@@ -44,6 +44,9 @@ export function TaskItem({ task, isBusy, onEdit, onDelete, onComplete, onStartPo
   }, [task.scheduledAt]);
 
   async function handleDelete() {
+    if (!window.confirm(`Eliminar "${task.title}"? Esta accion no se puede deshacer.`)) {
+      return;
+    }
     await onDelete(task);
   }
 
@@ -142,7 +145,7 @@ export function TaskItem({ task, isBusy, onEdit, onDelete, onComplete, onStartPo
               Editar
             </AppButton>
           ) : null}
-          <AppButton type="button" variant="ghost" disabled={isBusy} onPress={() => void handleDelete()}>
+          <AppButton type="button" variant="danger" disabled={isBusy} onPress={() => void handleDelete()}>
             Eliminar
           </AppButton>
         </XStack>

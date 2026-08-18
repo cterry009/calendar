@@ -87,7 +87,7 @@ export function MiniMonthCalendar({ selectedDate, onSelectDate }: MiniMonthCalen
                     onPress={() => onSelectDate(day)}
                     hoverStyle={{ backgroundColor: isSelected ? '$primary' : 'rgba(255,255,255,0.08)' }}
                   >
-                    <Text fontSize="$2" color={isSelected ? '#0a0f14' : inMonth ? '$color' : '$muted'}>
+                    <Text fontSize="$2" color={isSelected ? '#0a1c13' : inMonth ? '$color' : '$muted'}>
                       {day.getDate()}
                     </Text>
                   </YStack>

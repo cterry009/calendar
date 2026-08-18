@@ -1,6 +1,6 @@
 ﻿import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { AppButton, AppCard, H2, Paragraph, YStack } from '@calendar/ui';
+import { usePanel } from '../../context/PanelContext';
 import { usePomodoro } from '../../context/PomodoroContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
 import { useFitness } from '../../hooks/useFitness';
@@ -52,7 +52,7 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
   const tasksData = useTasks();
   const fitnessData = useFitness();
   const pomodoro = usePomodoro();
-  const navigate = useNavigate();
+  const { openPanel } = usePanel();
 
   function selectDay(date: Date) {
     onChangeDate(startOfDay(date));
@@ -71,7 +71,7 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
 
   async function handleStartFocusSegment(focusDurationMin: number, taskId?: string) {
     await pomodoro.start(taskId, { focusDurationMin });
-    navigate('/pomodoro');
+    openPanel('pomodoro');
   }
 
   const range = useMemo(() => getRangeForMode(mode, selectedDate), [mode, selectedDate]);

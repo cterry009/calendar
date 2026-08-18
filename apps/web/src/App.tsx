@@ -1,16 +1,11 @@
 ﻿import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { LegacyPanelRedirect } from './components/panels/LegacyPanelRedirect';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ProtectedAppLayout } from './layouts/ProtectedAppLayout';
 import { CalendarPage } from './pages/CalendarPage';
-import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
-import { BlockListPage } from './pages/BlockListPage';
-import { DetoxPage } from './pages/DetoxPage';
-import { FitnessPage } from './pages/FitnessPage';
-import { PomodoroPage } from './pages/PomodoroPage';
 import { RegisterPage } from './pages/RegisterPage';
-import { SuggestionsPage } from './pages/SuggestionsPage';
 
 export default function App() {
   return (
@@ -25,13 +20,15 @@ export default function App() {
             <Route path="/" element={<Navigate to="/calendar" replace />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/tasks" element={<Navigate to="/calendar" replace />} />
-            <Route path="/fitness" element={<FitnessPage />} />
-            <Route path="/pomodoro" element={<PomodoroPage />} />
             <Route path="/schedule" element={<Navigate to="/calendar" replace />} />
-            <Route path="/blocklist" element={<BlockListPage />} />
-            <Route path="/detox" element={<DetoxPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/suggestions" element={<SuggestionsPage />} />
+            {/* These used to be full pages; they're slide-over panels now (task 5.1). Old
+                links/bookmarks still work, redirected to the calendar with the panel open. */}
+            <Route path="/fitness" element={<LegacyPanelRedirect panel="fitness" />} />
+            <Route path="/pomodoro" element={<LegacyPanelRedirect panel="pomodoro" />} />
+            <Route path="/blocklist" element={<LegacyPanelRedirect panel="blocklist" />} />
+            <Route path="/detox" element={<LegacyPanelRedirect panel="detox" />} />
+            <Route path="/dashboard" element={<LegacyPanelRedirect panel="dashboard" />} />
+            <Route path="/suggestions" element={<LegacyPanelRedirect panel="suggestions" />} />
           </Route>
         </Route>
 

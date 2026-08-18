@@ -9,7 +9,9 @@
     "lint": "eslint src"
   },
   "dependencies": {
+    "@tamagui/animations-css": "^1.125.0",
     "@tamagui/config": "^1.125.0",
+    "@tamagui/lucide-icons": "^1.144.4",
     "react-native-web": "^0.19.13",
     "tamagui": "^1.125.0"
   },

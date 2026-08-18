@@ -10,6 +10,13 @@ interface BlockListItemProps {
 }
 
 export function BlockListItem({ entry, isBusy, onEdit, onDelete }: BlockListItemProps) {
+  async function handleDelete() {
+    if (!window.confirm(`Eliminar "${entry.label}"? Esta accion no se puede deshacer.`)) {
+      return;
+    }
+    await onDelete(entry);
+  }
+
   return (
     <AppCard>
       <YStack gap="$3">
@@ -50,7 +57,7 @@ export function BlockListItem({ entry, isBusy, onEdit, onDelete }: BlockListItem
           <AppButton type="button" variant="ghost" disabled={isBusy} onPress={() => onEdit(entry)}>
             Editar
           </AppButton>
-          <AppButton type="button" variant="ghost" disabled={isBusy} onPress={() => void onDelete(entry)}>
+          <AppButton type="button" variant="danger" disabled={isBusy} onPress={() => void handleDelete()}>
             Eliminar
           </AppButton>
         </XStack>

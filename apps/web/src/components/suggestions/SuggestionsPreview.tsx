@@ -1,10 +1,10 @@
-import { useNavigate } from 'react-router-dom';
 import { AppButton, AppCard, H2, Paragraph, Text, YStack } from '@calendar/ui';
+import { usePanel } from '../../context/PanelContext';
 import { useSuggestions } from '../../hooks/useSuggestions';
 import { SUGGESTION_PRIORITY_LABELS } from '../../lib/analytics/suggestion-labels';
 
 export function SuggestionsPreview() {
-  const navigate = useNavigate();
+  const { openPanel } = usePanel();
   const { suggestions, isLoading, error } = useSuggestions();
   const topSuggestions = suggestions.slice(0, 3);
 
@@ -42,7 +42,7 @@ export function SuggestionsPreview() {
           </YStack>
         )}
 
-        <AppButton type="button" variant="ghost" onPress={() => navigate('/suggestions')}>
+        <AppButton type="button" variant="ghost" onPress={() => openPanel('suggestions')}>
           Ver todas las sugerencias
         </AppButton>
       </YStack>

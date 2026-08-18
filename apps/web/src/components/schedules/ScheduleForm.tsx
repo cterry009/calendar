@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { AppButton, AppCard, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
-import { Checkbox, Input, Label } from 'tamagui';
+import { AppButton, AppCard, H2, Label, Paragraph, Text, XStack, YStack } from '@calendar/ui';
+import { Checkbox, Input } from 'tamagui';
 import { DAY_NAMES_ES, SCHEDULE_KIND_LABELS } from '../../lib/schedules/labels';
 import {
   SCHEDULE_KINDS,

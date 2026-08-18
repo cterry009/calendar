@@ -43,7 +43,7 @@ export function RegisterPage() {
       linkSlot={
         <Paragraph color="$muted">
           Already have an account?{' '}
-          <Link to="/login" style={{ color: '#4fb6a6', fontWeight: 600, textDecoration: 'none' }}>
+          <Link to="/login" style={{ color: '#4ee0a0', fontWeight: 600, textDecoration: 'underline' }}>
             Sign in
           </Link>
         </Paragraph>
