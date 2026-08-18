@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { findFreeSlots } from '@calendar/shared';
 import { AppButton, AppCard, H2, H3, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { DayTimeGrid } from './DayTimeGrid';
 import { EVENT_TYPE_COLOR, EVENT_TYPE_LABEL } from './eventStyles';
@@ -10,11 +11,30 @@ import { isSameDay } from '../../lib/calendar/utils';
 import type { FitnessFormValues } from '../../lib/fitness/types';
 import type { TaskFormValues } from '../../lib/tasks/types';
 import {
+  EXCLUDED_WORK_WINDOWS,
   MAX_LONG_BREAKS,
   countSegmentsByType,
   generateFocusPlan,
   resolveFocusPlanConfig,
 } from '../../lib/pomodoro/planner';
+
+// One pomodoro's worth -- the smallest unit the calendar actually schedules -- is the bar for
+// "is there room here", not a specific task's estimate (this hint isn't tied to one).
+const MIN_SUGGESTED_SLOT_MINUTES = 25;
+
+function findBlockFreeSlot(block: CalendarEvent, taskItems: CalendarEvent[], isToday: boolean) {
+  const [slot] = findFreeSlots({
+    workRanges: [{ startMinute: minuteOfDay(block.start), endMinute: minuteOfDay(block.end) }],
+    occupiedRanges: [
+      ...taskItems.map((item) => ({ startMinute: minuteOfDay(item.start), endMinute: minuteOfDay(item.end) })),
+      ...EXCLUDED_WORK_WINDOWS,
+    ],
+    requiredMinutes: MIN_SUGGESTED_SLOT_MINUTES,
+    earliestMinute: isToday ? minuteOfDay(new Date()) : 0,
+    maxResults: 1,
+  });
+  return slot ?? null;
+}
 
 function pomodoroLengthForBlock(block: CalendarEvent): number {
   return resolveFocusPlanConfig({
@@ -41,6 +61,12 @@ interface DayViewProps {
 
 function minuteOfDay(date: Date): number {
   return date.getHours() * 60 + date.getMinutes();
+}
+
+function formatMinuteOfDay(minute: number): string {
+  const hours = Math.floor(minute / 60) % 24;
+  const minutes = minute % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
 function formatTimeRange(start: Date, end: Date): string {
@@ -241,6 +267,9 @@ export function DayView({
         {blocks.map((block) => {
           const items = otherEvents.filter((event) => isWithinBlock(event, block));
           const isWork = block.type === 'work';
+          const freeSlot = isWork
+            ? findBlockFreeSlot(block, items.filter((item) => item.type === 'task'), isSelectedDateToday)
+            : null;
 
           return (
             <YStack
@@ -269,6 +298,13 @@ export function DayView({
                   onStartFocusSegment={onStartFocusSegment}
                   isStartingFocus={isStartingFocus}
                 />
+              ) : null}
+
+              {freeSlot ? (
+                <Text fontSize="$2" color="$accent">
+                  Hueco libre: {formatMinuteOfDay(freeSlot.startMinute)} - {formatMinuteOfDay(freeSlot.endMinute)} (
+                  {freeSlot.durationMinutes} min)
+                </Text>
               ) : null}
 
               {items.length > 0 ? (

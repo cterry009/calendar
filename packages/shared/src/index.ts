@@ -4,5 +4,6 @@ export * from './pomodoro/state-machine.js';
 export * from './analytics/estimation-accuracy.js';
 export * from './analytics/suggestions.js';
 export * from './analytics/fitness-correlation.js';
+export * from './analytics/free-slots.js';
 export * from './detox/index.js';
 export * from './habits/score.js';

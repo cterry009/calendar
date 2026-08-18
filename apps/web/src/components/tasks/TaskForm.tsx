@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { AppButton, AppCard, H2, Label, Paragraph, XStack, YStack } from '@calendar/ui';
+import { AppButton, AppCard, H2, Label, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { TextArea } from 'tamagui';
+import { useCalendarData } from '../../hooks/useCalendarData';
 import {
   computeHeuristicComplexity,
   difficultyFromComplexity,
   estimateTaskComplexity,
   recordComplexityFeedbackSample,
 } from '../../lib/tasks/complexity';
+import { findSuggestedSlotsForDay } from '../../lib/tasks/freeSlots';
 import { TASK_DIFFICULTY_LABELS, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '../../lib/tasks/labels';
 import { TASK_DIFFICULTIES, TASK_PRIORITIES, TASK_STATUSES, type SyncTaskRecord, type TaskFormValues } from '../../lib/tasks/types';
 import { estimateFocusDurationMin } from '../../lib/pomodoro/planner';
@@ -117,6 +119,14 @@ export function TaskForm({
   }, [initialTask, initialScheduledAt, initialTitle, initialEstimatedPomodoros, mode]);
 
   const estimatedMinutesPreview = (Number(draft.estimatedPomodoros) || 1) * pomodoroLength;
+
+  const { schedules, tasks } = useCalendarData();
+  const referenceDateKey = draft.scheduledAt ? draft.scheduledAt.slice(0, 10) : toDateTimeLocal(new Date().toISOString()).slice(0, 10);
+  const suggestedSlots = useMemo(() => {
+    const referenceDate = new Date(`${referenceDateKey}T00:00:00`);
+    const otherTasks = tasks.filter((task) => task.id !== initialTask?.id);
+    return findSuggestedSlotsForDay(referenceDate, schedules, otherTasks, estimatedMinutesPreview);
+  }, [referenceDateKey, schedules, tasks, estimatedMinutesPreview, initialTask?.id]);
 
   useEffect(() => {
     if (mode !== 'create' || (complexityTouched && difficultyTouched)) return;
@@ -235,13 +245,32 @@ export function TaskForm({
           />
         </YStack>
 
-        <FormField
-          id="task-scheduled-at"
-          label="Programada para"
-          type="datetime-local"
-          value={draft.scheduledAt}
-          onChangeText={(value: string) => setField('scheduledAt', value)}
-        />
+        <YStack gap="$2">
+          <FormField
+            id="task-scheduled-at"
+            label="Programada para"
+            type="datetime-local"
+            value={draft.scheduledAt}
+            onChangeText={(value: string) => setField('scheduledAt', value)}
+          />
+          {suggestedSlots.length > 0 ? (
+            <XStack gap="$2" alignItems="center" flexWrap="wrap">
+              <Text fontSize="$2" color="$muted">
+                Huecos libres:
+              </Text>
+              {suggestedSlots.map((slot) => (
+                <AppButton
+                  key={slot.start.toISOString()}
+                  type="button"
+                  variant="small"
+                  onPress={() => setField('scheduledAt', toDateTimeLocal(slot.start.toISOString()))}
+                >
+                  {slot.start.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} ({slot.durationMinutes} min)
+                </AppButton>
+              ))}
+            </XStack>
+          ) : null}
+        </YStack>
 
         <XStack gap="$3" flexWrap="wrap">
           <YStack minWidth={180} flex={1} gap="$2">
