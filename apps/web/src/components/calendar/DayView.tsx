@@ -3,6 +3,7 @@ import { AppButton, AppCard, H2, H3, Paragraph, Text, XStack, YStack } from '@ca
 import { DayTimeGrid } from './DayTimeGrid';
 import { EVENT_TYPE_COLOR, EVENT_TYPE_LABEL } from './eventStyles';
 import { FitnessForm } from '../fitness/FitnessForm';
+import { StatusCard } from '../StatusCard';
 import { QuickAddTask } from '../tasks/QuickAddTask';
 import type { CalendarEvent } from '../../lib/calendar/types';
 import { isSameDay } from '../../lib/calendar/utils';
@@ -174,6 +175,7 @@ export function DayView({
   const unassignedEvents = otherEvents.filter(
     (event) => !blocks.some((block) => isWithinBlock(event, block)),
   );
+  const taskCountToday = events.filter((event) => event.type === 'task').length;
 
   async function handleCreateFitness(values: FitnessFormValues) {
     await onCreateFitness(values);
@@ -217,14 +219,23 @@ export function DayView({
             Sin eventos para este dia. Define horarios de trabajo y descanso para empezar a planificar.
           </Paragraph>
         ) : (
-          <DayTimeGrid
-            selectedDate={selectedDate}
-            blocks={blocks}
-            otherEvents={otherEvents}
-            isToday={isSelectedDateToday}
-            onStartFocusSegment={onStartFocusSegment}
-            isStartingFocus={isStartingFocus}
-          />
+          <>
+            {taskCountToday === 0 ? (
+              <StatusCard
+                tone="muted"
+                message="No hay tareas creadas para este dia."
+                detail='Presiona "Q" en cualquier pantalla para agregar una, o escribila directo en un bloque de trabajo.'
+              />
+            ) : null}
+            <DayTimeGrid
+              selectedDate={selectedDate}
+              blocks={blocks}
+              otherEvents={otherEvents}
+              isToday={isSelectedDateToday}
+              onStartFocusSegment={onStartFocusSegment}
+              isStartingFocus={isStartingFocus}
+            />
+          </>
         )}
 
         {blocks.map((block) => {

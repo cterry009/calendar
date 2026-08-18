@@ -7,6 +7,7 @@ import {
   Lightbulb,
   ListChecks,
   Paragraph,
+  Plus,
   ShieldBan,
   Sunrise,
   Text,
@@ -18,6 +19,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { usePanel, type PanelId } from '../context/PanelContext';
+import { useQuickAdd } from '../context/QuickAddContext';
 
 interface NavLink {
   panel: PanelId;
@@ -67,6 +69,7 @@ export function AppNav() {
   const { user, logout } = useAuth();
   const { openTutorial } = useOnboarding();
   const { activePanel, openPanel } = usePanel();
+  const { open: openQuickAdd } = useQuickAdd();
 
   return (
     <XStack
@@ -86,6 +89,21 @@ export function AppNav() {
     >
       <XStack alignItems="center" gap="$5" flexWrap="wrap">
         <Eyebrow marginBottom={0}>Calendar Productivity</Eyebrow>
+
+        <AppButton
+          variant="primary"
+          onPress={openQuickAdd}
+          aria-label="Nueva tarea"
+          title="Nueva tarea (atajo: Q)"
+          paddingHorizontal="$3"
+        >
+          <Plus size={18} />
+          <Text color="inherit" fontWeight="600">
+            Tarea
+          </Text>
+        </AppButton>
+
+        <NavDivider />
 
         {NAV_GROUPS.map((group, index) => (
           <XStack key={group.label} alignItems="center" gap="$3" flexWrap="wrap">

@@ -9,11 +9,13 @@ import { TASK_DIFFICULTIES, type SyncTaskRecord, type TaskDifficultyFilter } fro
 
 const DIFFICULTY_FILTERS: TaskDifficultyFilter[] = ['ALL', ...TASK_DIFFICULTIES];
 
-/** Task list, filters, edit and complete -- creation lives in the calendar's quick-add
- * (per work block), not here, so this stays focused on managing what's already there. */
+/** Task list, filters, edit and complete -- creation lives in the global quick-add ("Q" / the +
+ * icon in AppNav) and the calendar's per-block quick-add, not here, so this stays focused on
+ * managing what's already there. */
 export function TaskManager() {
   const { openPanel } = usePanel();
   const {
+    tasks,
     filteredTasks,
     difficultyFilter,
     setDifficultyFilter,
@@ -28,6 +30,10 @@ export function TaskManager() {
   } = useTasks();
 
   const [editingTask, setEditingTask] = useState<SyncTaskRecord | null>(null);
+  const [showUnscheduledOnly, setShowUnscheduledOnly] = useState(false);
+
+  const unscheduledCount = tasks.filter((task) => !task.scheduledAt).length;
+  const visibleTasks = showUnscheduledOnly ? filteredTasks.filter((task) => !task.scheduledAt) : filteredTasks;
 
   async function handleUpdate(values: Parameters<typeof updateTask>[1]) {
     if (!editingTask) return;
@@ -50,8 +56,8 @@ export function TaskManager() {
             Tareas
           </H2>
           <Paragraph color="$muted" margin={0}>
-            Se crean directamente desde un bloque de trabajo en el calendario. Aca podes filtrar, editar y
-            completarlas.
+            Presiona "Q" en cualquier pantalla (o el boton + de arriba) para agregar una tarea al vuelo. Tambien se
+            crean desde un bloque de trabajo en el calendario. Aca podes filtrar, editar y completarlas.
           </Paragraph>
         </YStack>
 
@@ -67,6 +73,15 @@ export function TaskManager() {
                 {TASK_DIFFICULTY_FILTER_LABELS[filter]}
               </AppButton>
             ))}
+            {unscheduledCount > 0 ? (
+              <AppButton
+                type="button"
+                variant={showUnscheduledOnly ? 'primary' : 'ghost'}
+                onPress={() => setShowUnscheduledOnly((current) => !current)}
+              >
+                Sin programar ({unscheduledCount})
+              </AppButton>
+            ) : null}
           </XStack>
 
           <AppButton type="button" variant="ghost" onPress={() => void refetch()} disabled={isLoading || isMutating}>
@@ -94,9 +109,13 @@ export function TaskManager() {
           <Paragraph margin={0}>Cargando tareas...</Paragraph>
         ) : (
           <TaskList
-            tasks={filteredTasks}
+            tasks={visibleTasks}
             isBusy={isMutating}
-            emptyMessage="No hay tareas todavia. Agregalas desde un bloque de trabajo en el calendario."
+            emptyMessage={
+              showUnscheduledOnly
+                ? 'No hay tareas sin programar.'
+                : 'No hay tareas creadas todavia. Presiona "Q" para agregar la primera.'
+            }
             onEdit={setEditingTask}
             onDelete={handleDelete}
             onComplete={completeTask}

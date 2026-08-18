@@ -11,6 +11,7 @@ export {
   Leaf,
   Lightbulb,
   ListChecks,
+  Plus,
   ScoreDisplay,
   ShieldBan,
   Sunrise,
