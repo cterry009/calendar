@@ -24,6 +24,9 @@ const EMPTY_SNAPSHOT: Omit<SyncSnapshot, 'syncedAt'> = {
   fitnessEntries: [],
   detoxPlan: null,
   serotoninSession: null,
+  habits: [],
+  habitRecords: [],
+  journalEntries: [],
 };
 
 export function useCalendarData(): UseCalendarDataResult {
@@ -47,6 +50,9 @@ export function useCalendarData(): UseCalendarDataResult {
         fitnessEntries: data.fitnessEntries,
         detoxPlan: data.detoxPlan ?? null,
         serotoninSession: data.serotoninSession ?? null,
+        habits: data.habits,
+        habitRecords: data.habitRecords,
+        journalEntries: data.journalEntries,
       });
       setSyncedAt(data.syncedAt);
     } catch (errorValue) {

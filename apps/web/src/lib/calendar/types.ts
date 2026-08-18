@@ -4,6 +4,8 @@ import type {
   TaskStatus,
   DetoxPlan,
   SerotoninSession,
+  HabitType,
+  HabitRecordStatus,
 } from '@calendar/shared';
 
 export type CalendarViewMode = 'day' | 'week' | 'month';
@@ -92,6 +94,45 @@ export interface SyncSerotoninSessionRecord {
   createdAt: string;
 }
 
+export interface SyncHabit {
+  id: string;
+  clientId: string | null;
+  title: string;
+  description: string | null;
+  type: HabitType;
+  dailyGoalValue: number;
+  dailyGoalUnit: string;
+  dailyGoalExtraValue: number | null;
+  targetDays: number;
+  color: string | null;
+  category: string | null;
+  archived: boolean;
+  linkedFitnessActivityType: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SyncHabitRecord {
+  id: string;
+  habitId: string;
+  date: string;
+  value: number;
+  status: HabitRecordStatus;
+  autoCompleted: boolean;
+  fitnessEntryId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SyncJournalEntry {
+  id: string;
+  habitId: string;
+  recordId: string | null;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SyncSnapshot {
   tasks: SyncTask[];
   schedules: SyncSchedule[];
@@ -100,6 +141,9 @@ export interface SyncSnapshot {
   fitnessEntries: SyncFitnessEntry[];
   detoxPlan: SyncDetoxPlanRecord | null;
   serotoninSession: SyncSerotoninSessionRecord | null;
+  habits: SyncHabit[];
+  habitRecords: SyncHabitRecord[];
+  journalEntries: SyncJournalEntry[];
   syncedAt: string;
 }
 

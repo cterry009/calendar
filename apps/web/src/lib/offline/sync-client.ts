@@ -25,6 +25,9 @@ export async function pullSnapshot(): Promise<PullSnapshotResult> {
         ...snapshot,
         detoxPlan: snapshot.detoxPlan ?? null,
         serotoninSession: snapshot.serotoninSession ?? null,
+        habits: snapshot.habits ?? [],
+        habitRecords: snapshot.habitRecords ?? [],
+        journalEntries: snapshot.journalEntries ?? [],
       };
       await saveCachedSnapshot(normalized);
       return { snapshot: normalized, fromCache: false };

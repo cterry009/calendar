@@ -4,6 +4,7 @@ import { BlockListPage } from '../../pages/BlockListPage';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { DetoxPage } from '../../pages/DetoxPage';
 import { FitnessPage } from '../../pages/FitnessPage';
+import { HabitsPage } from '../../pages/HabitsPage';
 import { PomodoroPage } from '../../pages/PomodoroPage';
 import { RitualPage } from '../../pages/RitualPage';
 import { SuggestionsPage } from '../../pages/SuggestionsPage';
@@ -17,6 +18,7 @@ const PANEL_PAGES: Record<PanelId, ComponentType> = {
   fitness: FitnessPage,
   detox: DetoxPage,
   ritual: RitualPage,
+  habits: HabitsPage,
 };
 
 export function PanelHost() {

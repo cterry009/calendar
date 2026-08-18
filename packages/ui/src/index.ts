@@ -10,6 +10,7 @@ export {
   Label,
   Leaf,
   Lightbulb,
+  ListChecks,
   ScoreDisplay,
   ShieldBan,
   Sunrise,

@@ -322,22 +322,25 @@ model AnalyticsSnapshot {
 // HabitRecord history on read, same as mhabit does client-side.
 
 model Habit {
-  id                  String    @id @default(cuid())
-  userId              String
-  title               String
-  description         String?
-  type                HabitType @default(NORMAL)
-  dailyGoalValue      Float     @default(1)
-  dailyGoalUnit       String    @default("times")
-  dailyGoalExtraValue Float? // optional bonus/tolerance ceiling, see mhabit's scoreExtraMax
-  targetDays          Int       @default(66) // days to consolidate the habit; parametrizes the score curve
-  color               String?
-  category            String?
-  archived            Boolean   @default(false)
-  clientId            String? // offline sync id from client
-  deletedAt           DateTime?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                        String    @id @default(cuid())
+  userId                    String
+  title                     String
+  description               String?
+  type                      HabitType @default(NORMAL)
+  dailyGoalValue            Float     @default(1)
+  dailyGoalUnit             String    @default("times")
+  dailyGoalExtraValue       Float? // optional bonus/tolerance ceiling, see mhabit's scoreExtraMax
+  targetDays                Int       @default(66) // days to consolidate the habit; parametrizes the score curve
+  color                     String?
+  category                  String?
+  archived                  Boolean   @default(false)
+  // Case-insensitive match against FitnessEntry.activityType; when set, a matching fitness log
+  // auto-creates/updates today's HabitRecord instead of requiring a manual check-in.
+  linkedFitnessActivityType String?
+  clientId                  String? // offline sync id from client
+  deletedAt                 DateTime?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   records        HabitRecord[]

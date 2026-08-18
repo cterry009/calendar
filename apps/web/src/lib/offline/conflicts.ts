@@ -8,6 +8,9 @@ const ENTITY_LABELS: Record<SyncEntityType, string> = {
   fitnessEntries: 'fitness',
   detoxPlan: 'plan detox',
   serotoninSession: 'bienestar diario',
+  habits: 'habitos',
+  habitRecords: 'registros de habitos',
+  journalEntries: 'notas de habitos',
 };
 
 export function countSyncConflicts(response: SyncBatchResponse): number {

@@ -5,6 +5,7 @@ import {
   Eyebrow,
   Leaf,
   Lightbulb,
+  ListChecks,
   Paragraph,
   ShieldBan,
   Sunrise,
@@ -51,6 +52,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Bienestar',
     links: [
+      { panel: 'habits', label: 'Habitos', Icon: ListChecks },
       { panel: 'fitness', label: 'Fitness', Icon: Activity },
       { panel: 'detox', label: 'Detox', Icon: Leaf },
     ],

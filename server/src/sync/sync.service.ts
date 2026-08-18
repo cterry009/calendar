@@ -542,7 +542,70 @@ export class SyncService {
       ? await this.prisma.fitnessEntry.update({ where: { id: existing.id }, data })
       : await this.prisma.fitnessEntry.create({ data: { ...data, userId } });
 
+    await this.autoCompleteHabitsFromFitness(userId, record);
+
     return { status: 'applied', clientKey: key, record };
+  }
+
+  // Opt-in per habit (Habit.linkedFitnessActivityType) rather than fuzzy-matching titles: a
+  // silent false-positive auto-complete would be worse than no auto-complete at all.
+  private async autoCompleteHabitsFromFitness(
+    userId: string,
+    fitnessEntry: { id: string; activityType: string; loggedAt: Date },
+  ): Promise<void> {
+    const habits = await this.prisma.habit.findMany({
+      where: {
+        userId,
+        deletedAt: null,
+        archived: false,
+        linkedFitnessActivityType: { equals: fitnessEntry.activityType, mode: 'insensitive' },
+      },
+    });
+    if (!habits.length) return;
+
+    const dayStart = new Date(fitnessEntry.loggedAt);
+    dayStart.setUTCHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+
+    for (const habit of habits) {
+      const matchingEntries = await this.prisma.fitnessEntry.findMany({
+        where: {
+          userId,
+          activityType: { equals: habit.linkedFitnessActivityType!, mode: 'insensitive' },
+          loggedAt: { gte: dayStart, lt: dayEnd },
+        },
+      });
+      const totalMinutes = matchingEntries.reduce((sum, entry) => sum + entry.durationMinutes, 0);
+
+      const existingRecord = await this.prisma.habitRecord.findUnique({
+        where: { habitId_date: { habitId: habit.id, date: dayStart } },
+      });
+
+      // Don't clobber a day the user already hand-edited themselves.
+      if (existingRecord && !existingRecord.autoCompleted) continue;
+
+      await this.prisma.habitRecord.upsert({
+        where: { habitId_date: { habitId: habit.id, date: dayStart } },
+        create: {
+          habitId: habit.id,
+          userId,
+          date: dayStart,
+          value: totalMinutes,
+          status: 'DONE',
+          autoCompleted: true,
+          fitnessEntryId: fitnessEntry.id,
+          updatedAt: new Date(),
+        },
+        update: {
+          value: totalMinutes,
+          status: 'DONE',
+          autoCompleted: true,
+          fitnessEntryId: fitnessEntry.id,
+          updatedAt: new Date(),
+        },
+      });
+    }
   }
 
   private async applyDetoxPlanChange(
@@ -679,6 +742,7 @@ export class SyncService {
       color: change.color ?? null,
       category: change.category ?? null,
       archived: change.archived ?? false,
+      linkedFitnessActivityType: change.linkedFitnessActivityType ?? null,
       clientId: change.clientId ?? existing?.clientId ?? null,
       updatedAt: new Date(change.updatedAt),
       deletedAt: null,

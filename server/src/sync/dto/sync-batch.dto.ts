@@ -410,6 +410,10 @@ export class HabitSyncChangeDto {
   @IsOptional()
   @IsBoolean()
   archived?: boolean;
+
+  @IsOptional()
+  @IsString()
+  linkedFitnessActivityType?: string;
 }
 
 export class HabitRecordSyncChangeDto {
