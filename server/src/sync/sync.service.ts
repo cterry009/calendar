@@ -6,6 +6,9 @@ import {
   BlockListSyncChangeDto,
   DetoxPlanSyncChangeDto,
   FitnessSyncChangeDto,
+  HabitRecordSyncChangeDto,
+  HabitSyncChangeDto,
+  JournalEntrySyncChangeDto,
   PomodoroSyncChangeDto,
   ScheduleSyncChangeDto,
   SyncBatchDto,
@@ -21,17 +24,29 @@ export class SyncService {
   ) {}
 
   async pullSnapshot(userId: string) {
-    const [tasks, schedules, pomodoroSessions, blockListEntries, fitnessEntries, detoxPlan] =
-      await Promise.all([
-        this.prisma.task.findMany({
-          where: { userId, deletedAt: null },
-        }),
-        this.prisma.schedule.findMany({ where: { userId } }),
-        this.prisma.pomodoroSession.findMany({ where: { userId } }),
-        this.prisma.blockListEntry.findMany({ where: { userId } }),
-        this.prisma.fitnessEntry.findMany({ where: { userId } }),
-        this.prisma.detoxPlan.findUnique({ where: { userId } }),
-      ]);
+    const [
+      tasks,
+      schedules,
+      pomodoroSessions,
+      blockListEntries,
+      fitnessEntries,
+      detoxPlan,
+      habits,
+      habitRecords,
+      journalEntries,
+    ] = await Promise.all([
+      this.prisma.task.findMany({
+        where: { userId, deletedAt: null },
+      }),
+      this.prisma.schedule.findMany({ where: { userId } }),
+      this.prisma.pomodoroSession.findMany({ where: { userId } }),
+      this.prisma.blockListEntry.findMany({ where: { userId } }),
+      this.prisma.fitnessEntry.findMany({ where: { userId } }),
+      this.prisma.detoxPlan.findUnique({ where: { userId } }),
+      this.prisma.habit.findMany({ where: { userId, deletedAt: null } }),
+      this.prisma.habitRecord.findMany({ where: { userId } }),
+      this.prisma.journalEntry.findMany({ where: { userId } }),
+    ]);
 
     return {
       tasks,
@@ -39,6 +54,9 @@ export class SyncService {
       pomodoroSessions,
       blockListEntries,
       fitnessEntries,
+      habits,
+      habitRecords,
+      journalEntries,
       detoxPlan: detoxPlan
         ? {
             id: detoxPlan.id,
@@ -127,6 +145,42 @@ export class SyncService {
         this.bucketResult(result, 'detoxPlan', outcome);
         if (outcome.status === 'applied') {
           changedEntities.add('detoxPlan');
+        }
+      }
+    }
+
+    if (dto.habits?.length) {
+      result.applied.habits = [];
+      result.conflicts.habits = [];
+      for (const change of dto.habits) {
+        const outcome = await this.applyHabitChange(userId, change);
+        this.bucketResult(result, 'habits', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('habits');
+        }
+      }
+    }
+
+    if (dto.habitRecords?.length) {
+      result.applied.habitRecords = [];
+      result.conflicts.habitRecords = [];
+      for (const change of dto.habitRecords) {
+        const outcome = await this.applyHabitRecordChange(userId, change);
+        this.bucketResult(result, 'habitRecords', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('habitRecords');
+        }
+      }
+    }
+
+    if (dto.journalEntries?.length) {
+      result.applied.journalEntries = [];
+      result.conflicts.journalEntries = [];
+      for (const change of dto.journalEntries) {
+        const outcome = await this.applyJournalEntryChange(userId, change);
+        this.bucketResult(result, 'journalEntries', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('journalEntries');
         }
       }
     }
@@ -513,5 +567,178 @@ export class SyncService {
         });
 
     return { status: 'applied', clientKey: key, record };
+  }
+
+  private async applyHabitChange(
+    userId: string,
+    change: HabitSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const existing = await this.findHabit(userId, change);
+    const key = this.clientKey(change);
+
+    if (change.deleted) {
+      if (!existing) {
+        return { status: 'skipped', clientKey: key };
+      }
+      if (this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+        return { status: 'conflict', clientKey: key, server: existing };
+      }
+      const record = await this.prisma.habit.update({
+        where: { id: existing.id },
+        data: { deletedAt: new Date(), updatedAt: new Date(change.updatedAt) },
+      });
+      return { status: 'applied', clientKey: key, record };
+    }
+
+    if (!change.title) {
+      throw new BadRequestException('Habit changes require title');
+    }
+
+    if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+      return { status: 'conflict', clientKey: key, server: existing };
+    }
+
+    const data = {
+      title: change.title,
+      description: change.description ?? null,
+      type: change.type ?? 'NORMAL' as const,
+      dailyGoalValue: change.dailyGoalValue ?? 1,
+      dailyGoalUnit: change.dailyGoalUnit ?? 'times',
+      dailyGoalExtraValue: change.dailyGoalExtraValue ?? null,
+      targetDays: change.targetDays ?? 66,
+      color: change.color ?? null,
+      category: change.category ?? null,
+      archived: change.archived ?? false,
+      clientId: change.clientId ?? existing?.clientId ?? null,
+      updatedAt: new Date(change.updatedAt),
+      deletedAt: null,
+    };
+
+    const record = existing
+      ? await this.prisma.habit.update({ where: { id: existing.id }, data })
+      : await this.prisma.habit.create({ data: { ...data, userId } });
+
+    return { status: 'applied', clientKey: key, record };
+  }
+
+  private findHabit(userId: string, change: HabitSyncChangeDto) {
+    if (change.id) {
+      return this.prisma.habit.findFirst({ where: { id: change.id, userId } });
+    }
+    if (change.clientId) {
+      return this.prisma.habit.findFirst({
+        where: { userId, clientId: change.clientId },
+      });
+    }
+    return null;
+  }
+
+  private async applyHabitRecordChange(
+    userId: string,
+    change: HabitRecordSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const existing = await this.findHabitRecord(userId, change);
+    const key = this.clientKey(change);
+
+    if (change.deleted) {
+      if (!existing) {
+        return { status: 'skipped', clientKey: key };
+      }
+      if (this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+        return { status: 'conflict', clientKey: key, server: existing };
+      }
+      await this.prisma.habitRecord.delete({ where: { id: existing.id } });
+      return { status: 'applied', clientKey: key, record: { id: existing.id } };
+    }
+
+    if (!change.habitId || !change.date) {
+      throw new BadRequestException('Habit record changes require habitId and date');
+    }
+
+    if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+      return { status: 'conflict', clientKey: key, server: existing };
+    }
+
+    const data = {
+      habitId: change.habitId,
+      date: new Date(change.date),
+      value: change.value ?? 0,
+      status: change.status ?? 'DONE' as const,
+      autoCompleted: change.autoCompleted ?? false,
+      fitnessEntryId: change.fitnessEntryId ?? null,
+      clientId: change.clientId ?? existing?.clientId ?? null,
+      updatedAt: new Date(change.updatedAt),
+    };
+
+    const record = existing
+      ? await this.prisma.habitRecord.update({ where: { id: existing.id }, data })
+      : await this.prisma.habitRecord.create({ data: { ...data, userId } });
+
+    return { status: 'applied', clientKey: key, record };
+  }
+
+  private findHabitRecord(userId: string, change: HabitRecordSyncChangeDto) {
+    if (change.id) {
+      return this.prisma.habitRecord.findFirst({ where: { id: change.id, userId } });
+    }
+    if (change.clientId) {
+      return this.prisma.habitRecord.findFirst({
+        where: { userId, clientId: change.clientId },
+      });
+    }
+    return null;
+  }
+
+  private async applyJournalEntryChange(
+    userId: string,
+    change: JournalEntrySyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const existing = await this.findJournalEntry(userId, change);
+    const key = this.clientKey(change);
+
+    if (change.deleted) {
+      if (!existing) {
+        return { status: 'skipped', clientKey: key };
+      }
+      if (this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+        return { status: 'conflict', clientKey: key, server: existing };
+      }
+      await this.prisma.journalEntry.delete({ where: { id: existing.id } });
+      return { status: 'applied', clientKey: key, record: { id: existing.id } };
+    }
+
+    if (!change.habitId || !change.content) {
+      throw new BadRequestException('Journal entry changes require habitId and content');
+    }
+
+    if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+      return { status: 'conflict', clientKey: key, server: existing };
+    }
+
+    const data = {
+      habitId: change.habitId,
+      recordId: change.recordId ?? null,
+      content: change.content,
+      clientId: change.clientId ?? existing?.clientId ?? null,
+      updatedAt: new Date(change.updatedAt),
+    };
+
+    const record = existing
+      ? await this.prisma.journalEntry.update({ where: { id: existing.id }, data })
+      : await this.prisma.journalEntry.create({ data: { ...data, userId } });
+
+    return { status: 'applied', clientKey: key, record };
+  }
+
+  private findJournalEntry(userId: string, change: JournalEntrySyncChangeDto) {
+    if (change.id) {
+      return this.prisma.journalEntry.findFirst({ where: { id: change.id, userId } });
+    }
+    if (change.clientId) {
+      return this.prisma.journalEntry.findFirst({
+        where: { userId, clientId: change.clientId },
+      });
+    }
+    return null;
   }
 }

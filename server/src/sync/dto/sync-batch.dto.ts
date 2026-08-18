@@ -6,6 +6,7 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsNumber,
   IsObject,
   IsOptional,
   IsString,
@@ -20,6 +21,8 @@ import {
   DevicePlatform,
   FitnessIntensity,
   FitnessSource,
+  HabitRecordStatus,
+  HabitType,
   PomodoroState,
   ScheduleKind,
   TaskDifficulty,
@@ -331,6 +334,141 @@ export class DetoxPlanSyncChangeDto {
   planData?: Record<string, unknown>;
 }
 
+export class HabitSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsOptional()
+  @IsString()
+  clientId?: string;
+
+  @IsDateString()
+  updatedAt!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  deleted?: boolean;
+
+  @ValidateIf((item) => !item.deleted)
+  @IsString()
+  @MinLength(1)
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsEnum(HabitType)
+  type?: HabitType;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  dailyGoalValue?: number;
+
+  @IsOptional()
+  @IsString()
+  dailyGoalUnit?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  dailyGoalExtraValue?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  targetDays?: number;
+
+  @IsOptional()
+  @IsString()
+  color?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  archived?: boolean;
+}
+
+export class HabitRecordSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsOptional()
+  @IsString()
+  clientId?: string;
+
+  @IsDateString()
+  updatedAt!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  deleted?: boolean;
+
+  @ValidateIf((item) => !item.deleted)
+  @IsString()
+  @MinLength(1)
+  habitId?: string;
+
+  @ValidateIf((item) => !item.deleted)
+  @IsDateString()
+  date?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  value?: number;
+
+  @IsOptional()
+  @IsEnum(HabitRecordStatus)
+  status?: HabitRecordStatus;
+
+  @IsOptional()
+  @IsBoolean()
+  autoCompleted?: boolean;
+
+  @IsOptional()
+  @IsString()
+  fitnessEntryId?: string;
+}
+
+export class JournalEntrySyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsOptional()
+  @IsString()
+  clientId?: string;
+
+  @IsDateString()
+  updatedAt!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  deleted?: boolean;
+
+  @ValidateIf((item) => !item.deleted)
+  @IsString()
+  @MinLength(1)
+  habitId?: string;
+
+  @IsOptional()
+  @IsString()
+  recordId?: string;
+
+  @ValidateIf((item) => !item.deleted)
+  @IsString()
+  @MinLength(1)
+  content?: string;
+}
+
 export class SyncBatchDto {
   @IsOptional()
   @IsArray()
@@ -367,4 +505,22 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => DetoxPlanSyncChangeDto)
   detoxPlan?: DetoxPlanSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HabitSyncChangeDto)
+  habits?: HabitSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HabitRecordSyncChangeDto)
+  habitRecords?: HabitRecordSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => JournalEntrySyncChangeDto)
+  journalEntries?: JournalEntrySyncChangeDto[];
 }
