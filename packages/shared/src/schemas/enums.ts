@@ -40,6 +40,9 @@ export const FitnessSourceSchema = z.enum([
   'CSV_IMPORT',
 ]);
 
+export const HabitTypeSchema = z.enum(['NORMAL', 'NEGATIVE']);
+export const HabitRecordStatusSchema = z.enum(['DONE', 'SKIPPED']);
+
 export type DevicePlatform = z.infer<typeof DevicePlatformSchema>;
 export type TaskDifficulty = z.infer<typeof TaskDifficultySchema>;
 export type TaskPriority = z.infer<typeof TaskPrioritySchema>;
@@ -49,3 +52,5 @@ export type PomodoroState = z.infer<typeof PomodoroStateSchema>;
 export type BlockListKind = z.infer<typeof BlockListKindSchema>;
 export type FitnessIntensity = z.infer<typeof FitnessIntensitySchema>;
 export type FitnessSource = z.infer<typeof FitnessSourceSchema>;
+export type HabitType = z.infer<typeof HabitTypeSchema>;
+export type HabitRecordStatus = z.infer<typeof HabitRecordStatusSchema>;
