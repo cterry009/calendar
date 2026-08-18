@@ -7,6 +7,7 @@ import {
   Lightbulb,
   Paragraph,
   ShieldBan,
+  Sunrise,
   Text,
   Timer,
   XStack,
@@ -35,6 +36,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Planear',
     links: [
+      { panel: 'ritual', label: 'Ritual diario', Icon: Sunrise },
       { panel: 'dashboard', label: 'Dashboard', Icon: BarChart3 },
       { panel: 'suggestions', label: 'Sugerencias', Icon: Lightbulb },
     ],

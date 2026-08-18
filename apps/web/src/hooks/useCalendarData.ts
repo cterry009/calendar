@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ApiError } from '../lib/api';
 import { useSync } from '../context/SyncContext';
 import type { SyncSnapshot } from '../lib/calendar/types';
@@ -23,6 +23,7 @@ const EMPTY_SNAPSHOT: Omit<SyncSnapshot, 'syncedAt'> = {
   blockListEntries: [],
   fitnessEntries: [],
   detoxPlan: null,
+  serotoninSession: null,
 };
 
 export function useCalendarData(): UseCalendarDataResult {
@@ -45,6 +46,7 @@ export function useCalendarData(): UseCalendarDataResult {
         blockListEntries: data.blockListEntries,
         fitnessEntries: data.fitnessEntries,
         detoxPlan: data.detoxPlan ?? null,
+        serotoninSession: data.serotoninSession ?? null,
       });
       setSyncedAt(data.syncedAt);
     } catch (errorValue) {

@@ -11,6 +11,7 @@ import {
   JournalEntrySyncChangeDto,
   PomodoroSyncChangeDto,
   ScheduleSyncChangeDto,
+  SerotoninSessionSyncChangeDto,
   SyncBatchDto,
   TaskSyncChangeDto,
 } from './dto/sync-batch.dto';
@@ -31,6 +32,7 @@ export class SyncService {
       blockListEntries,
       fitnessEntries,
       detoxPlan,
+      serotoninSession,
       habits,
       habitRecords,
       journalEntries,
@@ -43,6 +45,7 @@ export class SyncService {
       this.prisma.blockListEntry.findMany({ where: { userId } }),
       this.prisma.fitnessEntry.findMany({ where: { userId } }),
       this.prisma.detoxPlan.findUnique({ where: { userId } }),
+      this.prisma.serotoninSession.findUnique({ where: { userId } }),
       this.prisma.habit.findMany({ where: { userId, deletedAt: null } }),
       this.prisma.habitRecord.findMany({ where: { userId } }),
       this.prisma.journalEntry.findMany({ where: { userId } }),
@@ -63,6 +66,14 @@ export class SyncService {
             planData: detoxPlan.planData,
             updatedAt: detoxPlan.updatedAt.toISOString(),
             createdAt: detoxPlan.createdAt.toISOString(),
+          }
+        : null,
+      serotoninSession: serotoninSession
+        ? {
+            id: serotoninSession.id,
+            sessionData: serotoninSession.sessionData,
+            updatedAt: serotoninSession.updatedAt.toISOString(),
+            createdAt: serotoninSession.createdAt.toISOString(),
           }
         : null,
       syncedAt: new Date().toISOString(),
@@ -145,6 +156,18 @@ export class SyncService {
         this.bucketResult(result, 'detoxPlan', outcome);
         if (outcome.status === 'applied') {
           changedEntities.add('detoxPlan');
+        }
+      }
+    }
+
+    if (dto.serotoninSession?.length) {
+      result.applied.serotoninSession = [];
+      result.conflicts.serotoninSession = [];
+      for (const change of dto.serotoninSession) {
+        const outcome = await this.applySerotoninSessionChange(userId, change);
+        this.bucketResult(result, 'serotoninSession', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('serotoninSession');
         }
       }
     }
@@ -562,6 +585,53 @@ export class SyncService {
           data: {
             userId,
             planData,
+            updatedAt: new Date(change.updatedAt),
+          },
+        });
+
+    return { status: 'applied', clientKey: key, record };
+  }
+
+  private async applySerotoninSessionChange(
+    userId: string,
+    change: SerotoninSessionSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const existing = await this.prisma.serotoninSession.findUnique({ where: { userId } });
+    const key = change.id ?? existing?.id;
+
+    if (change.deleted) {
+      if (!existing) {
+        return { status: 'skipped', clientKey: key };
+      }
+      if (this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+        return { status: 'conflict', clientKey: key, server: existing };
+      }
+      await this.prisma.serotoninSession.delete({ where: { id: existing.id } });
+      return { status: 'applied', clientKey: key, record: { id: existing.id } };
+    }
+
+    if (!change.sessionData || typeof change.sessionData !== 'object') {
+      throw new BadRequestException('Serotonin session changes require sessionData');
+    }
+
+    if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+      return { status: 'conflict', clientKey: key, server: existing };
+    }
+
+    const sessionData = change.sessionData as Prisma.InputJsonValue;
+
+    const record = existing
+      ? await this.prisma.serotoninSession.update({
+          where: { id: existing.id },
+          data: {
+            sessionData,
+            updatedAt: new Date(change.updatedAt),
+          },
+        })
+      : await this.prisma.serotoninSession.create({
+          data: {
+            userId,
+            sessionData,
             updatedAt: new Date(change.updatedAt),
           },
         });

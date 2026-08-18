@@ -8,7 +8,8 @@ export type SyncEntityType =
   | 'pomodoroSessions'
   | 'blockListEntries'
   | 'fitnessEntries'
-  | 'detoxPlan';
+  | 'detoxPlan'
+  | 'serotoninSession';
 
 export interface SyncQueueItem {
   id?: number;
@@ -29,6 +30,7 @@ export interface SyncBatchBody {
   blockListEntries?: unknown[];
   fitnessEntries?: unknown[];
   detoxPlan?: unknown[];
+  serotoninSession?: unknown[];
 }
 
 export interface SyncBatchResponse {

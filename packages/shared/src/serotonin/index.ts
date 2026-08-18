@@ -27,6 +27,8 @@ export const SEROTONIN_RITUALS = [
   'stretch',
   'sunlight',
   'digital_pause',
+  'morning_review',
+  'evening_shutdown',
 ] as const;
 
 export type SerotoninRitual = (typeof SEROTONIN_RITUALS)[number];
@@ -56,6 +58,16 @@ export const RITUAL_LABELS: Record<SerotoninRitual, { title: string; durationMin
     title: 'Pausa digital',
     durationMin: 5,
     description: 'Deja el dispositivo boca abajo y observa tu entorno sin estÃ­mulos.',
+  },
+  morning_review: {
+    title: 'RevisiÃ³n matutina',
+    durationMin: 5,
+    description: 'Revisa las tareas de hoy y las pendientes de ayer, y dales un horario concreto.',
+  },
+  evening_shutdown: {
+    title: 'Cierre nocturno',
+    durationMin: 5,
+    description: 'Marca lo que completaste, posterga lo que no, y anota una reflexiÃ³n corta.',
   },
 };
 

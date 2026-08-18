@@ -7,6 +7,7 @@ const ENTITY_LABELS: Record<SyncEntityType, string> = {
   blockListEntries: 'lista de bloqueo',
   fitnessEntries: 'fitness',
   detoxPlan: 'plan detox',
+  serotoninSession: 'bienestar diario',
 };
 
 export function countSyncConflicts(response: SyncBatchResponse): number {

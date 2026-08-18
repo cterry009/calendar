@@ -1,4 +1,10 @@
-﻿import type { TaskDifficulty, TaskPriority, TaskStatus, DetoxPlan } from '@calendar/shared';
+import type {
+  TaskDifficulty,
+  TaskPriority,
+  TaskStatus,
+  DetoxPlan,
+  SerotoninSession,
+} from '@calendar/shared';
 
 export type CalendarViewMode = 'day' | 'week' | 'month';
 
@@ -74,6 +80,18 @@ export interface SyncDetoxPlanRecord {
   createdAt: string;
 }
 
+export interface StoredSerotoninDay {
+  date: string;
+  session: SerotoninSession;
+}
+
+export interface SyncSerotoninSessionRecord {
+  id: string;
+  sessionData: StoredSerotoninDay;
+  updatedAt: string;
+  createdAt: string;
+}
+
 export interface SyncSnapshot {
   tasks: SyncTask[];
   schedules: SyncSchedule[];
@@ -81,6 +99,7 @@ export interface SyncSnapshot {
   blockListEntries: unknown[];
   fitnessEntries: SyncFitnessEntry[];
   detoxPlan: SyncDetoxPlanRecord | null;
+  serotoninSession: SyncSerotoninSessionRecord | null;
   syncedAt: string;
 }
 
@@ -122,4 +141,3 @@ export interface MonthDaySummary {
   pomodoroCount: number;
   density: CalendarDensity;
 }
-

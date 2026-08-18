@@ -334,6 +334,23 @@ export class DetoxPlanSyncChangeDto {
   planData?: Record<string, unknown>;
 }
 
+export class SerotoninSessionSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsDateString()
+  updatedAt!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  deleted?: boolean;
+
+  @ValidateIf((item) => !item.deleted)
+  @IsObject()
+  sessionData?: Record<string, unknown>;
+}
+
 export class HabitSyncChangeDto {
   @IsOptional()
   @IsString()
@@ -505,6 +522,12 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => DetoxPlanSyncChangeDto)
   detoxPlan?: DetoxPlanSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SerotoninSessionSyncChangeDto)
+  serotoninSession?: SerotoninSessionSyncChangeDto[];
 
   @IsOptional()
   @IsArray()

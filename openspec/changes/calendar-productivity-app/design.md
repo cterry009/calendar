@@ -114,6 +114,37 @@ Lista de distracciones sincronizada desde la nube; el cliente nativo aplica las 
 - *Dopamine fast extremo*: rechazado; la ciencia recomienda reducción selectiva, no abstinencia total ([Neurosity](https://neurosity.co/guides/dopamine-detox-science-vs-myth), [MindLab](https://mindlabneuroscience.com/dopamine-and-mood-swings-neuroscience/)).
 - *Solo tracker de ánimo*: insuficiente; el valor está en acción guiada + bloqueo + métricas.
 
+### 10. Navegación de una sola pestaña
+
+**Decisión**: El Calendario (ya hub desde la tarea 4.17) queda como única vista de fondo. Dashboard, Sugerencias, Pomodoro, Bloqueo, Fitness y Detox se abren como paneles deslizantes desde iconos en `AppNav.tsx`, sin cambiar de ruta ni ocultar el calendario detrás.
+
+**Alternativas consideradas**:
+- *Rail lateral de iconos que sigue navegando por rutas completas* (estilo Notion/Linear colapsado): descartado porque el calendario deja de estar visible al entrar a otra sección, que es justo lo que se quiere evitar.
+- *Dock flotante inferior*: mismo comportamiento de panel deslizante que la opción elegida, pero introduce un elemento de chrome nuevo; se prefiere reutilizar el header (`AppNav.tsx`) que ya existe.
+
+**Rationale**: mantiene "una sola pestaña" real (el calendario nunca se desmonta), reduce el chrome nuevo a crear, y es el patrón de apps modernas (Superhuman, Linear, Notion peek) que el usuario pidió explícitamente.
+
+### 11. Sonido ambiental de enfoque
+
+**Decisión**: Integración con Spotify (OAuth Authorization Code + PKCE, mismo patrón que Google/Apple en `auth/oauth.service.ts`) como opción principal para playlists de concentración, con sonidos ambientales propios (lluvia, ruido blanco, lofi) como respaldo sin cuenta. El widget de reproducción se engancha al estado de foco ya existente (`isPomodoroBlocking`/`manualSoftFocus.active`/`isWorkHoursActive`) para auto-play/pausa.
+
+**Alternativas consideradas**:
+- *Solo Spotify*: descartado — el Web Playback SDK de Spotify requiere cuenta Premium, lo que dejaría sin sonido ambiental a una parte significativa de usuarios.
+
+**Riesgo documentado**: reproducción in-app vía Web Playback SDK solo funciona con Spotify Premium; los sonidos propios cubren ese hueco.
+
+### 12. Entrenamiento cognitivo tipo BrainHQ — descartado
+
+**Decisión**: no construir esta feature. Entrena *capacidad* perceptual-cognitiva (velocidad de procesamiento, memoria de trabajo, atención), no disciplina/hábito, que es lo que este proyecto busca. El modelo de "fuerza de voluntad como recurso entrenable" (ego depletion) tampoco replicó en réplicas grandes preregistradas (Hagger et al. 2016, N=2,141; Dang et al. 2019, N=3,531), así que no hay un sustituto válido de este tipo para "entrenar disciplina". La construcción de disciplina de esta app ya vive en 5.2 (planificación si-entonces) y en 5.7/5.8 (hard mode / friction overlay), que sí tienen evidencia detrás.
+
+### 13. Modo Serotonina y Plan de Detox: siempre activos, no funciones opt-in
+
+**Decisión**: ni el Modo Control de Serotonina (pilares, rituales, check-in de ánimo) ni el Plan de desintoxicación de 7 días requieren un botón de activación. Ambos arrancan solos — el Modo Serotonina con una sesión nueva cada día (persistida localmente en IndexedDB, ver `apps/web/src/lib/offline/serotonin-store.ts`), el Plan de Detox con el día 1 en cuanto se detecta que el usuario no tiene un plan en curso (`useDetoxPlan.ts`).
+
+**Rationale**: el enfoque de reducir dependencia de estímulos de alta dopamina debe ser innato al usar la app, no una opción aparte que el usuario tiene que recordar prender — un "modo" que hay que activar es exactamente el patrón opt-in que se quería evitar.
+
+**Límite conocido, fuera de alcance de esta decisión**: el flag `highDopamine` en las entradas de la lista de bloqueo (`BlockListEntry`) hoy solo se muestra como etiqueta informativa (`BlockListItem.tsx`) — no activa ningún bloqueo real distinto del resto de la lista. Un bloqueo permanente (no solo durante pomodoro/horario de trabajo/foco manual) requeriría bloqueo real a nivel de sistema operativo en apps de terceros, que es trabajo de fase 6/7 (Android/Windows) todavía no construido; `SoftFocusOverlay` bloquea toda la pantalla de la app y no es el mecanismo correcto para dejarlo permanentemente activo.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |

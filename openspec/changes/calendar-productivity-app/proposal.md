@@ -27,6 +27,8 @@ Las herramientas de calendario actuales planifican el tiempo pero no ayudan a ej
 - `fitness-tracking`: Registro manual e integración con Health/Fit para métricas deportivas.
 - `serotonin-control`: Modo bienestar que reduce inputs digitales de alta dopamina, guía rituales breves y rastrea pilares de presencia (sol, ejercicio, meditación, lectura, journaling, conexión social).
 - `cross-platform-sync`: Cuenta de usuario, sincronización en tiempo real y sesiones activas entre móvil y escritorio.
+- `daily-ritual`: Ritual guiado de planificación matutina y cierre nocturno (estilo Sunsama), integrado con calendario, tareas y Modo Serotonina.
+- `ambient-sound`: Sonido ambiental de enfoque vía integración con Spotify (playlists de concentración) con sonidos propios (lluvia, ruido blanco, lofi) como respaldo sin cuenta.
 
 ### Modified Capabilities
 

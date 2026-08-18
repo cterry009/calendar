@@ -21,11 +21,13 @@ export async function pullSnapshot(): Promise<PullSnapshotResult> {
   if (isBrowserOnline()) {
     try {
       const snapshot = await apiFetch<SyncSnapshot>('/sync/pull');
-      await saveCachedSnapshot({
+      const normalized = {
         ...snapshot,
         detoxPlan: snapshot.detoxPlan ?? null,
-      });
-      return { snapshot: { ...snapshot, detoxPlan: snapshot.detoxPlan ?? null }, fromCache: false };
+        serotoninSession: snapshot.serotoninSession ?? null,
+      };
+      await saveCachedSnapshot(normalized);
+      return { snapshot: normalized, fromCache: false };
     } catch {
       const cached = await getCachedSnapshot();
       if (cached) {

@@ -58,24 +58,29 @@
 ## 5. Web UX & product enhancements (recommended before phase 2 — Android port)
 
 > Informed by a review of the current web MVP plus research into comparable apps (Sunsama, Motion, Reclaim.ai,
-> Opal, Freedom, One Sec, AppBlock, Elqi, Roots, Forest). Do this before porting screens to Android/Windows so
-> the ported UX inherits the fixes instead of propagating the same gaps to two more platforms.
+> Opal, Freedom, One Sec, AppBlock, Elqi, Roots, Forest). Do this before porting screens to
+> Android/Windows so the ported UX inherits the fixes instead of propagating the same gaps to two more
+> platforms. Reordered 2026-08-11: 5.1–5.2 shipped as the immediate priority (they replace the former
+> 5.1/5.4/5.5/5.13 with a more concrete version). A BrainHQ-style cognitive-training item was scoped the same
+> day and then dropped — out of scope; it trains perceptual/cognitive capability, not the discipline/habit-formation
+> this project actually wants, which 5.2 already covers. Ambient focus sound (Spotify) was moved to the end of
+> the list and marked optional — a "nice to have" alongside the local-only Fase 5 work, not a blocker for it.
+> The rest of the section is preserved and renumbered below.
 
-- [ ] 5.1 Build a shared app shell with persistent navigation (sidebar or top bar) replacing the per-page ad-hoc "go to X" button clusters (13 pages currently each hand-roll their own inconsistent set)
-- [ ] 5.2 Persist Serotonin Mode session to IndexedDB + sync queue, matching the offline/sync pattern already used by tasks, fitness, schedules, and detox
-- [ ] 5.3 Add a global quick-add for tasks (keyboard shortcut + persistent button) so capture doesn't require navigating to `/tasks`
-- [ ] 5.4 Implement a guided daily planning ritual: morning review (pull today's tasks, time-box onto calendar) and an evening shutdown, wired into Serotonin Mode as a ritual
-- [ ] 5.5 Surface overcommitment warnings on the calendar using the existing estimation-accuracy calculator when scheduled task time exceeds the configured work-schedule capacity for the day
-- [ ] 5.6 Extend the suggestion engine to propose open time slots respecting work schedule/rest periods (assistive slot suggestions, not full auto-scheduling), and surface suggestions inline on the task form and calendar instead of only on the Suggestions page
-- [ ] 5.7 Add a "hard mode" (non-cancelable) option to block-list entries, specified now so Android (6.6) and Windows (7.3) blocking implementations share one behavior instead of diverging
-- [ ] 5.8 Build a shared "friction" overlay (brief breathing/mindfulness pause) as a softer alternative to a hard block, reused by the focus-blocking overlay (6.7/7.6) and as the serotonin-detox intervention when opening a high-dopamine app
-- [ ] 5.9 Extend block-list trigger conditions beyond session-based (pomodoro/task/work-hours) to include location and Wi-Fi network conditions
-- [ ] 5.10 Add "quality of screen time" tracking to Serotonin Mode: score temptations avoided (blocked-app opens declined) alongside pillar activities logged, not just activity minutes
-- [ ] 5.11 Add a lightweight visual reward/streak view for completed pomodoro sessions on the Pomodoro page, closing the loop between finishing a session and seeing progress without a trip to the dashboard
-- [ ] 5.12 Decide and enforce a single primary UI language (Spanish) across all pages ahead of full i18n (10.2), fixing the current English/Spanish mix on the Home page
-- [ ] 5.13 Establish visual hierarchy on the Home page: group daily-driver actions (Calendar, Tasks, Pomodoro) separately from setup/config screens (Schedule, Block List)
-- [ ] 5.14 Decide whether to add a light theme / `prefers-color-scheme` support alongside the existing dark/calm themes, or intentionally commit to dark-only as part of the focus/dopamine-reduction branding
-- [ ] 5.15 Auto-split a general WORK schedule range into pomodoro/short-break/long-break sub-blocks (chunks of 4-5 pomodoros, max 4 long breaks per range) with a live preview on the schedule form and a mini-timeline on the calendar day view; add a self-reported concentration check-in during focus sessions that adapts the estimated pomodoro length over time
+- [x] 5.1 Collapse the IA to a single tab: turn Dashboard, Sugerencias, Pomodoro, Bloqueo, Fitness, and Detox into slide-over panels opened from icons in `AppNav.tsx` instead of full-page routes — the Calendar (already the hub per 4.17) stays the only page underneath at all times. Each panel keeps its existing `PageHeader`/`StatusCard` markup. Panels must be deep-linkable (e.g. `?panel=pomodoro`) so refresh/share-link still works, and closable via ESC/click-outside.
+- [x] 5.2 Implement a guided daily planning ritual (Sunsama-style, grounded in implementation-intentions research): a morning review (pull today's tasks + yesterday's leftovers, force each one into an explicit if-then time slot on the calendar — "at [time], I do [task]" — without exceeding the configured work-schedule capacity, reusing the existing estimation-accuracy/overcommitment calculator) and an evening shutdown (mark done/carried-over + a short reflection), wired into Serotonin Mode as a ritual. This is the app's actual discipline/habit-formation mechanism — if-then planning has real replicated evidence, unlike generic "willpower training". Lives as a guided panel/flow off the hub (5.1), not a standalone page.
+- [x] 5.3 Persist Serotonin Mode session to IndexedDB + sync queue, matching the offline/sync pattern already used by tasks, fitness, schedules, and detox. New `SerotoninSession` Prisma model (mirrors `DetoxPlan`'s single-row-per-user JSON blob shape) wired into the existing unified `server/src/sync` batch/pull pipeline, plus a matching client sync module. Verified with two independent browser sessions: completing a pillar on one and loading fresh on the other shows it already synced, no action needed on the second.
+- [ ] 5.4 Add a global quick-add for tasks (keyboard shortcut + persistent button, fits naturally as one more icon in the 5.1 header) so capture doesn't require opening the Tasks panel
+- [ ] 5.5 Extend the suggestion engine to propose open time slots respecting work schedule/rest periods (assistive slot suggestions, not full auto-scheduling), and surface suggestions inline on the task form and calendar instead of only in the Sugerencias panel
+- [ ] 5.6 Add a "hard mode" (non-cancelable) option to block-list entries, specified now so Android (6.6) and Windows (7.3) blocking implementations share one behavior instead of diverging
+- [ ] 5.7 Build a shared "friction" overlay (brief breathing/mindfulness pause) as a softer alternative to a hard block, reused by the focus-blocking overlay (6.7/7.6) and as the serotonin-detox intervention when opening a high-dopamine app
+- [ ] 5.8 Extend block-list trigger conditions beyond session-based (pomodoro/task/work-hours) to include location and Wi-Fi network conditions
+- [ ] 5.9 Add "quality of screen time" tracking to Serotonin Mode: score temptations avoided (blocked-app opens declined) alongside pillar activities logged, not just activity minutes
+- [ ] 5.10 Add a lightweight visual reward/streak view for completed pomodoro sessions on the Pomodoro panel, closing the loop between finishing a session and seeing progress without opening the dashboard. Give the streak grace days/pause tokens instead of a hard reset on the first missed day.
+- [ ] 5.11 Decide and enforce a single primary UI language (Spanish) across all pages ahead of full i18n (10.2), fixing the current English/Spanish mix on the Home page
+- [ ] 5.12 Decide whether to add a light theme / `prefers-color-scheme` support alongside the existing dark/calm themes, or intentionally commit to dark-only as part of the focus/dopamine-reduction branding
+- [ ] 5.13 Auto-split a general WORK schedule range into pomodoro/short-break/long-break sub-blocks (chunks of 4-5 pomodoros, max 4 long breaks per range) with a live preview on the schedule form and a mini-timeline on the calendar day view; add a self-reported concentration check-in during focus sessions that adapts the estimated pomodoro length over time. Note: the concentration check-in UI itself already exists in `SoftFocusOverlay.tsx` (uncommitted as of 2026-08-11) — what remains is using those samples to adapt the suggested pomodoro length over time.
+- [ ] 5.14 (Optional) Add ambient focus sound: a `SpotifyModule` in `server/src` (same OAuth Authorization Code + PKCE pattern as `auth/oauth.service.ts` for Google/Apple), storing a refresh token per user/device and serving curated focus playlists; a playback widget embedded in the Pomodoro panel and `SoftFocusOverlay.tsx`, hooked to `isPomodoroBlocking`/`manualSoftFocus.active`/`isWorkHoursActive` for auto-play/pause. Spotify Web Playback SDK requires Premium — document the limitation. Ship 3-4 bundled ambient loops (rain, white noise, lofi) as a no-account fallback for everyone else.
 
 ## 6. Mobile app â€” Android (phase 2)
 

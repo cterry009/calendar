@@ -17,7 +17,7 @@ import {
 } from '@calendar/ui';
 
 interface Props {
-  session: SerotoninSession | null;
+  session: SerotoninSession;
   nextPillar: SerotoninPillar | null;
   nextRitual: SerotoninRitual | null;
   streakHint: string;
@@ -45,26 +45,12 @@ export function SerotoninModePanel({
   allRituals,
   allMoods,
 }: Props) {
-  if (!session) {
-    return (
-      <AppCard variant="serotonin" opacity={0.9}>
-        <H2 fontSize="$6" marginTop={0}>
-          Modo Control de Serotonina
-        </H2>
-        <Paragraph color="$muted">
-          Activa el modo para bloquear distracciones (en móvil/escritorio), seguir 6 pilares de
-          bienestar y completar rituales breves de calma.
-        </Paragraph>
-      </AppCard>
-    );
-  }
-
   return (
     <AppCard variant="serotonin">
       <XStack justifyContent="space-between" alignItems="center" gap="$4" marginBottom="$4">
         <YStack flex={1}>
           <H2 fontSize="$6" marginTop={0}>
-            Modo Serotonina activo
+            Bienestar diario
           </H2>
           <Paragraph color="$muted" size="$3">
             {streakHint}

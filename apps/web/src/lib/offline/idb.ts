@@ -1,10 +1,12 @@
 const DB_NAME = 'calendar-offline';
-const DB_VERSION = 1;
+const DB_VERSION = 3;
 
 export const IDB_STORES = {
   snapshots: 'snapshots',
   syncQueue: 'syncQueue',
   detoxPlan: 'detoxPlan',
+  serotoninSession: 'serotoninSession',
+  dailyRitual: 'dailyRitual',
 } as const;
 
 type StoreName = (typeof IDB_STORES)[keyof typeof IDB_STORES];
@@ -29,6 +31,14 @@ function openDatabase(): Promise<IDBDatabase> {
 
       if (!db.objectStoreNames.contains(IDB_STORES.detoxPlan)) {
         db.createObjectStore(IDB_STORES.detoxPlan);
+      }
+
+      if (!db.objectStoreNames.contains(IDB_STORES.serotoninSession)) {
+        db.createObjectStore(IDB_STORES.serotoninSession);
+      }
+
+      if (!db.objectStoreNames.contains(IDB_STORES.dailyRitual)) {
+        db.createObjectStore(IDB_STORES.dailyRitual);
       }
     };
   });

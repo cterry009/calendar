@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DetoxPlan } from '@calendar/shared';
 import {
   completeBaselineAudit,
@@ -144,6 +144,19 @@ export function useDetoxPlan(): UseDetoxPlanResult {
     await persist(createDetoxPlan(crypto.randomUUID()));
   }, [persist]);
 
+  // The detox plan is on by default -- there's no "start" button. As soon as loading settles
+  // with no plan on record (a brand-new user, or one who never started it), create day 1
+  // automatically. The ref guards against double-firing while startPlan's own persist() call
+  // is still in flight (it flips isLoading via loadPlan()).
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (isLoading || plan || error || autoStartedRef.current) {
+      return;
+    }
+    autoStartedRef.current = true;
+    void startPlan();
+  }, [error, isLoading, plan, startPlan]);
+
   const saveBaselineAudit = useCallback(
     async (screenTimeHoursEstimate: number, topDistractions: string[]) => {
       if (!plan) return;
@@ -174,6 +187,10 @@ export function useDetoxPlan(): UseDetoxPlanResult {
   );
 
   const resetPlan = useCallback(async () => {
+    // Let the plan auto-start again (day 1) once this reset clears it -- resetting shouldn't
+    // leave the user in the "no plan" state, since starting it is no longer a manual step.
+    autoStartedRef.current = false;
+
     if (serverRecordId) {
       await persist(plan ?? createDetoxPlan(crypto.randomUUID()), {
         deleted: true,

@@ -5,6 +5,7 @@ import { DashboardPage } from '../../pages/DashboardPage';
 import { DetoxPage } from '../../pages/DetoxPage';
 import { FitnessPage } from '../../pages/FitnessPage';
 import { PomodoroPage } from '../../pages/PomodoroPage';
+import { RitualPage } from '../../pages/RitualPage';
 import { SuggestionsPage } from '../../pages/SuggestionsPage';
 import { SlideOverPanel } from './SlideOverPanel';
 
@@ -15,6 +16,7 @@ const PANEL_PAGES: Record<PanelId, ComponentType> = {
   blocklist: BlockListPage,
   fitness: FitnessPage,
   detox: DetoxPage,
+  ritual: RitualPage,
 };
 
 export function PanelHost() {
