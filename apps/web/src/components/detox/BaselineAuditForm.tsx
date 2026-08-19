@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { AppButton, AppCard, H3, Paragraph, Text, XStack, YStack } from '@calendar/ui';
+import { AppButton, AppCard, H3, Paragraph, Text, YStack } from '@calendar/ui';
+import { useNativeFieldStyle } from '../../hooks/useNativeFieldStyle';
 
 interface BaselineAuditFormProps {
   isSubmitting: boolean;
@@ -10,6 +11,7 @@ export function BaselineAuditForm({ isSubmitting, onSubmit }: BaselineAuditFormP
   const [screenTime, setScreenTime] = useState('6');
   const [distractions, setDistractions] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const fieldStyle = useNativeFieldStyle();
 
   async function handleSubmit() {
     const hours = Number(screenTime);
@@ -49,14 +51,7 @@ export function BaselineAuditForm({ isSubmitting, onSubmit }: BaselineAuditFormP
             step={0.5}
             value={screenTime}
             onChange={(event) => setScreenTime(event.target.value)}
-            style={{
-              padding: 10,
-              borderRadius: 14,
-              border: '1px solid rgba(180,255,220,0.18)',
-              background: '#2a3931',
-              color: '#f2f7f4',
-              fontFamily: "'Outfit', -apple-system, system-ui, sans-serif",
-            }}
+            style={{ padding: 10, borderRadius: 14, ...fieldStyle }}
           />
         </YStack>
 
@@ -67,14 +62,7 @@ export function BaselineAuditForm({ isSubmitting, onSubmit }: BaselineAuditFormP
             value={distractions}
             onChange={(event) => setDistractions(event.target.value)}
             placeholder={'Instagram\nYouTube\nTikTok'}
-            style={{
-              padding: 10,
-              borderRadius: 14,
-              border: '1px solid rgba(180,255,220,0.18)',
-              background: '#2a3931',
-              color: '#f2f7f4',
-              fontFamily: "'Outfit', -apple-system, system-ui, sans-serif",
-            }}
+            style={{ padding: 10, borderRadius: 14, ...fieldStyle }}
           />
         </YStack>
 

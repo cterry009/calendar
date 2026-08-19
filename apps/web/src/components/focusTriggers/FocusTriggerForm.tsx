@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { AppButton, AppCard, H2, Label, Paragraph, XStack, YStack } from '@calendar/ui';
 import { Checkbox, Input } from 'tamagui';
+import { useNativeFieldStyle } from '../../hooks/useNativeFieldStyle';
 import {
   DEFAULT_RADIUS_METERS,
   FOCUS_TRIGGER_KINDS,
@@ -37,6 +38,7 @@ export function FocusTriggerForm({ mode, initialTrigger, isSubmitting, onSubmit,
   const [draft, setDraft] = useState<FocusTriggerFormValues>(() => defaultDraft(initialTrigger));
   const [error, setError] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const fieldStyle = useNativeFieldStyle();
 
   useEffect(() => {
     setDraft(defaultDraft(initialTrigger));
@@ -101,14 +103,7 @@ export function FocusTriggerForm({ mode, initialTrigger, isSubmitting, onSubmit,
             <select
               value={draft.kind}
               onChange={(event) => setField('kind', event.target.value as FocusTriggerFormValues['kind'])}
-              style={{
-                padding: 10,
-                borderRadius: 14,
-                border: '1px solid rgba(180,255,220,0.18)',
-                background: '#2a3931',
-                color: '#f2f7f4',
-                fontFamily: "'Outfit', -apple-system, system-ui, sans-serif",
-              }}
+              style={{ padding: 10, borderRadius: 14, ...fieldStyle }}
             >
               {FOCUS_TRIGGER_KINDS.map((kind) => (
                 <option key={kind} value={kind}>

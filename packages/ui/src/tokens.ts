@@ -26,6 +26,45 @@ export const palette = {
   // as raised even though the base is no longer near-black.
   shadow: 'rgba(6,12,9,0.5)',
   shadowAmbient: 'rgba(6,12,9,0.25)',
+  // Generic translucent overlays (button hover/press washes, resting fills)
+  // that assume a dark backdrop — values match what AppButton hardcoded
+  // before these existed, so dark mode is pixel-identical.
+  overlaySubtle: 'rgba(255,255,255,0.05)',
+  overlayMedium: 'rgba(255,255,255,0.09)',
+  overlayStrong: 'rgba(255,255,255,0.15)',
+  // A sunken/recessed row fill (list rows inside a card) — darkens against
+  // its surface regardless of theme, unlike the overlay tokens above which
+  // lighten on dark and darken on light.
+  recessedFill: 'rgba(0,0,0,0.2)',
+} as const;
+
+// Same "Emerald Focus" family as `palette`, inverted for a light backdrop:
+// off-white ground instead of near-black, deepened accent/semantic colors
+// for real contrast against white (a straight lightness-flip of the dark
+// hex values reads as washed-out and fails contrast, same problem every
+// light/dark design system solves by shifting lightness per-theme while
+// keeping the same hue).
+export const paletteLight = {
+  background: '#f2f8f5',
+  surface: '#ffffff',
+  surfaceHover: '#e6f2ec',
+  text: '#16241d',
+  textMuted: '#54695f',
+  accent: '#1a9d68',
+  accentSoft: '#dbf3e7',
+  success: '#2f8f5c',
+  warning: '#9a6f1c',
+  danger: '#c1503b',
+  border: 'rgba(22,36,29,0.12)',
+  borderHighlight: 'rgba(22,60,40,0.2)',
+  shadow: 'rgba(22,36,29,0.16)',
+  shadowAmbient: 'rgba(22,36,29,0.08)',
+  overlaySubtle: 'rgba(22,36,29,0.05)',
+  overlayMedium: 'rgba(22,36,29,0.09)',
+  overlayStrong: 'rgba(22,36,29,0.15)',
+  // Lower alpha than dark's recessedFill -- the same 0.2 black-on-white would
+  // read as a flat gray block instead of a subtle recess.
+  recessedFill: 'rgba(22,36,29,0.06)',
 } as const;
 
 export const radius = {
@@ -88,6 +127,10 @@ export const calendarThemes = {
     danger: palette.danger,
     error: palette.danger,
     shadowColor: palette.shadow,
+    overlaySubtle: palette.overlaySubtle,
+    overlayMedium: palette.overlayMedium,
+    overlayStrong: palette.overlayStrong,
+    recessedFill: palette.recessedFill,
   },
   calm: {
     background: palette.backgroundCalm,
@@ -109,6 +152,35 @@ export const calendarThemes = {
     danger: palette.danger,
     error: palette.danger,
     shadowColor: palette.shadow,
+    overlaySubtle: palette.overlaySubtle,
+    overlayMedium: palette.overlayMedium,
+    overlayStrong: palette.overlayStrong,
+    recessedFill: palette.recessedFill,
+  },
+  light: {
+    background: paletteLight.background,
+    color: paletteLight.text,
+    colorHover: paletteLight.text,
+    colorPress: paletteLight.text,
+    colorFocus: paletteLight.text,
+    borderColor: paletteLight.border,
+    borderColorHover: paletteLight.borderHighlight,
+    borderColorFocus: paletteLight.accent,
+    placeholderColor: paletteLight.textMuted,
+    accent: paletteLight.accent,
+    accentBackground: paletteLight.accentSoft,
+    surface: paletteLight.surface,
+    surfaceHover: paletteLight.surfaceHover,
+    muted: paletteLight.textMuted,
+    success: paletteLight.success,
+    warning: paletteLight.warning,
+    danger: paletteLight.danger,
+    error: paletteLight.danger,
+    shadowColor: paletteLight.shadow,
+    overlaySubtle: paletteLight.overlaySubtle,
+    overlayMedium: paletteLight.overlayMedium,
+    overlayStrong: paletteLight.overlayStrong,
+    recessedFill: paletteLight.recessedFill,
   },
 } as const;
 

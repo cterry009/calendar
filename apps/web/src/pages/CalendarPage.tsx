@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { Theme } from 'tamagui';
 import {
   MOOD_LABELS,
   MOOD_STATES,
@@ -60,7 +59,7 @@ export function CalendarPage() {
   );
 
   return (
-    <Theme name="dark">
+    <>
       <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
         <PageHeader
           eyebrow={t('calendarHub.eyebrow')}
@@ -129,6 +128,6 @@ export function CalendarPage() {
         completeLabel="Marcar como completa"
         cancelLabel="Cancelar"
       />
-    </Theme>
+    </>
   );
 }

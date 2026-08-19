@@ -8,6 +8,7 @@ import { PomodoroTimer } from '../components/pomodoro/PomodoroTimer';
 import { usePomodoro } from '../context/PomodoroContext';
 import { useSoftFocus } from '../context/SoftFocusContext';
 import { useCalendarData } from '../hooks/useCalendarData';
+import { useNativeFieldStyle } from '../hooks/useNativeFieldStyle';
 import { useTasks } from '../hooks/useTasks';
 
 export function PomodoroPage() {
@@ -18,6 +19,7 @@ export function PomodoroPage() {
   const softFocus = useSoftFocus();
   const tasksData = useTasks();
   const { pomodoroSessions } = useCalendarData();
+  const fieldStyle = useNativeFieldStyle();
 
   const streak = useMemo(
     () => computePomodoroStreak(completedPomodoroDateKeys(pomodoroSessions)),
@@ -77,14 +79,7 @@ export function PomodoroPage() {
               onChange={(event) => {
                 setSelectedTaskId(event.target.value || null);
               }}
-              style={{
-                minHeight: 42,
-                borderRadius: 8,
-                border: '1px solid rgba(255,255,255,0.24)',
-                background: 'rgba(0,0,0,0.25)',
-                color: 'white',
-                padding: '0 12px',
-              }}
+              style={{ minHeight: 42, borderRadius: 8, padding: '0 12px', ...fieldStyle }}
             >
               <option value="">Sin vincular tarea</option>
               {availableTasks.map((task) => (

@@ -4,6 +4,7 @@ import { createFont, createTamagui } from 'tamagui';
 import { calendarThemes } from './tokens';
 
 const darkTheme = (defaultConfig.themes as Record<string, Record<string, unknown>>).dark;
+const lightTheme = (defaultConfig.themes as Record<string, Record<string, unknown>>).light;
 
 const fontFamily = 'Outfit, -apple-system, system-ui, "Segoe UI", sans-serif';
 // Editorial serif reserved for display headings — pairs with the geometric
@@ -104,6 +105,10 @@ export const tamaguiConfig = createTamagui({
     calm: {
       ...darkTheme,
       ...calendarThemes.calm,
+    },
+    light: {
+      ...lightTheme,
+      ...calendarThemes.light,
     },
   },
   defaultTheme: 'dark',

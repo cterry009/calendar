@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AppButton, AppCard, Paragraph, Text, XStack, YStack } from '@calendar/ui';
+import { useNativeFieldStyle } from '../../hooks/useNativeFieldStyle';
 import { useTasks } from '../../hooks/useTasks';
 import { isSameDay } from '../../lib/calendar/utils';
 import { taskToFormValues } from '../../lib/tasks/types';
@@ -10,21 +11,19 @@ interface Props {
   onComplete: (reflection: string) => void;
 }
 
-const TEXTAREA_STYLE = {
-  minHeight: 80,
-  borderRadius: 8,
-  border: '1px solid rgba(255,255,255,0.24)',
-  background: 'rgba(0,0,0,0.25)',
-  color: 'white',
-  padding: '10px 12px',
-  fontFamily: 'inherit',
-  fontSize: 14,
-  resize: 'vertical' as const,
-};
-
 export function EveningShutdown({ initialReflection, onComplete }: Props) {
   const { tasks, isLoading, isMutating, updateTask, completeTask } = useTasks();
   const [reflection, setReflection] = useState(initialReflection);
+  const fieldStyle = useNativeFieldStyle();
+  const textareaStyle = {
+    minHeight: 80,
+    borderRadius: 8,
+    padding: '10px 12px',
+    fontFamily: 'inherit',
+    fontSize: 14,
+    resize: 'vertical' as const,
+    ...fieldStyle,
+  };
 
   const now = useMemo(() => new Date(), []);
 
@@ -88,7 +87,7 @@ export function EveningShutdown({ initialReflection, onComplete }: Props) {
       <YStack gap="$2">
         <Text fontWeight="700">Reflexion del dia (opcional)</Text>
         <textarea
-          style={TEXTAREA_STYLE}
+          style={textareaStyle}
           value={reflection}
           onChange={(event) => setReflection(event.target.value)}
           placeholder="Como te fue hoy? Que harias distinto manana?"

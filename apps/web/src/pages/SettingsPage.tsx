@@ -1,4 +1,5 @@
 import { AppCard, H3, Paragraph, XStack, YStack } from '@calendar/ui';
+import { AppearanceToggle } from '../components/AppearanceToggle';
 import { LanguageToggle } from '../components/LanguageToggle';
 import { PageHeader } from '../components/PageHeader';
 import { useLanguage } from '../context/LanguageContext';
@@ -32,6 +33,9 @@ export function SettingsPage() {
           <Paragraph margin={0} color="$muted">
             {t('settings.appearance.description')}
           </Paragraph>
+          <XStack>
+            <AppearanceToggle />
+          </XStack>
         </YStack>
       </AppCard>
     </YStack>

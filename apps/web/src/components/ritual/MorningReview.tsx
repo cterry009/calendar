@@ -1,5 +1,6 @@
-import { useMemo, type CSSProperties } from 'react';
+import { useMemo } from 'react';
 import { AppButton, AppCard, Paragraph, Text, XStack, YStack } from '@calendar/ui';
+import { useNativeFieldStyle } from '../../hooks/useNativeFieldStyle';
 import { useSchedules } from '../../hooks/useSchedules';
 import { useTasks } from '../../hooks/useTasks';
 import { isSameDay } from '../../lib/calendar/utils';
@@ -8,18 +9,11 @@ import { minuteToTimeValue } from '../../lib/schedules/types';
 import { taskToFormValues } from '../../lib/tasks/types';
 import { StatusCard } from '../StatusCard';
 
-const SELECT_STYLE: CSSProperties = {
-  minHeight: 36,
-  borderRadius: 8,
-  border: '1px solid rgba(255,255,255,0.24)',
-  background: 'rgba(0,0,0,0.25)',
-  color: 'white',
-  padding: '0 10px',
-};
-
 export function MorningReview({ onComplete }: { onComplete: () => void }) {
   const { tasks, isLoading, isMutating, updateTask } = useTasks();
   const { schedules, isLoading: isLoadingSchedules } = useSchedules();
+  const fieldStyle = useNativeFieldStyle();
+  const selectStyle = { minHeight: 36, borderRadius: 8, padding: '0 10px', ...fieldStyle };
 
   const now = useMemo(() => new Date(), []);
 
@@ -88,7 +82,7 @@ export function MorningReview({ onComplete }: { onComplete: () => void }) {
                   </Text>
                 </YStack>
                 <select
-                  style={SELECT_STYLE}
+                  style={selectStyle}
                   value=""
                   disabled={isMutating || todaySlots.length === 0}
                   onChange={(event) => {

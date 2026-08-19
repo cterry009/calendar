@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { AppButton, AppCard, H2, Label, Paragraph, XStack, YStack } from '@calendar/ui';
 import { Checkbox, Input } from 'tamagui';
+import { useNativeFieldStyle } from '../../hooks/useNativeFieldStyle';
 import { BLOCK_LIST_KIND_LABELS, BLOCK_LIST_PLATFORM_LABELS } from '../../lib/blocklist/labels';
 import {
   BLOCK_LIST_KINDS,
@@ -32,6 +33,7 @@ function defaultDraft(entry?: SyncBlockListRecord): BlockListFormValues {
 export function BlockListForm({ mode, initialEntry, isSubmitting, onSubmit, onCancel }: BlockListFormProps) {
   const [draft, setDraft] = useState<BlockListFormValues>(() => defaultDraft(initialEntry));
   const [error, setError] = useState<string | null>(null);
+  const fieldStyle = useNativeFieldStyle();
 
   useEffect(() => {
     setDraft(defaultDraft(initialEntry));
@@ -76,14 +78,7 @@ export function BlockListForm({ mode, initialEntry, isSubmitting, onSubmit, onCa
             <select
               value={draft.kind}
               onChange={(event) => setField('kind', event.target.value as BlockListFormValues['kind'])}
-              style={{
-                padding: 10,
-                borderRadius: 14,
-                border: '1px solid rgba(180,255,220,0.18)',
-                background: '#2a3931',
-                color: '#f2f7f4',
-                fontFamily: "'Outfit', -apple-system, system-ui, sans-serif",
-              }}
+              style={{ padding: 10, borderRadius: 14, ...fieldStyle }}
             >
               {BLOCK_LIST_KINDS.map((kind) => (
                 <option key={kind} value={kind}>
@@ -113,14 +108,7 @@ export function BlockListForm({ mode, initialEntry, isSubmitting, onSubmit, onCa
               onChange={(event) =>
                 setField('platform', (event.target.value || null) as BlockListFormValues['platform'])
               }
-              style={{
-                padding: 10,
-                borderRadius: 14,
-                border: '1px solid rgba(180,255,220,0.18)',
-                background: '#2a3931',
-                color: '#f2f7f4',
-                fontFamily: "'Outfit', -apple-system, system-ui, sans-serif",
-              }}
+              style={{ padding: 10, borderRadius: 14, ...fieldStyle }}
             >
               <option value="">Todas</option>
               {BLOCK_LIST_PLATFORMS.map((platform) => (

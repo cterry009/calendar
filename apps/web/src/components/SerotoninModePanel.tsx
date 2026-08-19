@@ -98,7 +98,7 @@ export function SerotoninModePanel({
             gap="$3"
             padding="$3"
             borderRadius="$3"
-            backgroundColor="rgba(0,0,0,0.2)"
+            backgroundColor="$recessedFill"
             borderLeftWidth={p.completed ? 3 : 0}
             borderLeftColor="$success"
           >
@@ -128,7 +128,7 @@ export function SerotoninModePanel({
               gap="$2"
               padding="$3"
               borderRadius="$3"
-              backgroundColor="rgba(0,0,0,0.2)"
+              backgroundColor="$recessedFill"
               borderLeftWidth={done ? 3 : 0}
               borderLeftColor="$success"
             >

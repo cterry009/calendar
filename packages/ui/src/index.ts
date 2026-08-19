@@ -1,5 +1,5 @@
 export { CalendarProvider, tamaguiConfig } from './CalendarProvider';
-export { calendarThemes, palette, space, fontSize } from './tokens';
+export { calendarThemes, palette, paletteLight, space, fontSize } from './tokens';
 export type { CalendarTheme } from './tokens';
 export {
   Activity,
