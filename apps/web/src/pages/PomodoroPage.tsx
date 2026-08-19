@@ -1,10 +1,13 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { completedPomodoroDateKeys, computePomodoroStreak } from '@calendar/shared';
 import { AppButton, AppCard, Paragraph, XStack, YStack } from '@calendar/ui';
 import { PageHeader } from '../components/PageHeader';
+import { PomodoroStreakCard } from '../components/pomodoro/PomodoroStreakCard';
 import { PomodoroTimer } from '../components/pomodoro/PomodoroTimer';
 import { usePomodoro } from '../context/PomodoroContext';
 import { useSoftFocus } from '../context/SoftFocusContext';
+import { useCalendarData } from '../hooks/useCalendarData';
 import { useTasks } from '../hooks/useTasks';
 
 export function PomodoroPage() {
@@ -14,6 +17,12 @@ export function PomodoroPage() {
   const pomodoro = usePomodoro();
   const softFocus = useSoftFocus();
   const tasksData = useTasks();
+  const { pomodoroSessions } = useCalendarData();
+
+  const streak = useMemo(
+    () => computePomodoroStreak(completedPomodoroDateKeys(pomodoroSessions)),
+    [pomodoroSessions],
+  );
 
   const availableTasks = useMemo(
     () => tasksData.tasks.filter((task) => task.status === 'PENDING' || task.status === 'IN_PROGRESS'),
@@ -52,6 +61,8 @@ export function PomodoroPage() {
         title="Temporizador pomodoro"
         description="Vincula tus ciclos de enfoque y descanso a una tarea para mejorar trazabilidad y consistencia."
       />
+
+      <PomodoroStreakCard streak={streak} />
 
       <AppCard>
         <YStack gap="$3">

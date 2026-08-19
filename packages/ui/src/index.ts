@@ -7,6 +7,7 @@ export {
   AppCard,
   BarChart3,
   Eyebrow,
+  Flame,
   Label,
   Leaf,
   Lightbulb,
