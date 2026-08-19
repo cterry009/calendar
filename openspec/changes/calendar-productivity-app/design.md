@@ -169,6 +169,14 @@ Como todavía no existe bloqueo real a nivel de sistema operativo (eso es 6.6/7.
 
 **Alternativa descartada**: modelar esto como campos nuevos en `BlockListEntry` en vez de un modelo separado. Se descartó porque activar el bloqueo es una propiedad de la sesión de enfoque (`SoftFocusContext`), no de una entrada individual de la lista — las entradas de bloqueo ya se muestran todas juntas como recordatorio dentro de cualquier sesión de enfoque activa, sin importar qué la activó.
 
+### 17. Calidad de screen time: tentaciones evitadas (tarea 5.9)
+
+**Decisión**: `SerotoninSession` gana un contador `temptationsAvoided`, puntuado hasta 10 puntos en `calculateSerotoninScore` (se redujo el máximo de pilares de 60 a 50 para dejarle espacio real al puntaje, en vez de sumarlo por encima y que quede opacado cuando el usuario ya completa todos los pilares). Como `SerotoninSession` se guarda como JSON opaco (`sessionData: Json` en Prisma), no hizo falta migración.
+
+El problema real de esta tarea es que la app no puede interceptar la apertura real de una app de terceros (no hay bloqueo a nivel de sistema operativo, fase 6/7). En vez de inventar un contador falso, se conecta a un evento real que ya existe gracias a la tarea 5.7: cuando `SoftFocusOverlay` muestra la pausa de fricción antes de salir del enfoque y el usuario elige "Volver al enfoque" en vez de completarla, eso es literalmente el momento en que estaba tentado a romper el bloqueo y no lo hizo — se cuenta como una tentación evitada real, no simulada. Se muestra como "N tentación(es) evitada(s) hoy" junto al puntaje en `SerotoninModePanel`.
+
+**Límite conocido**: solo se cuenta la tentación de salir de un enfoque ya activo (pomodoro/manual/horario/ubicación). No cubre "el usuario nunca entró en modo enfoque pero igual evitó abrir una app de alta dopamina" — eso, otra vez, requeriría bloqueo real a nivel de sistema operativo.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
