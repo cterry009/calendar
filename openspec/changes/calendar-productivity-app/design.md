@@ -177,6 +177,10 @@ El problema real de esta tarea es que la app no puede interceptar la apertura re
 
 **Límite conocido**: solo se cuenta la tentación de salir de un enfoque ya activo (pomodoro/manual/horario/ubicación). No cubre "el usuario nunca entró en modo enfoque pero igual evitó abrir una app de alta dopamina" — eso, otra vez, requeriría bloqueo real a nivel de sistema operativo.
 
+### 18. Racha de pomodoros con tokens de gracia (tarea 5.10)
+
+**Decisión**: la racha se recalcula siempre desde `PomodoroSession[]` (mismo principio que el score de hábitos: no se persiste un contador aparte que se pueda desincronizar). Un día cuenta como "completado" si tiene al menos una sesión con `!interrupted && endedAt` — la misma convención que ya usaba `lib/analytics/aggregate.ts` para el dashboard, reutilizada en vez de inventar una nueva definición de "pomodoro completado". El pool de gracia es fijo (2 días, `DEFAULT_GRACE_DAYS`) y se consume caminando hacia atrás desde hoy; un hueco se perdona solo si ya se encontró al menos un día completado en el camino (evita gastar gracia "puenteando" hacia una racha que nunca existió) y solo hasta la fecha del dato más antiguo conocido (evita gastar gracia infinitamente hacia atrás cuando simplemente no hay más historial).
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
