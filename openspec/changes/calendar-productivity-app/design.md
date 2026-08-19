@@ -160,6 +160,15 @@ Como todavía no existe bloqueo real a nivel de sistema operativo (eso es 6.6/7.
 
 **Límite conocido**: la tarea también menciona "la intervención de detox-serotonina al abrir una app de alta dopamina" — eso implicaría interceptar la apertura de una app o sitio de terceros, que requiere bloqueo real a nivel de sistema operativo (fase 6/7, no construida). El equivalente disponible hoy en la web es el punto 2 de arriba: el mismo componente sirve como la intervención real cuando el usuario decide iniciar la pausa de respiración desde Modo Serotonina. `BlockListEntry.highDopamine` sigue sin gatillar nada automáticamente (ver decisión 13); conectar el `FrictionOverlay` a una apertura real de apps de alta dopamina es trabajo de 6.7/7.6.
 
+### 16. Condiciones de activación por ubicación y Wi-Fi (tarea 5.8)
+
+**Decisión**: nuevo modelo `FocusTrigger` (independiente de `BlockListEntry`, ya que lo que activa el bloqueo hoy — pomodoro/foco manual/horario de trabajo — vive en `SoftFocusContext`, no en las entradas de la lista) con dos tipos:
+
+- **LOCATION**: se aplica de verdad en la web. `SoftFocusContext` observa `navigator.geolocation.watchPosition` mientras haya al menos una condición de ubicación activa, y calcula distancia con la fórmula de haversine (`packages/shared/src/geo/distance.ts`, testeada) contra cada condición guardada. Si el usuario está dentro del radio configurado, se suma a `isOverlayVisible` igual que un pomodoro o un horario de trabajo, con su propio botón de salida ("Salir del enfoque" en `SoftFocusOverlay`, que llama a `dismissLocationFocus()` y se resetea al salir del radio, igual que el patrón ya usado para horarios de trabajo). Es enforcement real de foreground: requiere permiso de geolocalización y la pestaña abierta — no hay geofencing en segundo plano sin Service Worker + Background Sync, fuera de alcance aquí.
+- **WIFI**: los navegadores no exponen el SSID de la red conectada a JavaScript por diseño (privacidad) — no existe ninguna API web para esto. La condición se guarda igual (mismo modelo, mismo formulario) pero no activa nada en la web; tanto el formulario como la tarjeta de la lista muestran una advertencia explícita de que la detección real requiere las apps nativas de Android/Windows (6.6/7.3). Mismo patrón que `hardMode` en la decisión 14: especificar el dato ahora para que las apps nativas compartan un solo contrato en vez de inventar cada una el suyo.
+
+**Alternativa descartada**: modelar esto como campos nuevos en `BlockListEntry` en vez de un modelo separado. Se descartó porque activar el bloqueo es una propiedad de la sesión de enfoque (`SoftFocusContext`), no de una entrada individual de la lista — las entradas de bloqueo ya se muestran todas juntas como recordatorio dentro de cualquier sesión de enfoque activa, sin importar qué la activó.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
