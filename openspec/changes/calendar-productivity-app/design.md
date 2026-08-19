@@ -189,6 +189,14 @@ El problema real de esta tarea es que la app no puede interceptar la apertura re
 
 **Alternativa descartada**: una librería de i18n completa (react-i18next, formatjs) para todo el barrido de una vez. Se descartó por ahora — el volumen real de strings y el riesgo de una migración a medias no justifican la dependencia nueva antes de saber cuánto del árbol de componentes se va a tocar; el `t()` casero cubre el caso de uso actual y es trivial de reemplazar después si hace falta pluralización o interpolación más compleja.
 
+### 20. Sin tema claro: compromiso deliberado con oscuro (tarea 5.12)
+
+**Decisión**: no se construye tema claro ni soporte `prefers-color-scheme`. La app se queda en oscuro-únicamente ("Emerald Focus" para uso normal, "calm" para momentos de baja estimulación), consistente con el branding de foco/reducción de dopamina que ya viene guiando decisiones anteriores en este documento (p. ej. mantener el tema oscuro del resto de la app en vez de copiar el tema claro real de mhabit, decisión de diseño de hábitos).
+
+Antes de decidir, se verificó que no había ningún camino a medio construir hacia modo claro que limpiar: `CalendarTheme` (`packages/ui/src/tokens.ts`) solo define `dark`/`calm`; `CalendarProvider` siempre renderiza `theme="dark"` por defecto y nada en la app lo sobreescribe; no existe ningún `prefers-color-scheme`, `matchMedia` ni CSS de color-scheme en todo el repo (confirmado por grep y leyendo `apps/web/index.html` completo); y una comprobación en vivo del fondo de la página de login dio `rgb(33, 46, 40)` — el gris-verde oscuro esperado, no blanco.
+
+**Detalle técnico dejado como está**: `packages/ui/src/tamagui.config.ts` esparce el `defaultConfig.themes` completo de Tamagui (que trae de fábrica un tema `light` sin estilizar) antes de sobreescribir las claves `dark`/`calm` con la paleta propia. Ese `light` de fábrica queda presente en el registro de temas pero inerte — nada en la app lo pide nunca, y el tipo `CalendarTheme` ni siquiera permite pasarle `"light"` a `CalendarProvider`. Se dejó así en vez de tocar el registro de temas de Tamagui: quitarlo es cosmético (reduce bundle) pero arriesga romper sub-temas de componentes (`dark_Button`, etc.) que Tamagui resuelve desde ese mismo objeto, sin ningún beneficio funcional a cambio.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
