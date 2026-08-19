@@ -3,9 +3,17 @@ import { calendarHubDictionary } from './calendarHub';
 import { commonDictionary } from './common';
 import { navDictionary } from './nav';
 import { settingsDictionary } from './settings';
+import { wellnessDictionary } from './wellness';
 import type { Language } from '../language';
 
-const NAMESPACES = [commonDictionary, authDictionary, navDictionary, calendarHubDictionary, settingsDictionary];
+const NAMESPACES = [
+  commonDictionary,
+  authDictionary,
+  navDictionary,
+  calendarHubDictionary,
+  settingsDictionary,
+  wellnessDictionary,
+];
 
 function mergeForLanguage(language: Language): Record<string, string> {
   return Object.assign({}, ...NAMESPACES.map((namespace) => namespace[language]));

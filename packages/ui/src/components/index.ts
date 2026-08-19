@@ -4,7 +4,7 @@ import { radius } from '../tokens';
 // Re-exported here (not imported directly from apps/web) so every icon shares the same
 // @tamagui/core instance as the rest of the design system -- importing @tamagui/lucide-icons
 // from a package with its own separate node_modules breaks the Tamagui theme context.
-export { Activity, BarChart3, Flame, Leaf, Lightbulb, ListChecks, Plus, Settings, ShieldBan, Sunrise, Timer } from '@tamagui/lucide-icons';
+export { Activity, BarChart3, Flame, Heart, Leaf, Lightbulb, ListChecks, Plus, Settings, ShieldBan, Sunrise, Timer } from '@tamagui/lucide-icons';
 export type { IconProps } from '@tamagui/helpers-icon';
 
 export const AppButton = styled(TamaguiButton, {

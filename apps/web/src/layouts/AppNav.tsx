@@ -3,6 +3,7 @@ import {
   AppButton,
   BarChart3,
   Eyebrow,
+  Heart,
   Leaf,
   Lightbulb,
   ListChecks,
@@ -42,6 +43,7 @@ const NAV_GROUPS: NavGroup[] = [
     labelKey: 'nav.group.plan',
     links: [
       { panel: 'ritual', labelKey: 'nav.link.ritual', Icon: Sunrise },
+      { panel: 'wellness', labelKey: 'nav.link.wellness', Icon: Heart },
       { panel: 'dashboard', labelKey: 'nav.link.dashboard', Icon: BarChart3 },
       { panel: 'suggestions', labelKey: 'nav.link.suggestions', Icon: Lightbulb },
     ],

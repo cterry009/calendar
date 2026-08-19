@@ -8,6 +8,7 @@ export {
   BarChart3,
   Eyebrow,
   Flame,
+  Heart,
   Label,
   Leaf,
   Lightbulb,
