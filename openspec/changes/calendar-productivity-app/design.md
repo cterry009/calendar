@@ -181,6 +181,14 @@ El problema real de esta tarea es que la app no puede interceptar la apertura re
 
 **Decisión**: la racha se recalcula siempre desde `PomodoroSession[]` (mismo principio que el score de hábitos: no se persiste un contador aparte que se pueda desincronizar). Un día cuenta como "completado" si tiene al menos una sesión con `!interrupted && endedAt` — la misma convención que ya usaba `lib/analytics/aggregate.ts` para el dashboard, reutilizada en vez de inventar una nueva definición de "pomodoro completado". El pool de gracia es fijo (2 días, `DEFAULT_GRACE_DAYS`) y se consume caminando hacia atrás desde hoy; un hueco se perdona solo si ya se encontró al menos un día completado en el camino (evita gastar gracia "puenteando" hacia una racha que nunca existió) y solo hasta la fecha del dato más antiguo conocido (evita gastar gracia infinitamente hacia atrás cuando simplemente no hay más historial).
 
+### 19. Selector de idioma ES/EN y alcance parcial de i18n (tarea 5.11)
+
+**Decisión**: la tarea original solo pedía forzar un idioma único (español) y dejar el i18n completo para la fase 10. El usuario pidió explícitamente ampliar esto a un selector real ES/EN durante esta misma tarea. En vez de tratarlo como dos trabajos separados, se construyó un solo mecanismo — diccionarios por namespace + `LanguageContext` con `t()` — que sirve para ambos objetivos a la vez: hoy fuerza un idioma default consistente (español) y ya deja el selector funcionando, sin más migración cuando se retome la fase 10.
+
+**Alcance decidido con el usuario** (pregunta directa, no asumido): traducir cada string de la app de una sola vez es un barrido mecánico enorme con alto riesgo de dejar mezclas a medio traducir — exactamente el bug que esta tarea busca eliminar. Se acordó ir por partes: núcleo primero (login/registro — el mix real que motivó la tarea —, `AppNav`, y el chrome propio del hub del calendario), el resto de paneles en iteraciones futuras. `t(key)` devuelve la propia key si no está traducida todavía, así que dejar coverage parcial no rompe nada ni se nota como texto vacío — simplemente ese string queda en español hasta que le llegue el turno.
+
+**Alternativa descartada**: una librería de i18n completa (react-i18next, formatjs) para todo el barrido de una vez. Se descartó por ahora — el volumen real de strings y el riesgo de una migración a medias no justifican la dependencia nueva antes de saber cuánto del árbol de componentes se va a tocar; el `t()` casero cubre el caso de uso actual y es trivial de reemplazar después si hace falta pluralización o interpolación más compleja.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
