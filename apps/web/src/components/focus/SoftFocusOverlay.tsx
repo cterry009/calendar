@@ -7,6 +7,7 @@ import { useBlockList } from '../../hooks/useBlockList';
 import { useTasks } from '../../hooks/useTasks';
 import { recordFocusFeedbackSample } from '../../lib/pomodoro/planner';
 import { formatTimer } from '../../lib/pomodoro/timer';
+import { FrictionOverlay } from '../friction/FrictionOverlay';
 
 const FOCUS_REMINDER_KINDS = new Set(['WEBSITE', 'DESKTOP_APP', 'MOBILE_APP']);
 
@@ -28,6 +29,7 @@ export function SoftFocusOverlay() {
   const blockList = useBlockList();
   const tasksData = useTasks();
   const [feedbackSavedFor, setFeedbackSavedFor] = useState<string | null>(null);
+  const [showExitFriction, setShowExitFriction] = useState(false);
 
   const isPomodoroBlocking = pomodoro.isBlocking;
   const isManualFocus = !isPomodoroBlocking && softFocus.manualSoftFocus.active;
@@ -82,13 +84,9 @@ export function SoftFocusOverlay() {
     return null;
   }
 
-  async function handleExit() {
+  function handleExit() {
     if (isPomodoroBlocking) {
-      const confirmed = window.confirm('Esto cancelara el pomodoro activo. Deseas salir del enfoque?');
-      if (!confirmed) {
-        return;
-      }
-      await pomodoro.cancel();
+      setShowExitFriction(true);
       return;
     }
 
@@ -100,123 +98,142 @@ export function SoftFocusOverlay() {
     softFocus.stopManualFocus();
   }
 
-  return createPortal(
-    <YStack
-      position="fixed"
-      top={0}
-      left={0}
-      right={0}
-      bottom={0}
-      zIndex={9999}
-      backgroundColor="rgba(18, 21, 27, 0.94)"
-      justifyContent="center"
-      alignItems="center"
-      padding="$6"
-    >
-      <YStack
-        width="100%"
-        maxWidth={860}
-        borderWidth={1}
-        borderColor="rgba(234,240,238,0.14)"
-        borderRadius="$8"
-        backgroundColor="rgba(33, 40, 54, 0.92)"
-        padding="$6"
-        gap="$4"
-      >
-        <Text color="$warning" fontWeight="700" textTransform="uppercase" letterSpacing={1}>
-          Recordatorio visual de enfoque
-        </Text>
+  async function confirmExitAfterFriction() {
+    setShowExitFriction(false);
+    await pomodoro.cancel();
+  }
 
-        {timerLabel !== null ? (
-          <Text fontSize={64} fontWeight="800" lineHeight={72}>
-            {formatTimer(timerLabel)}
-          </Text>
-        ) : null}
+  return (
+    <>
+      {createPortal(
+        <YStack
+          position="fixed"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          zIndex={9999}
+          backgroundColor="rgba(18, 21, 27, 0.94)"
+          justifyContent="center"
+          alignItems="center"
+          padding="$6"
+        >
+          <YStack
+            width="100%"
+            maxWidth={860}
+            borderWidth={1}
+            borderColor="rgba(234,240,238,0.14)"
+            borderRadius="$8"
+            backgroundColor="rgba(33, 40, 54, 0.92)"
+            padding="$6"
+            gap="$4"
+          >
+            <Text color="$warning" fontWeight="700" textTransform="uppercase" letterSpacing={1}>
+              Recordatorio visual de enfoque
+            </Text>
 
-        <Paragraph margin={0} color="$muted">
-          {phaseLabel}
-        </Paragraph>
+            {timerLabel !== null ? (
+              <Text fontSize={64} fontWeight="800" lineHeight={72}>
+                {formatTimer(timerLabel)}
+              </Text>
+            ) : null}
 
-        {isWorkHoursBlocking ? (
-          <Paragraph margin={0} color="$muted">
-            Este bloqueo permanece activo mientras dure tu horario de trabajo configurado.
-          </Paragraph>
-        ) : null}
-
-        {taskTitle ? (
-          <Paragraph margin={0}>
-            Tarea vinculada: <Text fontWeight="700">{taskTitle}</Text>
-          </Paragraph>
-        ) : null}
-
-        <YStack gap="$2">
-          <Text fontWeight="700">Evita estos distractores durante esta sesion:</Text>
-          {blockList.isLoading ? (
             <Paragraph margin={0} color="$muted">
-              Cargando recordatorios de bloqueo...
+              {phaseLabel}
             </Paragraph>
-          ) : reminders.length ? (
-            reminders.map((entry) => (
-              <Paragraph key={entry.id} margin={0}>
-                - {entry.label} ({entry.kind})
+
+            {isWorkHoursBlocking ? (
+              <Paragraph margin={0} color="$muted">
+                Este bloqueo permanece activo mientras dure tu horario de trabajo configurado.
               </Paragraph>
-            ))
-          ) : (
-            DEFAULT_REMINDERS.map((entry) => (
-              <Paragraph key={entry} margin={0}>
-                - {entry}
+            ) : null}
+
+            {taskTitle ? (
+              <Paragraph margin={0}>
+                Tarea vinculada: <Text fontWeight="700">{taskTitle}</Text>
               </Paragraph>
-            ))
-          )}
-          {blockList.error ? (
-            <Paragraph margin={0} color="$error">
-              {blockList.error}
+            ) : null}
+
+            <YStack gap="$2">
+              <Text fontWeight="700">Evita estos distractores durante esta sesion:</Text>
+              {blockList.isLoading ? (
+                <Paragraph margin={0} color="$muted">
+                  Cargando recordatorios de bloqueo...
+                </Paragraph>
+              ) : reminders.length ? (
+                reminders.map((entry) => (
+                  <Paragraph key={entry.id} margin={0}>
+                    - {entry.label} ({entry.kind})
+                  </Paragraph>
+                ))
+              ) : (
+                DEFAULT_REMINDERS.map((entry) => (
+                  <Paragraph key={entry} margin={0}>
+                    - {entry}
+                  </Paragraph>
+                ))
+              )}
+              {blockList.error ? (
+                <Paragraph margin={0} color="$error">
+                  {blockList.error}
+                </Paragraph>
+              ) : null}
+            </YStack>
+
+            <Paragraph margin={0} color="$warning">
+              Aviso: este modo solo muestra recordatorios visuales en web y no bloquea aplicaciones ni sitios a nivel
+              sistema operativo.
             </Paragraph>
-          ) : null}
-        </YStack>
 
-        <Paragraph margin={0} color="$warning">
-          Aviso: este modo solo muestra recordatorios visuales en web y no bloquea aplicaciones ni sitios a nivel
-          sistema operativo.
-        </Paragraph>
+            {isPomodoroBlocking ? (
+              <YStack gap="$2" borderTopWidth={1} borderTopColor="rgba(255,255,255,0.12)" paddingTop="$4">
+                {feedbackSavedFor === feedbackKey ? (
+                  <Paragraph margin={0} color="$success" size="$2">
+                    Gracias, usaremos esto para ajustar la duracion sugerida del pomodoro.
+                  </Paragraph>
+                ) : (
+                  <>
+                    <Text fontWeight="700" size="$2">
+                      ¿Cuanto llevas concentrado de verdad en este pomodoro?
+                    </Text>
+                    <XStack gap="$2" flexWrap="wrap">
+                      <AppButton variant="ghost" onPress={() => handleRecordFeedback(1)}>
+                        Todo ({plannedFocusMin} min)
+                      </AppButton>
+                      <AppButton variant="ghost" onPress={() => handleRecordFeedback(0.75)}>
+                        Casi todo
+                      </AppButton>
+                      <AppButton variant="ghost" onPress={() => handleRecordFeedback(0.5)}>
+                        La mitad
+                      </AppButton>
+                      <AppButton variant="ghost" onPress={() => handleRecordFeedback(0.25)}>
+                        Poco
+                      </AppButton>
+                    </XStack>
+                  </>
+                )}
+              </YStack>
+            ) : null}
 
-        {isPomodoroBlocking ? (
-          <YStack gap="$2" borderTopWidth={1} borderTopColor="rgba(255,255,255,0.12)" paddingTop="$4">
-            {feedbackSavedFor === feedbackKey ? (
-              <Paragraph margin={0} color="$success" size="$2">
-                Gracias, usaremos esto para ajustar la duracion sugerida del pomodoro.
-              </Paragraph>
-            ) : (
-              <>
-                <Text fontWeight="700" size="$2">
-                  ¿Cuanto llevas concentrado de verdad en este pomodoro?
-                </Text>
-                <XStack gap="$2" flexWrap="wrap">
-                  <AppButton variant="ghost" onPress={() => handleRecordFeedback(1)}>
-                    Todo ({plannedFocusMin} min)
-                  </AppButton>
-                  <AppButton variant="ghost" onPress={() => handleRecordFeedback(0.75)}>
-                    Casi todo
-                  </AppButton>
-                  <AppButton variant="ghost" onPress={() => handleRecordFeedback(0.5)}>
-                    La mitad
-                  </AppButton>
-                  <AppButton variant="ghost" onPress={() => handleRecordFeedback(0.25)}>
-                    Poco
-                  </AppButton>
-                </XStack>
-              </>
-            )}
+            <XStack justifyContent="flex-end" marginTop="$2">
+              <AppButton variant="ghost" onPress={handleExit} disabled={pomodoro.isMutating}>
+                Salir del enfoque
+              </AppButton>
+            </XStack>
           </YStack>
-        ) : null}
-
-        <XStack justifyContent="flex-end" marginTop="$2">
-          <AppButton variant="ghost" onPress={() => void handleExit()} disabled={pomodoro.isMutating}>
-            Salir del enfoque
-          </AppButton>
-        </XStack>
-      </YStack>
-    </YStack>,
-    document.body,
+        </YStack>,
+        document.body,
+      )}
+      <FrictionOverlay
+        visible={showExitFriction}
+        title="Antes de salir, respira"
+        description="El enfoque termina en cuanto completes esta pausa. Si prefieres seguir concentrado, cancela y vuelve al pomodoro."
+        cycles={2}
+        onCancel={() => setShowExitFriction(false)}
+        onComplete={() => void confirmExitAfterFriction()}
+        completeLabel="Salir del enfoque"
+        cancelLabel="Volver al enfoque"
+      />
+    </>
   );
 }

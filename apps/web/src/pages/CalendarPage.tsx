@@ -1,8 +1,18 @@
 import { useMemo, useState } from 'react';
 import { Theme } from 'tamagui';
-import { MOOD_LABELS, MOOD_STATES, PILLAR_LABELS, RITUAL_LABELS, SEROTONIN_RITUALS, suggestNextPillar, suggestNextRitual } from '@calendar/shared';
+import {
+  MOOD_LABELS,
+  MOOD_STATES,
+  PILLAR_LABELS,
+  RITUAL_LABELS,
+  SEROTONIN_RITUALS,
+  suggestNextPillar,
+  suggestNextRitual,
+  type SerotoninRitual,
+} from '@calendar/shared';
 import { AppCard, XStack, YStack } from '@calendar/ui';
 import { CalendarPanel } from '../components/calendar/CalendarPanel';
+import { FrictionOverlay } from '../components/friction/FrictionOverlay';
 import { MiniMonthCalendar } from '../components/calendar/MiniMonthCalendar';
 import { PageHeader } from '../components/PageHeader';
 import { StatusCard } from '../components/StatusCard';
@@ -24,9 +34,20 @@ export function CalendarPage() {
   const { session, onRitual, onPillar, onMood } = useSerotoninSession();
   const [mode, setMode] = useState<CalendarViewMode>('week');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
+  const [showBreathingFriction, setShowBreathingFriction] = useState(false);
 
   const nextPillar = session ? suggestNextPillar(session.pillars) : null;
   const nextRitual = session ? suggestNextRitual(session.completedRituals) : null;
+
+  function handleRitual(ritual: SerotoninRitual) {
+    // "breathing" gets a real enforced pause instead of an instant tap, via the
+    // shared FrictionOverlay reused from the focus-blocking exit flow.
+    if (ritual === 'breathing') {
+      setShowBreathingFriction(true);
+      return;
+    }
+    onRitual(ritual);
+  }
 
   const streakHint = useMemo(
     () =>
@@ -76,7 +97,7 @@ export function CalendarPage() {
                   nextPillar={nextPillar}
                   nextRitual={nextRitual}
                   streakHint={streakHint}
-                  onRitual={onRitual}
+                  onRitual={handleRitual}
                   onPillar={onPillar}
                   onMood={onMood}
                   pillarLabels={PILLAR_LABELS}
@@ -92,6 +113,20 @@ export function CalendarPage() {
           </YStack>
         </XStack>
       </YStack>
+
+      <FrictionOverlay
+        visible={showBreathingFriction}
+        title={RITUAL_LABELS.breathing.title}
+        description={RITUAL_LABELS.breathing.description}
+        cycles={4}
+        onCancel={() => setShowBreathingFriction(false)}
+        onComplete={() => {
+          setShowBreathingFriction(false);
+          onRitual('breathing');
+        }}
+        completeLabel="Marcar como completa"
+        cancelLabel="Cancelar"
+      />
     </Theme>
   );
 }
