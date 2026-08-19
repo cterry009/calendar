@@ -225,6 +225,91 @@ Aclarado con el usuario (dos preguntas directas, ambas resueltas con la opción 
 
 **Sugerencias**: la tarjeta `SuggestionsPreview` (teaser con 3 sugerencias) se eliminó del código por completo, no solo de la página — quedó huérfana una vez sacada de `CalendarPage.tsx` (nada más la importaba) y el panel completo de Sugerencias ya es accesible desde `AppNav`, así que mantenerla habría sido código muerto duplicando una función que ya existe en otro lado.
 
+### 23. Backend de sonido ambiental Spotify — diseño (tarea 5.14, no implementada)
+
+**Estado**: solo diseño. Ningún archivo de este apartado existe todavía en `server/src` — se especifica ahora para poder implementarlo directo sin rediscutir la forma, tal como ya se hizo con `hardMode` (decisión 14) y `FocusTrigger` (decisión 16) antes de construirlos.
+
+**Modelo de datos** — nuevo `SpotifyIntegration` (no reutiliza `Device.refreshToken`, que es el refresh token propio de la app, no de un tercero):
+
+```prisma
+model SpotifyIntegration {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  spotifyUserId     String
+  accessTokenEnc    String   // cifrado en reposo, no en texto plano
+  refreshTokenEnc   String   // cifrado en reposo, no en texto plano
+  accessTokenExpiresAt DateTime
+  scope             String
+  connectedAt       DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("spotify_integrations")
+}
+```
+
+`accessTokenEnc`/`refreshTokenEnc` van cifrados con AES-256-GCM usando una clave de servidor (`SPOTIFY_TOKEN_ENCRYPTION_KEY`, variable de entorno nueva, nunca en el repo) — a diferencia de los JWT propios de la app (revocables centralmente y de vida corta), un refresh token de Spotify es una credencial de terceros de vida larga; si la base de datos se filtra, un token en texto plano da acceso indefinido a la cuenta de Spotify del usuario.
+
+**Flujo OAuth (Authorization Code + PKCE, mediado por servidor — no el mismo patrón que Google/Apple)**: Google/Apple en `oauth.service.ts` reciben un `id_token` ya emitido por un SDK cliente y solo lo verifican; Spotify no tiene ese modo simplificado para Web Playback, así que el servidor debe ejecutar el intercambio completo:
+
+1. `GET /spotify/authorize` — el servidor genera `code_verifier`/`code_challenge` y un `state`, guarda `state → code_verifier` en Redis (ya disponible, decisión 1.4) con TTL corto (5 min), y devuelve la URL de autorización de Spotify (`scope` mínimo: `streaming user-read-email user-read-private`).
+2. `GET /spotify/callback?code&state` — recupera el `code_verifier` de Redis por `state`, intercambia `code` por `access_token`/`refresh_token` en el endpoint de token de Spotify, cifra y guarda en `SpotifyIntegration` (upsert por `userId`), redirige de vuelta a la app.
+3. `GET /spotify/status` — `{ connected: boolean, spotifyUserId? }`, nunca expone tokens.
+4. `POST /spotify/disconnect` — borra la fila; no revoca el token en Spotify (Spotify no ofrece endpoint de revocación pública), documentar esa limitación igual que la de Premium (decisión 11).
+5. `GET /spotify/access-token` — devuelve un `access_token` vigente y de vida corta (refresca automáticamente contra Spotify si venció, usando `refreshTokenEnc`) para que el Web Playback SDK lo use directo en el navegador. El `refresh_token` nunca sale del servidor.
+
+**Módulo**: `server/src/spotify/` (`spotify.module.ts`, `spotify.controller.ts`, `spotify.service.ts`, `dto/spotify-callback.dto.ts`), mismo patrón de carpeta que `auth/`.
+
+**Playlists curadas**: lista estática server-side (`spotify.constants.ts`, sin llamada a la API de Spotify) de URIs de playlists públicas categorizadas (deep-focus, lofi, ruido de lluvia) — evita depender de una búsqueda dinámica que podría devolver contenido no apto.
+
+**Fallback sin cuenta**: los 3-4 loops ambientales propios (lluvia, ruido blanco, lofi) son archivos estáticos servidos desde `apps/web/public/audio/` — no requieren backend en absoluto, ya que no hay estado de usuario que persistir para ellos.
+
+**Fuera de este diseño (frontend, tarea 5.14 completa)**: el widget de reproducción embebido en el panel de Pomodoro y `SoftFocusOverlay.tsx`, y el enganche a `isPomodoroBlocking`/`manualSoftFocus.active`/`isWorkHoursActive` para auto-play/pausa — ya descritos en la decisión 11, sin cambios.
+
+### 24. Fricción de ejercicio verificada por cámara — diseño (tarea 5.15, no implementada)
+
+**Estado**: solo diseño, nada implementado todavía.
+
+**Punto clave**: esta tarea es casi enteramente frontend. La verificación de repeticiones/tiempo de plancha vía pose estimation corre 100% on-device (MediaPipe Pose Landmarker o ML Kit, ambos con runtime WASM/nativo en el cliente) precisamente para cumplir "ningún frame ni video sale del dispositivo" — el backend nunca recibe imágenes, video, ni landmarks de pose. Lo único que le corresponde al backend es el modelado de datos de configuración, siguiendo el mismo patrón ya usado para `hardMode` (decisión 14) y `FocusTrigger` (decisión 16): especificar el contrato ahora para que Android/Windows (fase 6/7) lo compartan en vez de inventar cada uno el suyo.
+
+**Modelo de datos** — extiende `BlockListEntry` en vez de crear una tabla nueva, porque la fricción es una propiedad de cómo se desbloquea *esa* entrada, igual que `hardMode` ya lo es:
+
+```prisma
+enum BlockFrictionType {
+  NONE       // comportamiento actual: enabled/hardMode deciden si se puede apagar, sin paso extra al abrir
+  BREATHING  // reusa el FrictionOverlay de respiración 4-7-8 ya construido (decisión 15)
+  EXERCISE   // nuevo: sentadillas / plancha / flexiones
+}
+
+enum ExerciseKind {
+  SQUATS
+  PLANK
+  PUSHUPS
+}
+
+model BlockListEntry {
+  // ...campos existentes sin cambios...
+  frictionType   BlockFrictionType @default(NONE)
+  exerciseKind   ExerciseKind?     // solo cuando frictionType = EXERCISE
+  exerciseTarget Int?              // repeticiones (sentadillas/flexiones) o segundos sostenidos (plancha)
+}
+```
+
+Migración: `ALTER TABLE block_list_entries ADD COLUMN "frictionType" ... DEFAULT 'NONE'`, `ADD COLUMN "exerciseKind"`, `ADD COLUMN "exerciseTarget"` — no rompe filas existentes (default `NONE` preserva el comportamiento actual exacto).
+
+**DTO/sync**: `BlockListEntry` ya viaja por el pipeline unificado de `server/src/sync` (batch/pull) igual que `hardMode` — los tres campos nuevos se agregan al DTO existente y al schema Zod compartido (`packages/shared`), sin endpoint nuevo. Validación server-side: `exerciseKind`/`exerciseTarget` obligatorios y coherentes solo cuando `frictionType = 'EXERCISE'` (igual patrón que la validación cruzada ya usada para los campos condicionales de `FocusTrigger` por `kind`).
+
+**Fuera de este diseño (frontend, cuando se implemente completo)**:
+- Vista de cámara a pantalla completa lanzada al abrir una entrada bloqueada con `frictionType = EXERCISE`, reutilizando el layout de `FrictionOverlay` (acción principal deshabilitada hasta cumplir el objetivo) en vez de un componente nuevo desde cero.
+- Máquina de estados por ángulo de articulación (abajo→arriba = 1 repetición en sentadillas/flexiones; ángulo sostenido = tiempo válido en plancha).
+- Permiso de cámara solicitado solo la primera vez que se usa este tipo de fricción, y solo en primer plano (nunca en segundo plano).
+- Extensión de `BlockListForm`/`BlockListItem` para configurar `frictionType`/`exerciseKind`/`exerciseTarget` por entrada, mismo patrón de UI que ya existe para `hardMode`.
+
+**Alternativas descartadas** (ya reflejadas en la descripción de la tarea, confirmadas aquí como parte del diseño): SDKs de reconocimiento de ejercicio de terceros (rompen el principio "sin dependencia de nube / sin telemetría" ya implícito en el diseño local-first de esta app — ver decisión 13); checkbox manual "hice ejercicio" (trivial de hacer trampa, anula el propósito de un mecanismo de fricción).
+
+**Nota de alcance para el tutorial (5.16)**: cuando 5.14 y 5.15 se implementen, su tour por-feature debe agregarse al catálogo de 5.16 (sonido ambiental dentro del tour de Pomodoro/foco; fricción por ejercicio dentro del tour de lista de bloqueo) — ver nota agregada en la tarea 5.16 de `tasks.md`.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
