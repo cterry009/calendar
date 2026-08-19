@@ -14,6 +14,7 @@ export {
   ListChecks,
   Plus,
   ScoreDisplay,
+  Settings,
   ShieldBan,
   Sunrise,
   Text,

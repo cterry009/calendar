@@ -7,6 +7,7 @@ import { FitnessPage } from '../../pages/FitnessPage';
 import { HabitsPage } from '../../pages/HabitsPage';
 import { PomodoroPage } from '../../pages/PomodoroPage';
 import { RitualPage } from '../../pages/RitualPage';
+import { SettingsPage } from '../../pages/SettingsPage';
 import { SuggestionsPage } from '../../pages/SuggestionsPage';
 import { SlideOverPanel } from './SlideOverPanel';
 
@@ -19,6 +20,7 @@ const PANEL_PAGES: Record<PanelId, ComponentType> = {
   detox: DetoxPage,
   ritual: RitualPage,
   habits: HabitsPage,
+  settings: SettingsPage,
 };
 
 export function PanelHost() {

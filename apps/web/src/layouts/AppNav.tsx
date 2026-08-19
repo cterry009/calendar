@@ -8,6 +8,7 @@ import {
   ListChecks,
   Paragraph,
   Plus,
+  Settings,
   ShieldBan,
   Sunrise,
   Text,
@@ -21,7 +22,6 @@ import { useLanguage } from '../context/LanguageContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { usePanel, type PanelId } from '../context/PanelContext';
 import { useQuickAdd } from '../context/QuickAddContext';
-import { LanguageToggle } from '../components/LanguageToggle';
 
 interface NavLink {
   panel: PanelId;
@@ -144,7 +144,15 @@ export function AppNav() {
         <Paragraph color="$muted" margin={0} size="$2">
           {user?.email ?? ''}
         </Paragraph>
-        <LanguageToggle />
+        <AppButton
+          variant={activePanel === 'settings' ? 'primary' : 'ghost'}
+          onPress={() => openPanel('settings')}
+          aria-label={t('settings.navLabel')}
+          title={t('settings.navLabel')}
+          paddingHorizontal="$3"
+        >
+          <Settings size={18} />
+        </AppButton>
         <AppButton variant="ghost" onPress={openTutorial}>
           {t('nav.tutorial')}
         </AppButton>
