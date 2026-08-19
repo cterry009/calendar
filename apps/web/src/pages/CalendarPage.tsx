@@ -39,10 +39,10 @@ export function CalendarPage() {
               }}
             />
           </AppCard>
+          <DayTasksSidebar selectedDate={selectedDate} />
           <YStack data-tutorial="schedule-header">
             <ScheduleManager />
           </YStack>
-          <DayTasksSidebar selectedDate={selectedDate} />
         </YStack>
       </XStack>
     </YStack>
