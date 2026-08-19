@@ -213,6 +213,18 @@ El toggle se había dejado también en `AuthLayout.tsx` (login/registro) razonan
 
 **Rationale**: mismo principio que ya guía la IA de la app (decisión de agrupar `AppNav` por "por qué alguien abre la sección", no alfabético) — settings/cuenta es su propia categoría, ni "Planear" ni "Enfocarme" ni "Bienestar", así que amerita su propia entrada en vez de forzarla en un grupo existente o dejarla como botón huérfano.
 
+### 22. Despejar la página principal del calendario (refinamiento de 5.1)
+
+**Decisión**: el usuario marcó que la página principal (`CalendarPage.tsx`) había quedado saturada de información acumulada a lo largo de esta sesión (horarios, tareas completas, sugerencias, bienestar diario, todo incrustado debajo del calendario). Instrucción explícita: la página principal debe tener **solo** el calendario y el resumen semanal/mensual; el resto se reorganiza sin perder ninguna funcionalidad ni dato ("igual toda la información se debe guardar... es todo lo que estoy diciendo es visual").
+
+Aclarado con el usuario (dos preguntas directas, ambas resueltas con la opción recomendada):
+- **Tareas**: pasan de la tarjeta `TaskManager` completa (filtros por dificultad, "sin programar", tarjetas con 8 badges por tarea) a un `DayTasksSidebar` nuevo y deliberadamente minimalista en la barra lateral derecha — fila compacta (checkbox, título, cuenta de pomodoros, botón de iniciar pomodoro), filtrado a las tareas programadas para la fecha seleccionada en el calendario (hoy por defecto). La creación de tareas no cambia: sigue siendo "Q" / botón + Tarea / bloque de trabajo del día — este panel es solo para ver y actuar sobre lo que ya existe ese día, no para crear.
+- **Horarios** (`ScheduleManager`): se queda en la misma barra lateral derecha, sin cambios internos — es la base que activa bloqueo/pomodoros, tiene sentido seguir viéndolo junto al calendario en vez de esconderlo en un panel aparte.
+
+**Bienestar diario** (`SerotoninModePanel`) se movió a un panel propio (`WellnessPage.tsx`, panel id `wellness`), agregado al grupo **Planear** de `AppNav.tsx` (junto a Ritual diario/Dashboard/Sugerencias) — instrucción explícita del usuario ("junto con lo planear"), no una decisión de diseño propia. Mantiene toda su lógica intacta (pilares, rituales, pausa de respiración vía `FrictionOverlay`, check-in de ánimo).
+
+**Sugerencias**: la tarjeta `SuggestionsPreview` (teaser con 3 sugerencias) se eliminó del código por completo, no solo de la página — quedó huérfana una vez sacada de `CalendarPage.tsx` (nada más la importaba) y el panel completo de Sugerencias ya es accesible desde `AppNav`, así que mantenerla habría sido código muerto duplicando una función que ya existe en otro lado.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
