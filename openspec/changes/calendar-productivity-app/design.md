@@ -197,6 +197,12 @@ Antes de decidir, se verificó que no había ningún camino a medio construir ha
 
 **Detalle técnico dejado como está**: `packages/ui/src/tamagui.config.ts` esparce el `defaultConfig.themes` completo de Tamagui (que trae de fábrica un tema `light` sin estilizar) antes de sobreescribir las claves `dark`/`calm` con la paleta propia. Ese `light` de fábrica queda presente en el registro de temas pero inerte — nada en la app lo pide nunca, y el tipo `CalendarTheme` ni siquiera permite pasarle `"light"` a `CalendarProvider`. Se dejó así en vez de tocar el registro de temas de Tamagui: quitarlo es cosmético (reduce bundle) pero arriesga romper sub-temas de componentes (`dark_Button`, etc.) que Tamagui resuelve desde ese mismo objeto, sin ningún beneficio funcional a cambio.
 
+### 21. Panel de Configuración consolidado (feedback post-5.11/5.12)
+
+**Decisión**: el usuario marcó explícitamente que preferencias de app como el idioma (y, cuando exista, la apariencia) no deberían vivir como botones sueltos en la barra de navegación — deberían agruparse en una opción de "Configuración". Se agregó `settings` como un panel más del patrón deslizante de 5.1 (`SettingsPage.tsx`, registrado en `PanelHost.tsx`/`PanelContext.tsx` igual que Dashboard/Pomodoro/etc.), con secciones por preferencia (hoy: Idioma con el `LanguageToggle`; Apariencia, que documenta la decisión de 5.12 de quedarse en tema oscuro único). El botón `LanguageToggle` suelto que 5.11 había puesto directo en `AppNav.tsx` se sacó de ahí; `AppNav.tsx` ahora solo tiene un ícono de engranaje que abre el panel. El toggle sigue existiendo tal cual en `AuthLayout.tsx` (login/registro) porque antes de autenticarse no hay panel de Configuración al que ir — ese es el único lugar donde una preferencia queda fuera del panel, y es una limitación estructural (no hay sesión todavía), no una excepción de diseño.
+
+**Rationale**: mismo principio que ya guía la IA de la app (decisión de agrupar `AppNav` por "por qué alguien abre la sección", no alfabético) — settings/cuenta es su propia categoría, ni "Planear" ni "Enfocarme" ni "Bienestar", así que amerita su propia entrada en vez de forzarla en un grupo existente o dejarla como botón huérfano.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
