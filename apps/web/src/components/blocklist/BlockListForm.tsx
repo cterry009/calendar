@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { AppButton, AppCard, H2, Label, Paragraph, XStack, YStack } from '@calendar/ui';
 import { Checkbox, Input } from 'tamagui';
 import { BLOCK_LIST_KIND_LABELS, BLOCK_LIST_PLATFORM_LABELS } from '../../lib/blocklist/labels';
@@ -25,6 +25,7 @@ function defaultDraft(entry?: SyncBlockListRecord): BlockListFormValues {
     platform: entry?.platform ?? 'WEB',
     highDopamine: entry?.highDopamine ?? false,
     enabled: entry?.enabled ?? true,
+    hardMode: entry?.hardMode ?? false,
   };
 }
 
@@ -48,6 +49,17 @@ export function BlockListForm({ mode, initialEntry, isSubmitting, onSubmit, onCa
     if (!draft.identifier.trim() || !draft.label.trim()) {
       setError('Identificador y etiqueta son obligatorios.');
       return;
+    }
+
+    const wasHardMode = initialEntry?.hardMode ?? false;
+    const isSofteningHardMode = wasHardMode && (!draft.hardMode || !draft.enabled);
+    if (isSofteningHardMode) {
+      const confirmed = window.confirm(
+        'Esta entrada esta en modo estricto. Desactivarla o quitarle el modo estricto anula la barrera que te pusiste a ti mismo. Continuar?',
+      );
+      if (!confirmed) {
+        return;
+      }
     }
 
     await onSubmit(draft);
@@ -132,7 +144,23 @@ export function BlockListForm({ mode, initialEntry, isSubmitting, onSubmit, onCa
               <Checkbox checked={draft.enabled} onCheckedChange={(value) => setField('enabled', value === true)} />
               <Label>Activo</Label>
             </XStack>
+
+            <XStack gap="$2" alignItems="center">
+              <Checkbox
+                checked={draft.hardMode}
+                onCheckedChange={(value) => setField('hardMode', value === true)}
+              />
+              <Label>Modo estricto (no cancelable)</Label>
+            </XStack>
           </XStack>
+
+          {draft.hardMode ? (
+            <Paragraph margin={0} size="$2" color="$muted">
+              Una vez guardada, desactivar o eliminar esta entrada pedira confirmacion explicita. Es el mismo
+              comportamiento que usaran los bloqueos reales en Android y Windows: no se puede saltar con un solo
+              toque.
+            </Paragraph>
+          ) : null}
 
           {error ? (
             <Paragraph margin={0} color="$error">

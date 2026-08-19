@@ -272,6 +272,10 @@ export class BlockListSyncChangeDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  hardMode?: boolean;
 }
 
 export class FitnessSyncChangeDto {

@@ -8,6 +8,7 @@ export interface SyncBlockListRecord {
   platform: DevicePlatform | null;
   highDopamine: boolean;
   enabled: boolean;
+  hardMode: boolean;
   updatedAt: string;
 }
 
@@ -18,6 +19,7 @@ export interface BlockListFormValues {
   platform: DevicePlatform | null;
   highDopamine: boolean;
   enabled: boolean;
+  hardMode: boolean;
 }
 
 export const BLOCK_LIST_KINDS: BlockListKind[] = ['MOBILE_APP', 'WEBSITE', 'DESKTOP_APP'];

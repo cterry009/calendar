@@ -482,6 +482,7 @@ export class SyncService {
       platform: change.platform ?? null,
       highDopamine: change.highDopamine ?? false,
       enabled: change.enabled ?? true,
+      hardMode: change.hardMode ?? false,
       updatedAt: new Date(change.updatedAt),
     };
 

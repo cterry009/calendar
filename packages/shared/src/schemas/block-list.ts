@@ -9,6 +9,7 @@ export const BlockListEntrySchema = z.object({
   platform: DevicePlatformSchema.optional().nullable(),
   highDopamine: z.boolean().default(false),
   enabled: z.boolean().default(true),
+  hardMode: z.boolean().default(false),
 });
 
 export const CreateBlockListEntrySchema = BlockListEntrySchema.omit({ id: true });

@@ -11,7 +11,10 @@ interface BlockListItemProps {
 
 export function BlockListItem({ entry, isBusy, onEdit, onDelete }: BlockListItemProps) {
   async function handleDelete() {
-    if (!window.confirm(`Eliminar "${entry.label}"? Esta accion no se puede deshacer.`)) {
+    const message = entry.hardMode
+      ? `"${entry.label}" esta en modo estricto. Eliminarla anula la barrera que te pusiste a ti mismo. Esta seguro?`
+      : `Eliminar "${entry.label}"? Esta accion no se puede deshacer.`;
+    if (!window.confirm(message)) {
       return;
     }
     await onDelete(entry);
@@ -46,6 +49,11 @@ export function BlockListItem({ entry, isBusy, onEdit, onDelete }: BlockListItem
           {entry.highDopamine ? (
             <Text fontSize="$2" color="$muted">
               Alta dopamina
+            </Text>
+          ) : null}
+          {entry.hardMode ? (
+            <Text fontSize="$2" color="$error" fontWeight="700">
+              Modo estricto
             </Text>
           ) : null}
           <Text fontSize="$2" color="$muted">
