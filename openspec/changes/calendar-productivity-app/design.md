@@ -135,7 +135,7 @@ Lista de distracciones sincronizada desde la nube; el cliente nativo aplica las 
 
 ### 12. Entrenamiento cognitivo tipo BrainHQ — descartado
 
-**Decisión**: no construir esta feature. Entrena *capacidad* perceptual-cognitiva (velocidad de procesamiento, memoria de trabajo, atención), no disciplina/hábito, que es lo que este proyecto busca. El modelo de "fuerza de voluntad como recurso entrenable" (ego depletion) tampoco replicó en réplicas grandes preregistradas (Hagger et al. 2016, N=2,141; Dang et al. 2019, N=3,531), así que no hay un sustituto válido de este tipo para "entrenar disciplina". La construcción de disciplina de esta app ya vive en 5.2 (planificación si-entonces) y en 5.7/5.8 (hard mode / friction overlay), que sí tienen evidencia detrás.
+**Decisión**: no construir esta feature. Entrena *capacidad* perceptual-cognitiva (velocidad de procesamiento, memoria de trabajo, atención), no disciplina/hábito, que es lo que este proyecto busca. El modelo de "fuerza de voluntad como recurso entrenable" (ego depletion) tampoco replicó en réplicas grandes preregistradas (Hagger et al. 2016, N=2,141; Dang et al. 2019, N=3,531), así que no hay un sustituto válido de este tipo para "entrenar disciplina". La construcción de disciplina de esta app ya vive en 5.2 (planificación si-entonces) y en 5.6/5.7 (hard mode / friction overlay), que sí tienen evidencia detrás.
 
 ### 13. Modo Serotonina y Plan de Detox: siempre activos, no funciones opt-in
 
@@ -144,6 +144,12 @@ Lista de distracciones sincronizada desde la nube; el cliente nativo aplica las 
 **Rationale**: el enfoque de reducir dependencia de estímulos de alta dopamina debe ser innato al usar la app, no una opción aparte que el usuario tiene que recordar prender — un "modo" que hay que activar es exactamente el patrón opt-in que se quería evitar.
 
 **Límite conocido, fuera de alcance de esta decisión**: el flag `highDopamine` en las entradas de la lista de bloqueo (`BlockListEntry`) hoy solo se muestra como etiqueta informativa (`BlockListItem.tsx`) — no activa ningún bloqueo real distinto del resto de la lista. Un bloqueo permanente (no solo durante pomodoro/horario de trabajo/foco manual) requeriría bloqueo real a nivel de sistema operativo en apps de terceros, que es trabajo de fase 6/7 (Android/Windows) todavía no construido; `SoftFocusOverlay` bloquea toda la pantalla de la app y no es el mecanismo correcto para dejarlo permanentemente activo.
+
+### 14. Modo estricto (`hardMode`) en la lista de bloqueo (tarea 5.6)
+
+**Decisión**: `BlockListEntry` gana un campo `hardMode: boolean`, especificado ahora para que Android (6.6) y Windows (7.3) implementen el mismo comportamiento en vez de divergir cada uno por su cuenta: una entrada en modo estricto no se puede desactivar ni eliminar sin una confirmación explícita y separada del flujo normal de edición/borrado.
+
+Como todavía no existe bloqueo real a nivel de sistema operativo (eso es 6.6/7.3, no construido), el cumplimiento en la web hoy es fricción sobre la propia entrada, no bloqueo de terceros: `BlockListForm` exige un `confirm()` adicional antes de guardar un cambio que apague `hardMode` o `enabled` en una entrada que ya estaba en modo estricto, y `BlockListItem` usa un mensaje de confirmación más fuerte al eliminar una entrada en modo estricto. Este es el contrato que las apps nativas deben replicar cuando se construyan: "modo estricto" siempre implica un paso de confirmación explícito e independiente para desactivar o eliminar, nunca un solo toque.
 
 ## Risks / Trade-offs
 
