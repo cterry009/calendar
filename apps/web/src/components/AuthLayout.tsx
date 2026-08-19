@@ -1,6 +1,5 @@
 ﻿import type { ReactNode } from 'react';
-import { AppCard, Eyebrow, H1, XStack, YStack } from '@calendar/ui';
-import { LanguageToggle } from './LanguageToggle';
+import { AppCard, Eyebrow, H1, YStack } from '@calendar/ui';
 
 interface AuthLayoutProps {
   eyebrow: string;
@@ -18,21 +17,16 @@ export function AuthLayout({ eyebrow, title, children, linkSlot }: AuthLayoutPro
       backgroundColor="$background"
       padding="$6"
     >
-      <YStack width="100%" maxWidth={460} gap="$3">
-        <XStack justifyContent="flex-end">
-          <LanguageToggle />
-        </XStack>
-        <AppCard width="100%">
-          <YStack gap="$4">
-            <YStack gap="$2">
-              <Eyebrow>{eyebrow}</Eyebrow>
-              <H1 fontSize="$8">{title}</H1>
-            </YStack>
-            {children}
-            {linkSlot}
+      <AppCard width="100%" maxWidth={460}>
+        <YStack gap="$4">
+          <YStack gap="$2">
+            <Eyebrow>{eyebrow}</Eyebrow>
+            <H1 fontSize="$8">{title}</H1>
           </YStack>
-        </AppCard>
-      </YStack>
+          {children}
+          {linkSlot}
+        </YStack>
+      </AppCard>
     </YStack>
   );
 }
