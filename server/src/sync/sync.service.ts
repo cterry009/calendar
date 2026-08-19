@@ -6,6 +6,7 @@ import {
   BlockListSyncChangeDto,
   DetoxPlanSyncChangeDto,
   FitnessSyncChangeDto,
+  FocusTriggerSyncChangeDto,
   HabitRecordSyncChangeDto,
   HabitSyncChangeDto,
   JournalEntrySyncChangeDto,
@@ -30,6 +31,7 @@ export class SyncService {
       schedules,
       pomodoroSessions,
       blockListEntries,
+      focusTriggers,
       fitnessEntries,
       detoxPlan,
       serotoninSession,
@@ -43,6 +45,7 @@ export class SyncService {
       this.prisma.schedule.findMany({ where: { userId } }),
       this.prisma.pomodoroSession.findMany({ where: { userId } }),
       this.prisma.blockListEntry.findMany({ where: { userId } }),
+      this.prisma.focusTrigger.findMany({ where: { userId } }),
       this.prisma.fitnessEntry.findMany({ where: { userId } }),
       this.prisma.detoxPlan.findUnique({ where: { userId } }),
       this.prisma.serotoninSession.findUnique({ where: { userId } }),
@@ -56,6 +59,7 @@ export class SyncService {
       schedules,
       pomodoroSessions,
       blockListEntries,
+      focusTriggers,
       fitnessEntries,
       habits,
       habitRecords,
@@ -132,6 +136,18 @@ export class SyncService {
         this.bucketResult(result, 'blockListEntries', outcome);
         if (outcome.status === 'applied') {
           changedEntities.add('blockListEntries');
+        }
+      }
+    }
+
+    if (dto.focusTriggers?.length) {
+      result.applied.focusTriggers = [];
+      result.conflicts.focusTriggers = [];
+      for (const change of dto.focusTriggers) {
+        const outcome = await this.applyFocusTriggerChange(userId, change);
+        this.bucketResult(result, 'focusTriggers', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('focusTriggers');
         }
       }
     }
@@ -492,6 +508,63 @@ export class SyncService {
           data,
         })
       : await this.prisma.blockListEntry.create({ data: { ...data, userId } });
+
+    return { status: 'applied', clientKey: key, record };
+  }
+
+  private async applyFocusTriggerChange(
+    userId: string,
+    change: FocusTriggerSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const existing = change.id
+      ? await this.prisma.focusTrigger.findFirst({
+          where: { id: change.id, userId },
+        })
+      : null;
+    const key = change.id;
+
+    if (change.deleted) {
+      if (!existing) {
+        return { status: 'skipped', clientKey: key };
+      }
+      if (this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+        return { status: 'conflict', clientKey: key, server: existing };
+      }
+      await this.prisma.focusTrigger.delete({ where: { id: existing.id } });
+      return { status: 'applied', clientKey: key, record: { id: existing.id } };
+    }
+
+    if (!change.kind || !change.label) {
+      throw new BadRequestException('Focus trigger changes require kind and label');
+    }
+    if (change.kind === 'LOCATION' && (change.latitude == null || change.longitude == null || change.radiusMeters == null)) {
+      throw new BadRequestException('Location triggers require latitude, longitude, and radiusMeters');
+    }
+    if (change.kind === 'WIFI' && !change.wifiSsid) {
+      throw new BadRequestException('Wi-Fi triggers require wifiSsid');
+    }
+
+    if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+      return { status: 'conflict', clientKey: key, server: existing };
+    }
+
+    const data = {
+      kind: change.kind,
+      label: change.label,
+      enabled: change.enabled ?? true,
+      latitude: change.latitude ?? null,
+      longitude: change.longitude ?? null,
+      radiusMeters: change.radiusMeters ?? null,
+      wifiSsid: change.wifiSsid ?? null,
+      updatedAt: new Date(change.updatedAt),
+    };
+
+    const record = existing
+      ? await this.prisma.focusTrigger.update({
+          where: { id: existing.id },
+          data,
+        })
+      : await this.prisma.focusTrigger.create({ data: { ...data, userId } });
 
     return { status: 'applied', clientKey: key, record };
   }

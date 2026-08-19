@@ -138,6 +138,7 @@ export interface SyncSnapshot {
   schedules: SyncSchedule[];
   pomodoroSessions: SyncPomodoroSession[];
   blockListEntries: unknown[];
+  focusTriggers: unknown[];
   fitnessEntries: SyncFitnessEntry[];
   detoxPlan: SyncDetoxPlanRecord | null;
   serotoninSession: SyncSerotoninSessionRecord | null;

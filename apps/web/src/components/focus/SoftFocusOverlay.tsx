@@ -34,6 +34,8 @@ export function SoftFocusOverlay() {
   const isPomodoroBlocking = pomodoro.isBlocking;
   const isManualFocus = !isPomodoroBlocking && softFocus.manualSoftFocus.active;
   const isWorkHoursBlocking = !isPomodoroBlocking && !isManualFocus && softFocus.isWorkHoursActive;
+  const isLocationBlocking =
+    !isPomodoroBlocking && !isManualFocus && !isWorkHoursBlocking && softFocus.isLocationActive;
   const isVisible = softFocus.isOverlayVisible;
 
   const timerLabel = useMemo(() => {
@@ -50,7 +52,9 @@ export function SoftFocusOverlay() {
     ? 'Enfoque pomodoro activo'
     : isManualFocus
       ? 'Modo enfoque manual'
-      : 'Bloqueo obligatorio: horario de trabajo activo';
+      : isWorkHoursBlocking
+        ? 'Bloqueo obligatorio: horario de trabajo activo'
+        : `Bloqueo por ubicacion: ${softFocus.activeLocationTriggerLabel ?? 'condicion activa'}`;
   const taskTitle = useMemo(() => {
     const taskId = pomodoro.session?.taskId;
     if (!taskId) {
@@ -92,6 +96,11 @@ export function SoftFocusOverlay() {
 
     if (isWorkHoursBlocking) {
       softFocus.dismissWorkHoursFocus();
+      return;
+    }
+
+    if (isLocationBlocking) {
+      softFocus.dismissLocationFocus();
       return;
     }
 
@@ -145,6 +154,13 @@ export function SoftFocusOverlay() {
             {isWorkHoursBlocking ? (
               <Paragraph margin={0} color="$muted">
                 Este bloqueo permanece activo mientras dure tu horario de trabajo configurado.
+              </Paragraph>
+            ) : null}
+
+            {isLocationBlocking ? (
+              <Paragraph margin={0} color="$muted">
+                Este bloqueo permanece activo mientras el navegador detecte que estas dentro del radio configurado
+                para esta condicion.
               </Paragraph>
             ) : null}
 

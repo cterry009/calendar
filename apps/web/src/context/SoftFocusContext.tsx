@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { isWithinRadius } from '@calendar/shared';
+import { useFocusTriggers } from '../hooks/useFocusTriggers';
 import { useSchedules } from '../hooks/useSchedules';
 import { findActiveWorkSchedule, isNowWithinWorkSchedule } from '../lib/calendar/utils';
 import { generateFocusPlan, resolveFocusPlanConfig } from '../lib/pomodoro/planner';
@@ -15,9 +17,12 @@ interface SoftFocusContextValue {
   manualRemainingSeconds: number;
   isOverlayVisible: boolean;
   isWorkHoursActive: boolean;
+  isLocationActive: boolean;
+  activeLocationTriggerLabel: string | null;
   startManualFocus: (minutes: number) => void;
   stopManualFocus: () => void;
   dismissWorkHoursFocus: () => void;
+  dismissLocationFocus: () => void;
 }
 
 const SoftFocusContext = createContext<SoftFocusContextValue | null>(null);
@@ -41,6 +46,7 @@ function getRemainingSeconds(state: ManualSoftFocusState, nowMs: number): number
 export function SoftFocusProvider({ children }: { children: ReactNode }) {
   const pomodoro = usePomodoro();
   const { schedules } = useSchedules();
+  const { enabledTriggers } = useFocusTriggers();
   const [manualSoftFocus, setManualSoftFocus] = useState<ManualSoftFocusState>({
     active: false,
     endsAt: null,
@@ -48,6 +54,8 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
   });
   const [now, setNow] = useState(() => Date.now());
   const [workHoursDismissed, setWorkHoursDismissed] = useState(false);
+  const [locationDismissed, setLocationDismissed] = useState(false);
+  const [currentPosition, setCurrentPosition] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const startManualFocus = useCallback((minutes: number) => {
     const durationMin = Math.max(1, Math.floor(minutes));
@@ -72,6 +80,43 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
   const dismissWorkHoursFocus = useCallback(() => {
     setWorkHoursDismissed(true);
   }, []);
+
+  const dismissLocationFocus = useCallback(() => {
+    setLocationDismissed(true);
+  }, []);
+
+  const locationTriggers = useMemo(
+    () =>
+      enabledTriggers.filter(
+        (trigger) =>
+          trigger.kind === 'LOCATION' &&
+          trigger.latitude != null &&
+          trigger.longitude != null &&
+          trigger.radiusMeters != null,
+      ),
+    [enabledTriggers],
+  );
+
+  // Real, best-effort enforcement (not just a stored label): watches the browser's reported
+  // position while any LOCATION trigger is configured, foreground-only, no background geofencing.
+  useEffect(() => {
+    if (!locationTriggers.length || typeof navigator === 'undefined' || !navigator.geolocation) {
+      setCurrentPosition(null);
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setCurrentPosition({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+      },
+      () => {
+        setCurrentPosition(null);
+      },
+      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 20_000 },
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [locationTriggers.length]);
 
   useEffect(() => {
     if (!manualSoftFocus.active) {
@@ -164,21 +209,54 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
 
   const isWorkHoursActive = rawIsWorkHoursActive && !workHoursDismissed;
 
+  const matchedLocationTrigger = useMemo(() => {
+    if (!currentPosition) {
+      return null;
+    }
+    return (
+      locationTriggers.find((trigger) =>
+        isWithinRadius(
+          currentPosition,
+          { latitude: trigger.latitude as number, longitude: trigger.longitude as number },
+          trigger.radiusMeters as number,
+        ),
+      ) ?? null
+    );
+  }, [currentPosition, locationTriggers]);
+
+  const rawIsLocationActive = matchedLocationTrigger != null;
+
+  // Same "resets once you leave" behavior as the work-hours dismissal, so leaving the geofence
+  // and coming back later triggers the overlay again instead of staying dismissed forever.
+  useEffect(() => {
+    if (!rawIsLocationActive && locationDismissed) {
+      setLocationDismissed(false);
+    }
+  }, [rawIsLocationActive, locationDismissed]);
+
+  const isLocationActive = rawIsLocationActive && !locationDismissed;
+
   const value = useMemo<SoftFocusContextValue>(
     () => ({
       manualSoftFocus,
       manualRemainingSeconds,
-      isOverlayVisible: pomodoro.isBlocking || manualSoftFocus.active || isWorkHoursActive,
+      isOverlayVisible: pomodoro.isBlocking || manualSoftFocus.active || isWorkHoursActive || isLocationActive,
       isWorkHoursActive,
+      isLocationActive,
+      activeLocationTriggerLabel: matchedLocationTrigger?.label ?? null,
       startManualFocus,
       stopManualFocus,
       dismissWorkHoursFocus,
+      dismissLocationFocus,
     }),
     [
+      dismissLocationFocus,
       dismissWorkHoursFocus,
+      isLocationActive,
       isWorkHoursActive,
       manualRemainingSeconds,
       manualSoftFocus,
+      matchedLocationTrigger,
       pomodoro.isBlocking,
       startManualFocus,
       stopManualFocus,

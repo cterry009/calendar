@@ -3,6 +3,7 @@ export type SyncEntityType =
   | 'schedules'
   | 'pomodoroSessions'
   | 'blockListEntries'
+  | 'focusTriggers'
   | 'fitnessEntries'
   | 'detoxPlan'
   | 'serotoninSession'

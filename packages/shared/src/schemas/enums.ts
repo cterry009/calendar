@@ -43,6 +43,8 @@ export const FitnessSourceSchema = z.enum([
 export const HabitTypeSchema = z.enum(['NORMAL', 'NEGATIVE']);
 export const HabitRecordStatusSchema = z.enum(['DONE', 'SKIPPED']);
 
+export const FocusTriggerKindSchema = z.enum(['LOCATION', 'WIFI']);
+
 export type DevicePlatform = z.infer<typeof DevicePlatformSchema>;
 export type TaskDifficulty = z.infer<typeof TaskDifficultySchema>;
 export type TaskPriority = z.infer<typeof TaskPrioritySchema>;
@@ -54,3 +56,4 @@ export type FitnessIntensity = z.infer<typeof FitnessIntensitySchema>;
 export type FitnessSource = z.infer<typeof FitnessSourceSchema>;
 export type HabitType = z.infer<typeof HabitTypeSchema>;
 export type HabitRecordStatus = z.infer<typeof HabitRecordStatusSchema>;
+export type FocusTriggerKind = z.infer<typeof FocusTriggerKindSchema>;

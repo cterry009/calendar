@@ -9,6 +9,7 @@ interface UseCalendarDataResult {
   schedules: SyncSnapshot['schedules'];
   pomodoroSessions: SyncSnapshot['pomodoroSessions'];
   blockListEntries: SyncSnapshot['blockListEntries'];
+  focusTriggers: SyncSnapshot['focusTriggers'];
   fitnessEntries: SyncSnapshot['fitnessEntries'];
   syncedAt: string | null;
   isLoading: boolean;
@@ -21,6 +22,7 @@ const EMPTY_SNAPSHOT: Omit<SyncSnapshot, 'syncedAt'> = {
   schedules: [],
   pomodoroSessions: [],
   blockListEntries: [],
+  focusTriggers: [],
   fitnessEntries: [],
   detoxPlan: null,
   serotoninSession: null,
@@ -47,6 +49,7 @@ export function useCalendarData(): UseCalendarDataResult {
         schedules: data.schedules,
         pomodoroSessions: data.pomodoroSessions,
         blockListEntries: data.blockListEntries,
+        focusTriggers: data.focusTriggers,
         fitnessEntries: data.fitnessEntries,
         detoxPlan: data.detoxPlan ?? null,
         serotoninSession: data.serotoninSession ?? null,

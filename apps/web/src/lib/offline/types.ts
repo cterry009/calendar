@@ -5,6 +5,7 @@ export type SyncEntityType =
   | 'schedules'
   | 'pomodoroSessions'
   | 'blockListEntries'
+  | 'focusTriggers'
   | 'fitnessEntries'
   | 'detoxPlan'
   | 'serotoninSession'
@@ -29,6 +30,7 @@ export interface SyncBatchBody {
   schedules?: unknown[];
   pomodoroSessions?: unknown[];
   blockListEntries?: unknown[];
+  focusTriggers?: unknown[];
   fitnessEntries?: unknown[];
   detoxPlan?: unknown[];
   serotoninSession?: unknown[];

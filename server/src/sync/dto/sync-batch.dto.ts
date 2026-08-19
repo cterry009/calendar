@@ -21,6 +21,7 @@ import {
   DevicePlatform,
   FitnessIntensity,
   FitnessSource,
+  FocusTriggerKind,
   HabitRecordStatus,
   HabitType,
   PomodoroState,
@@ -278,6 +279,55 @@ export class BlockListSyncChangeDto {
   hardMode?: boolean;
 }
 
+export class FocusTriggerSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsDateString()
+  updatedAt!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  deleted?: boolean;
+
+  @ValidateIf((item) => !item.deleted)
+  @IsEnum(FocusTriggerKind)
+  kind?: FocusTriggerKind;
+
+  @ValidateIf((item) => !item.deleted)
+  @IsString()
+  @MinLength(1)
+  label?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(50000)
+  radiusMeters?: number;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  wifiSsid?: string;
+}
+
 export class FitnessSyncChangeDto {
   @IsOptional()
   @IsString()
@@ -518,6 +568,12 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => BlockListSyncChangeDto)
   blockListEntries?: BlockListSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FocusTriggerSyncChangeDto)
+  focusTriggers?: FocusTriggerSyncChangeDto[];
 
   @IsOptional()
   @IsArray()

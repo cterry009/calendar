@@ -54,6 +54,11 @@ enum BlockListKind {
   DESKTOP_APP
 }
 
+enum FocusTriggerKind {
+  LOCATION
+  WIFI
+}
+
 enum FitnessIntensity {
   LOW
   MEDIUM
@@ -100,6 +105,7 @@ model User {
   schedules          Schedule[]
   pomodoroSessions   PomodoroSession[]
   blockListEntries   BlockListEntry[]
+  focusTriggers      FocusTrigger[]
   fitnessEntries     FitnessEntry[]
   analyticsSnapshots AnalyticsSnapshot[]
   detoxPlan          DetoxPlan?
@@ -233,6 +239,30 @@ model BlockListEntry {
   @@unique([userId, kind, identifier])
   @@index([userId])
   @@map("block_list_entries")
+}
+
+// A trigger widens how focus-blocking activates beyond a running session
+// (pomodoro/task/work-hours): LOCATION is enforced for real in the web app via
+// the browser Geolocation API; WIFI has no browser API to read the connected
+// SSID, so it's stored now and only enforceable once the native Android/Windows
+// blockers exist (see design.md decision on this).
+model FocusTrigger {
+  id           String           @id @default(cuid())
+  userId       String
+  kind         FocusTriggerKind
+  label        String
+  enabled      Boolean          @default(true)
+  latitude     Float?
+  longitude    Float?
+  radiusMeters Int?
+  wifiSsid     String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("focus_triggers")
 }
 
 // ─── Fitness ─────────────────────────────────────────────────────────────────

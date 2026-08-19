@@ -5,6 +5,7 @@ const ENTITY_LABELS: Record<SyncEntityType, string> = {
   schedules: 'horarios',
   pomodoroSessions: 'pomodoros',
   blockListEntries: 'lista de bloqueo',
+  focusTriggers: 'condiciones de activacion',
   fitnessEntries: 'fitness',
   detoxPlan: 'plan detox',
   serotoninSession: 'bienestar diario',
