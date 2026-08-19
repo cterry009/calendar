@@ -151,6 +151,15 @@ Lista de distracciones sincronizada desde la nube; el cliente nativo aplica las 
 
 Como todavía no existe bloqueo real a nivel de sistema operativo (eso es 6.6/7.3, no construido), el cumplimiento en la web hoy es fricción sobre la propia entrada, no bloqueo de terceros: `BlockListForm` exige un `confirm()` adicional antes de guardar un cambio que apague `hardMode` o `enabled` en una entrada que ya estaba en modo estricto, y `BlockListItem` usa un mensaje de confirmación más fuerte al eliminar una entrada en modo estricto. Este es el contrato que las apps nativas deben replicar cuando se construyan: "modo estricto" siempre implica un paso de confirmación explícito e independiente para desactivar o eliminar, nunca un solo toque.
 
+### 15. Overlay de fricción compartido (tarea 5.7)
+
+**Decisión**: un único componente `FrictionOverlay` (`apps/web/src/components/friction/FrictionOverlay.tsx`) implementa la pausa de respiración 4-7-8 (animación circular + texto de fase/cuenta regresiva) con la acción principal deshabilitada hasta completar el número de ciclos configurado. Se reutiliza en dos puntos existentes en vez de crear un mecanismo nuevo por caso de uso:
+
+1. **Salida de `SoftFocusOverlay` durante un pomodoro activo**: el botón "Salir del enfoque" abría antes un `window.confirm()` — una interrupción abrupta de un solo clic. Ahora abre el `FrictionOverlay` (2 ciclos, ~38s); el usuario puede "Volver al enfoque" en cualquier momento, o esperar la pausa y confirmar la salida. Es la alternativa "más suave" a la que se refiere la tarea: mismo resultado final (cancelar el pomodoro), pero sin el corte abrupto de un diálogo nativo.
+2. **Ritual "Respiración 4-7-8" de Modo Serotonina**: antes se completaba con un solo toque en "Completar" sin ninguna espera real, pese a describir "4 ciclos" de respiración. Ahora corre el `FrictionOverlay` real con 4 ciclos (~76s) y solo entonces permite marcarlo como completo.
+
+**Límite conocido**: la tarea también menciona "la intervención de detox-serotonina al abrir una app de alta dopamina" — eso implicaría interceptar la apertura de una app o sitio de terceros, que requiere bloqueo real a nivel de sistema operativo (fase 6/7, no construida). El equivalente disponible hoy en la web es el punto 2 de arriba: el mismo componente sirve como la intervención real cuando el usuario decide iniciar la pausa de respiración desde Modo Serotonina. `BlockListEntry.highDopamine` sigue sin gatillar nada automáticamente (ver decisión 13); conectar el `FrictionOverlay` a una apertura real de apps de alta dopamina es trabajo de 6.7/7.6.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
