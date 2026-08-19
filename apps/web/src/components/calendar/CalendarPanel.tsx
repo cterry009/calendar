@@ -1,5 +1,6 @@
 ﻿import { useMemo } from 'react';
 import { AppButton, AppCard, H2, Paragraph, YStack } from '@calendar/ui';
+import { useLanguage } from '../../context/LanguageContext';
 import { usePanel } from '../../context/PanelContext';
 import { usePomodoro } from '../../context/PomodoroContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
@@ -48,6 +49,7 @@ interface CalendarPanelProps {
 }
 
 export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }: CalendarPanelProps) {
+  const { t, locale } = useLanguage();
   const data = useCalendarData();
   const tasksData = useTasks();
   const fitnessData = useFitness();
@@ -113,7 +115,7 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
 
       {data.isLoading ? (
         <AppCard>
-          <Paragraph margin={0}>Cargando calendario...</Paragraph>
+          <Paragraph margin={0}>{t('calendarHub.loading')}</Paragraph>
         </AppCard>
       ) : null}
 
@@ -121,13 +123,13 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
         <AppCard>
           <YStack gap="$3">
             <H2 margin={0} fontSize="$6">
-              No se pudo cargar
+              {t('calendarHub.loadError.title')}
             </H2>
             <Paragraph color="$muted" margin={0}>
               {data.error}
             </Paragraph>
             <AppButton variant="small" alignSelf="flex-start" onPress={() => void data.refetch()}>
-              Reintentar
+              {t('calendarHub.loadError.retry')}
             </AppButton>
           </YStack>
         </AppCard>
@@ -176,7 +178,7 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
 
       {data.syncedAt ? (
         <Paragraph size="$2" color="$muted" margin={0}>
-          Última sincronización: {new Date(data.syncedAt).toLocaleString('es-ES')}
+          {t('calendarHub.lastSynced')}: {new Date(data.syncedAt).toLocaleString(locale)}
         </Paragraph>
       ) : null}
     </YStack>

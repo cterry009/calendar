@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppButton, Text, XStack, YStack } from '@calendar/ui';
+import { useLanguage } from '../../context/LanguageContext';
+import type { Language } from '../../i18n/language';
 import {
   addDays,
   addMonths,
@@ -16,10 +18,14 @@ interface MiniMonthCalendarProps {
   onSelectDate: (date: Date) => void;
 }
 
-const WEEKDAY_LETTERS = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+const WEEKDAY_LETTERS: Record<Language, string[]> = {
+  es: ['D', 'L', 'M', 'X', 'J', 'V', 'S'],
+  en: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
+};
 
 /** Compact month picker for the sidebar, Google Calendar-style: click a day to jump to it. */
 export function MiniMonthCalendar({ selectedDate, onSelectDate }: MiniMonthCalendarProps) {
+  const { locale, language } = useLanguage();
   const [cursorMonth, setCursorMonth] = useState(() => startOfDay(selectedDate));
 
   useEffect(() => {
@@ -44,7 +50,7 @@ export function MiniMonthCalendar({ selectedDate, onSelectDate }: MiniMonthCalen
     <YStack gap="$2">
       <XStack justifyContent="space-between" alignItems="center">
         <Text fontWeight="700" textTransform="capitalize" fontSize="$3">
-          {cursorMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+          {cursorMonth.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
         </Text>
         <XStack gap="$1">
           <AppButton variant="ghost" size="$2" onPress={() => setCursorMonth((current) => addMonths(current, -1))}>
@@ -57,7 +63,7 @@ export function MiniMonthCalendar({ selectedDate, onSelectDate }: MiniMonthCalen
       </XStack>
 
       <XStack>
-        {WEEKDAY_LETTERS.map((letter, index) => (
+        {WEEKDAY_LETTERS[language].map((letter, index) => (
           <YStack key={`${letter}-${index}`} flex={1} alignItems="center">
             <Text fontSize="$1" color="$muted">
               {letter}

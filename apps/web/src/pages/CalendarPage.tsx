@@ -16,6 +16,7 @@ import { FrictionOverlay } from '../components/friction/FrictionOverlay';
 import { MiniMonthCalendar } from '../components/calendar/MiniMonthCalendar';
 import { PageHeader } from '../components/PageHeader';
 import { StatusCard } from '../components/StatusCard';
+import { useLanguage } from '../context/LanguageContext';
 import { useSerotoninSession } from '../context/SerotoninSessionContext';
 import type { CalendarViewMode } from '../lib/calendar/types';
 import { startOfDay } from '../lib/calendar/utils';
@@ -31,6 +32,7 @@ const DISPLAYABLE_RITUALS = SEROTONIN_RITUALS.filter(
 );
 
 export function CalendarPage() {
+  const { t } = useLanguage();
   const { session, onRitual, onPillar, onMood } = useSerotoninSession();
   const [mode, setMode] = useState<CalendarViewMode>('week');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
@@ -52,18 +54,18 @@ export function CalendarPage() {
   const streakHint = useMemo(
     () =>
       session && session.score >= 60
-        ? 'Great serotonin day. Keep the streak tomorrow.'
-        : 'Complete pillars and rituals to improve your score.',
-    [session],
+        ? t('calendarHub.streakHint.good')
+        : t('calendarHub.streakHint.default'),
+    [session, t],
   );
 
   return (
     <Theme name="dark">
       <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
         <PageHeader
-          eyebrow="Planificacion"
-          title="Calendario de productividad"
-          description="Tus horarios de trabajo y descanso son la base: crea tareas desde un bloque de trabajo, registra fitness desde un descanso, y el bloqueo de distracciones se activa automaticamente durante el trabajo."
+          eyebrow={t('calendarHub.eyebrow')}
+          title={t('calendarHub.title')}
+          description={t('calendarHub.description')}
           tutorialId="calendar-hero"
           maxWidth={700}
         />

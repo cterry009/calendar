@@ -2,6 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import { AppButton, Paragraph, YStack } from '@calendar/ui';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { env } from '../lib/env';
 
 const GOOGLE_SCRIPT_ID = 'google-identity-services';
@@ -47,6 +48,7 @@ function loadScriptOnce(id: string, src: string): Promise<void> {
 export function OAuthButtons() {
   const navigate = useNavigate();
   const { loginWithGoogle, loginWithApple } = useAuth();
+  const { t } = useLanguage();
 
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -67,7 +69,7 @@ export function OAuthButtons() {
           callback: async (response) => {
             const idToken = response.credential;
             if (!idToken) {
-              setErrorMessage('Google login did not return an ID token.');
+              setErrorMessage(t('auth.oauth.googleNoToken'));
               return;
             }
 
@@ -75,7 +77,7 @@ export function OAuthButtons() {
               await loginWithGoogle(idToken);
               navigate('/');
             } catch (error) {
-              setErrorMessage(error instanceof Error ? error.message : 'Google login failed.');
+              setErrorMessage(error instanceof Error ? error.message : t('auth.oauth.googleFailed'));
             }
           },
         });
@@ -90,7 +92,7 @@ export function OAuthButtons() {
           width: 320,
         });
       } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : 'Unable to initialize Google sign-in.');
+        setErrorMessage(error instanceof Error ? error.message : t('auth.oauth.googleInitFailed'));
       }
     };
 
@@ -114,7 +116,7 @@ export function OAuthButtons() {
 
   const handleAppleSignIn = async () => {
     if (!window.AppleID?.auth) {
-      setErrorMessage('Apple sign-in SDK is not available.');
+      setErrorMessage(t('auth.oauth.appleUnavailable'));
       return;
     }
 
@@ -123,14 +125,14 @@ export function OAuthButtons() {
       const idToken = result.authorization?.id_token;
 
       if (!idToken) {
-        setErrorMessage('Apple login did not return an ID token.');
+        setErrorMessage(t('auth.oauth.appleNoToken'));
         return;
       }
 
       await loginWithApple(idToken);
       navigate('/');
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Apple login failed.');
+      setErrorMessage(error instanceof Error ? error.message : t('auth.oauth.appleFailed'));
     }
   };
 
@@ -144,7 +146,7 @@ export function OAuthButtons() {
 
       {env.appleClientId ? (
         <AppButton variant="outlined" onPress={handleAppleSignIn}>
-          Continue with Apple
+          {t('auth.oauth.continueWithApple')}
         </AppButton>
       ) : null}
 

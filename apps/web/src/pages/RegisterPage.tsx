@@ -4,10 +4,12 @@ import { AppButton, Paragraph, YStack } from '@calendar/ui';
 import { AuthFormField } from '../components/AuthFormField';
 import { AuthLayout } from '../components/AuthLayout';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export function RegisterPage() {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const { t } = useLanguage();
 
   const formRef = useRef<HTMLFormElement | null>(null);
   const [email, setEmail] = useState('');
@@ -30,7 +32,7 @@ export function RegisterPage() {
       });
       navigate('/');
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to register.');
+      setErrorMessage(error instanceof Error ? error.message : t('auth.register.genericError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -38,13 +40,13 @@ export function RegisterPage() {
 
   return (
     <AuthLayout
-      eyebrow="Calendar Productivity"
-      title="Create account"
+      eyebrow={t('common.appName')}
+      title={t('auth.register.title')}
       linkSlot={
         <Paragraph color="$muted">
-          Already have an account?{' '}
+          {t('auth.register.hasAccount')}{' '}
           <Link to="/login" style={{ color: '#4ee0a0', fontWeight: 600, textDecoration: 'underline' }}>
-            Sign in
+            {t('auth.register.signIn')}
           </Link>
         </Paragraph>
       }
@@ -52,30 +54,30 @@ export function RegisterPage() {
       <YStack ref={formRef} gap="$3" tag="form" onSubmit={handleSubmit}>
         <AuthFormField
           id="name"
-          label="Name (optional)"
+          label={t('auth.register.nameLabel')}
           type="text"
           value={name}
           onChangeText={setName}
-          placeholder="Your name"
+          placeholder={t('auth.register.namePlaceholder')}
         />
 
         <AuthFormField
           id="email"
-          label="Email"
+          label={t('auth.register.emailLabel')}
           type="email"
           value={email}
           onChangeText={setEmail}
-          placeholder="you@example.com"
+          placeholder={t('auth.register.emailPlaceholder')}
           required
         />
 
         <AuthFormField
           id="password"
-          label="Password"
+          label={t('auth.register.passwordLabel')}
           type="password"
           value={password}
           onChangeText={setPassword}
-          placeholder="Create a password"
+          placeholder={t('auth.register.passwordPlaceholder')}
           required
         />
 
@@ -85,7 +87,7 @@ export function RegisterPage() {
           onPress={() => formRef.current?.requestSubmit()}
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Creating account...' : 'Create account'}
+          {isSubmitting ? t('auth.register.submitting') : t('auth.register.submit')}
         </AppButton>
       </YStack>
 

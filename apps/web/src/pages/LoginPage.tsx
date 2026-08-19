@@ -5,10 +5,12 @@ import { AuthFormField } from '../components/AuthFormField';
 import { AuthLayout } from '../components/AuthLayout';
 import { OAuthButtons } from '../components/OAuthButtons';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { t } = useLanguage();
 
   const formRef = useRef<HTMLFormElement | null>(null);
   const [email, setEmail] = useState('');
@@ -26,7 +28,7 @@ export function LoginPage() {
       await login({ email, password });
       navigate('/');
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to sign in.');
+      setErrorMessage(error instanceof Error ? error.message : t('auth.login.genericError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -34,13 +36,13 @@ export function LoginPage() {
 
   return (
     <AuthLayout
-      eyebrow="Calendar Productivity"
-      title="Sign in"
+      eyebrow={t('common.appName')}
+      title={t('auth.login.title')}
       linkSlot={
         <Paragraph color="$muted">
-          No account yet?{' '}
+          {t('auth.login.noAccount')}{' '}
           <Link to="/register" style={{ color: '#4ee0a0', fontWeight: 600, textDecoration: 'underline' }}>
-            Create one
+            {t('auth.login.createOne')}
           </Link>
         </Paragraph>
       }
@@ -48,21 +50,21 @@ export function LoginPage() {
       <YStack ref={formRef} gap="$3" tag="form" onSubmit={handleSubmit}>
         <AuthFormField
           id="email"
-          label="Email"
+          label={t('auth.login.emailLabel')}
           type="email"
           value={email}
           onChangeText={setEmail}
-          placeholder="you@example.com"
+          placeholder={t('auth.login.emailPlaceholder')}
           required
         />
 
         <AuthFormField
           id="password"
-          label="Password"
+          label={t('auth.login.passwordLabel')}
           type="password"
           value={password}
           onChangeText={setPassword}
-          placeholder="Your password"
+          placeholder={t('auth.login.passwordPlaceholder')}
           required
         />
 
@@ -72,7 +74,7 @@ export function LoginPage() {
           onPress={() => formRef.current?.requestSubmit()}
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Signing in...' : 'Sign in'}
+          {isSubmitting ? t('auth.login.submitting') : t('auth.login.submit')}
         </AppButton>
       </YStack>
 

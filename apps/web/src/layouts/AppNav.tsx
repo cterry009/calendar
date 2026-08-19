@@ -17,18 +17,20 @@ import {
   type IconProps,
 } from '@calendar/ui';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { usePanel, type PanelId } from '../context/PanelContext';
 import { useQuickAdd } from '../context/QuickAddContext';
+import { LanguageToggle } from '../components/LanguageToggle';
 
 interface NavLink {
   panel: PanelId;
-  label: string;
+  labelKey: string;
   Icon: (props: IconProps) => JSX.Element;
 }
 
 interface NavGroup {
-  label: string;
+  labelKey: string;
   links: NavLink[];
 }
 
@@ -37,26 +39,26 @@ interface NavGroup {
 // calendar itself has no entry here: it's always the view underneath.
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: 'Planear',
+    labelKey: 'nav.group.plan',
     links: [
-      { panel: 'ritual', label: 'Ritual diario', Icon: Sunrise },
-      { panel: 'dashboard', label: 'Dashboard', Icon: BarChart3 },
-      { panel: 'suggestions', label: 'Sugerencias', Icon: Lightbulb },
+      { panel: 'ritual', labelKey: 'nav.link.ritual', Icon: Sunrise },
+      { panel: 'dashboard', labelKey: 'nav.link.dashboard', Icon: BarChart3 },
+      { panel: 'suggestions', labelKey: 'nav.link.suggestions', Icon: Lightbulb },
     ],
   },
   {
-    label: 'Enfocarme',
+    labelKey: 'nav.group.focus',
     links: [
-      { panel: 'pomodoro', label: 'Pomodoro', Icon: Timer },
-      { panel: 'blocklist', label: 'Bloqueo', Icon: ShieldBan },
+      { panel: 'pomodoro', labelKey: 'nav.link.pomodoro', Icon: Timer },
+      { panel: 'blocklist', labelKey: 'nav.link.blocklist', Icon: ShieldBan },
     ],
   },
   {
-    label: 'Bienestar',
+    labelKey: 'nav.group.wellness',
     links: [
-      { panel: 'habits', label: 'Habitos', Icon: ListChecks },
-      { panel: 'fitness', label: 'Fitness', Icon: Activity },
-      { panel: 'detox', label: 'Detox', Icon: Leaf },
+      { panel: 'habits', labelKey: 'nav.link.habits', Icon: ListChecks },
+      { panel: 'fitness', labelKey: 'nav.link.fitness', Icon: Activity },
+      { panel: 'detox', labelKey: 'nav.link.detox', Icon: Leaf },
     ],
   },
 ];
@@ -67,6 +69,7 @@ function NavDivider() {
 
 export function AppNav() {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const { openTutorial } = useOnboarding();
   const { activePanel, openPanel } = usePanel();
   const { open: openQuickAdd } = useQuickAdd();
@@ -88,25 +91,25 @@ export function AppNav() {
       data-tutorial="app-nav"
     >
       <XStack alignItems="center" gap="$5" flexWrap="wrap">
-        <Eyebrow marginBottom={0}>Calendar Productivity</Eyebrow>
+        <Eyebrow marginBottom={0}>{t('common.appName')}</Eyebrow>
 
         <AppButton
           variant="primary"
           onPress={openQuickAdd}
-          aria-label="Nueva tarea"
-          title="Nueva tarea (atajo: Q)"
+          aria-label={t('nav.newTask')}
+          title={t('nav.newTask.title')}
           paddingHorizontal="$3"
         >
           <Plus size={18} />
           <Text color="inherit" fontWeight="600">
-            Tarea
+            {t('nav.newTask')}
           </Text>
         </AppButton>
 
         <NavDivider />
 
         {NAV_GROUPS.map((group, index) => (
-          <XStack key={group.label} alignItems="center" gap="$3" flexWrap="wrap">
+          <XStack key={group.labelKey} alignItems="center" gap="$3" flexWrap="wrap">
             {index > 0 ? <NavDivider /> : null}
             <XStack alignItems="center" gap="$2" flexWrap="wrap">
               <Text
@@ -116,7 +119,7 @@ export function AppNav() {
                 letterSpacing={1.5}
                 fontWeight="600"
               >
-                {group.label}
+                {t(group.labelKey)}
               </Text>
               <XStack gap="$1" flexWrap="wrap">
                 {group.links.map((link) => (
@@ -124,8 +127,8 @@ export function AppNav() {
                     key={link.panel}
                     variant={activePanel === link.panel ? 'primary' : 'ghost'}
                     onPress={() => openPanel(link.panel)}
-                    aria-label={link.label}
-                    title={link.label}
+                    aria-label={t(link.labelKey)}
+                    title={t(link.labelKey)}
                     paddingHorizontal="$3"
                   >
                     <link.Icon size={18} />
@@ -141,11 +144,12 @@ export function AppNav() {
         <Paragraph color="$muted" margin={0} size="$2">
           {user?.email ?? ''}
         </Paragraph>
+        <LanguageToggle />
         <AppButton variant="ghost" onPress={openTutorial}>
-          Tutorial
+          {t('nav.tutorial')}
         </AppButton>
         <AppButton variant="ghost" onPress={() => void logout()}>
-          Salir
+          {t('nav.logout')}
         </AppButton>
       </XStack>
     </XStack>
