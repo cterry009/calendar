@@ -56,10 +56,21 @@ export function SerotoninModePanel({
             {streakHint}
           </Paragraph>
         </YStack>
-        <XStack alignItems="baseline" gap="$1" aria-label="Puntuación serotonina">
-          <ScoreDisplay>{session.score}</ScoreDisplay>
-          <Text color="$muted">/ 100</Text>
-        </XStack>
+        <YStack alignItems="flex-end" gap="$1">
+          <XStack alignItems="baseline" gap="$1" aria-label="Puntuación serotonina">
+            <ScoreDisplay>{session.score}</ScoreDisplay>
+            <Text color="$muted">/ 100</Text>
+          </XStack>
+          <Text
+            fontSize="$2"
+            color="$muted"
+            aria-label="Tentaciones evitadas hoy"
+            title="Veces que decidiste no salir de un bloqueo/enfoque activo hoy"
+          >
+            {session.temptationsAvoided} tentacion{session.temptationsAvoided === 1 ? '' : 'es'} evitada
+            {session.temptationsAvoided === 1 ? '' : 's'} hoy
+          </Text>
+        </YStack>
       </XStack>
 
       {nextPillar && (

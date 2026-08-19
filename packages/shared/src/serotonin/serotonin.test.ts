@@ -4,6 +4,7 @@ import {
   createSerotoninSession,
   completeRitual,
   logPillarActivity,
+  recordTemptationAvoided,
   suggestNextPillar,
 } from './index.js';
 
@@ -40,5 +41,13 @@ describe('serotonin mode', () => {
     session = logPillarActivity(session, 'outdoors', 15);
     const outdoors = session.pillars.find((p) => p.pillar === 'outdoors');
     expect(outdoors?.completed).toBe(true);
+  });
+
+  it('counts a declined exit as a temptation avoided and raises the score', () => {
+    let session = createSerotoninSession('test-3');
+    expect(session.temptationsAvoided).toBe(0);
+    session = recordTemptationAvoided(session);
+    expect(session.temptationsAvoided).toBe(1);
+    expect(session.score).toBeGreaterThan(0);
   });
 });

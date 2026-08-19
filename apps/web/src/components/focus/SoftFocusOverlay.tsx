@@ -2,6 +2,7 @@
 import { createPortal } from 'react-dom';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { usePomodoro } from '../../context/PomodoroContext';
+import { useSerotoninSession } from '../../context/SerotoninSessionContext';
 import { useSoftFocus } from '../../context/SoftFocusContext';
 import { useBlockList } from '../../hooks/useBlockList';
 import { useTasks } from '../../hooks/useTasks';
@@ -26,6 +27,7 @@ const KIND_LABELS: Record<string, string> = {
 export function SoftFocusOverlay() {
   const pomodoro = usePomodoro();
   const softFocus = useSoftFocus();
+  const { onTemptationAvoided } = useSerotoninSession();
   const blockList = useBlockList();
   const tasksData = useTasks();
   const [feedbackSavedFor, setFeedbackSavedFor] = useState<string | null>(null);
@@ -245,7 +247,10 @@ export function SoftFocusOverlay() {
         title="Antes de salir, respira"
         description="El enfoque termina en cuanto completes esta pausa. Si prefieres seguir concentrado, cancela y vuelve al pomodoro."
         cycles={2}
-        onCancel={() => setShowExitFriction(false)}
+        onCancel={() => {
+          setShowExitFriction(false);
+          onTemptationAvoided();
+        }}
         onComplete={() => void confirmExitAfterFriction()}
         completeLabel="Salir del enfoque"
         cancelLabel="Volver al enfoque"

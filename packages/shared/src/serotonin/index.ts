@@ -98,6 +98,8 @@ export interface SerotoninSession {
   pillars: PillarProgress[];
   completedRituals: SerotoninRitual[];
   moodCheckIns: { at: string; mood: MoodState }[];
+  /** Times the user declined to leave an active block/focus session -- a real proxy for "blocked-app opens declined" in a web app with no OS-level app interception. */
+  temptationsAvoided: number;
   score: number;
 }
 
@@ -105,21 +107,29 @@ export interface SerotoninScoreInput {
   pillars: PillarProgress[];
   completedRituals: SerotoninRitual[];
   moodCheckIns: { mood: MoodState }[];
+  temptationsAvoided?: number;
   screenTimeReductionPercent?: number;
 }
 
-/** Pillar completion contributes up to 60 points (10 per pillar). */
+/**
+ * Pillar completion contributes up to 50 points (was 60 before task 5.9 introduced
+ * temptationsAvoided as its own scored dimension -- rebalanced so quality-of-screen-time signals
+ * carry real weight instead of being drowned out by activity minutes alone).
+ */
 export function calculateSerotoninScore(input: SerotoninScoreInput): number {
   const pillarPoints =
-    (input.pillars.filter((p) => p.completed).length / SEROTONIN_PILLARS.length) * 60;
+    (input.pillars.filter((p) => p.completed).length / SEROTONIN_PILLARS.length) * 50;
   const ritualPoints = Math.min(input.completedRituals.length * 8, 24);
   const moodPoints = input.moodCheckIns.some((m) => m.mood === 'calm' || m.mood === 'grateful')
     ? 10
     : input.moodCheckIns.length > 0
       ? 5
       : 0;
+  const temptationPoints = Math.min((input.temptationsAvoided ?? 0) * 2, 10);
   const screenPoints = Math.min((input.screenTimeReductionPercent ?? 0) * 0.06, 6);
-  return Math.round(Math.min(100, pillarPoints + ritualPoints + moodPoints + screenPoints));
+  return Math.round(
+    Math.min(100, pillarPoints + ritualPoints + moodPoints + temptationPoints + screenPoints),
+  );
 }
 
 export function createDefaultPillars(targetMinutes = 15): PillarProgress[] {
@@ -167,6 +177,7 @@ export function createSerotoninSession(id: string): SerotoninSession {
     pillars,
     completedRituals: [],
     moodCheckIns: [],
+    temptationsAvoided: 0,
     score: 0,
   };
 }
@@ -194,6 +205,11 @@ export function logMood(session: SerotoninSession, mood: MoodState): SerotoninSe
   return recalculateSession(session, { moodCheckIns });
 }
 
+/** Call when the user declines to leave an active block/focus session (e.g. cancels the exit friction pause). */
+export function recordTemptationAvoided(session: SerotoninSession): SerotoninSession {
+  return recalculateSession(session, { temptationsAvoided: session.temptationsAvoided + 1 });
+}
+
 export function endSerotoninSession(session: SerotoninSession): SerotoninSession {
   return {
     ...recalculateSession(session, {}),
@@ -204,12 +220,13 @@ export function endSerotoninSession(session: SerotoninSession): SerotoninSession
 
 function recalculateSession(
   session: SerotoninSession,
-  patch: Partial<Pick<SerotoninSession, 'pillars' | 'completedRituals' | 'moodCheckIns'>>,
+  patch: Partial<Pick<SerotoninSession, 'pillars' | 'completedRituals' | 'moodCheckIns' | 'temptationsAvoided'>>,
 ): SerotoninSession {
   const pillars = patch.pillars ?? session.pillars;
   const completedRituals = patch.completedRituals ?? session.completedRituals;
   const moodCheckIns = patch.moodCheckIns ?? session.moodCheckIns;
-  const score = calculateSerotoninScore({ pillars, completedRituals, moodCheckIns });
-  return { ...session, pillars, completedRituals, moodCheckIns, score };
+  const temptationsAvoided = patch.temptationsAvoided ?? session.temptationsAvoided;
+  const score = calculateSerotoninScore({ pillars, completedRituals, moodCheckIns, temptationsAvoided });
+  return { ...session, pillars, completedRituals, moodCheckIns, temptationsAvoided, score };
 }
 

@@ -1,6 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { MoodState, SerotoninPillar, SerotoninRitual, SerotoninSession } from '@calendar/shared';
-import { completeRitual, createSerotoninSession, logMood, logPillarActivity } from '@calendar/shared';
+import {
+  completeRitual,
+  createSerotoninSession,
+  logMood,
+  logPillarActivity,
+  recordTemptationAvoided,
+} from '@calendar/shared';
 import type { StoredSerotoninDay } from '../lib/calendar/types';
 import { cacheServerSerotoninSession, loadTodaySerotoninSession, saveSerotoninSession, todayKey } from '../lib/offline/serotonin-store';
 import { buildUpsertSerotoninSessionPayload, syncSerotoninSessionBatch } from '../lib/serotonin/sync';
@@ -12,6 +18,7 @@ interface SerotoninSessionContextValue {
   onRitual: (ritual: SerotoninRitual) => void;
   onPillar: (pillar: SerotoninPillar, minutes: number) => void;
   onMood: (mood: MoodState) => void;
+  onTemptationAvoided: () => void;
 }
 
 const SerotoninSessionContext = createContext<SerotoninSessionContextValue | null>(null);
@@ -114,10 +121,11 @@ export function SerotoninSessionProvider({ children }: { children: ReactNode }) 
     [update],
   );
   const onMood = useCallback((mood: MoodState) => update((s) => logMood(s, mood)), [update]);
+  const onTemptationAvoided = useCallback(() => update((s) => recordTemptationAvoided(s)), [update]);
 
   const value = useMemo<SerotoninSessionContextValue>(
-    () => ({ session, onRitual, onPillar, onMood }),
-    [session, onRitual, onPillar, onMood],
+    () => ({ session, onRitual, onPillar, onMood, onTemptationAvoided }),
+    [session, onRitual, onPillar, onMood, onTemptationAvoided],
   );
 
   return <SerotoninSessionContext.Provider value={value}>{children}</SerotoninSessionContext.Provider>;

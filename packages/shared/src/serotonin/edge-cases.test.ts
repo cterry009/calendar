@@ -93,7 +93,7 @@ describe('Serotonin Edge Cases', () => {
       expect(score).toBe(0);
     });
 
-    it('rewards pillar minutes up to 60 points', () => {
+    it('rewards pillar minutes up to 50 points', () => {
       const pillars = createDefaultPillars().map((p) => ({ ...p, completed: true }));
       const score = calculateSerotoninScore({
         pillars,
@@ -102,7 +102,32 @@ describe('Serotonin Edge Cases', () => {
         screenTimeReductionPercent: 0,
       });
       expect(score).toBeGreaterThanOrEqual(30);
-      expect(score).toBeLessThanOrEqual(60);
+      expect(score).toBeLessThanOrEqual(50);
+    });
+
+    it('rewards temptations avoided up to 10 points', () => {
+      const pillars = createDefaultPillars();
+      const scoreWithout = calculateSerotoninScore({
+        pillars,
+        completedRituals: [],
+        moodCheckIns: [],
+        temptationsAvoided: 0,
+      });
+      const scoreWith = calculateSerotoninScore({
+        pillars,
+        completedRituals: [],
+        moodCheckIns: [],
+        temptationsAvoided: 3,
+      });
+      const scoreCapped = calculateSerotoninScore({
+        pillars,
+        completedRituals: [],
+        moodCheckIns: [],
+        temptationsAvoided: 50,
+      });
+      expect(scoreWithout).toBe(0);
+      expect(scoreWith).toBe(6);
+      expect(scoreCapped).toBe(10);
     });
 
     it('caps screen time reduction at 6 points', () => {
