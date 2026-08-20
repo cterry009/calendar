@@ -382,6 +382,16 @@ Migración: `ALTER TABLE block_list_entries ADD COLUMN "frictionType" ... DEFAUL
 
 **Verificado end-to-end** vía `expo start --web` + Playwright: temporizador inactivo muestra 25:00 -> iniciar muestra "Enfoque" y cuenta regresiva real (confirmado que el número baja en una espera de ~3s, no solo un render estático) -> cancelar vuelve a inactivo -> navegación de vuelta a inicio funciona. Cero errores de consola.
 
+### 30. Fitness nativo — cuarta porción de la tarea 6.2
+
+**Decisión**: mismo patrón incremental que auth/calendario/pomodoro. `apps/web`'s `lib/fitness/summary.ts` (agregación diaria/semanal de minutos) es TypeScript puro sin ninguna dependencia de DOM -- se portó literalmente sin cambios, la misma prueba de "esto sí es código realmente compartible" que ya dio la máquina de estados de pomodoro (decisión 29). El panel de correlación fitness-productividad (`FitnessCorrelationPanel`) vive en el dashboard en la web, no en `FitnessPage.tsx` -- quedó fuera de esta porción sin necesidad de decidir nada, simplemente no es parte de lo que se está portando (la pantalla de fitness en sí).
+
+**Recortes deliberados, mismo patrón que OAuth/notificaciones (decisiones 27/29)**: sin selector de fecha/hora (cada registro queda como "ahora mismo" -- un selector nativo real es `@react-native-community/datetimepicker`, un módulo nativo nuevo que no se sumó en esta pasada) y sin edición de registros existentes (solo crear y borrar, mismo alcance que ya tiene la pantalla de tareas).
+
+**Bug real encontrado y corregido**: `Alert.alert()` de react-native-web es un no-op completo -- literalmente `static alert() {}` en su código fuente, ni siquiera invoca los `onPress` de los botones que se le pasan. El flujo de "confirmar antes de borrar" (igual al `window.confirm()` que ya usa `FitnessItem.tsx` en la web) no hacía nada en el target de verificación web: se tocaba "Eliminar" y no pasaba nada, sin error visible tampoco. Se corrigió con un helper chico, `confirmDestructiveAction()` (`apps/mobile/src/lib/confirmAction.ts`), que usa `window.confirm()` real en web y `Alert.alert()` en nativo -- el mismo patrón de bifurcación por `Platform.OS` que ya se usa para `platformStorage.{web,native}.ts` (decisión 27). Vale la pena tenerlo presente para cualquier futura pantalla que necesite confirmaciones destructivas (por ejemplo, borrar una tarea o un hábito).
+
+**Verificado end-to-end** vía `expo start --web` + Playwright: crear un registro -> aparece en la lista con la intensidad/duración correctas, el resumen de hoy se actualiza (30 min, 1 sesión) -> borrar (el diálogo de confirmación aparece y se acepta) -> vuelve al estado vacío. Cero errores de consola.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
