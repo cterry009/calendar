@@ -392,6 +392,16 @@ Migración: `ALTER TABLE block_list_entries ADD COLUMN "frictionType" ... DEFAUL
 
 **Verificado end-to-end** vía `expo start --web` + Playwright: crear un registro -> aparece en la lista con la intensidad/duración correctas, el resumen de hoy se actualiza (30 min, 1 sesión) -> borrar (el diálogo de confirmación aparece y se acepta) -> vuelve al estado vacío. Cero errores de consola.
 
+### 31. Dashboard nativo — quinta y última porción de la tarea 6.2
+
+**Decisión**: mismo patrón que las cuatro porciones anteriores. `buildDashboardMetrics()` (`apps/web/src/lib/analytics/aggregate.ts`) es el único orquestador del que depende toda la pantalla de dashboard en la web -- se confirmó que es TypeScript puro (solo usa `Date`/`toLocaleDateString`, cero DOM) y se portó literal. Se descartó el campo `suggestions` del tipo portado: el propio `DashboardPage.tsx` de la web nunca lo renderiza (vive en un panel de sugerencias aparte), así que portar `generateSuggestions()`/`buildSuggestionInput()` acá hubiera sido peso muerto sin ningún beneficio real.
+
+**Sin librería de gráficos, en ningún lado**: se confirmó revisando `package.json` que la web no tiene ninguna dependencia de charting (nada de recharts/victory/d3/etc) -- todos los "gráficos" del dashboard son `YStack` de Tamagui con `height`/`width` calculados como porcentaje. Esto significa que el gráfico de barras de 14 días de enfoque se portó con la misma técnica exacta, no una simplificación forzada por no tener la librería equivalente en nativo -- ya era simple desde el origen.
+
+**Cierre explícito de la tarea 6.2**: con esta quinta porción, 6.2 se marca completa en el alcance que efectivamente se construyó a lo largo de las cinco porciones (auth, calendario "de hoy", pomodoro, fitness, dashboard). Lo que se dejó fuera a propósito, documentado como trabajo de seguimiento y no como omisión silenciosa: la grilla completa de calendario día/semana/mes con drag-and-drop; OAuth nativo; notificaciones push/locales; un selector de fecha/hora nativo; y edición de tareas/registros de fitness existentes (en toda la tarea 6.2 solo se portó crear + completar/borrar). El storage offline (equivalente a IndexedDB + cola de sync) es la tarea 6.3, deliberadamente mantenida aparte en las cinco porciones para que cada una fuera un corte vertical real y verificado contra el servidor, en vez de una abstracción a medio construir.
+
+**Verificado end-to-end** vía `expo start --web` + Playwright contra el servidor real: cuenta nueva muestra el estado vacío correcto ("no hay suficientes datos") -> se sembró una tarea completada (30 min estimados / 45 reales) + un pomodoro completado + un registro de fitness vía llamada directa a la API -> tras recargar, todas las tarjetas muestran los números correctos (1 tarea, 1 pomodoro, 0.4 horas de enfoque, +15 min de variación en color de alerta). Cero errores de consola.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
