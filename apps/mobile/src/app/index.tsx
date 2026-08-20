@@ -1,15 +1,17 @@
 import { completedPomodoroDateKeys, computePomodoroStreak } from '@calendar/shared';
 import { AppButton, AppCard, Eyebrow, H1, Paragraph, Text, YStack } from '@calendar/ui';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../context/AuthContext';
 
 /**
- * Scaffold proof screen (task 6.1): confirms @calendar/ui (Tamagui design system) and
- * @calendar/shared (pure domain logic) both resolve and run on native, not just web.
- * Real screens (calendar, tasks, pomodoro...) are ported in 6.2, not here.
+ * Scaffold home screen (tasks 6.1 + first slice of 6.2): confirms @calendar/ui (Tamagui design
+ * system), @calendar/shared (pure domain logic), and now real auth (login/register/logout
+ * against the NestJS server) all work on native, not just web. Calendar/tasks/pomodoro/fitness
+ * screens are the rest of 6.2, not done here yet.
  */
 export default function HomeScreen() {
-  const [tapCount, setTapCount] = useState(0);
+  const { user, logout } = useAuth();
 
   // Trivial use of shared business logic with an empty history, just to prove the
   // pure @calendar/shared package (no DOM/browser globals) runs unmodified on native.
@@ -21,12 +23,11 @@ export default function HomeScreen() {
         <YStack gap="$1">
           <Eyebrow>Calendar Productivity</Eyebrow>
           <H1 marginTop={0} marginBottom={0}>
-            Hola desde Android
+            Hola{user?.name ? `, ${user.name}` : ''}
           </H1>
           <Paragraph color="$muted" margin={0}>
-            Scaffold de Expo conectado al mismo sistema de diseno (@calendar/ui) y a la misma
-            logica de negocio pura (@calendar/shared) que usa la web. Las pantallas reales
-            (calendario, tareas, pomodoro) se portan en la tarea 6.2.
+            Sesion iniciada como {user?.email}. El calendario, las tareas y el pomodoro se portan
+            en el resto de la tarea 6.2.
           </Paragraph>
         </YStack>
 
@@ -40,14 +41,9 @@ export default function HomeScreen() {
           </YStack>
         </AppCard>
 
-        <AppCard>
-          <YStack gap="$3">
-            <Text fontWeight="700">Componente compartido (@calendar/ui)</Text>
-            <AppButton variant="primary" onPress={() => setTapCount((count) => count + 1)}>
-              Toques: {tapCount}
-            </AppButton>
-          </YStack>
-        </AppCard>
+        <AppButton variant="ghost" onPress={() => void logout()}>
+          Salir
+        </AppButton>
       </YStack>
     </SafeAreaView>
   );
