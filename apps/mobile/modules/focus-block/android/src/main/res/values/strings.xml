@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="focus_block_accessibility_service_description">Detecta cuando abris una app que agregaste a tu lista de bloqueo mientras tenes un enfoque activo (pomodoro, tarea o horario de trabajo) y te lleva de vuelta a la pantalla de inicio.</string>
+</resources>

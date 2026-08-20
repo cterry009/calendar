@@ -1,12 +1,13 @@
 import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, YStack } from '@calendar/ui';
-import { Stack } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { ScrollView } from 'react-native';
+import { Stack, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { Platform, ScrollView } from 'react-native';
 import { Input } from 'tamagui';
 import { BlockListEntryRow } from '../components/blocklist/BlockListEntryRow';
 import { InstalledAppRow } from '../components/blocklist/InstalledAppRow';
 import { useBlockList } from '../hooks/useBlockList';
 import { useInstalledApps } from '../hooks/useInstalledApps';
+import { isAccessibilityServiceEnabled, openAccessibilitySettings } from '../lib/focusBlock/api';
 
 /**
  * Task 6.5. Two independent sections sharing one BlockListEntry list (packages/shared's unified
@@ -27,6 +28,16 @@ export default function BlockListScreen() {
   const { entries, isLoading, isMutating, error, createEntry, deleteEntry } = useBlockList();
   const installedApps = useInstalledApps();
   const [search, setSearch] = useState('');
+  const [accessibilityEnabled, setAccessibilityEnabled] = useState(false);
+
+  // Re-checked every time this screen regains focus, not just on mount -- the only way to enable
+  // an AccessibilityService is the system Settings screen this same card links to
+  // (openAccessibilitySettings), so the user is expected to leave and come back.
+  useFocusEffect(
+    useCallback(() => {
+      setAccessibilityEnabled(isAccessibilityServiceEnabled());
+    }, []),
+  );
 
   const androidEntries = useMemo(
     () => entries.filter((entry) => entry.kind === 'MOBILE_APP' && entry.platform === 'ANDROID'),
@@ -84,6 +95,31 @@ export default function BlockListScreen() {
             <Text color="$danger" fontSize="$3">
               {error}
             </Text>
+          ) : null}
+
+          {Platform.OS === 'android' ? (
+            <AppCard>
+              <YStack gap="$2">
+                <H2 margin={0} fontSize="$5">
+                  Bloqueo real
+                </H2>
+                {accessibilityEnabled ? (
+                  <Text color="$accent" fontSize="$3">
+                    Activado -- las apps de esta lista se bloquean de verdad durante un enfoque.
+                  </Text>
+                ) : (
+                  <YStack gap="$2">
+                    <Paragraph margin={0} color="$muted">
+                      Para que el bloqueo funcione de verdad (no solo como lista), activa el
+                      servicio de accesibilidad de esta app en Ajustes de Android.
+                    </Paragraph>
+                    <AppButton variant="primary" onPress={() => openAccessibilitySettings()}>
+                      Abrir Ajustes de accesibilidad
+                    </AppButton>
+                  </YStack>
+                )}
+              </YStack>
+            </AppCard>
           ) : null}
 
           <AppCard>

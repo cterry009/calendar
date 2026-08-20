@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from '../context/AuthContext';
 import { NotificationsProvider } from '../context/NotificationsContext';
 import { PomodoroProvider } from '../context/PomodoroContext';
 import { SyncProvider } from '../context/SyncContext';
+import { useFocusBlocking } from '../hooks/useFocusBlocking';
 
 // @tamagui/animations-react-native's RN `Animated.interpolate()` calls fail under
 // react-native-web specifically (verified: same crash with any named animation, gone with none)
@@ -21,6 +22,14 @@ import { SyncProvider } from '../context/SyncContext';
 const tamaguiConfig = Platform.OS === 'web' ? webTamaguiConfig : nativeTamaguiConfig;
 
 SplashScreen.preventAutoHideAsync();
+
+// useFocusBlocking() needs usePomodoro()/useBlockList(), so it has to run inside PomodoroProvider
+// -- a bare hook-runner component instead of calling it directly in RootNavigator, which renders
+// PomodoroProvider itself rather than being inside it.
+function FocusBlockingBridge() {
+  useFocusBlocking();
+  return null;
+}
 
 function RootNavigator() {
   const { isLoading, isAuthenticated } = useAuth();
@@ -49,6 +58,7 @@ function RootNavigator() {
         <Stack.Screen name="fitness" />
         <Stack.Screen name="dashboard" />
         <Stack.Screen name="blocklist" />
+        <Stack.Screen name="blocked" />
       </Stack.Protected>
       <Stack.Protected guard={!isAuthenticated}>
         <Stack.Screen name="login" />
@@ -66,6 +76,7 @@ function RootNavigator() {
   return (
     <NotificationsProvider>
       <PomodoroProvider>
+        <FocusBlockingBridge />
         <YStack flex={1}>
           <SyncStatusBanner />
           {navigator}
