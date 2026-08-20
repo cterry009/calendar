@@ -356,6 +356,18 @@ Migración: `ALTER TABLE block_list_entries ADD COLUMN "frictionType" ... DEFAUL
 
 **Bug real encontrado al verificar con Playwright**: el `Input` de Tamagui en react-native-web renderiza un segundo nodo invisible con `aria-labelledby` junto al input real (aparentemente para accesibilidad) -- los selectores de Playwright basados en placeholder/label sin filtrar por visibilidad matcheaban el nodo equivocado (`strict mode violation`, y despues `element is not visible` al intentar rellenar el oculto). No es un bug de la app -- se corrigió en el script de verificación con selectores CSS `:visible`, documentado por si vuelve a aparecer en pantallas futuras.
 
+### 28. Calendario/tareas "de hoy" — segunda porción de la tarea 6.2
+
+**Decisión**: seguir el mismo enfoque incremental que auth -- en vez de portar la grilla completa de calendario (día/semana/mes con drag-and-drop, mucho trabajo de UI específico de web difícil de trasladar 1:1 a nativo), la segunda porción es una vista "de hoy": las tareas programadas para hoy y el horario de trabajo/descanso de hoy, en formato lista compacta.
+
+**Sin cache offline todavía, a propósito**: `useCalendarData` llama `/sync/pull` directo cada vez (sin IndexedDB, sin WebSocket) -- exactamente lo que la tarea 6.3 ("Implement expo-sqlite offline storage and sync queue") va a agregar. Portar esa capa ahora hubiera mezclado dos tareas del roadmap en una.
+
+**Filtro "de hoy" client-side, igual que la web**: no existe un parámetro de fecha en `/sync/pull` (se confirmó revisando `server/src/sync/sync.controller.ts` -- devuelve el snapshot completo siempre); `apps/web` tampoco lo usa, filtra en cliente. Se replicó la misma regla exacta: tareas por `scheduledAt` mismo día (`isSameDay`), horarios por `daysOfWeek.includes(today.getDay())` -- mismas funciones, mismo criterio que `DayTasksSidebar`/`findActiveWorkSchedule` en la web, no una regla nueva inventada para nativo.
+
+**Reutilización real de la porción de auth**: `useCalendarData` y `lib/calendar/api.ts` llaman al mismo `apiFetch` de `lib/auth/api.ts` -- el reintento automático en 401 vía refresh token que ya se construyó para auth funciona acá sin ningún cambio adicional.
+
+**Verificado contra el servidor real**: se creó una tarea y un horario vía una llamada directa a `/sync/batch` (mismo access token que guarda `AuthContext`), se recargó la app y se confirmó que ambos aparecen correctamente, y que tocar la tarea la completa (checkmark + tachado) -- sin errores de consola.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
