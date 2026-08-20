@@ -342,6 +342,20 @@ Migración: `ALTER TABLE block_list_entries ADD COLUMN "frictionType" ... DEFAUL
 
 **Verificado, no verificado**: `expo start --web` + Playwright confirma que el diseño compartido (tokens, tipografía, layout, tema oscuro "Emerald Focus") y `@calendar/shared` (lógica pura) funcionan sin cambios en este runtime, y que `AppButton` con su animación real (`animation: 'magnetic'`) ya no crashea. Lo que sigue sin verificar en este entorno (sin SDK/emulador de Android instalado en esta máquina Windows) es el comportamiento en Android real — la próxima vez que se retome trabajo nativo (inicio de la tarea 6.2), confirmar en un emulador o dispositivo real antes de asumir que el driver `Animated` nativo funciona igual de bien que su versión web.
 
+### 27. Auth nativo — primera porción de la tarea 6.2
+
+**Decisión**: portar la tarea 6.2 de forma incremental, empezando por auth (login/registro/logout) en vez de intentar las seis áreas del checklist (auth, calendario, tareas, pomodoro, fitness, analítica) de una sola vez -- nada más funciona sin sesión, así que es el corte vertical más chico que igual entrega algo end-to-end verificable contra el servidor real.
+
+**Qué se portó tal cual, qué cambió**: el contrato HTTP (`/auth/register|login|refresh|logout|me`), la forma de `AuthSession`/`AuthUser`/`LoginInput`/`RegisterInput`, y la lógica de `apiFetch` (reintento automático en 401 vía `/auth/refresh`) se portaron sin cambios de comportamiento desde `apps/web/src/lib/api.ts`. Lo único que cambia por plataforma:
+- **Storage**: `apps/web`'s `auth-storage.ts` usa `localStorage` (síncrono); `apps/mobile` necesita async storage. En vez de usar `@react-native-async-storage/async-storage` en todos lados, se creó `platformStorage.native.ts`/`platformStorage.web.ts` (resueltos por la convención de extensión de plataforma de Metro, no por el `Proxy` de `extraNodeModules` de packages/ui -- ver bug abajo) porque el shim web de AsyncStorage **crashea al importarlo** en este setup (`Cannot read properties of undefined (reading 'bind')`, rastreado hasta `mergeOptions.bind(...)` en su dependencia `merge-options`, que resuelve a `undefined` bajo el bundling web de Metro). Como el target web de este proyecto es un navegador real, `platformStorage.web.ts` simplemente usa `window.localStorage` directo, sin pasar por el shim roto.
+- **Base URL**: `EXPO_PUBLIC_API_URL` (equivalente a `VITE_API_URL` de la web), con `10.0.2.2:3000` como default en Android (el emulador no puede alcanzar `localhost` del host) y `localhost:3000` en el resto.
+- **Device label/platform**: `DEVICE_PLATFORM` se calcula por `Platform.OS` (`ANDROID`/`IOS`/`WEB`) en vez del `'WEB'` fijo de la web.
+- **OAuth**: no portado. `apps/web`'s `OAuthButtons.tsx` carga SDKs de JS de Google/Apple en el navegador -- no existe equivalente directo en RN, requiere `expo-auth-session`/`@react-native-google-signin` y `expo-apple-authentication`, tratado como tarea aparte.
+
+**Guard de rutas**: `Stack.Protected` de expo-router (`guard={isAuthenticated}` / `guard={!isAuthenticated}` en `_layout.tsx`) en vez de una redirección manual -- es el mecanismo soportado oficialmente por expo-router para este patrón exacto (grupos de pantallas condicionados a un estado), evita reinventar la lógica de redirect-on-mount que ya se resolvió una vez en `apps/web`'s `AuthContext`.
+
+**Bug real encontrado al verificar con Playwright**: el `Input` de Tamagui en react-native-web renderiza un segundo nodo invisible con `aria-labelledby` junto al input real (aparentemente para accesibilidad) -- los selectores de Playwright basados en placeholder/label sin filtrar por visibilidad matcheaban el nodo equivocado (`strict mode violation`, y despues `element is not visible` al intentar rellenar el oculto). No es un bug de la app -- se corrigió en el script de verificación con selectores CSS `:visible`, documentado por si vuelve a aparecer en pantallas futuras.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
