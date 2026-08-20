@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSync } from '../context/SyncContext';
 import { ApiError } from '../lib/auth/api';
 import { buildCreateFitnessPayload, buildDeleteFitnessPayload, syncFitnessBatch } from '../lib/fitness/api';
 import type { FitnessFormValues, SyncFitnessRecord } from '../lib/fitness/types';
@@ -18,8 +19,8 @@ function sortByLoggedAtDesc(items: SyncFitnessRecord[]) {
   return [...items].sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime());
 }
 
-// Same no-offline-cache-yet pattern as tasks/schedules/pomodoro (task 6.3 adds that layer).
 export function useFitness(): UseFitnessResult {
+  const { registerRefetch } = useSync();
   const [entries, setEntries] = useState<SyncFitnessRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
@@ -42,6 +43,8 @@ export function useFitness(): UseFitnessResult {
   useEffect(() => {
     void refetch();
   }, [refetch]);
+
+  useEffect(() => registerRefetch(refetch), [registerRefetch, refetch]);
 
   const executeMutation = useCallback(
     async (changes: Parameters<typeof syncFitnessBatch>[0]) => {

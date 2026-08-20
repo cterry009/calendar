@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSync } from '../context/SyncContext';
 import { ApiError } from '../lib/auth/api';
 import { buildDashboardMetrics } from '../lib/analytics/aggregate';
 import type { DashboardMetrics } from '../lib/analytics/types';
@@ -12,6 +13,7 @@ interface UseDashboardResult {
 }
 
 export function useDashboard(): UseDashboardResult {
+  const { registerRefetch } = useSync();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,8 @@ export function useDashboard(): UseDashboardResult {
   useEffect(() => {
     void refetch();
   }, [refetch]);
+
+  useEffect(() => registerRefetch(refetch), [registerRefetch, refetch]);
 
   return { metrics, isLoading, error, refetch };
 }

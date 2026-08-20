@@ -9,6 +9,7 @@ import {
 import * as Crypto from 'expo-crypto';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
+import { useSync } from './SyncContext';
 import { ApiError } from '../lib/auth/api';
 import { buildPomodoroPayload, syncPomodoroBatch } from '../lib/pomodoro/api';
 import { getRemainingSeconds } from '../lib/pomodoro/timer';
@@ -95,6 +96,7 @@ function withRecordMetadata(
 // Notification-based phase-complete alerts -- the native equivalent (expo-notifications, real
 // permissions flow) is a separate task, not silently faked here.
 export function PomodoroProvider({ children }: { children: ReactNode }) {
+  const { registerRefetch } = useSync();
   const [session, setSession] = useState<SyncPomodoroRecord | null>(null);
   const [config, setConfig] = useState<PomodoroConfigFormValues>(DEFAULT_CONFIG_VALUES);
   const [isLoading, setIsLoading] = useState(true);
@@ -123,6 +125,8 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refetch();
   }, [refetch]);
+
+  useEffect(() => registerRefetch(refetch), [registerRefetch, refetch]);
 
   const persistSession = useCallback(
     async (nextSession: SyncPomodoroRecord) => {

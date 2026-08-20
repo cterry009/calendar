@@ -15,6 +15,18 @@ const uiSrc = path.resolve(uiPackage, 'src');
 
 const config = getDefaultConfig(projectRoot);
 
+// expo-sqlite's web implementation (wa-sqlite, used so `expo start --web` -- the only
+// verification path in this environment -- can exercise the same offline-cache/queue code as
+// native) ships a .wasm file Metro doesn't know how to resolve or serve by default: it needs
+// registering as an asset extension, and the wa-sqlite worker needs cross-origin isolation
+// (COOP/COEP headers) to use SharedArrayBuffer.
+config.resolver.assetExts.push('wasm');
+config.server.enhanceMiddleware = (middleware) => (req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  return middleware(req, res, next);
+};
+
 // Metro only resolves node_modules inside its watched folders -- watching the *package* roots
 // (not just their src/) is what lets it also find packages/ui's own node_modules (tamagui,
 // @tamagui/animations-react-native, etc.), which those source files import as bare specifiers.

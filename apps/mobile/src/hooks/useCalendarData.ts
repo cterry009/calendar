@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSync } from '../context/SyncContext';
 import { ApiError } from '../lib/auth/api';
 import { buildCompleteTaskPayload, pullSnapshot, syncTaskBatch } from '../lib/calendar/api';
 import type { SyncScheduleRecord, SyncTaskRecord } from '../lib/calendar/types';
@@ -27,6 +28,7 @@ function sortTasks(items: SyncTaskRecord[]) {
 // on mount and after each mutation, same as apps/web's useTasks/useSchedules but without the
 // IndexedDB-backed sync client those wrap.
 export function useCalendarData(): UseCalendarDataResult {
+  const { registerRefetch } = useSync();
   const [tasks, setTasks] = useState<SyncTaskRecord[]>([]);
   const [schedules, setSchedules] = useState<SyncScheduleRecord[]>([]);
   const [pomodoroSessions, setPomodoroSessions] = useState<SyncPomodoroRecord[]>([]);
@@ -53,6 +55,8 @@ export function useCalendarData(): UseCalendarDataResult {
   useEffect(() => {
     void refetch();
   }, [refetch]);
+
+  useEffect(() => registerRefetch(refetch), [registerRefetch, refetch]);
 
   const completeTask = useCallback(
     async (task: SyncTaskRecord) => {

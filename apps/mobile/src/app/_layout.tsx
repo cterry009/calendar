@@ -5,8 +5,10 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
+import { SyncStatusBanner } from '../components/SyncStatusBanner';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { PomodoroProvider } from '../context/PomodoroContext';
+import { SyncProvider } from '../context/SyncContext';
 
 // @tamagui/animations-react-native's RN `Animated.interpolate()` calls fail under
 // react-native-web specifically (verified: same crash with any named animation, gone with none)
@@ -53,17 +55,30 @@ function RootNavigator() {
     </Stack>
   );
 
-  // Only mounted once authenticated -- no point fetching pomodoro state pre-login, and it needs
-  // a valid access token to succeed anyway.
-  return isAuthenticated ? <PomodoroProvider>{navigator}</PomodoroProvider> : navigator;
+  // PomodoroProvider/SyncStatusBanner only mounted once authenticated -- nothing to sync pre-login,
+  // and pulling requires a valid access token anyway.
+  if (!isAuthenticated) {
+    return navigator;
+  }
+
+  return (
+    <PomodoroProvider>
+      <YStack flex={1}>
+        <SyncStatusBanner />
+        {navigator}
+      </YStack>
+    </PomodoroProvider>
+  );
 }
 
 export default function RootLayout() {
   return (
     <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
+      <SyncProvider>
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
+      </SyncProvider>
     </TamaguiProvider>
   );
 }
