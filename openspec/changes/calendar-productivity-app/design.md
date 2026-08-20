@@ -368,6 +368,20 @@ Migración: `ALTER TABLE block_list_entries ADD COLUMN "frictionType" ... DEFAUL
 
 **Verificado contra el servidor real**: se creó una tarea y un horario vía una llamada directa a `/sync/batch` (mismo access token que guarda `AuthContext`), se recargó la app y se confirmó que ambos aparecen correctamente, y que tocar la tarea la completa (checkmark + tachado) -- sin errores de consola.
 
+### 29. Pomodoro nativo — tercera porción de la tarea 6.2
+
+**Decisión**: portar el temporizador pomodoro casi línea por línea desde `apps/web/src/context/PomodoroContext.tsx`, ya que su mecanismo central (diffing de reloj de pared, no un countdown acumulado) ya es exactamente el patrón correcto y seguro para nativo -- no había nada que rediseñar, solo adaptar las dos piezas que sí son específicas de plataforma.
+
+**Por qué el timer no necesita cambios**: `remainingSeconds` se calcula siempre como `duracionDeFase - (ahora - session.startedAt)`. El `setInterval` de 1 segundo solo fuerza un re-render; nunca es la fuente de verdad. Esto importa más en nativo que en web -- RN puede pausar/acelerar timers en segundo plano de forma menos predecible que un tab de navegador -- pero como el valor mostrado siempre se deriva del diff contra `startedAt`, un tick perdido o atrasado nunca desincroniza el conteo, solo hace que la UI tarde un instante en "ponerse al día" la próxima vez que corre. Se agregó un listener de `AppState` que fuerza esa actualización inmediatamente al volver del segundo plano, en vez de esperar hasta 1 segundo al próximo tick -- una mejora de UX, no una corrección de bug.
+
+**Máquina de estados 100% reutilizada sin cambios**: `packages/shared/src/pomodoro/state-machine.ts` (`transitionPomodoro`, `createPomodoroSession`, `getPhaseDurationMinutes`, `isBlockingPhase`) es lógica pura sin dependencias de DOM -- se importa tal cual, cero adaptación, la misma prueba de "de verdad es codigo compartido" que ya se hizo con `computePomodoroStreak` en el scaffold inicial (decisión 26).
+
+**Capa de sync consolidada**: con tareas, horarios y ahora pomodoro compartiendo el mismo endpoint `/sync/pull` + `/sync/batch`, se extrajo `apps/mobile/src/lib/sync/api.ts` como la única capa HTTP compartida (antes `lib/calendar/api.ts` tenía su propia copia de `pullSnapshot`) -- evita que cada dominio nuevo (fitness, analítica, más adelante) reinvente la misma llamada.
+
+**Dos recortes deliberados, mismo patrón que OAuth (decisión 27)**: no se portó el override de configuración por sesión (`start(taskId, overrideConfig)` en la web) ni las notificaciones basadas en `window.Notification` del navegador -- el equivalente nativo real es `expo-notifications` con su propio flujo de permisos, una tarea aparte, no algo para simular a medias acá. `crypto.randomUUID()` (usado por la web para generar IDs de sesión) se reemplazó por `expo-crypto`'s `Crypto.randomUUID()`, ya que Hermes no garantiza `crypto.randomUUID` global en este setup.
+
+**Verificado end-to-end** vía `expo start --web` + Playwright: temporizador inactivo muestra 25:00 -> iniciar muestra "Enfoque" y cuenta regresiva real (confirmado que el número baja en una espera de ~3s, no solo un render estático) -> cancelar vuelve a inactivo -> navegación de vuelta a inicio funciona. Cero errores de consola.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
