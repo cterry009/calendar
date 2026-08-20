@@ -64,9 +64,11 @@ export function PomodoroPage() {
         description="Vincula tus ciclos de enfoque y descanso a una tarea para mejorar trazabilidad y consistencia."
       />
 
-      <PomodoroStreakCard streak={streak} />
+      <YStack data-tutorial="pomodoro-streak">
+        <PomodoroStreakCard streak={streak} />
+      </YStack>
 
-      <AppCard>
+      <AppCard data-tutorial="pomodoro-task-select">
         <YStack gap="$3">
           <Paragraph margin={0}>Selecciona tarea (pendiente/en progreso)</Paragraph>
           {tasksData.isLoading ? (
@@ -110,25 +112,27 @@ export function PomodoroPage() {
         </YStack>
       </AppCard>
 
-      <PomodoroTimer
-        session={pomodoro.session}
-        linkedTaskName={linkedTaskName}
-        selectedTaskId={selectedTaskId}
-        config={pomodoro.config}
-        remainingSeconds={pomodoro.remainingSeconds}
-        phaseDurationMinutes={pomodoro.phaseDurationMinutes}
-        isBlocking={pomodoro.isBlocking}
-        notificationsEnabled={pomodoro.notificationsEnabled}
-        isLoading={pomodoro.isLoading}
-        isMutating={pomodoro.isMutating}
-        error={pomodoro.error}
-        syncedAt={pomodoro.syncedAt}
-        onRefetch={pomodoro.refetch}
-        onStart={pomodoro.start}
-        onCancel={pomodoro.cancel}
-        onReset={pomodoro.reset}
-        onToggleNotifications={pomodoro.toggleNotifications}
-      />
+      <YStack data-tutorial="pomodoro-timer">
+        <PomodoroTimer
+          session={pomodoro.session}
+          linkedTaskName={linkedTaskName}
+          selectedTaskId={selectedTaskId}
+          config={pomodoro.config}
+          remainingSeconds={pomodoro.remainingSeconds}
+          phaseDurationMinutes={pomodoro.phaseDurationMinutes}
+          isBlocking={pomodoro.isBlocking}
+          notificationsEnabled={pomodoro.notificationsEnabled}
+          isLoading={pomodoro.isLoading}
+          isMutating={pomodoro.isMutating}
+          error={pomodoro.error}
+          syncedAt={pomodoro.syncedAt}
+          onRefetch={pomodoro.refetch}
+          onStart={pomodoro.start}
+          onCancel={pomodoro.cancel}
+          onReset={pomodoro.reset}
+          onToggleNotifications={pomodoro.toggleNotifications}
+        />
+      </YStack>
     </YStack>
   );
 }

@@ -49,7 +49,7 @@ export function BlockListPage() {
         tutorialId="blocklist-header"
       />
 
-      <AppCard>
+      <AppCard data-tutorial="blocklist-new-entry">
         <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$2">
           <AppButton
             type="button"
@@ -110,7 +110,7 @@ export function BlockListPage() {
         />
       )}
 
-      <YStack gap="$3" marginTop="$4">
+      <YStack gap="$3" marginTop="$4" data-tutorial="blocklist-triggers">
         <H2 margin={0} fontSize="$6">
           Condiciones de activacion
         </H2>

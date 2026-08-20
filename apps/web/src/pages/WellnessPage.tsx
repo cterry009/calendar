@@ -52,23 +52,26 @@ export function WellnessPage() {
         eyebrow={t('wellness.eyebrow')}
         title={t('wellness.title')}
         description={t('wellness.description')}
+        tutorialId="wellness-header"
       />
 
       {session ? (
-        <SerotoninModePanel
-          session={session}
-          nextPillar={nextPillar}
-          nextRitual={nextRitual}
-          streakHint={streakHint}
-          onRitual={handleRitual}
-          onPillar={onPillar}
-          onMood={onMood}
-          pillarLabels={PILLAR_LABELS}
-          ritualLabels={RITUAL_LABELS}
-          moodLabels={MOOD_LABELS}
-          allRituals={DISPLAYABLE_RITUALS}
-          allMoods={MOOD_STATES}
-        />
+        <YStack data-tutorial="wellness-panel">
+          <SerotoninModePanel
+            session={session}
+            nextPillar={nextPillar}
+            nextRitual={nextRitual}
+            streakHint={streakHint}
+            onRitual={handleRitual}
+            onPillar={onPillar}
+            onMood={onMood}
+            pillarLabels={PILLAR_LABELS}
+            ritualLabels={RITUAL_LABELS}
+            moodLabels={MOOD_LABELS}
+            allRituals={DISPLAYABLE_RITUALS}
+            allMoods={MOOD_STATES}
+          />
+        </YStack>
       ) : (
         <StatusCard tone="loading" message="Cargando bienestar diario..." />
       )}

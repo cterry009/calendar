@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import {
   Activity,
   AppButton,
   BarChart3,
   Eyebrow,
   Heart,
+  HelpCircle,
   Leaf,
   Lightbulb,
   ListChecks,
@@ -18,11 +20,13 @@ import {
   YStack,
   type IconProps,
 } from '@calendar/ui';
+import { TourMenu } from '../components/onboarding/TourMenu';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { usePanel, type PanelId } from '../context/PanelContext';
 import { useQuickAdd } from '../context/QuickAddContext';
+import { TOURS, type TourId } from '../lib/onboarding/tours';
 
 interface NavLink {
   panel: PanelId;
@@ -72,9 +76,44 @@ function NavDivider() {
 export function AppNav() {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
-  const { openTutorial } = useOnboarding();
-  const { activePanel, openPanel } = usePanel();
+  const { openTutorial, startTour } = useOnboarding();
+  const { activePanel, openPanel, closePanel } = usePanel();
   const { open: openQuickAdd } = useQuickAdd();
+  const [isTourMenuOpen, setIsTourMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isTourMenuOpen) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target && !target.closest('[data-tour-menu-root]')) {
+        setIsTourMenuOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setIsTourMenuOpen(false);
+    }
+
+    window.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isTourMenuOpen]);
+
+  function handleSelectTour(tourId: TourId) {
+    setIsTourMenuOpen(false);
+    const tour = TOURS[tourId];
+    if (tour.panel) {
+      openPanel(tour.panel);
+    } else if (activePanel) {
+      closePanel();
+    }
+    // Give the slide-over panel time to animate in (or out) before the spotlight measures
+    // its target -- matches the panel's own "quick" animation timing.
+    window.setTimeout(() => startTour(tourId), tour.panel ? 380 : 0);
+  }
 
   return (
     <XStack
@@ -101,6 +140,7 @@ export function AppNav() {
           aria-label={t('nav.newTask')}
           title={t('nav.newTask.title')}
           paddingHorizontal="$3"
+          data-tutorial="nav-quick-add"
         >
           <Plus size={18} />
           <Text color="inherit" fontWeight="600">
@@ -132,6 +172,7 @@ export function AppNav() {
                     aria-label={t(link.labelKey)}
                     title={t(link.labelKey)}
                     paddingHorizontal="$3"
+                    data-tutorial={`nav-${link.panel}`}
                   >
                     <link.Icon size={18} />
                   </AppButton>
@@ -158,6 +199,18 @@ export function AppNav() {
         <AppButton variant="ghost" onPress={openTutorial}>
           {t('nav.tutorial')}
         </AppButton>
+        <YStack position="relative" data-tour-menu-root>
+          <AppButton
+            variant="ghost"
+            onPress={() => setIsTourMenuOpen((value) => !value)}
+            aria-label={t('nav.tutorial.open')}
+            title={t('nav.tutorial.open')}
+            paddingHorizontal="$3"
+          >
+            <HelpCircle size={18} />
+          </AppButton>
+          <TourMenu open={isTourMenuOpen} onSelect={handleSelectTour} />
+        </YStack>
         <AppButton variant="ghost" onPress={() => void logout()}>
           {t('nav.logout')}
         </AppButton>

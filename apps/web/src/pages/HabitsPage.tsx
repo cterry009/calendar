@@ -122,6 +122,7 @@ export function HabitsPage() {
         eyebrow="Habitos"
         title="Habitos"
         description="Construi o dejá habitos con un score que crece con la constancia, no con rachas perfectas. Un dia salteado explicitamente no te penaliza; un dia sin registrar, si."
+        tutorialId="habits-header"
         actions={
           <AppButton type="button" variant="primary" onPress={() => setShowCreateForm(true)}>
             Nuevo habito
@@ -146,7 +147,7 @@ export function HabitsPage() {
       {isLoading ? (
         <StatusCard tone="loading" message="Cargando habitos..." />
       ) : activeHabits.length === 0 ? (
-        <AppCard>
+        <AppCard data-tutorial="habits-list">
           <YStack gap="$2" alignItems="center" paddingVertical="$5">
             <Paragraph margin={0}>Todavia no tenes habitos.</Paragraph>
             <AppButton type="button" variant="primary" onPress={() => setShowCreateForm(true)}>
@@ -155,7 +156,7 @@ export function HabitsPage() {
           </YStack>
         </AppCard>
       ) : tab === 'today' ? (
-        <YStack gap="$3">
+        <YStack gap="$3" data-tutorial="habits-list">
           {activeHabits.map((habit) => (
             <HabitTodayCard
               key={habit.id}

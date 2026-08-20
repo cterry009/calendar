@@ -2,47 +2,69 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { OnboardingTutorial } from '../components/onboarding/OnboardingTutorial';
 import { useAuth } from './AuthContext';
 import { isTutorialCompleted, markTutorialCompleted } from '../lib/onboarding/storage';
+import { TOURS, type TourId } from '../lib/onboarding/tours';
 
 interface OnboardingContextValue {
-  isOpen: boolean;
+  activeTourId: TourId | null;
+  stepIndex: number;
+  startTour: (tourId: TourId) => void;
+  closeTour: () => void;
+  nextStep: () => void;
+  prevStep: () => void;
+  // Kept for the plain "Tutorial" button, which always launches the global tour directly.
   openTutorial: () => void;
-  closeTutorial: () => void;
 }
 
 const OnboardingContext = createContext<OnboardingContextValue | undefined>(undefined);
 
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
+  const [activeTourId, setActiveTourId] = useState<TourId | null>(null);
+  const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
     if (user && !isTutorialCompleted()) {
-      setIsOpen(true);
+      setActiveTourId('global');
+      setStepIndex(0);
     }
   }, [user]);
 
-  const openTutorial = useCallback(() => {
-    setIsOpen(true);
+  const startTour = useCallback((tourId: TourId) => {
+    setActiveTourId(tourId);
+    setStepIndex(0);
   }, []);
 
-  const closeTutorial = useCallback(() => {
+  const closeTour = useCallback(() => {
     markTutorialCompleted();
-    setIsOpen(false);
+    setActiveTourId(null);
+    setStepIndex(0);
   }, []);
+
+  const nextStep = useCallback(() => {
+    if (!activeTourId) return;
+    const totalSteps = TOURS[activeTourId].steps.length;
+    if (stepIndex + 1 >= totalSteps) {
+      closeTour();
+      return;
+    }
+    setStepIndex(stepIndex + 1);
+  }, [activeTourId, stepIndex, closeTour]);
+
+  const prevStep = useCallback(() => {
+    setStepIndex((index) => Math.max(0, index - 1));
+  }, []);
+
+  const openTutorial = useCallback(() => startTour('global'), [startTour]);
 
   const value = useMemo(
-    () => ({
-      isOpen,
-      openTutorial,
-      closeTutorial,
-    }),
-    [closeTutorial, isOpen, openTutorial],
+    () => ({ activeTourId, stepIndex, startTour, closeTour, nextStep, prevStep, openTutorial }),
+    [activeTourId, stepIndex, startTour, closeTour, nextStep, prevStep, openTutorial],
   );
 
   return (
     <OnboardingContext.Provider value={value}>
       {children}
-      <OnboardingTutorial open={isOpen} onFinish={closeTutorial} />
+      <OnboardingTutorial />
     </OnboardingContext.Provider>
   );
 }

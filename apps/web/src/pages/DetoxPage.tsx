@@ -48,7 +48,9 @@ export function DetoxPage() {
         <StatusCard tone="loading" message="Preparando tu plan de 7 dias..." />
       ) : (
         <YStack gap="$5">
-          <DetoxPhaseProgress plan={plan} />
+          <YStack data-tutorial="detox-progress">
+            <DetoxPhaseProgress plan={plan} />
+          </YStack>
 
           {needsBaselineAudit ? (
             <BaselineAuditForm isSubmitting={isSavingAudit} onSubmit={handleAudit} />

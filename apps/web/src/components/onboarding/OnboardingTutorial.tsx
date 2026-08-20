@@ -1,86 +1,194 @@
-import { AppButton, AppCard, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AppButton, AppCard, Text, XStack, YStack, palette, paletteLight } from '@calendar/ui';
+import { useAppearance } from '../../context/AppearanceContext';
+import { useOnboarding } from '../../context/OnboardingContext';
+import { TOURS } from '../../lib/onboarding/tours';
 
-interface TutorialSection {
-  title: string;
-  description: string;
+const FIND_TARGET_TIMEOUT_MS = 700;
+const FIND_TARGET_INTERVAL_MS = 60;
+const SPOTLIGHT_PADDING = 8;
+const TOOLTIP_WIDTH = 360;
+const TOOLTIP_GAP = 16;
+
+interface Rect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
 }
 
-interface OnboardingTutorialProps {
-  open: boolean;
-  onFinish: () => void;
+function measureTarget(target: string): Rect | null {
+  const element = document.querySelector(`[data-tutorial="${target}"]`);
+  if (!element) return null;
+  const domRect = element.getBoundingClientRect();
+  if (domRect.width === 0 && domRect.height === 0) return null;
+  return { top: domRect.top, left: domRect.left, width: domRect.width, height: domRect.height };
 }
 
-const TUTORIAL_SECTIONS: TutorialSection[] = [
-  {
-    title: 'El calendario es el centro',
-    description:
-      'Todo pasa desde ahi: horarios de trabajo y descanso, tareas, pomodoros y bloqueo de distracciones. Usa los iconos de la barra superior para abrir Dashboard, Sugerencias, Pomodoro, Bloqueo, Fitness, Detox o el Ritual diario como paneles, sin salir del calendario.',
-  },
-  {
-    title: 'Horarios de trabajo y descanso',
-    description:
-      'Boton "Horarios" arriba del calendario. Un horario de Trabajo y uno de Descanso por dia alcanza para empezar -- son la base que usa el calendario para organizar tareas, fitness y bloqueo.',
-  },
-  {
-    title: 'Tareas y pomodoros automaticos',
-    description:
-      'En la vista Dia, cada bloque de trabajo tiene una casilla para escribir la tarea directamente ahi (ej. "Preparar informe 3 pomodoros"). La app divide tu jornada en bloques de pomodoro con descansos solos, y ajusta la duracion sugerida con el tiempo segun cuanto te concentras de verdad.',
-  },
-  {
-    title: 'Bloqueo durante el trabajo',
-    description:
-      'Mientras un horario de Trabajo esta activo, se activa automaticamente una pantalla de enfoque con tu lista de distracciones a evitar. Configura que apps, sitios o programas quieres evitar en el panel de Bloqueo.',
-  },
-  {
-    title: 'Bienestar diario y plan de detox',
-    description:
-      'Rituales, pilares de presencia y el plan de desintoxicacion de 7 dias corren siempre, sin activarlos aparte -- no son un modo que prendes y apagas.',
-  },
-  {
-    title: 'Ritual diario',
-    description:
-      'Panel "Ritual diario": una revision matutina para darle horario a tus tareas pendientes, y un cierre nocturno para marcar lo que avanzaste y postergar el resto.',
-  },
-];
+/**
+ * Spotlight-style tour engine: dims the whole screen except a highlighted cutout around
+ * whatever element carries the matching `data-tutorial` attribute, with a tooltip anchored
+ * next to it. Driven entirely by OnboardingContext's activeTourId/stepIndex -- this component
+ * has no opinion on which panel needs to be open, that's decided by whoever calls startTour().
+ */
+export function OnboardingTutorial() {
+  const { activeTourId, stepIndex, nextStep, prevStep, closeTour } = useOnboarding();
+  const { mode } = useAppearance();
+  const accentColor = mode === 'light' ? paletteLight.accent : palette.accent;
+  const [rect, setRect] = useState<Rect | null>(null);
 
-export function OnboardingTutorial({ open, onFinish }: OnboardingTutorialProps) {
-  if (!open) {
+  const tour = activeTourId ? TOURS[activeTourId] : null;
+  const step = tour ? tour.steps[stepIndex] : null;
+
+  useEffect(() => {
+    if (!step) {
+      setRect(null);
+      return;
+    }
+
+    setRect(null);
+    let cancelled = false;
+    let elapsed = 0;
+    let timeoutId: number;
+
+    function attempt() {
+      if (cancelled) return;
+      const element = document.querySelector(`[data-tutorial="${step!.target}"]`);
+      if (element) {
+        // The target may be below the fold (e.g. the sidebar wraps under the calendar on
+        // narrower widths) -- scroll it into view before measuring so the spotlight lands
+        // somewhere the user can actually see, instead of clamping off-screen.
+        element.scrollIntoView({ block: 'center', behavior: 'auto' });
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          const found = measureTarget(step!.target);
+          if (found) setRect(found);
+        });
+        return;
+      }
+      elapsed += FIND_TARGET_INTERVAL_MS;
+      if (elapsed >= FIND_TARGET_TIMEOUT_MS) {
+        // Target never showed up (e.g. a day-only block while in week view) -- skip it
+        // instead of leaving the tour stuck on an invisible step.
+        nextStep();
+        return;
+      }
+      timeoutId = window.setTimeout(attempt, FIND_TARGET_INTERVAL_MS);
+    }
+
+    timeoutId = window.setTimeout(attempt, 0);
+
+    function reposition() {
+      const found = measureTarget(step!.target);
+      if (found) setRect(found);
+    }
+
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+    };
+  }, [step, nextStep]);
+
+  useEffect(() => {
+    if (!activeTourId) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') closeTour();
+      if (event.key === 'ArrowRight') nextStep();
+      if (event.key === 'ArrowLeft') prevStep();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTourId, closeTour, nextStep, prevStep]);
+
+  if (!tour || !step || !rect || typeof document === 'undefined') {
     return null;
   }
 
-  return (
-    <YStack position="fixed" top={0} left={0} right={0} bottom={0} zIndex={1000} pointerEvents="box-none">
-      <YStack position="absolute" top={0} left={0} right={0} bottom={0} backgroundColor="rgba(0,0,0,0.55)" />
+  const isFirst = stepIndex === 0;
+  const isLast = stepIndex === tour.steps.length - 1;
 
-      <YStack flex={1} padding="$6" justifyContent="center" alignItems="center" pointerEvents="box-none">
-        <AppCard width="min(720px, 96vw)" maxHeight="86vh" overflow="scroll">
-          <YStack gap="$4">
-            <YStack gap="$1">
-              <Text color="$muted" fontSize="$2">
-                Guia rapida
-              </Text>
-              <H2 margin={0}>Como funciona la app</H2>
-            </YStack>
+  const spotlight = {
+    top: rect.top - SPOTLIGHT_PADDING,
+    left: rect.left - SPOTLIGHT_PADDING,
+    width: rect.width + SPOTLIGHT_PADDING * 2,
+    height: rect.height + SPOTLIGHT_PADDING * 2,
+  };
 
-            <YStack gap="$4">
-              {TUTORIAL_SECTIONS.map((section) => (
-                <YStack key={section.title} gap="$1">
-                  <Text fontWeight="700">{section.title}</Text>
-                  <Paragraph margin={0} color="$muted">
-                    {section.description}
-                  </Paragraph>
-                </YStack>
-              ))}
-            </YStack>
+  const roomBelow = window.innerHeight - (spotlight.top + spotlight.height);
+  const showBelow = roomBelow > 200 || spotlight.top < 200;
+  const tooltipTop = showBelow
+    ? Math.min(spotlight.top + spotlight.height + TOOLTIP_GAP, window.innerHeight - 24)
+    : undefined;
+  const tooltipBottom = showBelow ? undefined : window.innerHeight - spotlight.top + TOOLTIP_GAP;
+  const tooltipLeft = Math.min(Math.max(16, spotlight.left), Math.max(16, window.innerWidth - TOOLTIP_WIDTH - 16));
 
-            <XStack justifyContent="flex-end">
-              <AppButton type="button" variant="primary" onPress={onFinish}>
-                Entendido, empezar
-              </AppButton>
-            </XStack>
+  return createPortal(
+    <>
+      <div
+        role="presentation"
+        onClick={closeTour}
+        style={{ position: 'fixed', inset: 0, zIndex: 1000, cursor: 'pointer' }}
+      />
+      <div
+        style={{
+          position: 'fixed',
+          top: spotlight.top,
+          left: spotlight.left,
+          width: spotlight.width,
+          height: spotlight.height,
+          borderRadius: 14,
+          border: `2px solid ${accentColor}`,
+          boxShadow: '0 0 0 9999px rgba(6, 12, 10, 0.75)',
+          pointerEvents: 'none',
+          zIndex: 1001,
+          transition: 'top 200ms ease, left 200ms ease, width 200ms ease, height 200ms ease',
+        }}
+      />
+
+      <AppCard
+        position="fixed"
+        top={tooltipTop}
+        bottom={tooltipBottom}
+        left={tooltipLeft}
+        width={`min(${TOOLTIP_WIDTH}px, 92vw)`}
+        zIndex={1002}
+      >
+        <YStack gap="$3">
+          <XStack justifyContent="space-between" alignItems="center">
+            <Text color="$muted" fontSize="$1" textTransform="uppercase" letterSpacing={1}>
+              Paso {stepIndex + 1} de {tour.steps.length}
+            </Text>
+            <AppButton variant="ghost" paddingHorizontal="$2" onPress={closeTour} aria-label="Cerrar recorrido">
+              Cerrar
+            </AppButton>
+          </XStack>
+
+          <YStack gap="$1">
+            <Text fontWeight="700" fontSize="$5">
+              {step.title}
+            </Text>
+            <Text color="$muted" fontSize="$3">
+              {step.description}
+            </Text>
           </YStack>
-        </AppCard>
-      </YStack>
-    </YStack>
+
+          <XStack justifyContent="space-between" alignItems="center" gap="$2">
+            <AppButton variant="ghost" onPress={prevStep} disabled={isFirst}>
+              Anterior
+            </AppButton>
+            <AppButton variant="primary" onPress={nextStep}>
+              {isLast ? 'Finalizar' : 'Siguiente'}
+            </AppButton>
+          </XStack>
+        </YStack>
+      </AppCard>
+    </>,
+    document.body,
   );
 }

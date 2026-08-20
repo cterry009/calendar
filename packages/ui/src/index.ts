@@ -9,6 +9,7 @@ export {
   Eyebrow,
   Flame,
   Heart,
+  HelpCircle,
   Label,
   Leaf,
   Lightbulb,
