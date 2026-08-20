@@ -9,8 +9,10 @@ import {
 import * as Crypto from 'expo-crypto';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
+import { useNotifications } from './NotificationsContext';
 import { useSync } from './SyncContext';
 import { ApiError } from '../lib/auth/api';
+import { sendLocalNotification } from '../lib/notifications/api';
 import { buildPomodoroPayload, syncPomodoroBatch } from '../lib/pomodoro/api';
 import { getRemainingSeconds } from '../lib/pomodoro/timer';
 import type { PomodoroConfigFormValues, SyncPomodoroRecord } from '../lib/pomodoro/types';
@@ -25,6 +27,8 @@ interface PomodoroContextValue {
   isLoading: boolean;
   isMutating: boolean;
   error: string | null;
+  notificationsEnabled: boolean;
+  toggleNotifications: (enabled: boolean) => Promise<void>;
   refetch: () => Promise<void>;
   start: (taskId?: string | null) => Promise<void>;
   cancel: () => Promise<void>;
@@ -91,12 +95,13 @@ function withRecordMetadata(
   };
 }
 
-// Ported from apps/web/src/context/PomodoroContext.tsx. Two deliberate cuts for this pass:
-// per-request config overrides (web's `start(taskId, overrideConfig)`) and browser
-// Notification-based phase-complete alerts -- the native equivalent (expo-notifications, real
-// permissions flow) is a separate task, not silently faked here.
+// Ported from apps/web/src/context/PomodoroContext.tsx. One remaining deliberate cut: per-request
+// config overrides (web's `start(taskId, overrideConfig)`). Phase-complete notifications (cut in
+// the initial mobile port, browser Notification has no native equivalent) are implemented for
+// real here via expo-notifications (task 6.4) -- see lib/notifications/api.ts.
 export function PomodoroProvider({ children }: { children: ReactNode }) {
   const { registerRefetch } = useSync();
+  const { notificationsEnabled, toggleNotifications } = useNotifications();
   const [session, setSession] = useState<SyncPomodoroRecord | null>(null);
   const [config, setConfig] = useState<PomodoroConfigFormValues>(DEFAULT_CONFIG_VALUES);
   const [isLoading, setIsLoading] = useState(true);
@@ -223,15 +228,25 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     }
 
     transitionInFlightRef.current = true;
+    const finishedState = session.state;
 
     void (async () => {
       try {
         await transitionSession(event, false);
+
+        if (notificationsEnabled) {
+          const title = finishedState === 'FOCUS' ? 'Enfoque finalizado' : 'Descanso finalizado';
+          const body =
+            finishedState === 'FOCUS'
+              ? 'Empieza tu descanso para recuperar energia.'
+              : 'Vuelve a enfoque para el siguiente ciclo.';
+          await sendLocalNotification(title, body);
+        }
       } finally {
         transitionInFlightRef.current = false;
       }
     })();
-  }, [now, session, transitionSession]);
+  }, [now, notificationsEnabled, session, transitionSession]);
 
   const remainingSeconds = useMemo(() => {
     if (!session) {
@@ -256,12 +271,27 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       isLoading,
       isMutating,
       error,
+      notificationsEnabled,
+      toggleNotifications,
       refetch,
       start,
       cancel,
       reset,
     }),
-    [config, error, isLoading, isMutating, refetch, remainingSeconds, reset, session, start, cancel],
+    [
+      config,
+      error,
+      isLoading,
+      isMutating,
+      notificationsEnabled,
+      toggleNotifications,
+      refetch,
+      remainingSeconds,
+      reset,
+      session,
+      start,
+      cancel,
+    ],
   );
 
   return <PomodoroContext.Provider value={value}>{children}</PomodoroContext.Provider>;

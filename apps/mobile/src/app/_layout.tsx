@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { SyncStatusBanner } from '../components/SyncStatusBanner';
 import { AuthProvider, useAuth } from '../context/AuthContext';
+import { NotificationsProvider } from '../context/NotificationsContext';
 import { PomodoroProvider } from '../context/PomodoroContext';
 import { SyncProvider } from '../context/SyncContext';
 
@@ -55,19 +56,21 @@ function RootNavigator() {
     </Stack>
   );
 
-  // PomodoroProvider/SyncStatusBanner only mounted once authenticated -- nothing to sync pre-login,
-  // and pulling requires a valid access token anyway.
+  // NotificationsProvider/PomodoroProvider/SyncStatusBanner only mounted once authenticated --
+  // nothing to sync or notify about pre-login, and pulling requires a valid access token anyway.
   if (!isAuthenticated) {
     return navigator;
   }
 
   return (
-    <PomodoroProvider>
-      <YStack flex={1}>
-        <SyncStatusBanner />
-        {navigator}
-      </YStack>
-    </PomodoroProvider>
+    <NotificationsProvider>
+      <PomodoroProvider>
+        <YStack flex={1}>
+          <SyncStatusBanner />
+          {navigator}
+        </YStack>
+      </PomodoroProvider>
+    </NotificationsProvider>
   );
 }
 

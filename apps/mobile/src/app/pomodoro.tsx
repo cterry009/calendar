@@ -14,11 +14,23 @@ const PHASE_LABELS: Record<string, string> = {
  * Third slice of task 6.2. Ported from apps/web's PomodoroTimer.tsx -- same wall-clock-diff
  * timer (PomodoroContext computes remainingSeconds from startedAt, not an accumulated
  * countdown, so it can't drift even if the interval gets throttled in the background).
- * Notifications and per-session config overrides are cut for this pass (see PomodoroContext).
+ * Per-session config overrides are still cut (see PomodoroContext); phase-complete
+ * notifications are real now (task 6.4), toggled below.
  */
 export default function PomodoroScreen() {
-  const { session, remainingSeconds, phaseDurationMinutes, isLoading, isMutating, error, start, cancel, reset } =
-    usePomodoro();
+  const {
+    session,
+    remainingSeconds,
+    phaseDurationMinutes,
+    isLoading,
+    isMutating,
+    error,
+    notificationsEnabled,
+    toggleNotifications,
+    start,
+    cancel,
+    reset,
+  } = usePomodoro();
 
   const phase = session?.state ?? 'IDLE';
   const isActive = Boolean(session?.active);
@@ -88,6 +100,13 @@ export default function PomodoroScreen() {
           Ciclos completados: {session.completedCycles}
         </Paragraph>
       ) : null}
+
+      <AppButton
+        variant={notificationsEnabled ? 'primary' : 'ghost'}
+        onPress={() => void toggleNotifications(!notificationsEnabled)}
+      >
+        {notificationsEnabled ? 'Notificaciones activadas' : 'Activar notificaciones de fin de fase'}
+      </AppButton>
 
       <Link href="/" asChild>
         <AppButton variant="ghost">Volver</AppButton>
