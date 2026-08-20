@@ -70,6 +70,11 @@ export default function HomeScreen() {
                 Dashboard
               </AppButton>
             </Link>
+            <Link href="/blocklist" asChild>
+              <AppButton variant="ghost" flex={1}>
+                Bloqueo
+              </AppButton>
+            </Link>
           </XStack>
 
           {error ? (

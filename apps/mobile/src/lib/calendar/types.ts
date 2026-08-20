@@ -1,4 +1,5 @@
 import type { TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
+import type { SyncBlockListRecord } from '../blocklist/types';
 import type { SyncFitnessRecord } from '../fitness/types';
 import type { SyncPomodoroRecord } from '../pomodoro/types';
 
@@ -44,5 +45,6 @@ export interface SyncSnapshot {
   schedules: SyncScheduleRecord[];
   pomodoroSessions: SyncPomodoroRecord[];
   fitnessEntries: SyncFitnessRecord[];
+  blockListEntries: SyncBlockListRecord[];
   syncedAt: string;
 }
