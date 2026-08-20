@@ -65,6 +65,11 @@ export default function HomeScreen() {
                 Fitness
               </AppButton>
             </Link>
+            <Link href="/dashboard" asChild>
+              <AppButton variant="ghost" flex={1}>
+                Dashboard
+              </AppButton>
+            </Link>
           </XStack>
 
           {error ? (

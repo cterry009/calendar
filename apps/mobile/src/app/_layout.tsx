@@ -44,6 +44,7 @@ function RootNavigator() {
         <Stack.Screen name="index" />
         <Stack.Screen name="pomodoro" />
         <Stack.Screen name="fitness" />
+        <Stack.Screen name="dashboard" />
       </Stack.Protected>
       <Stack.Protected guard={!isAuthenticated}>
         <Stack.Screen name="login" />
