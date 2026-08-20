@@ -1,0 +1,32 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@/assets/*": [
+        "./assets/*"
+      ],
+      "@calendar/shared": [
+        "../../packages/shared/src/index.ts"
+      ],
+      "@calendar/ui": [
+        "../../packages/ui/src/index.ts"
+      ],
+      "@calendar/ui/tamagui.config": [
+        "../../packages/ui/src/tamagui.config.ts"
+      ],
+      "@calendar/ui/tamagui.config.native": [
+        "../../packages/ui/src/tamagui.config.native.ts"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
+}
