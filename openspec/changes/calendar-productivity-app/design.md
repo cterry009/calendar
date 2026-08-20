@@ -310,6 +310,22 @@ Migración: `ALTER TABLE block_list_entries ADD COLUMN "frictionType" ... DEFAUL
 
 **Nota de alcance para el tutorial (5.16)**: cuando 5.14 y 5.15 se implementen, su tour por-feature debe agregarse al catálogo de 5.16 (sonido ambiental dentro del tour de Pomodoro/foco; fricción por ejercicio dentro del tour de lista de bloqueo) — ver nota agregada en la tarea 5.16 de `tasks.md`.
 
+### 25. Tutorial spotlight por-feature (tarea 5.16)
+
+**Decisión**: el tutorial pasa de una sola lista de texto con scroll a un motor de "tours" data-driven (`apps/web/src/lib/onboarding/tours.ts`) que resalta el elemento real de la pantalla del que está hablando, en vez de flotar una tarjeta sin ninguna conexión visual con lo que describe.
+
+**Por qué un registro de datos y no un componente por tour**: cada tour es solo una lista de `{ target, title, description }` más el panel (si alguno) que debe estar abierto para que esos targets existan en el DOM. Esto evita construir 8 componentes de tour casi identicos -- el motor (`OnboardingTutorial.tsx`) es uno solo, genérico, que no sabe nada de paneles ni de contenido; solo sabe leer `data-tutorial="X"` del DOM.
+
+**Por qué el motor no abre paneles el mismo**: `OnboardingProvider` es ancestro de `PanelProvider` en `ProtectedAppLayout.tsx` (no al revés), asi que `OnboardingContext` no tiene acceso a `usePanel()`. En vez de reestructurar el arbol de providers, la responsabilidad de abrir/cerrar el panel correcto antes de arrancar un tour vive en quien SI tiene ambos contextos: el menu "?" en `AppNav.tsx` (`handleSelectTour`), que llama `openPanel()`/`closePanel()` y recien despues `startTour()`, con un pequeño delay (380ms) para que el panel termine de animar antes de que el spotlight mida su posicion.
+
+**Bug real encontrado durante la verificacion (no cosmetico)**: los targets del panel lateral derecho (`schedule-header`, `tasks-header`) quedan fuera del viewport en anchos moderados -- el `XStack` de `CalendarPage.tsx` tiene `flexWrap="wrap"` y a 1440px la columna lateral cae a una fila nueva, mucho mas abajo de la pantalla inicial. El primer intento del motor solo hacia `getBoundingClientRect()` sin scrollear, dejando el tooltip clampeado fuera de vista (boton "Cerrar" inalcanzable, confirmado con Playwright). Se corrigio agregando `element.scrollIntoView({ block: 'center' })` antes de medir cada target -- el mismo problema aplicaria a cualquier usuario con una ventana angosta, no solo a la prueba automatizada.
+
+**Manejo de targets que no existen en la vista actual**: un paso cuyo target nunca aparece (ej. `day-work-block`, que solo existe en la vista Dia del calendario, no en Semana/Mes) hace polling cada 60ms hasta 700ms y despues avanza solo al siguiente paso en vez de dejar el tour trabado en un paso invisible.
+
+**Colores del spotlight, no del scrim**: el fondo oscuro de pantalla completa sigue el mismo patron ya establecido para `SoftFocusOverlay`/`FrictionOverlay` (decision 20: "Dejado como esta a proposito... siguen oscuros sin importar el tema") -- no cambia con el tema. El borde verde que resalta el elemento SI lee `palette`/`paletteLight` segun `useAppearance().mode` (igual que `useNativeFieldStyle()`), porque ese elemento vive dentro de la tarjeta de contenido, que si se ve en ambos temas -- verificado con captura en modo claro, sin el bug de "caja oscura sobre fondo blanco" que motivo gran parte de la decision 20.
+
+**Alcance de idioma**: el contenido de los tours (titulos, descripciones) queda en español hardcodeado, igual que estaba antes de esta tarea -- no se paso por el sistema `t()` de la decision 19. Es la misma frontera de alcance que ya tienen el resto de paneles no traducidos todavia; ampliar el tutorial mismo ya era suficiente superficie para esta tarea sin sumarle tambien su traduccion.
+
 ## Risks / Trade-offs
 
 | Riesgo | Mitigación |
