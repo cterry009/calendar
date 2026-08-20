@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { AuthProvider, useAuth } from '../context/AuthContext';
+import { PomodoroProvider } from '../context/PomodoroContext';
 
 // @tamagui/animations-react-native's RN `Animated.interpolate()` calls fail under
 // react-native-web specifically (verified: same crash with any named animation, gone with none)
@@ -37,10 +38,11 @@ function RootNavigator() {
     );
   }
 
-  return (
+  const navigator = (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={isAuthenticated}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="pomodoro" />
       </Stack.Protected>
       <Stack.Protected guard={!isAuthenticated}>
         <Stack.Screen name="login" />
@@ -48,6 +50,10 @@ function RootNavigator() {
       </Stack.Protected>
     </Stack>
   );
+
+  // Only mounted once authenticated -- no point fetching pomodoro state pre-login, and it needs
+  // a valid access token to succeed anyway.
+  return isAuthenticated ? <PomodoroProvider>{navigator}</PomodoroProvider> : navigator;
 }
 
 export default function RootLayout() {

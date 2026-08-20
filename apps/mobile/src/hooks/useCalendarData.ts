@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { ApiError } from '../lib/auth/api';
 import { buildCompleteTaskPayload, pullSnapshot, syncTaskBatch } from '../lib/calendar/api';
 import type { SyncScheduleRecord, SyncTaskRecord } from '../lib/calendar/types';
+import type { SyncPomodoroRecord } from '../lib/pomodoro/types';
 
 interface UseCalendarDataResult {
   tasks: SyncTaskRecord[];
   schedules: SyncScheduleRecord[];
+  pomodoroSessions: SyncPomodoroRecord[];
   isLoading: boolean;
   isMutating: boolean;
   error: string | null;
@@ -27,6 +29,7 @@ function sortTasks(items: SyncTaskRecord[]) {
 export function useCalendarData(): UseCalendarDataResult {
   const [tasks, setTasks] = useState<SyncTaskRecord[]>([]);
   const [schedules, setSchedules] = useState<SyncScheduleRecord[]>([]);
+  const [pomodoroSessions, setPomodoroSessions] = useState<SyncPomodoroRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +42,7 @@ export function useCalendarData(): UseCalendarDataResult {
       const snapshot = await pullSnapshot();
       setTasks(sortTasks(snapshot.tasks));
       setSchedules(snapshot.schedules);
+      setPomodoroSessions(snapshot.pomodoroSessions);
     } catch (errorValue) {
       setError(errorValue instanceof ApiError ? errorValue.message : 'No se pudo cargar el calendario.');
     } finally {
@@ -68,5 +72,5 @@ export function useCalendarData(): UseCalendarDataResult {
     [refetch],
   );
 
-  return { tasks, schedules, isLoading, isMutating, error, refetch, completeTask };
+  return { tasks, schedules, pomodoroSessions, isLoading, isMutating, error, refetch, completeTask };
 }

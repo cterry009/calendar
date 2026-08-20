@@ -1,5 +1,6 @@
 import { completedPomodoroDateKeys, computePomodoroStreak } from '@calendar/shared';
 import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, YStack } from '@calendar/ui';
+import { Link } from 'expo-router';
 import { useMemo } from 'react';
 import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +21,7 @@ const TODAY_LABEL = new Date().toLocaleDateString('es-ES', { weekday: 'long', da
  */
 export default function HomeScreen() {
   const { user, logout } = useAuth();
-  const { tasks, schedules, isLoading, isMutating, error, completeTask } = useCalendarData();
+  const { tasks, schedules, pomodoroSessions, isLoading, isMutating, error, completeTask } = useCalendarData();
 
   const today = useMemo(() => new Date(), []);
 
@@ -34,9 +35,10 @@ export default function HomeScreen() {
     [schedules, today],
   );
 
-  // Trivial use of shared business logic, proving @calendar/shared (pure, no DOM/browser
-  // globals) runs unmodified on native -- ported from the scaffold's original proof screen.
-  const streak = useMemo(() => computePomodoroStreak(completedPomodoroDateKeys([])), []);
+  const streak = useMemo(
+    () => computePomodoroStreak(completedPomodoroDateKeys(pomodoroSessions)),
+    [pomodoroSessions],
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#212e28' }}>
@@ -110,6 +112,9 @@ export default function HomeScreen() {
               <Paragraph margin={0} color="$muted">
                 {streak.currentStreak} dias seguidos.
               </Paragraph>
+              <Link href="/pomodoro" asChild>
+                <AppButton variant="primary">Ir a Pomodoro</AppButton>
+              </Link>
             </YStack>
           </AppCard>
 

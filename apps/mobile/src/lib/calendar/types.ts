@@ -1,4 +1,5 @@
 import type { TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
+import type { SyncPomodoroRecord } from '../pomodoro/types';
 
 // Mirrors apps/web/src/lib/tasks/types.ts's SyncTaskRecord -- the server's sync payload adds
 // createdAt/updatedAt/deletedAt on top of the pure @calendar/shared Task schema.
@@ -40,5 +41,6 @@ export interface SyncScheduleRecord {
 export interface SyncSnapshot {
   tasks: SyncTaskRecord[];
   schedules: SyncScheduleRecord[];
+  pomodoroSessions: SyncPomodoroRecord[];
   syncedAt: string;
 }

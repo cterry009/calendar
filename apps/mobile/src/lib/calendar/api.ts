@@ -1,13 +1,8 @@
 import type { TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
-import { apiFetch } from '../auth/api';
-import type { SyncSnapshot, SyncTaskRecord } from './types';
+import { pullSnapshot, syncBatch, type SyncBatchResponse } from '../sync/api';
+import type { SyncTaskRecord } from './types';
 
-// No offline cache / WebSocket layer yet (that's task 6.3) -- this pulls the full snapshot
-// straight from the server every time, same endpoint apps/web's IndexedDB-backed sync client
-// wraps (server/src/sync/sync.controller.ts), just without the cache-when-offline fallback.
-export async function pullSnapshot(): Promise<SyncSnapshot> {
-  return apiFetch<SyncSnapshot>('/sync/pull');
-}
+export { pullSnapshot };
 
 export interface TaskSyncChangeDto {
   id?: string;
@@ -28,20 +23,12 @@ export interface TaskSyncChangeDto {
   completedAt?: string;
 }
 
-interface SyncBatchResponse {
-  applied: Record<string, unknown[] | undefined>;
-  conflicts: Record<string, unknown[] | undefined>;
-}
-
 export async function syncTaskBatch(changes: TaskSyncChangeDto[]): Promise<SyncBatchResponse> {
   if (!changes.length) {
     return { applied: {}, conflicts: {} };
   }
 
-  return apiFetch<SyncBatchResponse>('/sync/batch', {
-    method: 'POST',
-    body: JSON.stringify({ tasks: changes }),
-  });
+  return syncBatch({ tasks: changes });
 }
 
 export function buildCompleteTaskPayload(task: SyncTaskRecord, actualMinutes: number): TaskSyncChangeDto {
