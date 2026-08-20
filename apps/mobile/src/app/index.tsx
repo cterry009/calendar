@@ -1,5 +1,5 @@
 import { completedPomodoroDateKeys, computePomodoroStreak } from '@calendar/shared';
-import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, YStack } from '@calendar/ui';
+import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Link } from 'expo-router';
 import { useMemo } from 'react';
 import { ScrollView } from 'react-native';
@@ -53,6 +53,19 @@ export default function HomeScreen() {
               Hola{user?.name ? `, ${user.name}` : ''} -- sesion iniciada como {user?.email}.
             </Paragraph>
           </YStack>
+
+          <XStack gap="$3">
+            <Link href="/pomodoro" asChild>
+              <AppButton variant="ghost" flex={1}>
+                Pomodoro
+              </AppButton>
+            </Link>
+            <Link href="/fitness" asChild>
+              <AppButton variant="ghost" flex={1}>
+                Fitness
+              </AppButton>
+            </Link>
+          </XStack>
 
           {error ? (
             <Text color="$danger" fontSize="$3">
@@ -112,9 +125,6 @@ export default function HomeScreen() {
               <Paragraph margin={0} color="$muted">
                 {streak.currentStreak} dias seguidos.
               </Paragraph>
-              <Link href="/pomodoro" asChild>
-                <AppButton variant="primary">Ir a Pomodoro</AppButton>
-              </Link>
             </YStack>
           </AppCard>
 

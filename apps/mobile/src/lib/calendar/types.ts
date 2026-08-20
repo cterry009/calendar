@@ -1,4 +1,5 @@
 import type { TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
+import type { SyncFitnessRecord } from '../fitness/types';
 import type { SyncPomodoroRecord } from '../pomodoro/types';
 
 // Mirrors apps/web/src/lib/tasks/types.ts's SyncTaskRecord -- the server's sync payload adds
@@ -42,5 +43,6 @@ export interface SyncSnapshot {
   tasks: SyncTaskRecord[];
   schedules: SyncScheduleRecord[];
   pomodoroSessions: SyncPomodoroRecord[];
+  fitnessEntries: SyncFitnessRecord[];
   syncedAt: string;
 }

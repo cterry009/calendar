@@ -13,6 +13,7 @@ export interface SyncBatchPayload {
   tasks?: unknown[];
   schedules?: unknown[];
   pomodoroSessions?: unknown[];
+  fitnessEntries?: unknown[];
 }
 
 export interface SyncBatchResponse {
