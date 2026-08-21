@@ -70,6 +70,7 @@ enum FitnessSource {
   HEALTH_CONNECT
   HEALTHKIT
   CSV_IMPORT
+  DEVICE_SENSOR
 }
 
 enum AnalyticsPeriod {
@@ -107,6 +108,7 @@ model User {
   blockListEntries   BlockListEntry[]
   focusTriggers      FocusTrigger[]
   fitnessEntries     FitnessEntry[]
+  dailyStepCounts    DailyStepCount[]
   analyticsSnapshots AnalyticsSnapshot[]
   detoxPlan          DetoxPlan?
   serotoninSession   SerotoninSession?
@@ -285,6 +287,27 @@ model FitnessEntry {
 
   @@index([userId, loggedAt])
   @@map("fitness_entries")
+}
+
+// One row per user per calendar day (task 10.6) -- deliberately not an append-only log like
+// FitnessEntry, since a device's step sensor reports a running daily total, not discrete
+// sessions. `date` is day-truncated UTC midnight; `steps` is a monotonically-increasing daily
+// total merged across devices via max(), not overwritten (see SyncService.applyStepCountChange
+// -- a stale device reporting a smaller same-day count than what's already stored must never
+// erase a higher count another device already reported today).
+model DailyStepCount {
+  id        String        @id @default(cuid())
+  userId    String
+  date      DateTime
+  steps     Int
+  source    FitnessSource @default(DEVICE_SENSOR)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_step_counts")
 }
 
 // ─── Serotonin detox plan ────────────────────────────────────────────────────

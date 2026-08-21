@@ -5,6 +5,7 @@ export type SyncEntityType =
   | 'blockListEntries'
   | 'focusTriggers'
   | 'fitnessEntries'
+  | 'dailyStepCounts'
   | 'detoxPlan'
   | 'serotoninSession'
   | 'habits'

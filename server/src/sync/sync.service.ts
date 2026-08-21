@@ -13,6 +13,7 @@ import {
   PomodoroSyncChangeDto,
   ScheduleSyncChangeDto,
   SerotoninSessionSyncChangeDto,
+  StepCountSyncChangeDto,
   SyncBatchDto,
   TaskSyncChangeDto,
 } from './dto/sync-batch.dto';
@@ -33,6 +34,7 @@ export class SyncService {
       blockListEntries,
       focusTriggers,
       fitnessEntries,
+      dailyStepCounts,
       detoxPlan,
       serotoninSession,
       habits,
@@ -47,6 +49,7 @@ export class SyncService {
       this.prisma.blockListEntry.findMany({ where: { userId } }),
       this.prisma.focusTrigger.findMany({ where: { userId } }),
       this.prisma.fitnessEntry.findMany({ where: { userId } }),
+      this.prisma.dailyStepCount.findMany({ where: { userId } }),
       this.prisma.detoxPlan.findUnique({ where: { userId } }),
       this.prisma.serotoninSession.findUnique({ where: { userId } }),
       this.prisma.habit.findMany({ where: { userId, deletedAt: null } }),
@@ -61,6 +64,7 @@ export class SyncService {
       blockListEntries,
       focusTriggers,
       fitnessEntries,
+      dailyStepCounts,
       habits,
       habitRecords,
       journalEntries,
@@ -160,6 +164,18 @@ export class SyncService {
         this.bucketResult(result, 'fitnessEntries', outcome);
         if (outcome.status === 'applied') {
           changedEntities.add('fitnessEntries');
+        }
+      }
+    }
+
+    if (dto.dailyStepCounts?.length) {
+      result.applied.dailyStepCounts = [];
+      result.conflicts.dailyStepCounts = [];
+      for (const change of dto.dailyStepCounts) {
+        const outcome = await this.applyStepCountChange(userId, change);
+        this.bucketResult(result, 'dailyStepCounts', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('dailyStepCounts');
         }
       }
     }
@@ -619,6 +635,48 @@ export class SyncService {
     await this.autoCompleteHabitsFromFitness(userId, record);
 
     return { status: 'applied', clientKey: key, record };
+  }
+
+  // Keyed on (userId, date) rather than change.id -- unlike every other synced entity, a daily
+  // step count isn't something the client tracks by a stable row id it created; it's "whatever
+  // today's total is right now" recomputed independently by each device. Merged via max(steps),
+  // not the usual updatedAt-wins conflict check: two devices reporting the same day's count are
+  // both reading the same monotonically-increasing sensor, so the larger number is always the
+  // more complete one, regardless of which device's clock or sync happened to run last -- a
+  // plain "newest updatedAt wins" rule would let a device that synced early in the day (small
+  // count so far) overwrite a device that already reported a bigger count later that same day.
+  private async applyStepCountChange(
+    userId: string,
+    change: StepCountSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const date = this.truncateToUtcDay(change.date);
+    const key = change.id;
+
+    const existing = await this.prisma.dailyStepCount.findUnique({
+      where: { userId_date: { userId, date } },
+    });
+
+    if (existing && existing.steps >= change.steps) {
+      return { status: 'applied', clientKey: key, record: existing };
+    }
+
+    const data = {
+      date,
+      steps: change.steps,
+      source: change.source ?? 'DEVICE_SENSOR',
+      updatedAt: new Date(change.updatedAt),
+    };
+
+    const record = existing
+      ? await this.prisma.dailyStepCount.update({ where: { id: existing.id }, data })
+      : await this.prisma.dailyStepCount.create({ data: { ...data, userId } });
+
+    return { status: 'applied', clientKey: key, record };
+  }
+
+  private truncateToUtcDay(isoDate: string): Date {
+    const date = new Date(isoDate);
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   }
 
   // Opt-in per habit (Habit.linkedFitnessActivityType) rather than fuzzy-matching titles: a

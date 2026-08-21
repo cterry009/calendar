@@ -38,6 +38,7 @@ export const FitnessSourceSchema = z.enum([
   'HEALTH_CONNECT',
   'HEALTHKIT',
   'CSV_IMPORT',
+  'DEVICE_SENSOR',
 ]);
 
 export const HabitTypeSchema = z.enum(['NORMAL', 'NEGATIVE']);

@@ -2,6 +2,7 @@ import type { TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared'
 import type { SyncBlockListRecord } from '../blocklist/types';
 import type { SyncFitnessRecord } from '../fitness/types';
 import type { SyncPomodoroRecord } from '../pomodoro/types';
+import type { SyncStepCountRecord } from '../steps/types';
 
 // Mirrors apps/web/src/lib/tasks/types.ts's SyncTaskRecord -- the server's sync payload adds
 // createdAt/updatedAt/deletedAt on top of the pure @calendar/shared Task schema.
@@ -45,6 +46,7 @@ export interface SyncSnapshot {
   schedules: SyncScheduleRecord[];
   pomodoroSessions: SyncPomodoroRecord[];
   fitnessEntries: SyncFitnessRecord[];
+  dailyStepCounts: SyncStepCountRecord[];
   blockListEntries: SyncBlockListRecord[];
   syncedAt: string;
 }

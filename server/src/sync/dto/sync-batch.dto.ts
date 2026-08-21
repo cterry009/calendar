@@ -371,6 +371,29 @@ export class FitnessSyncChangeDto {
   externalId?: string;
 }
 
+// No `deleted` flag -- unlike FitnessEntry, a daily step count is a per-day aggregate the user
+// never deletes through the UI; a wrong value gets corrected by the next sync merging in a fresh
+// count, not by removing the row (see SyncService.applyStepCountChange for the merge rule).
+export class StepCountSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsDateString()
+  date!: string;
+
+  @IsInt()
+  @Min(0)
+  steps!: number;
+
+  @IsDateString()
+  updatedAt!: string;
+
+  @IsOptional()
+  @IsEnum(FitnessSource)
+  source?: FitnessSource;
+}
+
 export class DetoxPlanSyncChangeDto {
   @IsOptional()
   @IsString()
@@ -580,6 +603,12 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => FitnessSyncChangeDto)
   fitnessEntries?: FitnessSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => StepCountSyncChangeDto)
+  dailyStepCounts?: StepCountSyncChangeDto[];
 
   @IsOptional()
   @IsArray()

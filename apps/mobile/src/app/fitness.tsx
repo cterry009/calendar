@@ -1,4 +1,5 @@
 import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, YStack } from '@calendar/ui';
+import { Pedometer } from 'expo-sensors';
 import { Stack } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView } from 'react-native';
@@ -6,6 +7,7 @@ import { FitnessForm } from '../components/fitness/FitnessForm';
 import { FitnessItem } from '../components/fitness/FitnessItem';
 import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useOnboarding } from '../context/OnboardingContext';
+import { useDailySteps } from '../hooks/useDailySteps';
 import { useFitness } from '../hooks/useFitness';
 import { buildDailySummary } from '../lib/fitness/summary';
 
@@ -19,6 +21,7 @@ export default function FitnessScreen() {
   const { entries, isLoading, isMutating, error, createEntry, deleteEntry } = useFitness();
   const [showForm, setShowForm] = useState(false);
   const { startTour } = useOnboarding();
+  const dailySteps = useDailySteps();
 
   const todaySummary = useMemo(() => buildDailySummary(entries, new Date()), [entries]);
 
@@ -60,6 +63,44 @@ export default function FitnessScreen() {
                 <Paragraph margin={0} color="$muted">
                   {todaySummary.totalMinutes} min en {todaySummary.sessionCount} sesion(es).
                 </Paragraph>
+              </YStack>
+            </AppCard>
+          </TutorialTarget>
+
+          <TutorialTarget id="fitness-steps">
+            <AppCard>
+              <YStack gap="$2">
+                <Text fontWeight="700">Pasos de hoy</Text>
+                {dailySteps.isAvailable === false ? (
+                  <Paragraph margin={0} color="$muted">
+                    Este dispositivo no tiene sensor de pasos, o esta funcion solo esta disponible
+                    en Android.
+                  </Paragraph>
+                ) : dailySteps.isLoading ? (
+                  <Paragraph margin={0} color="$muted">
+                    Cargando...
+                  </Paragraph>
+                ) : dailySteps.permissionStatus !== Pedometer.PermissionStatus.GRANTED ? (
+                  <YStack gap="$2">
+                    <Paragraph margin={0} color="$muted">
+                      Activa el permiso de actividad fisica para contar tus pasos mientras la app
+                      esta abierta.
+                    </Paragraph>
+                    <AppButton variant="primary" onPress={() => void dailySteps.requestPermission()}>
+                      Activar contador de pasos
+                    </AppButton>
+                  </YStack>
+                ) : (
+                  <YStack gap="$1">
+                    <Text fontSize="$9" fontWeight="700">
+                      {dailySteps.steps}
+                    </Text>
+                    <Paragraph margin={0} color="$muted" fontSize="$2">
+                      Solo cuenta mientras la app esta abierta -- se suma cada vez que la volves a
+                      abrir en el dia.
+                    </Paragraph>
+                  </YStack>
+                )}
               </YStack>
             </AppCard>
           </TutorialTarget>
