@@ -1,4 +1,5 @@
 import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, YStack } from '@calendar/ui';
+import { PermissionStatus } from 'expo';
 import { Pedometer } from 'expo-sensors';
 import { Stack } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -7,6 +8,7 @@ import { FitnessForm } from '../components/fitness/FitnessForm';
 import { FitnessItem } from '../components/fitness/FitnessItem';
 import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useOnboarding } from '../context/OnboardingContext';
+import { useDailyFloors } from '../hooks/useDailyFloors';
 import { useDailySteps } from '../hooks/useDailySteps';
 import { useFitness } from '../hooks/useFitness';
 import { buildDailySummary } from '../lib/fitness/summary';
@@ -22,8 +24,13 @@ export default function FitnessScreen() {
   const [showForm, setShowForm] = useState(false);
   const { startTour } = useOnboarding();
   const dailySteps = useDailySteps();
+  const dailyFloors = useDailyFloors();
 
   const todaySummary = useMemo(() => buildDailySummary(entries, new Date()), [entries]);
+  // Derived from the step count already being synced -- no extra sensor or sync entity needed.
+  // Average adult stride length (~0.762m / 30in) is a rough industry-standard estimate, not a
+  // per-user calibrated value.
+  const distanceKm = useMemo(() => (dailySteps.steps * 0.762) / 1000, [dailySteps.steps]);
 
   return (
     <YStack flex={1} backgroundColor="$background">
@@ -96,8 +103,49 @@ export default function FitnessScreen() {
                       {dailySteps.steps}
                     </Text>
                     <Paragraph margin={0} color="$muted" fontSize="$2">
+                      ~{distanceKm.toFixed(2)} km recorridos hoy (estimado a partir de los pasos).
+                    </Paragraph>
+                    <Paragraph margin={0} color="$muted" fontSize="$2">
                       Solo cuenta mientras la app esta abierta -- se suma cada vez que la volves a
                       abrir en el dia.
+                    </Paragraph>
+                  </YStack>
+                )}
+              </YStack>
+            </AppCard>
+          </TutorialTarget>
+
+          <TutorialTarget id="fitness-floors">
+            <AppCard>
+              <YStack gap="$2">
+                <Text fontWeight="700">Pisos subidos hoy</Text>
+                {dailyFloors.isAvailable === false ? (
+                  <Paragraph margin={0} color="$muted">
+                    Este dispositivo no tiene barometro, o esta funcion solo esta disponible en
+                    Android.
+                  </Paragraph>
+                ) : dailyFloors.isLoading ? (
+                  <Paragraph margin={0} color="$muted">
+                    Cargando...
+                  </Paragraph>
+                ) : dailyFloors.permissionStatus !== PermissionStatus.GRANTED ? (
+                  <YStack gap="$2">
+                    <Paragraph margin={0} color="$muted">
+                      Activa el permiso de sensores para contar los pisos que subis mientras la
+                      app esta abierta.
+                    </Paragraph>
+                    <AppButton variant="primary" onPress={() => void dailyFloors.requestPermission()}>
+                      Activar contador de pisos
+                    </AppButton>
+                  </YStack>
+                ) : (
+                  <YStack gap="$1">
+                    <Text fontSize="$9" fontWeight="700">
+                      {dailyFloors.floors}
+                    </Text>
+                    <Paragraph margin={0} color="$muted" fontSize="$2">
+                      Estimado a partir del barometro (cambios de presion) -- solo cuenta mientras
+                      la app esta abierta.
                     </Paragraph>
                   </YStack>
                 )}

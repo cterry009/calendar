@@ -6,6 +6,7 @@ export type SyncEntityType =
   | 'focusTriggers'
   | 'fitnessEntries'
   | 'dailyStepCounts'
+  | 'dailyFloorsClimbed'
   | 'detoxPlan'
   | 'serotoninSession'
   | 'habits'

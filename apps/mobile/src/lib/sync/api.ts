@@ -14,6 +14,7 @@ export interface SyncBatchPayload {
   pomodoroSessions?: unknown[];
   fitnessEntries?: unknown[];
   dailyStepCounts?: unknown[];
+  dailyFloorsClimbed?: unknown[];
   blockListEntries?: unknown[];
 }
 

@@ -6,3 +6,4 @@ export * from './block-list.js';
 export * from './fitness.js';
 export * from './focus-trigger.js';
 export * from './daily-step-count.js';
+export * from './daily-floors-climbed.js';

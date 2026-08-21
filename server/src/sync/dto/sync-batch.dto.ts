@@ -394,6 +394,28 @@ export class StepCountSyncChangeDto {
   source?: FitnessSource;
 }
 
+// No `deleted` flag -- same reasoning as StepCountSyncChangeDto, a per-day aggregate that gets
+// corrected by a fresh sync, not removed via the UI.
+export class FloorsClimbedSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsDateString()
+  date!: string;
+
+  @IsInt()
+  @Min(0)
+  floors!: number;
+
+  @IsDateString()
+  updatedAt!: string;
+
+  @IsOptional()
+  @IsEnum(FitnessSource)
+  source?: FitnessSource;
+}
+
 export class DetoxPlanSyncChangeDto {
   @IsOptional()
   @IsString()
@@ -609,6 +631,12 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => StepCountSyncChangeDto)
   dailyStepCounts?: StepCountSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FloorsClimbedSyncChangeDto)
+  dailyFloorsClimbed?: FloorsClimbedSyncChangeDto[];
 
   @IsOptional()
   @IsArray()

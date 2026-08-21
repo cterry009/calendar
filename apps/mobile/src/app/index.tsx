@@ -62,25 +62,29 @@ export default function HomeScreen() {
             </Paragraph>
           </YStack>
 
+          {/* flexBasis 140 forces a 2-per-row wrap on any screen narrower than ~600dp (4 * 140
+              plus gaps never fits one line below that) -- a plain flex={1} 4-across row squeezed
+              each label into ~50dp on a real phone, truncating "Dashboard"/"Pomodoro" to a single
+              letter. */}
           <TutorialTarget id="home-nav">
-            <XStack gap="$3">
+            <XStack flexWrap="wrap" gap="$3">
               <Link href="/pomodoro" asChild>
-                <AppButton variant="ghost" flex={1}>
+                <AppButton variant="ghost" flexGrow={1} flexBasis={140}>
                   Pomodoro
                 </AppButton>
               </Link>
               <Link href="/fitness" asChild>
-                <AppButton variant="ghost" flex={1}>
+                <AppButton variant="ghost" flexGrow={1} flexBasis={140}>
                   Fitness
                 </AppButton>
               </Link>
               <Link href="/dashboard" asChild>
-                <AppButton variant="ghost" flex={1}>
+                <AppButton variant="ghost" flexGrow={1} flexBasis={140}>
                   Dashboard
                 </AppButton>
               </Link>
               <Link href="/blocklist" asChild>
-                <AppButton variant="ghost" flex={1}>
+                <AppButton variant="ghost" flexGrow={1} flexBasis={140}>
                   Bloqueo
                 </AppButton>
               </Link>

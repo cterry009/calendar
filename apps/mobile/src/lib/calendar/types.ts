@@ -1,6 +1,7 @@
 import type { TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
 import type { SyncBlockListRecord } from '../blocklist/types';
 import type { SyncFitnessRecord } from '../fitness/types';
+import type { SyncFloorsClimbedRecord } from '../floors/types';
 import type { SyncPomodoroRecord } from '../pomodoro/types';
 import type { SyncStepCountRecord } from '../steps/types';
 
@@ -47,6 +48,7 @@ export interface SyncSnapshot {
   pomodoroSessions: SyncPomodoroRecord[];
   fitnessEntries: SyncFitnessRecord[];
   dailyStepCounts: SyncStepCountRecord[];
+  dailyFloorsClimbed: SyncFloorsClimbedRecord[];
   blockListEntries: SyncBlockListRecord[];
   syncedAt: string;
 }

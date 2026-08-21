@@ -109,6 +109,7 @@ model User {
   focusTriggers      FocusTrigger[]
   fitnessEntries     FitnessEntry[]
   dailyStepCounts    DailyStepCount[]
+  dailyFloorsClimbed DailyFloorsClimbed[]
   analyticsSnapshots AnalyticsSnapshot[]
   detoxPlan          DetoxPlan?
   serotoninSession   SerotoninSession?
@@ -308,6 +309,24 @@ model DailyStepCount {
 
   @@unique([userId, date])
   @@map("daily_step_counts")
+}
+
+// One row per user per calendar day (task 10.8) -- same shape and merge reasoning as
+// DailyStepCount: a phone's barometer feeds a running daily total of floors climbed, merged
+// across devices via max(floors), not overwritten (see SyncService.applyFloorsClimbedChange).
+model DailyFloorsClimbed {
+  id        String        @id @default(cuid())
+  userId    String
+  date      DateTime
+  floors    Int
+  source    FitnessSource @default(DEVICE_SENSOR)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_floors_climbed")
 }
 
 // ─── Serotonin detox plan ────────────────────────────────────────────────────

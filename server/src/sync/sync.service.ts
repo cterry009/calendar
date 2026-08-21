@@ -6,6 +6,7 @@ import {
   BlockListSyncChangeDto,
   DetoxPlanSyncChangeDto,
   FitnessSyncChangeDto,
+  FloorsClimbedSyncChangeDto,
   FocusTriggerSyncChangeDto,
   HabitRecordSyncChangeDto,
   HabitSyncChangeDto,
@@ -35,6 +36,7 @@ export class SyncService {
       focusTriggers,
       fitnessEntries,
       dailyStepCounts,
+      dailyFloorsClimbed,
       detoxPlan,
       serotoninSession,
       habits,
@@ -50,6 +52,7 @@ export class SyncService {
       this.prisma.focusTrigger.findMany({ where: { userId } }),
       this.prisma.fitnessEntry.findMany({ where: { userId } }),
       this.prisma.dailyStepCount.findMany({ where: { userId } }),
+      this.prisma.dailyFloorsClimbed.findMany({ where: { userId } }),
       this.prisma.detoxPlan.findUnique({ where: { userId } }),
       this.prisma.serotoninSession.findUnique({ where: { userId } }),
       this.prisma.habit.findMany({ where: { userId, deletedAt: null } }),
@@ -65,6 +68,7 @@ export class SyncService {
       focusTriggers,
       fitnessEntries,
       dailyStepCounts,
+      dailyFloorsClimbed,
       habits,
       habitRecords,
       journalEntries,
@@ -176,6 +180,18 @@ export class SyncService {
         this.bucketResult(result, 'dailyStepCounts', outcome);
         if (outcome.status === 'applied') {
           changedEntities.add('dailyStepCounts');
+        }
+      }
+    }
+
+    if (dto.dailyFloorsClimbed?.length) {
+      result.applied.dailyFloorsClimbed = [];
+      result.conflicts.dailyFloorsClimbed = [];
+      for (const change of dto.dailyFloorsClimbed) {
+        const outcome = await this.applyFloorsClimbedChange(userId, change);
+        this.bucketResult(result, 'dailyFloorsClimbed', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('dailyFloorsClimbed');
         }
       }
     }
@@ -677,6 +693,38 @@ export class SyncService {
   private truncateToUtcDay(isoDate: string): Date {
     const date = new Date(isoDate);
     return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  }
+
+  // Same keyed-on-(userId, date) / max(floors)-merge reasoning as applyStepCountChange (task
+  // 10.8) -- a daily floors-climbed total is recomputed independently by each device, and the
+  // larger number is always the more complete one.
+  private async applyFloorsClimbedChange(
+    userId: string,
+    change: FloorsClimbedSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const date = this.truncateToUtcDay(change.date);
+    const key = change.id;
+
+    const existing = await this.prisma.dailyFloorsClimbed.findUnique({
+      where: { userId_date: { userId, date } },
+    });
+
+    if (existing && existing.floors >= change.floors) {
+      return { status: 'applied', clientKey: key, record: existing };
+    }
+
+    const data = {
+      date,
+      floors: change.floors,
+      source: change.source ?? 'DEVICE_SENSOR',
+      updatedAt: new Date(change.updatedAt),
+    };
+
+    const record = existing
+      ? await this.prisma.dailyFloorsClimbed.update({ where: { id: existing.id }, data })
+      : await this.prisma.dailyFloorsClimbed.create({ data: { ...data, userId } });
+
+    return { status: 'applied', clientKey: key, record };
   }
 
   // Opt-in per habit (Habit.linkedFitnessActivityType) rather than fuzzy-matching titles: a
