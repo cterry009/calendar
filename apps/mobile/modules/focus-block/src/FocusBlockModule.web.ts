@@ -17,6 +17,14 @@ class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModul
   openAccessibilitySettings(): void {
     throw new Error('El bloqueo real de apps solo esta disponible en Android.');
   }
+
+  isFullScreenIntentAllowed(): boolean {
+    return false;
+  }
+
+  openFullScreenIntentSettings(): void {
+    throw new Error('El bloqueo real de apps solo esta disponible en Android.');
+  }
 }
 
 export default registerWebModule(FocusBlockModule, 'FocusBlockModule');

@@ -16,3 +16,8 @@ android {
     abortOnError false
   }
 }
+
+dependencies {
+  // NotificationCompat/NotificationManagerCompat for the fullScreenIntent fix (task 6.7).
+  implementation "androidx.core:core:1.13.1"
+}

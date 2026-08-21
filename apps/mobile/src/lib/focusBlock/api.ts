@@ -23,3 +23,18 @@ export function openAccessibilitySettings(): void {
   }
   FocusBlockModule.openAccessibilitySettings();
 }
+
+// Task 6.7 fix's other real dependency (Android 14+ only -- see design.md decision 36/37): without
+// this, the AccessibilityService's fullScreenIntent notification silently never shows, the same
+// "blocked app disappears but no explanation ever appears" symptom the fix itself was for.
+export function isFullScreenIntentAllowed(): boolean {
+  if (Platform.OS !== 'android') return false;
+  return FocusBlockModule.isFullScreenIntentAllowed();
+}
+
+export function openFullScreenIntentSettings(): void {
+  if (Platform.OS !== 'android') {
+    throw new Error('El bloqueo real de apps solo esta disponible en Android.');
+  }
+  FocusBlockModule.openFullScreenIntentSettings();
+}

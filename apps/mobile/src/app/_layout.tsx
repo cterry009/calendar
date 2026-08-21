@@ -8,6 +8,7 @@ import { Platform } from 'react-native';
 import { SyncStatusBanner } from '../components/SyncStatusBanner';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { NotificationsProvider } from '../context/NotificationsContext';
+import { OnboardingProvider } from '../context/OnboardingContext';
 import { PomodoroProvider } from '../context/PomodoroContext';
 import { SyncProvider } from '../context/SyncContext';
 import { useFocusBlocking } from '../hooks/useFocusBlocking';
@@ -77,10 +78,12 @@ function RootNavigator() {
     <NotificationsProvider>
       <PomodoroProvider>
         <FocusBlockingBridge />
-        <YStack flex={1}>
-          <SyncStatusBanner />
-          {navigator}
-        </YStack>
+        <OnboardingProvider>
+          <YStack flex={1}>
+            <SyncStatusBanner />
+            {navigator}
+          </YStack>
+        </OnboardingProvider>
       </PomodoroProvider>
     </NotificationsProvider>
   );

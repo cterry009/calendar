@@ -32,7 +32,7 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#212e28' }}>
-      <YStack flex={1} padding="$6" justifyContent="center" gap="$5">
+      <YStack flex={1} width="100%" maxWidth={560} alignSelf="center" padding="$6" justifyContent="center" gap="$5">
         <YStack gap="$1">
           <Eyebrow>Calendar Productivity</Eyebrow>
           <H1 marginTop={0} marginBottom={0}>

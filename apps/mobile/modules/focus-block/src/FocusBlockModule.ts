@@ -5,6 +5,8 @@ declare class FocusBlockModule extends NativeModule<{}> implements FocusBlockNat
   setBlockingState(active: boolean, blockedPackages: string[]): void;
   isAccessibilityServiceEnabled(): boolean;
   openAccessibilitySettings(): void;
+  isFullScreenIntentAllowed(): boolean;
+  openFullScreenIntentSettings(): void;
 }
 
 export default requireNativeModule<FocusBlockModule>('FocusBlock');

@@ -1,0 +1,167 @@
+import { AppButton, AppCard, Text, XStack, YStack, palette } from '@calendar/ui';
+import { useEffect, useState } from 'react';
+import { Modal, Pressable, useWindowDimensions } from 'react-native';
+import Svg, { Mask, Rect } from 'react-native-svg';
+import { useOnboarding } from '../../context/OnboardingContext';
+import { measureTutorialTarget, type MeasuredRect } from '../../lib/onboarding/targetRegistry';
+import { TOURS } from '../../lib/onboarding/tours';
+
+const FIND_TARGET_TIMEOUT_MS = 700;
+const FIND_TARGET_INTERVAL_MS = 60;
+const SPOTLIGHT_PADDING = 8;
+const SPOTLIGHT_RADIUS = 14;
+const TOOLTIP_GAP = 16;
+const TOOLTIP_MARGIN = 16;
+
+/**
+ * Native port of apps/web's OnboardingTutorial.tsx spotlight engine. Same idea (dim everything
+ * except a highlighted cutout around the current step's target, with an anchored tooltip) but a
+ * different mechanism throughout: no DOM, so no `data-tutorial` attribute/querySelector/
+ * getBoundingClientRect/box-shadow-spread cutout trick/createPortal. Targets register themselves
+ * via TutorialTarget.tsx into targetRegistry.ts instead, measured with `measureInWindow`; the
+ * cutout is a real one (not just a bordered rectangle over a uniform dim layer) via an
+ * `react-native-svg` mask, already a direct dependency of this app; and top-level rendering
+ * (escaping wherever OnboardingProvider happens to sit in the tree) comes from RN's own `Modal`
+ * rather than a DOM portal.
+ *
+ * Deliberately not ported: web's `element.scrollIntoView()` before measuring, since RN has no
+ * generic equivalent without also threading a ScrollView ref through every screen. Each mobile
+ * tour's targets are picked to already be visible without scrolling, same "compact first slice"
+ * scope as everything else in this port -- a target that ends up off-screen skips via the same
+ * timeout path as a target that never mounts at all.
+ */
+export function OnboardingTutorial() {
+  const { activeTourId, stepIndex, nextStep, prevStep, closeTour } = useOnboarding();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const [rect, setRect] = useState<MeasuredRect | null>(null);
+
+  const tour = activeTourId ? TOURS[activeTourId] : null;
+  const step = tour ? tour.steps[stepIndex] : null;
+
+  useEffect(() => {
+    if (!step) {
+      setRect(null);
+      return;
+    }
+
+    setRect(null);
+    let cancelled = false;
+    let elapsed = 0;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    async function attempt() {
+      if (cancelled || !step) return;
+      const found = await measureTutorialTarget(step.target);
+      if (cancelled) return;
+      if (found) {
+        setRect(found);
+        return;
+      }
+      elapsed += FIND_TARGET_INTERVAL_MS;
+      if (elapsed >= FIND_TARGET_TIMEOUT_MS) {
+        // Target never registered (e.g. a conditional card that isn't rendered right now) --
+        // skip it instead of leaving the tour stuck on an invisible step.
+        nextStep();
+        return;
+      }
+      timeoutId = setTimeout(() => void attempt(), FIND_TARGET_INTERVAL_MS);
+    }
+
+    timeoutId = setTimeout(() => void attempt(), 0);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+    // nextStep intentionally omitted from deps: it changes identity with stepIndex, which would
+    // restart this effect on every successful step change (the effect's own setRect(null)+
+    // re-measure already runs from the `step` dependency).
+  }, [step]);
+
+  if (!tour || !step || !rect) {
+    return null;
+  }
+
+  const isFirst = stepIndex === 0;
+  const isLast = stepIndex === tour.steps.length - 1;
+
+  const spotlight = {
+    x: rect.x - SPOTLIGHT_PADDING,
+    y: rect.y - SPOTLIGHT_PADDING,
+    width: rect.width + SPOTLIGHT_PADDING * 2,
+    height: rect.height + SPOTLIGHT_PADDING * 2,
+  };
+
+  const roomBelow = windowHeight - (spotlight.y + spotlight.height);
+  const showBelow = roomBelow > 220 || spotlight.y < 220;
+  const tooltipTop = showBelow ? Math.min(spotlight.y + spotlight.height + TOOLTIP_GAP, windowHeight - 24) : undefined;
+  const tooltipBottom = showBelow ? undefined : windowHeight - spotlight.y + TOOLTIP_GAP;
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={closeTour} statusBarTranslucent>
+      <Pressable
+        onPress={closeTour}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        accessibilityLabel="Cerrar recorrido"
+      />
+
+      <Svg width={windowWidth} height={windowHeight} style={{ position: 'absolute', top: 0, left: 0 }} pointerEvents="none">
+        <Mask id="spotlight-mask">
+          <Rect x={0} y={0} width={windowWidth} height={windowHeight} fill="white" />
+          <Rect
+            x={spotlight.x}
+            y={spotlight.y}
+            width={spotlight.width}
+            height={spotlight.height}
+            rx={SPOTLIGHT_RADIUS}
+            ry={SPOTLIGHT_RADIUS}
+            fill="black"
+          />
+        </Mask>
+        <Rect x={0} y={0} width={windowWidth} height={windowHeight} fill="rgba(6, 12, 10, 0.8)" mask="url(#spotlight-mask)" />
+        <Rect
+          x={spotlight.x}
+          y={spotlight.y}
+          width={spotlight.width}
+          height={spotlight.height}
+          rx={SPOTLIGHT_RADIUS}
+          ry={SPOTLIGHT_RADIUS}
+          fill="none"
+          stroke={palette.accent}
+          strokeWidth={2}
+        />
+      </Svg>
+
+      <AppCard position="absolute" top={tooltipTop} bottom={tooltipBottom} left={TOOLTIP_MARGIN} right={TOOLTIP_MARGIN}>
+        <YStack gap="$3">
+          <XStack justifyContent="space-between" alignItems="center">
+            <Text color="$muted" fontSize="$1" textTransform="uppercase" letterSpacing={1}>
+              Paso {stepIndex + 1} de {tour.steps.length}
+            </Text>
+            <AppButton variant="ghost" paddingHorizontal="$2" onPress={closeTour}>
+              Cerrar
+            </AppButton>
+          </XStack>
+
+          <YStack gap="$1">
+            <Text fontWeight="700" fontSize="$5">
+              {step.title}
+            </Text>
+            <Text color="$muted" fontSize="$3">
+              {step.description}
+            </Text>
+          </YStack>
+
+          <XStack justifyContent="space-between" alignItems="center" gap="$2">
+            <AppButton variant="ghost" onPress={prevStep} disabled={isFirst}>
+              Anterior
+            </AppButton>
+            <AppButton variant="primary" onPress={nextStep}>
+              {isLast ? 'Finalizar' : 'Siguiente'}
+            </AppButton>
+          </XStack>
+        </YStack>
+      </AppCard>
+    </Modal>
+  );
+}

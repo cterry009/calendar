@@ -35,7 +35,7 @@ export interface FocusBlockingState {
  */
 export function useFocusBlocking(): FocusBlockingState {
   const { isBlocking: isPomodoroBlocking } = usePomodoro();
-  const { entries } = useBlockList();
+  const { entries, refetch: refetchBlockList } = useBlockList();
   const { registerRefetch } = useSync();
   const [schedules, setSchedules] = useState<SyncScheduleRecord[]>([]);
   const [now, setNow] = useState(() => new Date());
@@ -56,10 +56,22 @@ export function useFocusBlocking(): FocusBlockingState {
 
   useEffect(() => registerRefetch(refetchSchedules), [registerRefetch, refetchSchedules]);
 
+  // Also re-pulls the block list on the same timer -- real bug found on-device: this hook's own
+  // useBlockList() call is a separate instance from the one blocklist.tsx uses (every hook in this
+  // app independently pulls, see design.md), and useBlockList's cross-instance sync only fires on
+  // an offline-queue flush, never on a plain successful online mutation. Without this, adding an
+  // app to the block list while this hook was already mounted (i.e. any time after login) never
+  // reached the native side at all -- confirmed via /shared_prefs/focus_block_state.xml showing an
+  // empty blocked_packages set despite a real entry existing. Same "eventually consistent, not
+  // instant" trade-off as the work-hours check already made here, not a full fix for the general
+  // cross-hook staleness gap (that would need a broader SyncContext change, out of scope here).
   useEffect(() => {
-    const timerId = setInterval(() => setNow(new Date()), WORK_HOURS_CHECK_INTERVAL_MS);
+    const timerId = setInterval(() => {
+      setNow(new Date());
+      void refetchBlockList();
+    }, WORK_HOURS_CHECK_INTERVAL_MS);
     return () => clearInterval(timerId);
-  }, []);
+  }, [refetchBlockList]);
 
   const isWorkHoursActive = isNowWithinWorkSchedule(schedules, now);
   const isActive = isPomodoroBlocking || isWorkHoursActive;

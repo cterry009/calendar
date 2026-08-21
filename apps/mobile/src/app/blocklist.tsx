@@ -5,9 +5,16 @@ import { Platform, ScrollView } from 'react-native';
 import { Input } from 'tamagui';
 import { BlockListEntryRow } from '../components/blocklist/BlockListEntryRow';
 import { InstalledAppRow } from '../components/blocklist/InstalledAppRow';
+import { TutorialTarget } from '../components/onboarding/TutorialTarget';
+import { useOnboarding } from '../context/OnboardingContext';
 import { useBlockList } from '../hooks/useBlockList';
 import { useInstalledApps } from '../hooks/useInstalledApps';
-import { isAccessibilityServiceEnabled, openAccessibilitySettings } from '../lib/focusBlock/api';
+import {
+  isAccessibilityServiceEnabled,
+  isFullScreenIntentAllowed,
+  openAccessibilitySettings,
+  openFullScreenIntentSettings,
+} from '../lib/focusBlock/api';
 
 /**
  * Task 6.5. Two independent sections sharing one BlockListEntry list (packages/shared's unified
@@ -27,15 +34,18 @@ import { isAccessibilityServiceEnabled, openAccessibilitySettings } from '../lib
 export default function BlockListScreen() {
   const { entries, isLoading, isMutating, error, createEntry, deleteEntry } = useBlockList();
   const installedApps = useInstalledApps();
+  const { startTour } = useOnboarding();
   const [search, setSearch] = useState('');
   const [accessibilityEnabled, setAccessibilityEnabled] = useState(false);
+  const [fullScreenIntentAllowed, setFullScreenIntentAllowed] = useState(false);
 
-  // Re-checked every time this screen regains focus, not just on mount -- the only way to enable
-  // an AccessibilityService is the system Settings screen this same card links to
-  // (openAccessibilitySettings), so the user is expected to leave and come back.
+  // Re-checked every time this screen regains focus, not just on mount -- the only way to change
+  // either of these is a system Settings screen this same card links to, so the user is expected
+  // to leave and come back.
   useFocusEffect(
     useCallback(() => {
       setAccessibilityEnabled(isAccessibilityServiceEnabled());
+      setFullScreenIntentAllowed(isFullScreenIntentAllowed());
     }, []),
   );
 
@@ -79,11 +89,16 @@ export default function BlockListScreen() {
           headerShown: true,
           headerStyle: { backgroundColor: '#212e28' },
           headerTintColor: '#f2f7f4',
+          headerRight: () => (
+            <AppButton variant="ghost" paddingHorizontal="$2" onPress={() => startTour('blocklist')}>
+              ?
+            </AppButton>
+          ),
         }}
       />
 
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <YStack padding="$6" gap="$5">
+        <YStack width="100%" maxWidth={560} alignSelf="center" padding="$6" gap="$5">
           <YStack gap="$1">
             <Eyebrow>Bienestar</Eyebrow>
             <H1 marginTop={0} marginBottom={0}>
@@ -98,103 +113,121 @@ export default function BlockListScreen() {
           ) : null}
 
           {Platform.OS === 'android' ? (
+            <TutorialTarget id="blocklist-real">
+              <AppCard>
+                <YStack gap="$2">
+                  <H2 margin={0} fontSize="$5">
+                    Bloqueo real
+                  </H2>
+                  {accessibilityEnabled ? (
+                    <Text color="$accent" fontSize="$3">
+                      Activado -- las apps de esta lista se bloquean de verdad durante un enfoque.
+                    </Text>
+                  ) : (
+                    <YStack gap="$2">
+                      <Paragraph margin={0} color="$muted">
+                        Para que el bloqueo funcione de verdad (no solo como lista), activa el
+                        servicio de accesibilidad de esta app en Ajustes de Android.
+                      </Paragraph>
+                      <AppButton variant="primary" onPress={() => openAccessibilitySettings()}>
+                        Abrir Ajustes de accesibilidad
+                      </AppButton>
+                    </YStack>
+                  )}
+
+                  {accessibilityEnabled && !fullScreenIntentAllowed ? (
+                    <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor="$borderColor">
+                      <Paragraph margin={0} color="$muted">
+                        Falta un permiso mas: sin el, la app te manda de vuelta a inicio pero no te
+                        avisa por que. Activa las notificaciones de pantalla completa.
+                      </Paragraph>
+                      <AppButton variant="primary" onPress={() => openFullScreenIntentSettings()}>
+                        Abrir Ajustes de notificaciones
+                      </AppButton>
+                    </YStack>
+                  ) : null}
+                </YStack>
+              </AppCard>
+            </TutorialTarget>
+          ) : null}
+
+          <TutorialTarget id="blocklist-list">
             <AppCard>
-              <YStack gap="$2">
+              <YStack gap="$1">
                 <H2 margin={0} fontSize="$5">
-                  Bloqueo real
+                  Tu lista
                 </H2>
-                {accessibilityEnabled ? (
-                  <Text color="$accent" fontSize="$3">
-                    Activado -- las apps de esta lista se bloquean de verdad durante un enfoque.
-                  </Text>
+                {isLoading ? (
+                  <Paragraph margin={0} color="$muted">
+                    Cargando...
+                  </Paragraph>
+                ) : entries.length === 0 ? (
+                  <Paragraph margin={0} color="$muted">
+                    Todavia no agregaste nada a la lista de bloqueo.
+                  </Paragraph>
                 ) : (
-                  <YStack gap="$2">
-                    <Paragraph margin={0} color="$muted">
-                      Para que el bloqueo funcione de verdad (no solo como lista), activa el
-                      servicio de accesibilidad de esta app en Ajustes de Android.
-                    </Paragraph>
-                    <AppButton variant="primary" onPress={() => openAccessibilitySettings()}>
-                      Abrir Ajustes de accesibilidad
-                    </AppButton>
+                  <YStack>
+                    {entries.map((entry) => (
+                      <BlockListEntryRow key={entry.id} entry={entry} isBusy={isMutating} onDelete={() => void deleteEntry(entry.id)} />
+                    ))}
                   </YStack>
                 )}
               </YStack>
             </AppCard>
-          ) : null}
+          </TutorialTarget>
 
-          <AppCard>
-            <YStack gap="$1">
-              <H2 margin={0} fontSize="$5">
-                Tu lista
-              </H2>
-              {isLoading ? (
-                <Paragraph margin={0} color="$muted">
-                  Cargando...
-                </Paragraph>
-              ) : entries.length === 0 ? (
-                <Paragraph margin={0} color="$muted">
-                  Todavia no agregaste nada a la lista de bloqueo.
-                </Paragraph>
-              ) : (
-                <YStack>
-                  {entries.map((entry) => (
-                    <BlockListEntryRow key={entry.id} entry={entry} isBusy={isMutating} onDelete={() => void deleteEntry(entry.id)} />
-                  ))}
-                </YStack>
-              )}
-            </YStack>
-          </AppCard>
+          <TutorialTarget id="blocklist-apps">
+            <AppCard>
+              <YStack gap="$3">
+                <H2 margin={0} fontSize="$5">
+                  Apps instaladas
+                </H2>
 
-          <AppCard>
-            <YStack gap="$3">
-              <H2 margin={0} fontSize="$5">
-                Apps instaladas
-              </H2>
-
-              {!installedApps.isSupported ? (
-                <Paragraph margin={0} color="$muted">
-                  Esta funcion lee la lista real de apps instaladas del sistema operativo, algo que
-                  un navegador no puede hacer -- solo esta disponible en Android, compilando un dev
-                  client (no funciona en Expo Go ni en esta vista previa web).
-                </Paragraph>
-              ) : !installedApps.isLoaded ? (
-                <YStack gap="$2">
+                {!installedApps.isSupported ? (
                   <Paragraph margin={0} color="$muted">
-                    Carga la lista de apps instaladas en este dispositivo para elegir cuales bloquear.
+                    Esta funcion lee la lista real de apps instaladas del sistema operativo, algo que
+                    un navegador no puede hacer -- solo esta disponible en Android, compilando un dev
+                    client (no funciona en Expo Go ni en esta vista previa web).
                   </Paragraph>
-                  <AppButton variant="primary" onPress={() => void installedApps.load()} disabled={installedApps.isLoading}>
-                    {installedApps.isLoading ? 'Cargando...' : 'Cargar apps instaladas'}
-                  </AppButton>
-                  {installedApps.error ? (
-                    <Text color="$danger" fontSize="$2">
-                      {installedApps.error}
-                    </Text>
-                  ) : null}
-                </YStack>
-              ) : (
-                <YStack gap="$3">
-                  <Input placeholder="Buscar app..." value={search} onChangeText={setSearch} />
-                  {filteredApps.length === 0 ? (
+                ) : !installedApps.isLoaded ? (
+                  <YStack gap="$2">
                     <Paragraph margin={0} color="$muted">
-                      No se encontraron apps.
+                      Carga la lista de apps instaladas en este dispositivo para elegir cuales bloquear.
                     </Paragraph>
-                  ) : (
-                    <YStack>
-                      {filteredApps.map((app) => (
-                        <InstalledAppRow
-                          key={app.packageName}
-                          app={app}
-                          isBlocked={blockedPackageNames.has(app.packageName)}
-                          isBusy={isMutating}
-                          onToggle={() => toggleApp(app.packageName, app.label)}
-                        />
-                      ))}
-                    </YStack>
-                  )}
-                </YStack>
-              )}
-            </YStack>
-          </AppCard>
+                    <AppButton variant="primary" onPress={() => void installedApps.load()} disabled={installedApps.isLoading}>
+                      {installedApps.isLoading ? 'Cargando...' : 'Cargar apps instaladas'}
+                    </AppButton>
+                    {installedApps.error ? (
+                      <Text color="$danger" fontSize="$2">
+                        {installedApps.error}
+                      </Text>
+                    ) : null}
+                  </YStack>
+                ) : (
+                  <YStack gap="$3">
+                    <Input placeholder="Buscar app..." value={search} onChangeText={setSearch} />
+                    {filteredApps.length === 0 ? (
+                      <Paragraph margin={0} color="$muted">
+                        No se encontraron apps.
+                      </Paragraph>
+                    ) : (
+                      <YStack>
+                        {filteredApps.map((app) => (
+                          <InstalledAppRow
+                            key={app.packageName}
+                            app={app}
+                            isBlocked={blockedPackageNames.has(app.packageName)}
+                            isBusy={isMutating}
+                            onToggle={() => toggleApp(app.packageName, app.label)}
+                          />
+                        ))}
+                      </YStack>
+                    )}
+                  </YStack>
+                )}
+              </YStack>
+            </AppCard>
+          </TutorialTarget>
         </YStack>
       </ScrollView>
     </YStack>

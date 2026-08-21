@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { FitnessForm } from '../components/fitness/FitnessForm';
 import { FitnessItem } from '../components/fitness/FitnessItem';
+import { TutorialTarget } from '../components/onboarding/TutorialTarget';
+import { useOnboarding } from '../context/OnboardingContext';
 import { useFitness } from '../hooks/useFitness';
 import { buildDailySummary } from '../lib/fitness/summary';
 
@@ -16,6 +18,7 @@ import { buildDailySummary } from '../lib/fitness/summary';
 export default function FitnessScreen() {
   const { entries, isLoading, isMutating, error, createEntry, deleteEntry } = useFitness();
   const [showForm, setShowForm] = useState(false);
+  const { startTour } = useOnboarding();
 
   const todaySummary = useMemo(() => buildDailySummary(entries, new Date()), [entries]);
 
@@ -27,11 +30,16 @@ export default function FitnessScreen() {
           headerShown: true,
           headerStyle: { backgroundColor: '#212e28' },
           headerTintColor: '#f2f7f4',
+          headerRight: () => (
+            <AppButton variant="ghost" paddingHorizontal="$2" onPress={() => startTour('fitness')}>
+              ?
+            </AppButton>
+          ),
         }}
       />
 
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <YStack padding="$6" gap="$5">
+        <YStack width="100%" maxWidth={560} alignSelf="center" padding="$6" gap="$5">
           <YStack gap="$1">
             <Eyebrow>Bienestar</Eyebrow>
             <H1 marginTop={0} marginBottom={0}>
@@ -45,14 +53,16 @@ export default function FitnessScreen() {
             </Text>
           ) : null}
 
-          <AppCard>
-            <YStack gap="$2">
-              <Text fontWeight="700">Hoy</Text>
-              <Paragraph margin={0} color="$muted">
-                {todaySummary.totalMinutes} min en {todaySummary.sessionCount} sesion(es).
-              </Paragraph>
-            </YStack>
-          </AppCard>
+          <TutorialTarget id="fitness-summary">
+            <AppCard>
+              <YStack gap="$2">
+                <Text fontWeight="700">Hoy</Text>
+                <Paragraph margin={0} color="$muted">
+                  {todaySummary.totalMinutes} min en {todaySummary.sessionCount} sesion(es).
+                </Paragraph>
+              </YStack>
+            </AppCard>
+          </TutorialTarget>
 
           <AppButton variant={showForm ? 'ghost' : 'primary'} onPress={() => setShowForm((value) => !value)}>
             {showForm ? 'Cancelar' : 'Nuevo registro'}
@@ -69,28 +79,30 @@ export default function FitnessScreen() {
             />
           ) : null}
 
-          <AppCard>
-            <YStack gap="$1">
-              <H2 margin={0} fontSize="$5">
-                Registros
-              </H2>
-              {isLoading ? (
-                <Paragraph margin={0} color="$muted">
-                  Cargando...
-                </Paragraph>
-              ) : entries.length === 0 ? (
-                <Paragraph margin={0} color="$muted">
-                  Todavia no hay registros de fitness.
-                </Paragraph>
-              ) : (
-                <YStack>
-                  {entries.map((entry) => (
-                    <FitnessItem key={entry.id} entry={entry} isBusy={isMutating} onDelete={() => void deleteEntry(entry.id)} />
-                  ))}
-                </YStack>
-              )}
-            </YStack>
-          </AppCard>
+          <TutorialTarget id="fitness-list">
+            <AppCard>
+              <YStack gap="$1">
+                <H2 margin={0} fontSize="$5">
+                  Registros
+                </H2>
+                {isLoading ? (
+                  <Paragraph margin={0} color="$muted">
+                    Cargando...
+                  </Paragraph>
+                ) : entries.length === 0 ? (
+                  <Paragraph margin={0} color="$muted">
+                    Todavia no hay registros de fitness.
+                  </Paragraph>
+                ) : (
+                  <YStack>
+                    {entries.map((entry) => (
+                      <FitnessItem key={entry.id} entry={entry} isBusy={isMutating} onDelete={() => void deleteEntry(entry.id)} />
+                    ))}
+                  </YStack>
+                )}
+              </YStack>
+            </AppCard>
+          </TutorialTarget>
         </YStack>
       </ScrollView>
     </YStack>

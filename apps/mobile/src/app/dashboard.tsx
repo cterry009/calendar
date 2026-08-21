@@ -1,7 +1,9 @@
-import { AppCard, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
+import { AppButton, AppCard, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Stack as RouterStack } from 'expo-router';
 import { ScrollView } from 'react-native';
 import { MetricCard } from '../components/dashboard/MetricCard';
+import { TutorialTarget } from '../components/onboarding/TutorialTarget';
+import { useOnboarding } from '../context/OnboardingContext';
 import { useDashboard } from '../hooks/useDashboard';
 
 const DIFFICULTY_LABELS = { EASY: 'Faciles', MEDIUM: 'Medias', HARD: 'Dificiles' } as const;
@@ -24,6 +26,7 @@ function translateTendency(tendency: 'underestimate' | 'overestimate' | 'balance
  */
 export default function DashboardScreen() {
   const { metrics, isLoading, error } = useDashboard();
+  const { startTour } = useOnboarding();
 
   return (
     <YStack flex={1} backgroundColor="$background">
@@ -33,11 +36,16 @@ export default function DashboardScreen() {
           headerShown: true,
           headerStyle: { backgroundColor: '#212e28' },
           headerTintColor: '#f2f7f4',
+          headerRight: () => (
+            <AppButton variant="ghost" paddingHorizontal="$2" onPress={() => startTour('dashboard')}>
+              ?
+            </AppButton>
+          ),
         }}
       />
 
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <YStack padding="$6" gap="$5">
+        <YStack width="100%" maxWidth={560} alignSelf="center" padding="$6" gap="$5">
           {error ? (
             <Text color="$danger" fontSize="$3">
               {error}
@@ -54,23 +62,25 @@ export default function DashboardScreen() {
             </AppCard>
           ) : (
             <>
-              <XStack gap="$3" flexWrap="wrap">
-                <MetricCard
-                  title="Tareas completadas (semana)"
-                  value={String(metrics.tasksCompleted.current)}
-                  subtitle={`${metrics.tasksCompleted.delta >= 0 ? '+' : ''}${metrics.tasksCompleted.delta} vs semana pasada`}
-                />
-                <MetricCard
-                  title="Pomodoros completados"
-                  value={String(metrics.pomodorosCompleted.current)}
-                  subtitle={`${metrics.pomodorosCompleted.delta >= 0 ? '+' : ''}${metrics.pomodorosCompleted.delta} vs semana pasada`}
-                />
-                <MetricCard
-                  title="Horas de enfoque"
-                  value={String(metrics.focusHours.current)}
-                  subtitle={`${metrics.focusHours.delta >= 0 ? '+' : ''}${metrics.focusHours.delta} vs semana pasada`}
-                />
-              </XStack>
+              <TutorialTarget id="dashboard-metrics">
+                <XStack gap="$3" flexWrap="wrap">
+                  <MetricCard
+                    title="Tareas completadas (semana)"
+                    value={String(metrics.tasksCompleted.current)}
+                    subtitle={`${metrics.tasksCompleted.delta >= 0 ? '+' : ''}${metrics.tasksCompleted.delta} vs semana pasada`}
+                  />
+                  <MetricCard
+                    title="Pomodoros completados"
+                    value={String(metrics.pomodorosCompleted.current)}
+                    subtitle={`${metrics.pomodorosCompleted.delta >= 0 ? '+' : ''}${metrics.pomodorosCompleted.delta} vs semana pasada`}
+                  />
+                  <MetricCard
+                    title="Horas de enfoque"
+                    value={String(metrics.focusHours.current)}
+                    subtitle={`${metrics.focusHours.delta >= 0 ? '+' : ''}${metrics.focusHours.delta} vs semana pasada`}
+                  />
+                </XStack>
+              </TutorialTarget>
 
               <AppCard>
                 <YStack gap="$4">
@@ -123,29 +133,31 @@ export default function DashboardScreen() {
                 </YStack>
               </AppCard>
 
-              <AppCard>
-                <YStack gap="$4">
-                  <H2 margin={0} fontSize="$6">
-                    Enfoque por dia (14 dias)
-                  </H2>
-                  <XStack alignItems="flex-end" gap="$1" height={100}>
-                    {metrics.focusByDay.map((point) => {
-                      const maxHours = Math.max(1, ...metrics.focusByDay.map((entry) => entry.focusHours));
-                      const heightPct = Math.max(4, (point.focusHours / maxHours) * 100);
-                      return (
-                        <YStack key={point.date} flex={1} alignItems="center" gap="$1">
-                          <YStack width="100%" height={80} justifyContent="flex-end">
-                            <YStack width="100%" height={`${heightPct}%`} backgroundColor="$accent" borderRadius={4} />
+              <TutorialTarget id="dashboard-focus-chart">
+                <AppCard>
+                  <YStack gap="$4">
+                    <H2 margin={0} fontSize="$6">
+                      Enfoque por dia (14 dias)
+                    </H2>
+                    <XStack alignItems="flex-end" gap="$1" height={100}>
+                      {metrics.focusByDay.map((point) => {
+                        const maxHours = Math.max(1, ...metrics.focusByDay.map((entry) => entry.focusHours));
+                        const heightPct = Math.max(4, (point.focusHours / maxHours) * 100);
+                        return (
+                          <YStack key={point.date} flex={1} alignItems="center" gap="$1">
+                            <YStack width="100%" height={80} justifyContent="flex-end">
+                              <YStack width="100%" height={`${heightPct}%`} backgroundColor="$accent" borderRadius={4} />
+                            </YStack>
+                            <Text fontSize={9} color="$muted">
+                              {point.label.slice(0, 2)}
+                            </Text>
                           </YStack>
-                          <Text fontSize={9} color="$muted">
-                            {point.label.slice(0, 2)}
-                          </Text>
-                        </YStack>
-                      );
-                    })}
-                  </XStack>
-                </YStack>
-              </AppCard>
+                        );
+                      })}
+                    </XStack>
+                  </YStack>
+                </AppCard>
+              </TutorialTarget>
 
               <AppCard>
                 <YStack gap="$3">

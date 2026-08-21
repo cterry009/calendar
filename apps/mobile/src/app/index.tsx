@@ -6,7 +6,9 @@ import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScheduleRow } from '../components/calendar/ScheduleRow';
 import { TaskRow } from '../components/calendar/TaskRow';
+import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useAuth } from '../context/AuthContext';
+import { useOnboarding } from '../context/OnboardingContext';
 import { useCalendarData } from '../hooks/useCalendarData';
 import { isSameDay } from '../lib/calendar/utils';
 
@@ -21,6 +23,7 @@ const TODAY_LABEL = new Date().toLocaleDateString('es-ES', { weekday: 'long', da
  */
 export default function HomeScreen() {
   const { user, logout } = useAuth();
+  const { startTour } = useOnboarding();
   const { tasks, schedules, pomodoroSessions, isLoading, isMutating, error, completeTask } = useCalendarData();
 
   const today = useMemo(() => new Date(), []);
@@ -43,9 +46,14 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#212e28' }}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <YStack flex={1} padding="$6" gap="$5">
+        <YStack flex={1} width="100%" maxWidth={560} alignSelf="center" padding="$6" gap="$5">
           <YStack gap="$1">
-            <Eyebrow>Calendar Productivity</Eyebrow>
+            <XStack justifyContent="space-between" alignItems="flex-start">
+              <Eyebrow>Calendar Productivity</Eyebrow>
+              <AppButton variant="ghost" paddingHorizontal="$2" onPress={() => startTour('global')}>
+                ?
+              </AppButton>
+            </XStack>
             <H1 marginTop={0} marginBottom={0} textTransform="capitalize">
               {TODAY_LABEL}
             </H1>
@@ -54,28 +62,30 @@ export default function HomeScreen() {
             </Paragraph>
           </YStack>
 
-          <XStack gap="$3">
-            <Link href="/pomodoro" asChild>
-              <AppButton variant="ghost" flex={1}>
-                Pomodoro
-              </AppButton>
-            </Link>
-            <Link href="/fitness" asChild>
-              <AppButton variant="ghost" flex={1}>
-                Fitness
-              </AppButton>
-            </Link>
-            <Link href="/dashboard" asChild>
-              <AppButton variant="ghost" flex={1}>
-                Dashboard
-              </AppButton>
-            </Link>
-            <Link href="/blocklist" asChild>
-              <AppButton variant="ghost" flex={1}>
-                Bloqueo
-              </AppButton>
-            </Link>
-          </XStack>
+          <TutorialTarget id="home-nav">
+            <XStack gap="$3">
+              <Link href="/pomodoro" asChild>
+                <AppButton variant="ghost" flex={1}>
+                  Pomodoro
+                </AppButton>
+              </Link>
+              <Link href="/fitness" asChild>
+                <AppButton variant="ghost" flex={1}>
+                  Fitness
+                </AppButton>
+              </Link>
+              <Link href="/dashboard" asChild>
+                <AppButton variant="ghost" flex={1}>
+                  Dashboard
+                </AppButton>
+              </Link>
+              <Link href="/blocklist" asChild>
+                <AppButton variant="ghost" flex={1}>
+                  Bloqueo
+                </AppButton>
+              </Link>
+            </XStack>
+          </TutorialTarget>
 
           {error ? (
             <Text color="$danger" fontSize="$3">
@@ -83,60 +93,66 @@ export default function HomeScreen() {
             </Text>
           ) : null}
 
-          <AppCard>
-            <YStack gap="$3">
-              <H2 margin={0} fontSize="$5">
-                Tareas de hoy
-              </H2>
-              {isLoading ? (
-                <Paragraph margin={0} color="$muted">
-                  Cargando...
-                </Paragraph>
-              ) : todayTasks.length === 0 ? (
-                <Paragraph margin={0} color="$muted">
-                  No hay tareas programadas para hoy.
-                </Paragraph>
-              ) : (
-                <YStack>
-                  {todayTasks.map((task) => (
-                    <TaskRow key={task.id} task={task} isBusy={isMutating} onComplete={() => void completeTask(task)} />
-                  ))}
-                </YStack>
-              )}
-            </YStack>
-          </AppCard>
+          <TutorialTarget id="home-tasks">
+            <AppCard>
+              <YStack gap="$3">
+                <H2 margin={0} fontSize="$5">
+                  Tareas de hoy
+                </H2>
+                {isLoading ? (
+                  <Paragraph margin={0} color="$muted">
+                    Cargando...
+                  </Paragraph>
+                ) : todayTasks.length === 0 ? (
+                  <Paragraph margin={0} color="$muted">
+                    No hay tareas programadas para hoy.
+                  </Paragraph>
+                ) : (
+                  <YStack>
+                    {todayTasks.map((task) => (
+                      <TaskRow key={task.id} task={task} isBusy={isMutating} onComplete={() => void completeTask(task)} />
+                    ))}
+                  </YStack>
+                )}
+              </YStack>
+            </AppCard>
+          </TutorialTarget>
 
-          <AppCard>
-            <YStack gap="$3">
-              <H2 margin={0} fontSize="$5">
-                Horario de hoy
-              </H2>
-              {isLoading ? (
-                <Paragraph margin={0} color="$muted">
-                  Cargando...
-                </Paragraph>
-              ) : todaySchedules.length === 0 ? (
-                <Paragraph margin={0} color="$muted">
-                  No hay horarios configurados para hoy.
-                </Paragraph>
-              ) : (
-                <YStack>
-                  {todaySchedules.map((schedule) => (
-                    <ScheduleRow key={schedule.id} schedule={schedule} />
-                  ))}
-                </YStack>
-              )}
-            </YStack>
-          </AppCard>
+          <TutorialTarget id="home-schedule">
+            <AppCard>
+              <YStack gap="$3">
+                <H2 margin={0} fontSize="$5">
+                  Horario de hoy
+                </H2>
+                {isLoading ? (
+                  <Paragraph margin={0} color="$muted">
+                    Cargando...
+                  </Paragraph>
+                ) : todaySchedules.length === 0 ? (
+                  <Paragraph margin={0} color="$muted">
+                    No hay horarios configurados para hoy.
+                  </Paragraph>
+                ) : (
+                  <YStack>
+                    {todaySchedules.map((schedule) => (
+                      <ScheduleRow key={schedule.id} schedule={schedule} />
+                    ))}
+                  </YStack>
+                )}
+              </YStack>
+            </AppCard>
+          </TutorialTarget>
 
-          <AppCard>
-            <YStack gap="$3">
-              <Text fontWeight="700">Racha de pomodoros</Text>
-              <Paragraph margin={0} color="$muted">
-                {streak.currentStreak} dias seguidos.
-              </Paragraph>
-            </YStack>
-          </AppCard>
+          <TutorialTarget id="home-streak">
+            <AppCard>
+              <YStack gap="$3">
+                <Text fontWeight="700">Racha de pomodoros</Text>
+                <Paragraph margin={0} color="$muted">
+                  {streak.currentStreak} dias seguidos.
+                </Paragraph>
+              </YStack>
+            </AppCard>
+          </TutorialTarget>
 
           <AppButton variant="ghost" onPress={() => void logout()}>
             Salir

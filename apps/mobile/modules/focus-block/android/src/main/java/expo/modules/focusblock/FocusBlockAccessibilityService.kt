@@ -1,14 +1,7 @@
 package expo.modules.focusblock
 
 import android.accessibilityservice.AccessibilityService
-import android.content.Intent
-import android.net.Uri
 import android.view.accessibility.AccessibilityEvent
-
-// Deep-link scheme registered in apps/mobile/app.json ("scheme": "calendarproductivity") --
-// expo-router picks this up automatically and routes it to app/blocked.tsx (task 6.7), no extra
-// linking config needed beyond the route file existing.
-private const val DEEP_LINK_SCHEME = "calendarproductivity"
 
 /**
  * Task 6.6. Declared + configured via android/src/main/AndroidManifest.xml and
@@ -23,6 +16,12 @@ private const val DEEP_LINK_SCHEME = "calendarproductivity"
  * as the last time the RN app was alive to write it; if the app process is fully killed, this
  * service can keep running (Android services can outlive their app's foreground UI) but will act
  * on stale state until the app reopens and useFocusBlocking.ts pushes a fresh value.
+ *
+ * Originally called `startActivity()` directly after the home-kick to reach /blocked (task 6.7) --
+ * confirmed on a real device that this never actually surfaces the app, silently dropped by
+ * Android's background-activity-launch restrictions (a Service reacting to a system event isn't a
+ * "direct foreground user interaction"). Replaced with a `fullScreenIntent` notification
+ * (FocusBlockNotifications.kt), the Android-sanctioned way around exactly this restriction.
  */
 class FocusBlockAccessibilityService : AccessibilityService() {
 
@@ -36,11 +35,7 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     if (foregroundPackage !in FocusBlockPrefs.blockedPackages(this)) return
 
     performGlobalAction(GLOBAL_ACTION_HOME)
-
-    startActivity(
-      Intent(Intent.ACTION_VIEW, Uri.parse("$DEEP_LINK_SCHEME://blocked?package=$foregroundPackage"))
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    )
+    FocusBlockNotifications.showBlockedAlert(this, foregroundPackage)
   }
 
   override fun onInterrupt() {
