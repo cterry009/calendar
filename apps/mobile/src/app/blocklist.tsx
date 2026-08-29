@@ -1,20 +1,25 @@
-import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, YStack } from '@calendar/ui';
+import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Platform, ScrollView } from 'react-native';
+import { Platform } from 'react-native';
 import { Input } from 'tamagui';
 import { BlockListEntryRow } from '../components/blocklist/BlockListEntryRow';
 import { InstalledAppRow } from '../components/blocklist/InstalledAppRow';
+import { TutorialScrollView } from '../components/onboarding/TutorialScrollView';
 import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useOnboarding } from '../context/OnboardingContext';
 import { useBlockList } from '../hooks/useBlockList';
 import { useInstalledApps } from '../hooks/useInstalledApps';
+import { useNightBlockEnabled } from '../hooks/useNightBlockEnabled';
 import {
   isAccessibilityServiceEnabled,
   isFullScreenIntentAllowed,
+  isIgnoringBatteryOptimizations,
   openAccessibilitySettings,
+  openBatteryOptimizationSettings,
   openFullScreenIntentSettings,
 } from '../lib/focusBlock/api';
+import type { BlockListScope } from '@calendar/shared';
 
 /**
  * Task 6.5. Two independent sections sharing one BlockListEntry list (packages/shared's unified
@@ -31,27 +36,41 @@ import {
  * web" fallback renders instead of crashing, and the existing-entries list/delete flow (which
  * doesn't touch the native module at all) round-trips through the real sync API.
  */
+const SCOPE_TABS: { scope: BlockListScope; label: string }[] = [
+  { scope: 'FOCUS', label: 'Enfoque' },
+  { scope: 'NIGHT', label: 'Nocturna (22:30-8am)' },
+];
+
 export default function BlockListScreen() {
   const { entries, isLoading, isMutating, error, createEntry, deleteEntry } = useBlockList();
   const installedApps = useInstalledApps();
   const { startTour } = useOnboarding();
   const [search, setSearch] = useState('');
+  const [activeScope, setActiveScope] = useState<BlockListScope>('FOCUS');
+  const [nightEnabled, setNightEnabled] = useNightBlockEnabled();
   const [accessibilityEnabled, setAccessibilityEnabled] = useState(false);
   const [fullScreenIntentAllowed, setFullScreenIntentAllowed] = useState(false);
+  const [batteryOptimizationIgnored, setBatteryOptimizationIgnored] = useState(false);
 
   // Re-checked every time this screen regains focus, not just on mount -- the only way to change
-  // either of these is a system Settings screen this same card links to, so the user is expected
-  // to leave and come back.
+  // any of these is a system Settings screen this same card links to, so the user is expected to
+  // leave and come back.
   useFocusEffect(
     useCallback(() => {
       setAccessibilityEnabled(isAccessibilityServiceEnabled());
       setFullScreenIntentAllowed(isFullScreenIntentAllowed());
+      setBatteryOptimizationIgnored(isIgnoringBatteryOptimizations());
     }, []),
   );
 
+  // Task 11.8/11.9: FOCUS (pomodoro/work-hours) and NIGHT (automatic 22:30-8am window) are
+  // deliberately separate lists, not two views filtered from one -- the tab above picks which one
+  // "Tu lista" and the installed-apps picker below operate on.
+  const scopedEntries = useMemo(() => entries.filter((entry) => entry.scope === activeScope), [entries, activeScope]);
+
   const androidEntries = useMemo(
-    () => entries.filter((entry) => entry.kind === 'MOBILE_APP' && entry.platform === 'ANDROID'),
-    [entries],
+    () => scopedEntries.filter((entry) => entry.kind === 'MOBILE_APP' && entry.platform === 'ANDROID'),
+    [scopedEntries],
   );
 
   const blockedPackageNames = useMemo(() => new Set(androidEntries.map((entry) => entry.identifier)), [androidEntries]);
@@ -78,6 +97,7 @@ export default function BlockListScreen() {
       highDopamine: false,
       enabled: true,
       hardMode: false,
+      scope: activeScope,
     });
   }
 
@@ -97,7 +117,7 @@ export default function BlockListScreen() {
         }}
       />
 
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <TutorialScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <YStack width="100%" maxWidth={560} alignSelf="center" padding="$6" gap="$5">
           <YStack gap="$1">
             <Eyebrow>Bienestar</Eyebrow>
@@ -110,6 +130,43 @@ export default function BlockListScreen() {
             <Text color="$danger" fontSize="$3">
               {error}
             </Text>
+          ) : null}
+
+          <TutorialTarget id="blocklist-scope-tabs">
+            <XStack gap="$2" flexWrap="wrap">
+              {SCOPE_TABS.map((tab) => (
+                <AppButton
+                  key={tab.scope}
+                  variant={activeScope === tab.scope ? 'primary' : 'ghost'}
+                  onPress={() => setActiveScope(tab.scope)}
+                >
+                  {tab.label}
+                </AppButton>
+              ))}
+            </XStack>
+          </TutorialTarget>
+
+          {activeScope === 'NIGHT' ? (
+            <AppCard>
+              <YStack gap="$2">
+                <H2 margin={0} fontSize="$5">
+                  Bloqueo nocturno
+                </H2>
+                <Paragraph margin={0} color="$muted">
+                  Bloquea automaticamente las apps de esta lista todas las noches de 22:30 a 8:00.
+                  Si te despertas antes de las 7, siguen bloqueadas hasta que salgas a trotar (si la
+                  deteccion de actividad esta activa) o hasta las 8:00, lo que ocurra primero.
+                </Paragraph>
+                <XStack gap="$2">
+                  <AppButton variant={nightEnabled ? 'primary' : 'ghost'} onPress={() => setNightEnabled(true)}>
+                    Activado
+                  </AppButton>
+                  <AppButton variant={!nightEnabled ? 'primary' : 'ghost'} onPress={() => setNightEnabled(false)}>
+                    Desactivado
+                  </AppButton>
+                </XStack>
+              </YStack>
+            </AppCard>
           ) : null}
 
           {Platform.OS === 'android' ? (
@@ -146,6 +203,20 @@ export default function BlockListScreen() {
                       </AppButton>
                     </YStack>
                   ) : null}
+
+                  {!batteryOptimizationIgnored ? (
+                    <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor="$borderColor">
+                      <Paragraph margin={0} color="$muted">
+                        Ultimo paso recomendado: Android puede cerrar el servicio de bloqueo para
+                        ahorrar bateria, sobre todo de noche. Excluir esta app de la optimizacion
+                        de bateria reduce ese riesgo, aunque no lo elimina del todo -- es un mejor
+                        esfuerzo, no una garantia.
+                      </Paragraph>
+                      <AppButton variant="primary" onPress={() => openBatteryOptimizationSettings()}>
+                        Abrir Ajustes de bateria
+                      </AppButton>
+                    </YStack>
+                  ) : null}
                 </YStack>
               </AppCard>
             </TutorialTarget>
@@ -161,13 +232,13 @@ export default function BlockListScreen() {
                   <Paragraph margin={0} color="$muted">
                     Cargando...
                   </Paragraph>
-                ) : entries.length === 0 ? (
+                ) : scopedEntries.length === 0 ? (
                   <Paragraph margin={0} color="$muted">
-                    Todavia no agregaste nada a la lista de bloqueo.
+                    Todavia no agregaste nada a esta lista.
                   </Paragraph>
                 ) : (
                   <YStack>
-                    {entries.map((entry) => (
+                    {scopedEntries.map((entry) => (
                       <BlockListEntryRow key={entry.id} entry={entry} isBusy={isMutating} onDelete={() => void deleteEntry(entry.id)} />
                     ))}
                   </YStack>
@@ -229,7 +300,7 @@ export default function BlockListScreen() {
             </AppCard>
           </TutorialTarget>
         </YStack>
-      </ScrollView>
+      </TutorialScrollView>
     </YStack>
   );
 }

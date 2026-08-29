@@ -79,7 +79,13 @@ export function useFocusBlocking(): FocusBlockingState {
   const blockedPackageNames = useMemo(
     () =>
       entries
-        .filter((entry) => entry.enabled && entry.kind === 'MOBILE_APP' && entry.platform === 'ANDROID')
+        // Task 11.8: scoped to FOCUS explicitly -- NIGHT-scope entries (task 11.9) drive a
+        // separate trigger (task 11.10/11.11, evaluated natively) and must never be blocked
+        // during the day just because they're enabled here too.
+        .filter(
+          (entry) =>
+            entry.enabled && entry.kind === 'MOBILE_APP' && entry.platform === 'ANDROID' && entry.scope === 'FOCUS',
+        )
         .map((entry) => entry.identifier),
     [entries],
   );

@@ -54,6 +54,15 @@ enum BlockListKind {
   DESKTOP_APP
 }
 
+// Task 11.8: which trigger a BlockListEntry belongs to. FOCUS is the existing pomodoro/work-hours
+// list (default, so every pre-existing row keeps behaving exactly as before); NIGHT is the new
+// 22:30-08:00 automatic window (task 11.10), a deliberately separate list from FOCUS per the
+// user's own request, not a scoped view of the same one.
+enum BlockListScope {
+  FOCUS
+  NIGHT
+}
+
 enum FocusTriggerKind {
   LOCATION
   WIFI
@@ -234,12 +243,17 @@ model BlockListEntry {
   highDopamine Boolean         @default(false) // serotonin / detox mode
   enabled      Boolean         @default(true)
   hardMode     Boolean         @default(false) // non-cancelable once a native blocker (Android/Windows) enforces it
+  // Task 11.8: FOCUS (default, matches every pre-existing row's actual behavior) or NIGHT --
+  // which trigger this entry belongs to. Part of the uniqueness key (not just userId+kind+
+  // identifier) so the same app/site can be listed in both the daytime FOCUS list and the NIGHT
+  // list independently, since they're deliberately separate lists, not one filtered view.
+  scope        BlockListScope  @default(FOCUS)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, kind, identifier])
+  @@unique([userId, kind, identifier, scope])
   @@index([userId])
   @@map("block_list_entries")
 }
@@ -410,6 +424,15 @@ model Habit {
   // Case-insensitive match against FitnessEntry.activityType; when set, a matching fitness log
   // auto-creates/updates today's HabitRecord instead of requiring a manual check-in.
   linkedFitnessActivityType String?
+  // Task 11.5: optional reminder window driving the mobile confirmation notification (task 11.6).
+  // Nullable/no migration-of-existing-data needed -- a habit with no reminder set simply never
+  // schedules one, same as every existing web-created Habit row before this field existed.
+  // reminderEndMinute is also the notification's fire time for a deadline-style habit (e.g.
+  // "wake up before 7am" has no start, just an end); reminderStartMinute matters for a
+  // window-style habit (e.g. "arreglarse 7-8am") where the UI wants to show both bounds.
+  reminderStartMinute Int?
+  reminderEndMinute   Int?
+  reminderDaysOfWeek  Int[]     @default([0, 1, 2, 3, 4, 5, 6]) // 0=Sunday..6=Saturday, matches Schedule.daysOfWeek's convention
   clientId                  String? // offline sync id from client
   deletedAt                 DateTime?
   createdAt                 DateTime  @default(now())

@@ -17,6 +17,13 @@ internal object FocusBlockPrefs {
   private const val KEY_ACTIVE = "active"
   private const val KEY_BLOCKED_PACKAGES = "blocked_packages"
 
+  // Task 11.9/11.10. A second, independent pair of keys (not reusing KEY_ACTIVE/KEY_BLOCKED_PACKAGES)
+  // -- the night list is a deliberately separate list from the focus/pomodoro one (see
+  // BlockListScope's doc comment in schema.prisma), not a filtered view of it, so its native state
+  // has to be separate too.
+  private const val KEY_NIGHT_ENABLED = "night_enabled"
+  private const val KEY_NIGHT_BLOCKED_PACKAGES = "night_blocked_packages"
+
   private fun prefs(context: Context): SharedPreferences =
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -31,4 +38,16 @@ internal object FocusBlockPrefs {
 
   fun blockedPackages(context: Context): Set<String> =
     prefs(context).getStringSet(KEY_BLOCKED_PACKAGES, emptySet()) ?: emptySet()
+
+  fun writeNight(context: Context, enabled: Boolean, blockedPackages: Set<String>) {
+    prefs(context).edit()
+      .putBoolean(KEY_NIGHT_ENABLED, enabled)
+      .putStringSet(KEY_NIGHT_BLOCKED_PACKAGES, blockedPackages)
+      .apply()
+  }
+
+  fun isNightEnabled(context: Context): Boolean = prefs(context).getBoolean(KEY_NIGHT_ENABLED, false)
+
+  fun nightBlockedPackages(context: Context): Set<String> =
+    prefs(context).getStringSet(KEY_NIGHT_BLOCKED_PACKAGES, emptySet()) ?: emptySet()
 }

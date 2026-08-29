@@ -2,6 +2,7 @@ package expo.modules.focusblock
 
 import android.accessibilityservice.AccessibilityService
 import android.view.accessibility.AccessibilityEvent
+import java.util.Calendar
 
 /**
  * Task 6.6. Declared + configured via android/src/main/AndroidManifest.xml and
@@ -31,11 +32,29 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     val foregroundPackage = event.packageName?.toString() ?: return
     if (foregroundPackage == packageName) return // never block our own app
 
-    if (!FocusBlockPrefs.isActive(this)) return
-    if (foregroundPackage !in FocusBlockPrefs.blockedPackages(this)) return
+    if (!isBlocked(foregroundPackage)) return
 
     performGlobalAction(GLOBAL_ACTION_HOME)
     FocusBlockNotifications.showBlockedAlert(this, foregroundPackage)
+  }
+
+  // Task 11.10/11.11: two independent trigger families, both consulted on every event.
+  // - Focus/pomodoro/work-hours: FocusBlockPrefs.isActive/blockedPackages, JS-computed and pushed
+  //   every ~30s while the RN process is alive (useFocusBlocking.ts) -- unchanged from task 6.6.
+  // - Night list: FocusBlockPrefs.isNightEnabled/nightBlockedPackages are also JS-pushed (task
+  //   11.9), but rarely change (a toggle flip, an edit to the list) so staleness there is a
+  //   non-issue the same way the block-list *contents* already tolerate it for the focus list.
+  //   The actual 22:30-08:00 time-window + jog-status decision (NightBlockRules/JogStatusReader)
+  //   is 100% native, correct even if the RN process has been dead for hours -- see
+  //   NightBlockRules.kt's doc comment for why that split is the point of this whole design.
+  private fun isBlocked(pkg: String): Boolean {
+    if (FocusBlockPrefs.isActive(this) && pkg in FocusBlockPrefs.blockedPackages(this)) return true
+
+    if (!FocusBlockPrefs.isNightEnabled(this)) return false
+    if (pkg !in FocusBlockPrefs.nightBlockedPackages(this)) return false
+
+    val hasJoggedToday = JogStatusReader.hasJoggedToday(this)
+    return NightBlockRules.isNightListBlocking(Calendar.getInstance(), hasJoggedToday)
   }
 
   override fun onInterrupt() {

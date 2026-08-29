@@ -12,6 +12,13 @@ export function setBlockingState(active: boolean, blockedPackages: string[]): vo
   FocusBlockModule.setBlockingState(active, blockedPackages);
 }
 
+// Task 11.9: the NIGHT-scope list's push, kept fully separate from setBlockingState above --
+// see FocusBlockPrefs.kt's doc comment for why.
+export function setNightBlockingState(enabled: boolean, blockedPackages: string[]): void {
+  if (Platform.OS !== 'android') return;
+  FocusBlockModule.setNightBlockingState(enabled, blockedPackages);
+}
+
 export function isAccessibilityServiceEnabled(): boolean {
   if (Platform.OS !== 'android') return false;
   return FocusBlockModule.isAccessibilityServiceEnabled();
@@ -37,4 +44,19 @@ export function openFullScreenIntentSettings(): void {
     throw new Error('El bloqueo real de apps solo esta disponible en Android.');
   }
   FocusBlockModule.openFullScreenIntentSettings();
+}
+
+// Task 11.12: the AccessibilityService (and the night-window/jog-unlock rule it now evaluates,
+// tasks 11.10/11.11) isn't immune to Doze/OEM battery killers -- this is the one mitigation
+// actually available. Same "can't enable programmatically" pattern as the two functions above.
+export function isIgnoringBatteryOptimizations(): boolean {
+  if (Platform.OS !== 'android') return false;
+  return FocusBlockModule.isIgnoringBatteryOptimizations();
+}
+
+export function openBatteryOptimizationSettings(): void {
+  if (Platform.OS !== 'android') {
+    throw new Error('El bloqueo real de apps solo esta disponible en Android.');
+  }
+  FocusBlockModule.openBatteryOptimizationSettings();
 }

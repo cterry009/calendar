@@ -108,6 +108,12 @@ export interface SyncHabit {
   category: string | null;
   archived: boolean;
   linkedFitnessActivityType: string | null;
+  // Task 11.5 (mobile confirmation-notification work): optional reminder window. Nullable/no
+  // backfill needed -- an existing web-created habit simply has no reminder until one is set from
+  // either platform.
+  reminderStartMinute: number | null;
+  reminderEndMinute: number | null;
+  reminderDaysOfWeek: number[];
   createdAt: string;
   updatedAt: string;
 }

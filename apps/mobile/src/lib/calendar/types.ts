@@ -1,4 +1,4 @@
-import type { TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
+import type { HabitRecordStatus, HabitType, TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
 import type { SyncBlockListRecord } from '../blocklist/types';
 import type { SyncFitnessRecord } from '../fitness/types';
 import type { SyncFloorsClimbedRecord } from '../floors/types';
@@ -42,6 +42,43 @@ export interface SyncScheduleRecord {
   chunks: number | null;
 }
 
+// Mirrors apps/web/src/lib/calendar/types.ts's SyncHabit/SyncHabitRecord (task 11.4's mobile
+// port). Journal entries (free-text notes attached to a check-in) aren't ported here -- the
+// user's request was daily habits with a yes/no confirmation, not journaling, and web's
+// SyncJournalEntry is independently useful without it.
+export interface SyncHabit {
+  id: string;
+  clientId: string | null;
+  title: string;
+  description: string | null;
+  type: HabitType;
+  dailyGoalValue: number;
+  dailyGoalUnit: string;
+  dailyGoalExtraValue: number | null;
+  targetDays: number;
+  color: string | null;
+  category: string | null;
+  archived: boolean;
+  linkedFitnessActivityType: string | null;
+  reminderStartMinute: number | null;
+  reminderEndMinute: number | null;
+  reminderDaysOfWeek: number[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SyncHabitRecord {
+  id: string;
+  habitId: string;
+  date: string;
+  value: number;
+  status: HabitRecordStatus;
+  autoCompleted: boolean;
+  fitnessEntryId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SyncSnapshot {
   tasks: SyncTaskRecord[];
   schedules: SyncScheduleRecord[];
@@ -50,5 +87,7 @@ export interface SyncSnapshot {
   dailyStepCounts: SyncStepCountRecord[];
   dailyFloorsClimbed: SyncFloorsClimbedRecord[];
   blockListEntries: SyncBlockListRecord[];
+  habits: SyncHabit[];
+  habitRecords: SyncHabitRecord[];
   syncedAt: string;
 }

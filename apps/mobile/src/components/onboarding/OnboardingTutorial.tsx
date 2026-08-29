@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, useWindowDimensions } from 'react-native';
 import Svg, { Mask, Rect } from 'react-native-svg';
 import { useOnboarding } from '../../context/OnboardingContext';
+import { scrollActiveViewBy } from '../../lib/onboarding/scrollRegistry';
 import { measureTutorialTarget, type MeasuredRect } from '../../lib/onboarding/targetRegistry';
 import { TOURS } from '../../lib/onboarding/tours';
 
@@ -12,6 +13,16 @@ const SPOTLIGHT_PADDING = 8;
 const SPOTLIGHT_RADIUS = 14;
 const TOOLTIP_GAP = 16;
 const TOOLTIP_MARGIN = 16;
+
+// How long to wait for TutorialScrollView's `scrollTo({ animated: true })` to settle before
+// re-measuring -- shorter than the animation itself (RN's default is ~300-500ms) would re-measure
+// mid-scroll and land on a stale rect; this errs long since one extra frame of delay is invisible
+// but a wrong rect isn't.
+const SCROLL_SETTLE_MS = 400;
+// A target is left alone if it already falls within this band -- top: clears the screen header,
+// bottom: leaves room for the tooltip card that anchors below/above the spotlight either way.
+const SAFE_ZONE_TOP = 140;
+const SAFE_ZONE_BOTTOM_MARGIN = 260;
 
 /**
  * Native port of apps/web's OnboardingTutorial.tsx spotlight engine. Same idea (dim everything
@@ -24,12 +35,29 @@ const TOOLTIP_MARGIN = 16;
  * (escaping wherever OnboardingProvider happens to sit in the tree) comes from RN's own `Modal`
  * rather than a DOM portal.
  *
- * Deliberately not ported: web's `element.scrollIntoView()` before measuring, since RN has no
- * generic equivalent without also threading a ScrollView ref through every screen. Each mobile
- * tour's targets are picked to already be visible without scrolling, same "compact first slice"
- * scope as everything else in this port -- a target that ends up off-screen skips via the same
- * timeout path as a target that never mounts at all.
+ * Ports web's `element.scrollIntoView()` too, via a small registry (scrollRegistry.ts) instead of
+ * the DOM API: TutorialScrollView.tsx (a drop-in ScrollView replacement every screen with
+ * TutorialTarget sections now uses) registers itself, and the measurement effect below scrolls
+ * the current screen to bring an off-screen step's target into the visible "safe zone" before
+ * settling on a rect. A real bug found testing on-device is what made this necessary, not just a
+ * nice-to-have: the Modal below renders a full-screen `Pressable` that intercepts touch/scroll
+ * gestures on the underlying screen, so a user couldn't manually scroll to a highlighted-but-
+ * off-screen element either -- the spotlight would light something up out of view with no way to
+ * see it short of closing the tour.
  */
+function isWithinSafeZone(rect: MeasuredRect, windowHeight: number): boolean {
+  return rect.y >= SAFE_ZONE_TOP && rect.y + rect.height <= windowHeight - SAFE_ZONE_BOTTOM_MARGIN;
+}
+
+// How far (and which direction) to scroll so the target's vertical center lands in the middle of
+// the safe zone -- centering rather than just nudging it in means a step immediately below
+// another one doesn't need a second scroll+re-measure round trip to also clear the bottom margin.
+function scrollDeltaFor(rect: MeasuredRect, windowHeight: number): number {
+  const safeZoneCenter = SAFE_ZONE_TOP + (windowHeight - SAFE_ZONE_BOTTOM_MARGIN - SAFE_ZONE_TOP) / 2;
+  const targetCenter = rect.y + rect.height / 2;
+  return targetCenter - safeZoneCenter;
+}
+
 export function OnboardingTutorial() {
   const { activeTourId, stepIndex, nextStep, prevStep, closeTour } = useOnboarding();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -47,16 +75,28 @@ export function OnboardingTutorial() {
     setRect(null);
     let cancelled = false;
     let elapsed = 0;
+    // Only ever try scrolling once per step -- if the target is still outside the safe zone
+    // after that (e.g. it's taller than the available band, or the ScrollView is already
+    // clamped at its content end), settle for the rect as measured rather than scrolling back
+    // and forth forever chasing a safe zone it can't reach.
+    let hasScrolled = false;
     let timeoutId: ReturnType<typeof setTimeout>;
 
     async function attempt() {
       if (cancelled || !step) return;
       const found = await measureTutorialTarget(step.target);
       if (cancelled) return;
+
       if (found) {
+        if (!hasScrolled && !isWithinSafeZone(found, windowHeight) && scrollActiveViewBy(scrollDeltaFor(found, windowHeight))) {
+          hasScrolled = true;
+          timeoutId = setTimeout(() => void attempt(), SCROLL_SETTLE_MS);
+          return;
+        }
         setRect(found);
         return;
       }
+
       elapsed += FIND_TARGET_INTERVAL_MS;
       if (elapsed >= FIND_TARGET_TIMEOUT_MS) {
         // Target never registered (e.g. a conditional card that isn't rendered right now) --
@@ -76,7 +116,7 @@ export function OnboardingTutorial() {
     // nextStep intentionally omitted from deps: it changes identity with stepIndex, which would
     // restart this effect on every successful step change (the effect's own setRect(null)+
     // re-measure already runs from the `step` dependency).
-  }, [step]);
+  }, [step, windowHeight]);
 
   if (!tour || !step || !rect) {
     return null;

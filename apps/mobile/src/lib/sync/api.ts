@@ -16,6 +16,8 @@ export interface SyncBatchPayload {
   dailyStepCounts?: unknown[];
   dailyFloorsClimbed?: unknown[];
   blockListEntries?: unknown[];
+  habits?: unknown[];
+  habitRecords?: unknown[];
 }
 
 export interface SyncBatchResponse {

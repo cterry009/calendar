@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BlockListKindSchema, DevicePlatformSchema } from './enums.js';
+import { BlockListKindSchema, BlockListScopeSchema, DevicePlatformSchema } from './enums.js';
 
 export const BlockListEntrySchema = z.object({
   id: z.string().optional(),
@@ -10,6 +10,7 @@ export const BlockListEntrySchema = z.object({
   highDopamine: z.boolean().default(false),
   enabled: z.boolean().default(true),
   hardMode: z.boolean().default(false),
+  scope: BlockListScopeSchema.default('FOCUS'),
 });
 
 export const CreateBlockListEntrySchema = BlockListEntrySchema.omit({ id: true });

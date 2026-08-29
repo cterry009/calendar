@@ -25,10 +25,25 @@ export async function getStepsBaseline(): Promise<number> {
   return stored.dayKey === todayKey() ? stored.baseline : 0;
 }
 
+// Task 11.1: the OS/OEM hardware step-counter chip (not raw accelerometer -- watchStepCount goes
+// through TYPE_STEP_COUNTER) occasionally reports a burst of "steps" from a vibration or a tap on
+// a table, well beyond anything a person could have walked/run in that span. This clamps a raw
+// delta against the max plausible sustained cadence for however long it was accumulated over, so
+// a burst can inflate the count a little but never wildly.
+const MAX_STEPS_PER_MINUTE = 220;
+
+export function clampSessionSteps(rawSteps: number, elapsedMs: number): number {
+  if (rawSteps <= 0) return 0;
+  if (elapsedMs <= 0) return rawSteps;
+  const maxPlausible = Math.ceil((elapsedMs / 60_000) * MAX_STEPS_PER_MINUTE);
+  return Math.min(rawSteps, maxPlausible);
+}
+
 // Called when a foreground step-counting session ends with `sessionSteps` steps taken during
 // that session -- folds them into today's persisted total and returns the new total. A stale
 // baseline from a previous day is dropped, not added to (a fresh day starts at 0, not wherever
-// yesterday left off).
+// yesterday left off). Callers are expected to have already run the delta through
+// `clampSessionSteps`; this is not re-clamped here since the caller has the timing context.
 export async function foldSessionIntoBaseline(sessionSteps: number): Promise<number> {
   const current = await getStepsBaseline();
   const next = current + Math.max(0, sessionSteps);

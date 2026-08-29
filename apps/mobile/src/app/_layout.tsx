@@ -12,6 +12,10 @@ import { OnboardingProvider } from '../context/OnboardingContext';
 import { PomodoroProvider } from '../context/PomodoroContext';
 import { SyncProvider } from '../context/SyncContext';
 import { useFocusBlocking } from '../hooks/useFocusBlocking';
+import { useHabitReminders } from '../hooks/useHabitReminders';
+import { useJogDetection } from '../hooks/useJogDetection';
+import { useNightBlocking } from '../hooks/useNightBlocking';
+import { useStepTrackingService } from '../hooks/useStepTrackingService';
 
 // @tamagui/animations-react-native's RN `Animated.interpolate()` calls fail under
 // react-native-web specifically (verified: same crash with any named animation, gone with none)
@@ -29,6 +33,34 @@ SplashScreen.preventAutoHideAsync();
 // PomodoroProvider itself rather than being inside it.
 function FocusBlockingBridge() {
   useFocusBlocking();
+  return null;
+}
+
+// Doesn't need PomodoroProvider/useBlockList like FocusBlockingBridge does -- kept as its own
+// bridge component anyway for symmetry and so it can be un-mounted independently later if needed.
+function JogDetectionBridge() {
+  useJogDetection();
+  return null;
+}
+
+// Doesn't need PomodoroProvider (useBlockList() only depends on SyncContext) -- kept alongside
+// the other bridges below for consistency, same as JogDetectionBridge/HabitRemindersBridge.
+function NightBlockingBridge() {
+  useNightBlocking();
+  return null;
+}
+
+// Doesn't need any provider (starts a native foreground service directly) -- kept alongside the
+// other bridges below for consistency, same as JogDetectionBridge/NightBlockingBridge.
+function StepTrackingBridge() {
+  useStepTrackingService();
+  return null;
+}
+
+// Doesn't need PomodoroProvider (useHabits() only depends on SyncContext) -- kept alongside the
+// other bridges below for consistency, same as JogDetectionBridge.
+function HabitRemindersBridge() {
+  useHabitReminders();
   return null;
 }
 
@@ -57,6 +89,7 @@ function RootNavigator() {
         <Stack.Screen name="index" />
         <Stack.Screen name="pomodoro" />
         <Stack.Screen name="fitness" />
+        <Stack.Screen name="habits" />
         <Stack.Screen name="dashboard" />
         <Stack.Screen name="blocklist" />
         <Stack.Screen name="blocked" />
@@ -78,6 +111,10 @@ function RootNavigator() {
     <NotificationsProvider>
       <PomodoroProvider>
         <FocusBlockingBridge />
+        <JogDetectionBridge />
+        <NightBlockingBridge />
+        <StepTrackingBridge />
+        <HabitRemindersBridge />
         <OnboardingProvider>
           <YStack flex={1}>
             <SyncStatusBanner />

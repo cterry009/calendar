@@ -1,0 +1,24 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.steptracking'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.steptracking"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  // NotificationCompat/NotificationManagerCompat for the persistent progress notification, same
+  // as modules/focus-block's identical dependency for its own notification.
+  implementation "androidx.core:core:1.13.1"
+}

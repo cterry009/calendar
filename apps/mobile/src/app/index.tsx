@@ -2,10 +2,10 @@ import { completedPomodoroDateKeys, computePomodoroStreak } from '@calendar/shar
 import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Link } from 'expo-router';
 import { useMemo } from 'react';
-import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScheduleRow } from '../components/calendar/ScheduleRow';
 import { TaskRow } from '../components/calendar/TaskRow';
+import { TutorialScrollView } from '../components/onboarding/TutorialScrollView';
 import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useAuth } from '../context/AuthContext';
 import { useOnboarding } from '../context/OnboardingContext';
@@ -45,7 +45,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#212e28' }}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <TutorialScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <YStack flex={1} width="100%" maxWidth={560} alignSelf="center" padding="$6" gap="$5">
           <YStack gap="$1">
             <XStack justifyContent="space-between" alignItems="flex-start">
@@ -86,6 +86,11 @@ export default function HomeScreen() {
               <Link href="/blocklist" asChild>
                 <AppButton variant="ghost" flexGrow={1} flexBasis={140}>
                   Bloqueo
+                </AppButton>
+              </Link>
+              <Link href="/habits" asChild>
+                <AppButton variant="ghost" flexGrow={1} flexBasis={140}>
+                  Habitos
                 </AppButton>
               </Link>
             </XStack>
@@ -162,7 +167,7 @@ export default function HomeScreen() {
             Salir
           </AppButton>
         </YStack>
-      </ScrollView>
+      </TutorialScrollView>
     </SafeAreaView>
   );
 }

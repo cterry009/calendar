@@ -1,9 +1,9 @@
 // Mirrors apps/web's lib/onboarding/tours.ts shape (TourStep/TourDefinition, a global tour plus
 // one per screen) but a deliberately smaller registry -- mobile doesn't have the calendar grid,
-// tasks panel, quick-add, wellness, habits, detox, or ritual screens web's tour covers, so those
-// tours don't exist here. Scoped to the five real screens this app has: home ("global"), pomodoro,
-// fitness, dashboard, blocklist. Independent completion state and storage key from web's tutorial
-// (see storage.ts) -- these are two separate onboarding flows, not a synced setting.
+// tasks panel, quick-add, wellness, detox, or ritual screens web's tour covers, so those tours
+// don't exist here. Scoped to the six real screens this app has: home ("global"), pomodoro,
+// fitness, dashboard, blocklist, habits. Independent completion state and storage key from web's
+// tutorial (see storage.ts) -- these are two separate onboarding flows, not a synced setting.
 export interface TourStep {
   target: string;
   title: string;
@@ -14,7 +14,7 @@ export interface TourDefinition {
   steps: TourStep[];
 }
 
-export const TOUR_IDS = ['global', 'pomodoro', 'fitness', 'dashboard', 'blocklist'] as const;
+export const TOUR_IDS = ['global', 'pomodoro', 'fitness', 'dashboard', 'blocklist', 'habits'] as const;
 
 export type TourId = (typeof TOUR_IDS)[number];
 
@@ -25,7 +25,7 @@ export const TOURS: Record<TourId, TourDefinition> = {
         target: 'home-nav',
         title: 'Navega desde aca',
         description:
-          'Estos cuatro botones te llevan a Pomodoro, Fitness, Dashboard y tu Lista de bloqueo. El calendario de hoy y tu racha se ven directo en esta pantalla.',
+          'Estos botones te llevan a Pomodoro, Fitness, Dashboard, tu Lista de bloqueo y tus Habitos. El calendario de hoy y tu racha se ven directo en esta pantalla.',
       },
       {
         target: 'home-tasks',
@@ -67,6 +67,23 @@ export const TOURS: Record<TourId, TourDefinition> = {
         description: 'Minutos totales y cantidad de sesiones que registraste hoy.',
       },
       {
+        target: 'fitness-steps',
+        title: 'Pasos de hoy',
+        description:
+          'En dispositivos con Health Connect, tus pasos se cuentan las 24 horas aunque tengas la app cerrada. Cuando el sensor detecta que estas trotando, se registra un entrenamiento de "Trote" solo -- y si tenes el habito "Deporte / trotar", se marca como cumplido sin que hagas nada.',
+      },
+      {
+        target: 'fitness-floors',
+        title: 'Pisos subidos hoy',
+        description: 'Calculado con el barometro del telefono mientras la app esta abierta.',
+      },
+      {
+        target: 'fitness-notification',
+        title: 'Notificacion de progreso',
+        description:
+          'Un servicio en segundo plano cuenta tus pasos con el sensor del telefono directamente, sin depender de Health Connect ni de que la app este abierta. La notificacion fija muestra tu progreso hacia la meta diaria, que podes cambiar aca.',
+      },
+      {
         target: 'fitness-list',
         title: 'Tus registros',
         description: 'Cada entrada que agregues aparece aca, con su tipo, duracion e intensidad. Desliza para borrar una.',
@@ -90,20 +107,47 @@ export const TOURS: Record<TourId, TourDefinition> = {
   blocklist: {
     steps: [
       {
+        target: 'blocklist-scope-tabs',
+        title: 'Dos listas independientes',
+        description:
+          'Enfoque bloquea durante un pomodoro o un horario de trabajo activo. Nocturna bloquea automaticamente todas las noches de 22:30 a 8:00 -- y si te despertas antes de las 7, sigue bloqueada hasta que salgas a trotar (si la deteccion de actividad esta activa) o hasta las 8:00. Son listas separadas: una app puede estar en una, en la otra, en las dos, o en ninguna.',
+      },
+      {
         target: 'blocklist-real',
         title: 'Bloqueo real',
         description:
-          'Para que las apps bloqueadas se cierren de verdad durante un enfoque (no solo aparezcan en una lista), activa el servicio de accesibilidad de esta app en Ajustes de Android.',
+          'Para que las apps bloqueadas se cierren de verdad (no solo aparezcan en una lista), activa el servicio de accesibilidad de esta app en Ajustes de Android. Tambien conviene excluir la app de la optimizacion de bateria, para que Android no cierre el servicio de bloqueo de noche.',
       },
       {
         target: 'blocklist-list',
         title: 'Tu lista',
-        description: 'Todo lo que agregaste para bloquear durante pomodoros, tareas u horarios de trabajo activos.',
+        description: 'Todo lo que agregaste a la lista activa (Enfoque o Nocturna, segun la pestana elegida arriba).',
       },
       {
         target: 'blocklist-apps',
         title: 'Apps instaladas',
-        description: 'Carga la lista real de apps de este dispositivo y elegi cuales bloquear con un toque.',
+        description: 'Carga la lista real de apps de este dispositivo y elegi cuales bloquear con un toque -- se agregan a la lista activa.',
+      },
+    ],
+  },
+  habits: {
+    steps: [
+      {
+        target: 'habits-today',
+        title: 'Tus habitos de hoy',
+        description:
+          'Marca Si o No para cada habito. Si le configuraste un horario de recordatorio, tambien te va a llegar una notificacion con esos mismos botones para responder sin abrir la app.',
+      },
+      {
+        target: 'habits-templates',
+        title: 'Plantillas rapidas',
+        description:
+          'Un toque para agregar habitos comunes con su horario ya configurado: despertarte antes de las 7, arreglarte, deporte/trotar (vinculado a la deteccion automatica de trote), sacar al perro, horario de trabajo y de estudio, y socializar.',
+      },
+      {
+        target: 'habits-create',
+        title: 'Agregar un habito propio',
+        description: 'Si ninguna plantilla te sirve, crea el tuyo con su propia meta diaria.',
       },
     ],
   },

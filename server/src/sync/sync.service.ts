@@ -531,6 +531,7 @@ export class SyncService {
       highDopamine: change.highDopamine ?? false,
       enabled: change.enabled ?? true,
       hardMode: change.hardMode ?? false,
+      scope: change.scope ?? existing?.scope ?? 'FOCUS' as const,
       updatedAt: new Date(change.updatedAt),
     };
 
@@ -923,6 +924,9 @@ export class SyncService {
       category: change.category ?? null,
       archived: change.archived ?? false,
       linkedFitnessActivityType: change.linkedFitnessActivityType ?? null,
+      reminderStartMinute: change.reminderStartMinute ?? null,
+      reminderEndMinute: change.reminderEndMinute ?? null,
+      reminderDaysOfWeek: change.reminderDaysOfWeek ?? [0, 1, 2, 3, 4, 5, 6],
       clientId: change.clientId ?? existing?.clientId ?? null,
       updatedAt: new Date(change.updatedAt),
       deletedAt: null,

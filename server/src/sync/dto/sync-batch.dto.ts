@@ -18,6 +18,7 @@ import {
 } from 'class-validator';
 import {
   BlockListKind,
+  BlockListScope,
   DevicePlatform,
   FitnessIntensity,
   FitnessSource,
@@ -277,6 +278,12 @@ export class BlockListSyncChangeDto {
   @IsOptional()
   @IsBoolean()
   hardMode?: boolean;
+
+  // Task 11.8. Defaults to FOCUS server-side (see sync.service.ts) when omitted, which is what
+  // every pre-11.8 client (still unaware of NIGHT) continues to send implicitly.
+  @IsOptional()
+  @IsEnum(BlockListScope)
+  scope?: BlockListScope;
 }
 
 export class FocusTriggerSyncChangeDto {
@@ -513,6 +520,27 @@ export class HabitSyncChangeDto {
   @IsOptional()
   @IsString()
   linkedFitnessActivityType?: string;
+
+  // Task 11.5. Minutes since local midnight (0-1439), same convention as ScheduleSyncChangeDto's
+  // startMinute/endMinute above -- reminderEndMinute doubles as the notification's fire time.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1439)
+  reminderStartMinute?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1439)
+  reminderEndMinute?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  reminderDaysOfWeek?: number[];
 }
 
 export class HabitRecordSyncChangeDto {

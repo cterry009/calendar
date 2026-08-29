@@ -1,7 +1,7 @@
 import { AppButton, AppCard, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Stack as RouterStack } from 'expo-router';
-import { ScrollView } from 'react-native';
 import { MetricCard } from '../components/dashboard/MetricCard';
+import { TutorialScrollView } from '../components/onboarding/TutorialScrollView';
 import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useOnboarding } from '../context/OnboardingContext';
 import { useDashboard } from '../hooks/useDashboard';
@@ -44,7 +44,7 @@ export default function DashboardScreen() {
         }}
       />
 
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <TutorialScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <YStack width="100%" maxWidth={560} alignSelf="center" padding="$6" gap="$5">
           {error ? (
             <Text color="$danger" fontSize="$3">
@@ -193,7 +193,7 @@ export default function DashboardScreen() {
             </>
           )}
         </YStack>
-      </ScrollView>
+      </TutorialScrollView>
     </YStack>
   );
 }

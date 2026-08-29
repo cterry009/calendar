@@ -48,3 +48,29 @@ The system SHALL on web clients display a full-screen focus overlay with a visib
 #### Scenario: Web focus session
 - **WHEN** user starts focus on the web app
 - **THEN** a focus overlay is shown with timer and blocked-item reminders without OS-level enforcement
+
+### Requirement: Night block window
+The system SHALL support a separate, user-enabled block list (independent from the pomodoro/work-hours list) that automatically restricts its entries on Android every night from 22:30 to 08:00, evaluated independent of whether the app process is running.
+
+#### Scenario: App opened during the night window
+- **WHEN** the night list is enabled, "Instagram" is on it, and the current time is 23:15
+- **THEN** opening Instagram is blocked, the same way a pomodoro-blocked app is
+
+#### Scenario: Night list is independent of the focus list
+- **WHEN** an app is enabled on the night list but not on the pomodoro/work-hours list
+- **THEN** that app is blocked at night but not during a daytime pomodoro session, and vice versa
+
+### Requirement: Jog-to-unlock morning enforcement
+The system SHALL, for the portion of the night window between midnight and 08:00, keep night-list apps blocked until the system detects the user has gone jogging/running that day, lifting the block immediately on detection or at 08:00 regardless, whichever comes first.
+
+#### Scenario: Blocked until a jog is detected
+- **WHEN** the current time is 06:30, night blocking is enabled, and no jog has been detected yet today
+- **THEN** night-list apps remain blocked
+
+#### Scenario: Jog detected before the cutoff
+- **WHEN** a jog is detected at 06:45
+- **THEN** night-list apps are unblocked immediately, without waiting for 08:00
+
+#### Scenario: Hard cutoff with no jog
+- **WHEN** the current time reaches 08:00 and no jog was detected
+- **THEN** night-list apps are unblocked anyway

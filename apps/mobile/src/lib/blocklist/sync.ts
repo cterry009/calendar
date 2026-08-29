@@ -14,6 +14,7 @@ export interface BlockListSyncChangeDto {
   highDopamine?: boolean;
   enabled?: boolean;
   hardMode?: boolean;
+  scope?: BlockListFormValues['scope'];
 }
 
 function buildUpsertPayload(values: BlockListFormValues): Omit<BlockListSyncChangeDto, 'id' | 'updatedAt'> {
@@ -25,6 +26,7 @@ function buildUpsertPayload(values: BlockListFormValues): Omit<BlockListSyncChan
     highDopamine: values.highDopamine,
     enabled: values.enabled,
     hardMode: values.hardMode,
+    scope: values.scope,
   };
 }
 

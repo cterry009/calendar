@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -23,6 +24,13 @@ class FocusBlockModule : Module() {
     // inspection). `?.let` sidesteps it entirely.
     Function("setBlockingState") { active: Boolean, blockedPackages: List<String> ->
       appContext.reactContext?.let { context -> FocusBlockPrefs.write(context, active, blockedPackages.toSet()) }
+    }
+
+    // Task 11.9. Same fire-and-forget shape as setBlockingState above, called from
+    // useNightBlocking.ts (mounted once at the app root) whenever the NIGHT-scope block list or
+    // its on/off toggle changes.
+    Function("setNightBlockingState") { enabled: Boolean, blockedPackages: List<String> ->
+      appContext.reactContext?.let { context -> FocusBlockPrefs.writeNight(context, enabled, blockedPackages.toSet()) }
     }
 
     // AccessibilityServices can't be enabled programmatically -- Android requires an explicit,
@@ -61,7 +69,32 @@ class FocusBlockModule : Module() {
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
       }
     }
+
+    // Task 11.12. Neither the AccessibilityService nor the night-window/jog-unlock rule it now
+    // evaluates (task 11.10/11.11) are immune to Doze/App Standby or an OEM-specific battery
+    // killer -- task 6.9 already found `adb shell am force-stop` silently unbinds the service on
+    // a real device. Exempting the app from battery optimization is the one mitigation that's
+    // actually available; same "can't enable programmatically, only deep-link to the settings
+    // screen" pattern as accessibility/full-screen-intent above -- this is a sensitive permission
+    // Android reserves for an explicit user action.
+    Function("isIgnoringBatteryOptimizations") {
+      appContext.reactContext?.let { context -> isIgnoringBatteryOptimizations(context) } ?: false
+    }
+
+    Function("openBatteryOptimizationSettings") {
+      appContext.reactContext?.let { context ->
+        context.startActivity(
+          Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+      }
+    }
   }
+}
+
+private fun isIgnoringBatteryOptimizations(context: Context): Boolean {
+  val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return false
+  return powerManager.isIgnoringBatteryOptimizations(context.packageName)
 }
 
 private fun isServiceEnabled(context: Context): Boolean {

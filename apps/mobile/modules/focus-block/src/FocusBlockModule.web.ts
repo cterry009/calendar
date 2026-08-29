@@ -10,6 +10,10 @@ class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModul
     throw new Error('El bloqueo real de apps solo esta disponible en Android.');
   }
 
+  setNightBlockingState(): void {
+    throw new Error('El bloqueo real de apps solo esta disponible en Android.');
+  }
+
   isAccessibilityServiceEnabled(): boolean {
     return false;
   }
@@ -23,6 +27,14 @@ class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModul
   }
 
   openFullScreenIntentSettings(): void {
+    throw new Error('El bloqueo real de apps solo esta disponible en Android.');
+  }
+
+  isIgnoringBatteryOptimizations(): boolean {
+    return false;
+  }
+
+  openBatteryOptimizationSettings(): void {
     throw new Error('El bloqueo real de apps solo esta disponible en Android.');
   }
 }

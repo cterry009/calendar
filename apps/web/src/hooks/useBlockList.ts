@@ -41,7 +41,13 @@ export function useBlockList(): UseBlockListResult {
 
     try {
       const data = await pullSnapshot();
-      setEntries(sortEntries((data.blockListEntries as SyncBlockListRecord[]) ?? []));
+      // Task 11.8: exclude NIGHT-scope entries (mobile-only, see SyncBlockListRecord's doc
+      // comment) -- treat a missing scope (stale cache from before this field existed) as FOCUS
+      // rather than hiding it.
+      const focusEntries = ((data.blockListEntries as SyncBlockListRecord[]) ?? []).filter(
+        (entry) => (entry.scope ?? 'FOCUS') === 'FOCUS',
+      );
+      setEntries(sortEntries(focusEntries));
       setSyncedAt(data.syncedAt);
     } catch (errorValue) {
       if (errorValue instanceof ApiError) {
