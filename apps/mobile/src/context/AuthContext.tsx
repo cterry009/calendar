@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { fetchProfile, login as apiLogin, logout as apiLogout, register as apiRegister } from '../lib/auth/api';
+import { ApiError, fetchProfile, login as apiLogin, logout as apiLogout, register as apiRegister } from '../lib/auth/api';
 import { clearSession, loadSession, saveSession } from '../lib/auth/storage';
 import type { AuthUser, LoginInput, RegisterInput } from '../lib/auth/types';
 
@@ -44,11 +44,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isMounted) {
           setUser(profile);
         }
-      } catch {
-        await clearSession();
-        if (isMounted) {
-          setUser(null);
+      } catch (error) {
+        // Only a real auth rejection (refresh token invalid/expired, surfaced as a 401 by
+        // apiFetch after it already tried refreshAccessToken) should log the user out. A
+        // network error or unreachable server must not -- otherwise opening the app offline,
+        // or against a server that's briefly down, silently discards a still-valid 30-day
+        // refresh token and forces a fresh login for no real reason.
+        if (error instanceof ApiError && error.status === 401) {
+          await clearSession();
+          if (isMounted) {
+            setUser(null);
+          }
         }
+        // Non-auth errors: keep the cached session/user from storage and let the user work
+        // offline; the next successful request will refresh the profile.
       } finally {
         if (isMounted) {
           setIsLoading(false);

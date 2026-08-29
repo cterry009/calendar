@@ -92,6 +92,7 @@ function RootNavigator() {
         <Stack.Screen name="habits" />
         <Stack.Screen name="dashboard" />
         <Stack.Screen name="blocklist" />
+        <Stack.Screen name="screen-time" />
         <Stack.Screen name="blocked" />
       </Stack.Protected>
       <Stack.Protected guard={!isAuthenticated}>

@@ -14,7 +14,7 @@ export interface TourDefinition {
   steps: TourStep[];
 }
 
-export const TOUR_IDS = ['global', 'pomodoro', 'fitness', 'dashboard', 'blocklist', 'habits'] as const;
+export const TOUR_IDS = ['global', 'pomodoro', 'fitness', 'dashboard', 'blocklist', 'habits', 'screen-time'] as const;
 
 export type TourId = (typeof TOUR_IDS)[number];
 
@@ -25,7 +25,7 @@ export const TOURS: Record<TourId, TourDefinition> = {
         target: 'home-nav',
         title: 'Navega desde aca',
         description:
-          'Estos botones te llevan a Pomodoro, Fitness, Dashboard, tu Lista de bloqueo y tus Habitos. El calendario de hoy y tu racha se ven directo en esta pantalla.',
+          'Estos botones te llevan a Pomodoro, Fitness, Dashboard, tu Lista de bloqueo, tus Habitos y tu Tiempo de pantalla. El calendario de hoy y tu racha se ven directo en esta pantalla.',
       },
       {
         target: 'home-tasks',
@@ -148,6 +148,26 @@ export const TOURS: Record<TourId, TourDefinition> = {
         target: 'habits-create',
         title: 'Agregar un habito propio',
         description: 'Si ninguna plantilla te sirve, crea el tuyo con su propia meta diaria.',
+      },
+    ],
+  },
+  'screen-time': {
+    steps: [
+      {
+        target: 'screen-time-access',
+        title: 'Acceso a datos de uso',
+        description:
+          'Este permiso solo se puede activar desde Ajustes de Android (no se puede pedir con un dialogo normal). Una vez activado, esta pantalla puede leer cuanto tiempo usas cada app.',
+      },
+      {
+        target: 'screen-time-today',
+        title: 'Hoy',
+        description: 'Tiempo en primer plano de cada app desde la medianoche, de mayor a menor.',
+      },
+      {
+        target: 'screen-time-week',
+        title: 'Apps mas usadas',
+        description: 'Lo mismo, pero sumado sobre los ultimos 7 dias -- para ver tus habitos de uso reales, no solo el dia de hoy.',
       },
     ],
   },

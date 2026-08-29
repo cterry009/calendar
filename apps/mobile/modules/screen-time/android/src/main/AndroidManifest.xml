@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools">
+  <!-- PACKAGE_USAGE_STATS is an AppOps-backed permission: it can never be granted via a normal
+       runtime request, only via the dedicated "Usage access" system settings screen (same
+       can't-enable-programmatically pattern as Accessibility/full-screen-intent/battery
+       optimization in modules/focus-block). tools:ignore="ProtectedPermissions" silences the
+       lint/manifest-merger warning that a signature/privileged permission is being requested by a
+       normal app, which is expected here since this is the documented way third-party apps get it. -->
+  <uses-permission
+    android:name="android.permission.PACKAGE_USAGE_STATS"
+    tools:ignore="ProtectedPermissions" />
+</manifest>

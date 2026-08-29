@@ -10,6 +10,7 @@
 import { clearSession, loadSession, saveSession } from '../lib/auth-storage';
 import type { AuthUser, LoginInput, RegisterInput } from '../lib/auth-types';
 import {
+  ApiError,
   fetchProfile,
   login as apiLogin,
   loginWithApple as apiLoginWithApple,
@@ -58,10 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isMounted) {
           setUser(profile);
         }
-      } catch {
-        clearSession();
-        if (isMounted) {
-          setUser(null);
+      } catch (error) {
+        // Only a real auth rejection (refresh token invalid/expired) should log the user out.
+        // A network error or unreachable server must not -- otherwise a flaky connection
+        // silently discards a still-valid 30-day refresh token and forces a fresh login.
+        if (error instanceof ApiError && error.status === 401) {
+          clearSession();
+          if (isMounted) {
+            setUser(null);
+          }
         }
       } finally {
         if (isMounted) {
