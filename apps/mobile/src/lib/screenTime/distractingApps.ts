@@ -8,11 +8,13 @@
 // what it actually contains, not something inspectable from source or web-preview testing. A
 // hardcoded list is the more reliable choice here, if a smaller one.
 //
-// Deliberately scoped to classic feed/social-media apps, not messaging (WhatsApp, Telegram) --
-// suggesting someone block their primary communication channel is a much bigger ask than
-// suggesting they block a feed, and conflating the two would make this feature's suggestions feel
-// wrong more often than right.
-const KNOWN_SOCIAL_PACKAGES = new Set([
+// Scoped to classic feed/social-media apps plus YouTube (added on explicit request -- not social
+// media in the strict sense, but the same kind of high-dopamine, hard-to-stop-scrolling app this
+// panel exists to flag). Deliberately still excludes messaging (WhatsApp, Telegram) -- suggesting
+// someone block their primary communication channel is a much bigger ask than suggesting they
+// block a feed, and conflating the two would make this feature's suggestions feel wrong more often
+// than right.
+const KNOWN_DISTRACTING_PACKAGES = new Set([
   'com.instagram.android',
   'com.facebook.katana',
   'com.facebook.lite',
@@ -25,8 +27,9 @@ const KNOWN_SOCIAL_PACKAGES = new Set([
   'com.linkedin.android',
   'com.pinterest',
   'com.tumblr',
+  'com.google.android.youtube',
 ]);
 
-export function isSocialApp(packageName: string): boolean {
-  return KNOWN_SOCIAL_PACKAGES.has(packageName);
+export function isKnownDistractingApp(packageName: string): boolean {
+  return KNOWN_DISTRACTING_PACKAGES.has(packageName);
 }

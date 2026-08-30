@@ -173,7 +173,7 @@ export const TOURS: Record<TourId, TourDefinition> = {
         target: 'screen-time-suggestions',
         title: 'Sugerencias de bloqueo',
         description:
-          'Detecta redes sociales conocidas entre tus apps mas usadas y te deja agregarlas a tu lista de bloqueo de Enfoque con un toque.',
+          'Detecta redes sociales y apps de video conocidas entre tus apps mas usadas. Elegi si querer bloquearlas indefinidamente (lista de Enfoque) o solo de noche (22:30-8:00), y agregalas con un toque.',
       },
     ],
   },
