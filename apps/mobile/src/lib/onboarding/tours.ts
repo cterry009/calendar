@@ -169,6 +169,12 @@ export const TOURS: Record<TourId, TourDefinition> = {
         title: 'Apps mas usadas',
         description: 'Lo mismo, pero sumado sobre los ultimos 7 dias -- para ver tus habitos de uso reales, no solo el dia de hoy.',
       },
+      {
+        target: 'screen-time-suggestions',
+        title: 'Sugerencias de bloqueo',
+        description:
+          'Detecta redes sociales conocidas entre tus apps mas usadas y te deja agregarlas a tu lista de bloqueo de Enfoque con un toque.',
+      },
     ],
   },
 };

@@ -4,11 +4,14 @@ import { useEffect, useMemo } from 'react';
 import { TutorialScrollView } from '../components/onboarding/TutorialScrollView';
 import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useOnboarding } from '../context/OnboardingContext';
+import { useBlockList } from '../hooks/useBlockList';
 import { useInstalledApps } from '../hooks/useInstalledApps';
 import { useScreenTime } from '../hooks/useScreenTime';
 import type { AppUsageRecord } from '../lib/screenTime/api';
+import { isSocialApp } from '../lib/screenTime/socialApps';
 
 const MAX_ROWS = 10;
+const MAX_SUGGESTIONS = 5;
 
 function formatDuration(totalTimeMs: number): string {
   const totalMinutes = Math.round(totalTimeMs / 60_000);
@@ -50,6 +53,7 @@ function UsageList({ records, labels }: { records: AppUsageRecord[]; labels: Map
 export default function ScreenTimeScreen() {
   const { startTour } = useOnboarding();
   const screenTime = useScreenTime();
+  const blockList = useBlockList();
   // Labels make this list actually useful (raw package names are hard to scan) -- auto-loaded
   // here, unlike blocklist.tsx's load-on-demand button, since this screen's whole purpose is
   // showing readable app names, not picking apps to block.
@@ -70,6 +74,45 @@ export default function ScreenTimeScreen() {
   // visible flash confirmed on-device. Folding installedApps' own loading state into this
   // screen's "Cargando..." keeps the list from ever showing an unresolved package name.
   const isLoading = screenTime.isLoading || (installedApps.isSupported && !installedApps.isLoaded);
+
+  // Only the FOCUS list -- matches blocklist.tsx's own default tab and is the block type that
+  // actually engages during a pomodoro/work-hours, the moment this suggestion is trying to help
+  // with. NIGHT-scope blocking is a separate, deliberate choice (a different problem: late-night
+  // use, not daytime focus) not something this screen should silently also add to.
+  const focusBlockedPackages = useMemo(
+    () =>
+      new Set(
+        blockList.entries
+          .filter((entry) => entry.kind === 'MOBILE_APP' && entry.platform === 'ANDROID' && entry.scope === 'FOCUS')
+          .map((entry) => entry.identifier),
+      ),
+    [blockList.entries],
+  );
+
+  // weekUsage is already sorted descending (useScreenTime.ts), so this stays "most used social
+  // apps first" without re-sorting. isSocialApp checks a curated known-package list (socialApps.ts)
+  // -- not Android's own app-category field, which real-device testing showed is too unreliable
+  // for this (see that file's comment for what went wrong).
+  const socialSuggestions = useMemo(
+    () =>
+      screenTime.weekUsage
+        .filter((record) => isSocialApp(record.packageName) && !focusBlockedPackages.has(record.packageName))
+        .slice(0, MAX_SUGGESTIONS),
+    [screenTime.weekUsage, focusBlockedPackages],
+  );
+
+  function blockSuggestion(record: AppUsageRecord) {
+    void blockList.createEntry({
+      kind: 'MOBILE_APP',
+      identifier: record.packageName,
+      label: labels.get(record.packageName) ?? record.packageName,
+      platform: 'ANDROID',
+      highDopamine: true,
+      enabled: true,
+      hardMode: false,
+      scope: 'FOCUS',
+    });
+  }
 
   return (
     <YStack flex={1} backgroundColor="$background">
@@ -159,6 +202,44 @@ export default function ScreenTimeScreen() {
                       </Paragraph>
                     ) : (
                       <UsageList records={screenTime.weekUsage} labels={labels} />
+                    )}
+                  </YStack>
+                </AppCard>
+              </TutorialTarget>
+
+              <TutorialTarget id="screen-time-suggestions">
+                <AppCard>
+                  <YStack gap="$3">
+                    <Text fontWeight="700">Sugerencias de bloqueo</Text>
+                    {isLoading || blockList.isLoading ? (
+                      <Paragraph margin={0} color="$muted">
+                        Cargando...
+                      </Paragraph>
+                    ) : socialSuggestions.length === 0 ? (
+                      <Paragraph margin={0} color="$muted">
+                        No detectamos redes sociales sin bloquear entre tus apps mas usadas de los
+                        ultimos 7 dias.
+                      </Paragraph>
+                    ) : (
+                      <YStack gap="$3">
+                        <Paragraph margin={0} color="$muted" fontSize="$2">
+                          Redes sociales entre tus apps mas usadas -- agregalas a tu lista de
+                          bloqueo de Enfoque con un toque.
+                        </Paragraph>
+                        {socialSuggestions.map((record) => (
+                          <XStack key={record.packageName} justifyContent="space-between" alignItems="center" gap="$3">
+                            <YStack flex={1}>
+                              <Text numberOfLines={1}>{labels.get(record.packageName) ?? record.packageName}</Text>
+                              <Text color="$muted" fontSize="$2">
+                                {formatDuration(record.totalTimeMs)} esta semana
+                              </Text>
+                            </YStack>
+                            <AppButton variant="primary" disabled={blockList.isMutating} onPress={() => blockSuggestion(record)}>
+                              Bloquear
+                            </AppButton>
+                          </XStack>
+                        ))}
+                      </YStack>
                     )}
                   </YStack>
                 </AppCard>
