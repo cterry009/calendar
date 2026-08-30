@@ -65,6 +65,12 @@ export default function ScreenTimeScreen() {
     return map;
   }, [installedApps.apps]);
 
+  // Installed-apps enumeration is noticeably slower than the usage-stats query -- without this,
+  // the list renders raw package names first and swaps in real labels a few seconds later, a
+  // visible flash confirmed on-device. Folding installedApps' own loading state into this
+  // screen's "Cargando..." keeps the list from ever showing an unresolved package name.
+  const isLoading = screenTime.isLoading || (installedApps.isSupported && !installedApps.isLoaded);
+
   return (
     <YStack flex={1} backgroundColor="$background">
       <Stack.Screen
@@ -132,7 +138,7 @@ export default function ScreenTimeScreen() {
                 <AppCard>
                   <YStack gap="$3">
                     <Text fontWeight="700">Hoy</Text>
-                    {screenTime.isLoading ? (
+                    {isLoading ? (
                       <Paragraph margin={0} color="$muted">
                         Cargando...
                       </Paragraph>
@@ -147,7 +153,7 @@ export default function ScreenTimeScreen() {
                 <AppCard>
                   <YStack gap="$3">
                     <Text fontWeight="700">Apps mas usadas (ultimos 7 dias)</Text>
-                    {screenTime.isLoading ? (
+                    {isLoading ? (
                       <Paragraph margin={0} color="$muted">
                         Cargando...
                       </Paragraph>
