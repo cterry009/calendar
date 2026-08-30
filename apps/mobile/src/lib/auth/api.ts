@@ -13,6 +13,17 @@ export class ApiError extends Error {
   }
 }
 
+// Thrown only when /auth/refresh itself explicitly rejects the refresh token (a real 401) --
+// the one unambiguous signal that the session is actually dead, as opposed to a request that
+// merely got a 401 because refreshing happened to fail for some transient reason. Callers (see
+// AuthContext.tsx) log the user out on this and only this, never on a plain ApiError.
+export class SessionExpiredError extends Error {
+  constructor() {
+    super('Session expired');
+    this.name = 'SessionExpiredError';
+  }
+}
+
 async function parseError(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as { message?: string | string[] };
@@ -35,8 +46,23 @@ async function refreshAccessToken(): Promise<string | null> {
     body: JSON.stringify({ refreshToken }),
   });
 
-  if (!response.ok) {
+  if (response.status === 401) {
+    // The refresh token itself was genuinely rejected (invalid, expired, revoked) -- this is the
+    // only case that should actually log the user out. Throwing (rather than just returning
+    // null) lets this propagate all the way up through apiFetch to the caller as a distinct
+    // signal, instead of collapsing into the same plain 401 a merely-failed-to-refresh request
+    // would also produce.
     await clearSession();
+    throw new SessionExpiredError();
+  }
+
+  if (!response.ok) {
+    // Any other failure (a transient 5xx, a brief server restart, a proxy hiccup) must not wipe a
+    // still-valid 30-day refresh token. The access token expires every 15 minutes, so this runs
+    // constantly during normal use -- treating every non-401 failure as a rejection meant a flaky
+    // connection alone (this project's own testing routinely switches between USB/WiFi/Tailscale)
+    // could force a full re-login. Just fail this one request; the stored tokens are untouched, so
+    // the next successful request can refresh normally.
     return null;
   }
 

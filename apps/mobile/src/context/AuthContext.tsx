@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ApiError, fetchProfile, login as apiLogin, logout as apiLogout, register as apiRegister } from '../lib/auth/api';
-import { clearSession, loadSession, saveSession } from '../lib/auth/storage';
+import { SessionExpiredError, fetchProfile, login as apiLogin, logout as apiLogout, register as apiRegister } from '../lib/auth/api';
+import { loadSession, saveSession } from '../lib/auth/storage';
 import type { AuthUser, LoginInput, RegisterInput } from '../lib/auth/types';
 
 // OAuth (Google/Apple) is deliberately not ported here -- apps/web's OAuthButtons.tsx loads
@@ -45,19 +45,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(profile);
         }
       } catch (error) {
-        // Only a real auth rejection (refresh token invalid/expired, surfaced as a 401 by
-        // apiFetch after it already tried refreshAccessToken) should log the user out. A
-        // network error or unreachable server must not -- otherwise opening the app offline,
-        // or against a server that's briefly down, silently discards a still-valid 30-day
-        // refresh token and forces a fresh login for no real reason.
-        if (error instanceof ApiError && error.status === 401) {
-          await clearSession();
+        // SessionExpiredError is the one unambiguous signal that the refresh token itself was
+        // rejected -- refreshAccessToken() already cleared storage before throwing it, this just
+        // updates in-memory state to match. A plain network error, an unreachable server, or a
+        // request that failed because *refreshing* hit a transient error (a brief 5xx, not an
+        // actual rejection) must not log the user out -- those all surface as some other error
+        // here, and a still-valid 30-day refresh token must survive them so the next successful
+        // request can pick up where it left off.
+        if (error instanceof SessionExpiredError) {
           if (isMounted) {
             setUser(null);
           }
         }
-        // Non-auth errors: keep the cached session/user from storage and let the user work
-        // offline; the next successful request will refresh the profile.
       } finally {
         if (isMounted) {
           setIsLoading(false);

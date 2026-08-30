@@ -7,10 +7,10 @@
   useState,
   type ReactNode,
 } from 'react';
-import { clearSession, loadSession, saveSession } from '../lib/auth-storage';
+import { loadSession, saveSession } from '../lib/auth-storage';
 import type { AuthUser, LoginInput, RegisterInput } from '../lib/auth-types';
 import {
-  ApiError,
+  SessionExpiredError,
   fetchProfile,
   login as apiLogin,
   loginWithApple as apiLoginWithApple,
@@ -60,11 +60,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(profile);
         }
       } catch (error) {
-        // Only a real auth rejection (refresh token invalid/expired) should log the user out.
-        // A network error or unreachable server must not -- otherwise a flaky connection
-        // silently discards a still-valid 30-day refresh token and forces a fresh login.
-        if (error instanceof ApiError && error.status === 401) {
-          clearSession();
+        // SessionExpiredError is the one unambiguous signal that the refresh token itself was
+        // rejected -- refreshAccessToken() already cleared storage before throwing it, this just
+        // updates in-memory state to match. A plain network error, an unreachable server, or a
+        // request that failed because *refreshing* hit a transient error (a brief 5xx, not an
+        // actual rejection) must not log the user out.
+        if (error instanceof SessionExpiredError) {
           if (isMounted) {
             setUser(null);
           }
