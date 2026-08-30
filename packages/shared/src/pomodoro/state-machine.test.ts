@@ -1,7 +1,9 @@
 import {
+  ABANDONED_PHASE_GRACE_MS,
   createPomodoroSession,
   getPhaseDurationMinutes,
   isBlockingPhase,
+  isPhaseAbandoned,
   transitionPomodoro,
 } from './state-machine.js';
 
@@ -54,5 +56,36 @@ describe('pomodoro state machine', () => {
     expect(session.state).toBe('IDLE');
     expect(session.interrupted).toBe(true);
     expect(session.active).toBe(false);
+  });
+
+  describe('isPhaseAbandoned', () => {
+    it('is not abandoned while the phase is still running or only just over', () => {
+      let session = createPomodoroSession('p5');
+      session = transitionPomodoro(session, { type: 'START' });
+      const startedAtMs = new Date(session.startedAt as string).getTime();
+
+      expect(isPhaseAbandoned(session, startedAtMs)).toBe(false);
+      // 25 min focus, 1 minute overdue -- well within the grace window.
+      expect(isPhaseAbandoned(session, startedAtMs + 26 * 60_000)).toBe(false);
+    });
+
+    it('is abandoned once overdue past the phase duration by more than the grace window', () => {
+      let session = createPomodoroSession('p6');
+      session = transitionPomodoro(session, { type: 'START' });
+      const startedAtMs = new Date(session.startedAt as string).getTime();
+
+      // 25 min focus + grace + 1ms.
+      const justUnderGrace = startedAtMs + 25 * 60_000 + ABANDONED_PHASE_GRACE_MS;
+      expect(isPhaseAbandoned(session, justUnderGrace)).toBe(false);
+      expect(isPhaseAbandoned(session, justUnderGrace + 1)).toBe(true);
+
+      // A session left active for a week is unambiguously abandoned.
+      expect(isPhaseAbandoned(session, startedAtMs + 7 * 24 * 60 * 60_000)).toBe(true);
+    });
+
+    it('is never abandoned when the session is not active', () => {
+      const session = createPomodoroSession('p7');
+      expect(isPhaseAbandoned(session, Date.now() + 7 * 24 * 60 * 60_000)).toBe(false);
+    });
   });
 });

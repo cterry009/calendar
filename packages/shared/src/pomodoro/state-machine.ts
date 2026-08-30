@@ -150,3 +150,34 @@ function resetSession(session: PomodoroSession): PomodoroSession {
 export function isBlockingPhase(session: PomodoroSession): boolean {
   return session.active && session.state === 'FOCUS';
 }
+
+// FOCUS_COMPLETE/BREAK_COMPLETE never clear `active` -- by design, a pomodoro auto-cycles
+// focus/break/focus/break until the user explicitly cancels it (the standard pomodoro pattern).
+// But that means a session left active while the app is closed for hours or days doesn't just
+// wait patiently: the moment it's next observed, its elapsed wall-clock time is wildly past the
+// current phase's duration, and the client "completes" it on the spot -- firing a phase-complete
+// notification for a phase the user never experienced, then immediately starting a fresh phase
+// (with real focus-mode app-blocking, if that fresh phase is FOCUS) nobody asked for. This grace
+// window draws the line between "a little late coming back" (finish the phase normally) and
+// "abandoned" (silently end the session instead) so a session someone genuinely forgot about
+// doesn't keep resurrecting itself and spamming notifications indefinitely.
+export const ABANDONED_PHASE_GRACE_MS = 15 * 60 * 1000;
+
+export function isPhaseAbandoned(session: PomodoroSession, now: number): boolean {
+  if (!session.active || !session.startedAt) {
+    return false;
+  }
+
+  const phaseDurationMinutes = getPhaseDurationMinutes(session);
+  if (!phaseDurationMinutes) {
+    return false;
+  }
+
+  const startedAtMs = new Date(session.startedAt).getTime();
+  if (Number.isNaN(startedAtMs)) {
+    return false;
+  }
+
+  const overdueMs = now - startedAtMs - phaseDurationMinutes * 60_000;
+  return overdueMs > ABANDONED_PHASE_GRACE_MS;
+}

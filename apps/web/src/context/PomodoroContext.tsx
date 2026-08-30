@@ -3,6 +3,7 @@ import {
   createPomodoroSession,
   getPhaseDurationMinutes,
   isBlockingPhase,
+  isPhaseAbandoned,
   transitionPomodoro,
   type PomodoroEvent,
 } from '@calendar/shared';
@@ -263,6 +264,19 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    transitionInFlightRef.current = true;
+
+    if (isPhaseAbandoned(session, now)) {
+      // The app was closed/backgrounded for far longer than this phase's own grace window --
+      // e.g. a leftover session from days ago. Silently end it instead of "completing" a phase
+      // nobody actually experienced and auto-cycling into a fresh one (with real focus-mode
+      // app-blocking, if that fresh phase is FOCUS) that nobody asked to start just now.
+      void transitionSession({ type: 'CANCEL' }, false).finally(() => {
+        transitionInFlightRef.current = false;
+      });
+      return;
+    }
+
     const event: PomodoroEvent | null =
       session.state === 'FOCUS'
         ? { type: 'FOCUS_COMPLETE' }
@@ -271,10 +285,10 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
           : null;
 
     if (!event) {
+      transitionInFlightRef.current = false;
       return;
     }
 
-    transitionInFlightRef.current = true;
     const finishedState = session.state;
 
     void (async () => {
