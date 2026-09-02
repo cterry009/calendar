@@ -21,6 +21,7 @@ import {
   openBatteryOptimizationSettings,
   openFullScreenIntentSettings,
 } from '../lib/focusBlock/api';
+import type { InstalledAppInfo } from '../lib/blocklist/installedApps.types';
 import type { BlockListScope } from '@calendar/shared';
 
 /**
@@ -52,6 +53,64 @@ function parseTimeInput(value: string): number | null {
   const minutes = Number(match[2]);
   if (hours > 23 || minutes > 59) return null;
   return hours * 60 + minutes;
+}
+
+const INSTALLED_APPS_MAX_RESULTS = 5;
+
+function levenshteinDistance(a: string, b: string): number {
+  const previousRow: number[] = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let diagonal = previousRow[0];
+    previousRow[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const upLeft = diagonal;
+      diagonal = previousRow[j];
+      previousRow[j] = a[i - 1] === b[j - 1] ? upLeft : 1 + Math.min(upLeft, previousRow[j], previousRow[j - 1]);
+    }
+  }
+  return previousRow[b.length];
+}
+
+// Ranks how closely an app matches the search word -- higher is closer. Substring/prefix hits on
+// the visible label (the common case: typing part of an app's name) rank above a package-name hit,
+// which ranks above a pure typo-tolerance fallback via edit distance against the label. Returns
+// null when nothing about the app resembles the query, so a search for "banco" doesn't pad the
+// results out with five unrelated apps just to hit a quota.
+function matchScore(app: InstalledAppInfo, query: string): number | null {
+  const label = app.label.toLowerCase();
+  const pkg = app.packageName.toLowerCase();
+
+  if (label === query) return 1000;
+  if (label.startsWith(query)) return 900 - (label.length - query.length);
+
+  const labelIndex = label.indexOf(query);
+  if (labelIndex !== -1) return 800 - labelIndex - (label.length - query.length) * 0.1;
+
+  const pkgIndex = pkg.indexOf(query);
+  if (pkgIndex !== -1) return 700 - pkgIndex;
+
+  // Typo tolerance: only counts as a match if the label is proportionally close to the query
+  // (e.g. "instagarm" -> "instagram" is 2 transpositions on a 9-char word), not just "somewhat
+  // similar in length" -- otherwise short/generic labels would match almost anything.
+  const distance = levenshteinDistance(label, query);
+  const maxAllowedDistance = Math.max(2, Math.ceil(query.length * 0.4));
+  return distance <= maxAllowedDistance ? 600 - distance * 10 : null;
+}
+
+// Ranked top-N instead of "every app whose name contains the query" -- with a few hundred apps
+// installed, that unranked list was the whole point of the user's complaint (they have to type
+// the exact right substring, or scroll a wall of results to find what they meant).
+function searchInstalledApps(apps: InstalledAppInfo[], query: string): InstalledAppInfo[] {
+  if (!query) return [];
+
+  const scored: { app: InstalledAppInfo; score: number }[] = [];
+  for (const app of apps) {
+    const score = matchScore(app, query);
+    if (score !== null) scored.push({ app, score });
+  }
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, INSTALLED_APPS_MAX_RESULTS).map((entry) => entry.app);
 }
 
 export default function BlockListScreen() {
@@ -119,13 +178,10 @@ export default function BlockListScreen() {
 
   const blockedPackageNames = useMemo(() => new Set(androidEntries.map((entry) => entry.identifier)), [androidEntries]);
 
-  const filteredApps = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return installedApps.apps;
-    return installedApps.apps.filter(
-      (app) => app.label.toLowerCase().includes(query) || app.packageName.toLowerCase().includes(query),
-    );
-  }, [installedApps.apps, search]);
+  const filteredApps = useMemo(
+    () => searchInstalledApps(installedApps.apps, search.trim().toLowerCase()),
+    [installedApps.apps, search],
+  );
 
   async function removeEntry(entryId: string, identifier: string, label: string) {
     setPendingPackage(identifier);
@@ -420,9 +476,13 @@ export default function BlockListScreen() {
                 ) : (
                   <YStack gap="$3">
                     <Input placeholder="Buscar app..." value={search} onChangeText={setSearch} />
-                    {filteredApps.length === 0 ? (
+                    {search.trim() === '' ? (
                       <Paragraph margin={0} color="$muted">
-                        No se encontraron apps.
+                        Escribi el nombre de una app para buscarla.
+                      </Paragraph>
+                    ) : filteredApps.length === 0 ? (
+                      <Paragraph margin={0} color="$muted">
+                        No se encontraron apps parecidas a "{search.trim()}".
                       </Paragraph>
                     ) : (
                       <YStack>
