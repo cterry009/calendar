@@ -5,10 +5,11 @@ interface InstalledAppRowProps {
   app: InstalledAppInfo;
   isBlocked: boolean;
   isBusy: boolean;
+  isPending: boolean;
   onToggle: () => void;
 }
 
-export function InstalledAppRow({ app, isBlocked, isBusy, onToggle }: InstalledAppRowProps) {
+export function InstalledAppRow({ app, isBlocked, isBusy, isPending, onToggle }: InstalledAppRowProps) {
   return (
     <XStack
       alignItems="center"
@@ -27,7 +28,7 @@ export function InstalledAppRow({ app, isBlocked, isBusy, onToggle }: InstalledA
         </Text>
       </XStack>
       <AppButton variant={isBlocked ? 'danger' : 'ghost'} paddingHorizontal="$3" onPress={onToggle} disabled={isBusy}>
-        {isBlocked ? 'Quitar' : 'Bloquear'}
+        {isPending ? (isBlocked ? 'Quitando...' : 'Agregando...') : isBlocked ? 'Quitar' : 'Bloquear'}
       </AppButton>
     </XStack>
   );

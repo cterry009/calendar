@@ -30,7 +30,13 @@ class FocusBlockModule : Module() {
     // useNightBlocking.ts (mounted once at the app root) whenever the NIGHT-scope block list or
     // its on/off toggle changes.
     Function("setNightBlockingState") { enabled: Boolean, blockedPackages: List<String> ->
-      appContext.reactContext?.let { context -> FocusBlockPrefs.writeNight(context, enabled, blockedPackages.toSet()) }
+      appContext.reactContext?.let { context ->
+        FocusBlockPrefs.writeNight(context, enabled, blockedPackages.toSet())
+        // Re-arms (or cancels, if enabled just went false) the "bloqueo nocturno empieza ahora"
+        // alarm -- piggybacking on this existing push point instead of adding a new JS bridge call,
+        // since useNightBlocking.ts already invokes this on every enabled/packages change.
+        NightBlockAlarmScheduler.reschedule(context)
+      }
     }
 
     // Task 11.22. startMinutes/endMinutes are minutes-since-midnight (e.g. 22:30 -> 1350); the
@@ -38,7 +44,10 @@ class FocusBlockModule : Module() {
     // is ever called -- this layer just stores whatever it's given, same "native side has no
     // business logic of its own" pattern as setNightBlockingState above.
     Function("setNightWindow") { startMinutes: Int, endMinutes: Int ->
-      appContext.reactContext?.let { context -> FocusBlockPrefs.setNightWindow(context, startMinutes, endMinutes) }
+      appContext.reactContext?.let { context ->
+        FocusBlockPrefs.setNightWindow(context, startMinutes, endMinutes)
+        NightBlockAlarmScheduler.reschedule(context)
+      }
     }
 
     Function("getNightWindowStartMinutes") {

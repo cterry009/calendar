@@ -6,12 +6,13 @@ import type { SyncBlockListRecord } from '../../lib/blocklist/types';
 interface BlockListEntryRowProps {
   entry: SyncBlockListRecord;
   isBusy: boolean;
+  isPending: boolean;
   onDelete: () => void;
 }
 
 // Mirrors apps/web/src/components/blocklist/BlockListItem.tsx, minus the edit form (this screen
 // only creates entries via the installed-apps picker, see task 6.5's scope note in blocklist.tsx).
-export function BlockListEntryRow({ entry, isBusy, onDelete }: BlockListEntryRowProps) {
+export function BlockListEntryRow({ entry, isBusy, isPending, onDelete }: BlockListEntryRowProps) {
   function confirmDelete() {
     // hardMode entries get a stronger message but the same single-confirm-dialog contract as a
     // normal entry -- design.md's "no single tap" requirement is about there being no bare X
@@ -35,7 +36,7 @@ export function BlockListEntryRow({ entry, isBusy, onDelete }: BlockListEntryRow
         </YStack>
         <AppButton variant="ghost" paddingHorizontal="$2" onPress={confirmDelete} disabled={isBusy}>
           <Text color="$danger" fontSize="$2">
-            Quitar
+            {isPending ? 'Quitando...' : 'Quitar'}
           </Text>
         </AppButton>
       </XStack>

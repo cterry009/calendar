@@ -65,6 +65,25 @@ export default function BlockListScreen() {
   const [startInput, setStartInput] = useState(() => formatNightWindowMinutes(nightWindow.startMinutes));
   const [endInput, setEndInput] = useState(() => formatNightWindowMinutes(nightWindow.endMinutes));
   const [windowError, setWindowError] = useState<string | null>(null);
+  const [windowSaving, setWindowSaving] = useState(false);
+  // Shown right next to the button that was pressed, not just in the top-of-screen flash banner
+  // below -- this section sits well below the fold once "Horario (minimo 10 horas)" is reached,
+  // so a confirmation the user has to scroll up to see doesn't fix "I can't tell if it saved".
+  const [windowJustSaved, setWindowJustSaved] = useState(false);
+  // Which specific row a create/delete is in flight for -- isMutating alone can't tell "Ampere"'s
+  // row apart from "Instagram"'s, so every button would have to guess from one shared boolean.
+  // Cleared in toggleApp's finally regardless of outcome, so a failed mutation doesn't leave a
+  // row stuck saying "Agregando..." forever.
+  const [pendingPackage, setPendingPackage] = useState<string | null>(null);
+  // Ephemeral confirmation text (blocklist.tsx has no toast system yet) -- the user reported
+  // pressing Guardar/Quitar/Bloquear and seeing no response at all, so every one of those actions
+  // now leaves a visible trace here for a couple seconds, success or not.
+  const [flashMessage, setFlashMessage] = useState<string | null>(null);
+
+  function flash(message: string) {
+    setFlashMessage(message);
+    setTimeout(() => setFlashMessage((current) => (current === message ? null : current)), 2500);
+  }
 
   // The hook's initial value is a synchronous placeholder (the real one comes from an async
   // AsyncStorage read) -- this re-syncs the displayed text once that resolves, and again after a
@@ -108,22 +127,44 @@ export default function BlockListScreen() {
     );
   }, [installedApps.apps, search]);
 
-  function toggleApp(packageName: string, label: string) {
+  async function removeEntry(entryId: string, identifier: string, label: string) {
+    setPendingPackage(identifier);
+    try {
+      await deleteEntry(entryId);
+      flash(`"${label}" se quito de la lista.`);
+    } catch {
+      // useBlockList's own `error` state already surfaces the failure reason -- this just avoids
+      // a stuck "Quitando..." label on the row that triggered it.
+    } finally {
+      setPendingPackage(null);
+    }
+  }
+
+  async function toggleApp(packageName: string, label: string) {
     const existing = androidEntries.find((entry) => entry.identifier === packageName);
     if (existing) {
-      void deleteEntry(existing.id);
+      await removeEntry(existing.id, packageName, label);
       return;
     }
-    void createEntry({
-      kind: 'MOBILE_APP',
-      identifier: packageName,
-      label,
-      platform: 'ANDROID',
-      highDopamine: false,
-      enabled: true,
-      hardMode: false,
-      scope: activeScope,
-    });
+
+    setPendingPackage(packageName);
+    try {
+      await createEntry({
+        kind: 'MOBILE_APP',
+        identifier: packageName,
+        label,
+        platform: 'ANDROID',
+        highDopamine: false,
+        enabled: true,
+        hardMode: false,
+        scope: activeScope,
+      });
+      flash(`"${label}" se agrego a la lista.`);
+    } catch {
+      // see removeEntry's catch above
+    } finally {
+      setPendingPackage(null);
+    }
   }
 
   async function saveNightWindow() {
@@ -135,8 +176,19 @@ export default function BlockListScreen() {
       return;
     }
 
-    const result = await nightWindow.setWindow({ startMinutes, endMinutes });
-    setWindowError(result.ok ? null : result.error);
+    setWindowSaving(true);
+    setWindowJustSaved(false);
+    try {
+      const result = await nightWindow.setWindow({ startMinutes, endMinutes });
+      setWindowError(result.ok ? null : result.error);
+      if (result.ok) {
+        flash('Horario guardado.');
+        setWindowJustSaved(true);
+        setTimeout(() => setWindowJustSaved(false), 2500);
+      }
+    } finally {
+      setWindowSaving(false);
+    }
   }
 
   return (
@@ -167,6 +219,11 @@ export default function BlockListScreen() {
           {error ? (
             <Text color="$danger" fontSize="$3">
               {error}
+            </Text>
+          ) : null}
+          {flashMessage ? (
+            <Text color="$accent" fontSize="$3" fontWeight="600">
+              {flashMessage}
             </Text>
           ) : null}
 
@@ -223,13 +280,17 @@ export default function BlockListScreen() {
                       </Text>
                       <Input value={endInput} onChangeText={setEndInput} placeholder="08:00" width={100} />
                     </YStack>
-                    <AppButton variant="primary" onPress={() => void saveNightWindow()}>
-                      Guardar horario
+                    <AppButton variant="primary" onPress={() => void saveNightWindow()} disabled={windowSaving}>
+                      {windowSaving ? 'Guardando...' : 'Guardar horario'}
                     </AppButton>
                   </XStack>
                   {windowError ? (
                     <Text color="$danger" fontSize="$2">
                       {windowError}
+                    </Text>
+                  ) : windowJustSaved ? (
+                    <Text color="$accent" fontSize="$2" fontWeight="700">
+                      Horario guardado.
                     </Text>
                   ) : (
                     <Text color="$muted" fontSize="$2">
@@ -315,7 +376,13 @@ export default function BlockListScreen() {
                 ) : (
                   <YStack>
                     {scopedEntries.map((entry) => (
-                      <BlockListEntryRow key={entry.id} entry={entry} isBusy={isMutating} onDelete={() => void deleteEntry(entry.id)} />
+                      <BlockListEntryRow
+                        key={entry.id}
+                        entry={entry}
+                        isBusy={isMutating}
+                        isPending={pendingPackage === entry.identifier}
+                        onDelete={() => void removeEntry(entry.id, entry.identifier, entry.label)}
+                      />
                     ))}
                   </YStack>
                 )}
@@ -365,7 +432,8 @@ export default function BlockListScreen() {
                             app={app}
                             isBlocked={blockedPackageNames.has(app.packageName)}
                             isBusy={isMutating}
-                            onToggle={() => toggleApp(app.packageName, app.label)}
+                            isPending={pendingPackage === app.packageName}
+                            onToggle={() => void toggleApp(app.packageName, app.label)}
                           />
                         ))}
                       </YStack>
