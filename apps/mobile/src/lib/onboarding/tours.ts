@@ -28,9 +28,20 @@ export const TOURS: Record<TourId, TourDefinition> = {
           'Estos botones te llevan a Pomodoro, Fitness, Dashboard, tu Lista de bloqueo, tus Habitos y tu Tiempo de pantalla. El calendario de hoy y tu racha se ven directo en esta pantalla.',
       },
       {
+        target: 'home-week',
+        title: 'Elegi el dia',
+        description: 'Toca un dia para ver sus tareas y horario -- tus habitos de mas arriba son siempre de hoy.',
+      },
+      {
+        target: 'home-habits',
+        title: 'Habitos de hoy',
+        description:
+          'Toca el circulo para marcar un habito como cumplido hoy. Tambien podes hacerlo desde el recordatorio que te llega a la hora configurada, sin abrir la app.',
+      },
+      {
         target: 'home-tasks',
-        title: 'Tareas de hoy',
-        description: 'Se filtran automaticamente al dia de hoy. Toca el circulo para marcarlas como completadas.',
+        title: 'Tareas extra',
+        description: 'Las tareas del dia que elegiste arriba. Toca el circulo para marcarlas como completadas.',
       },
       {
         target: 'home-schedule',

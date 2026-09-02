@@ -40,7 +40,7 @@ export function minuteToTimeValue(totalMinutes: number): string {
 }
 
 // 0=Sunday..6=Saturday, matches JS Date.getDay() (same convention the server's daysOfWeek uses).
-const DAY_ABBREVIATIONS_ES = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+export const DAY_ABBREVIATIONS_ES = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
 
 export function formatDaysOfWeek(daysOfWeek: number[]): string {
   return [...daysOfWeek]

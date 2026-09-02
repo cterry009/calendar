@@ -1,47 +1,85 @@
 import { completedPomodoroDateKeys, computePomodoroStreak } from '@calendar/shared';
 import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Link } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScheduleRow } from '../components/calendar/ScheduleRow';
 import { TaskRow } from '../components/calendar/TaskRow';
+import { HabitChecklistRow } from '../components/habits/HabitChecklistRow';
 import { TutorialScrollView } from '../components/onboarding/TutorialScrollView';
 import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useAuth } from '../context/AuthContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { useCalendarData } from '../hooks/useCalendarData';
-import { isSameDay } from '../lib/calendar/utils';
+import { useHabits } from '../hooks/useHabits';
+import { DAY_ABBREVIATIONS_ES, isSameDay } from '../lib/calendar/utils';
+import { todayKey } from '../lib/habits/today';
 
 const TODAY_LABEL = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
+function startOfWeek(date: Date): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() - result.getDay());
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
 /**
- * Home / "today" screen -- second slice of task 6.2 (first was auth). Shows today's scheduled
- * tasks and today's work/rest schedule, fetched live from /sync/pull (no offline cache/live
- * updates yet, that's task 6.3). Mirrors the compact info density of apps/web's
- * DayTasksSidebar/ScheduleItem, not the full drag-and-drop calendar grid -- that's a much
- * bigger native-specific UI effort left for a later pass.
+ * Home screen -- second slice of task 6.2 (first was auth). Leads with a checkable habits list
+ * (today only) and a week strip that re-filters the "Tareas extra"/schedule cards below it to
+ * whichever day is tapped, both already fully fetched by /sync/pull so switching days is a
+ * client-side filter, no refetch. No offline cache/live updates yet (task 6.3), and still no full
+ * drag-and-drop calendar grid -- that's a much bigger native-specific UI effort left for a later
+ * pass.
  */
 export default function HomeScreen() {
   const { user, logout } = useAuth();
   const { startTour } = useOnboarding();
   const { tasks, schedules, pomodoroSessions, isLoading, isMutating, error, completeTask } = useCalendarData();
+  const {
+    habits,
+    records: habitRecords,
+    isLoading: isHabitsLoading,
+    isMutating: isHabitsMutating,
+    checkIn,
+  } = useHabits();
 
   const today = useMemo(() => new Date(), []);
+  const [selectedDate, setSelectedDate] = useState(today);
 
-  const todayTasks = useMemo(
-    () => tasks.filter((task) => task.scheduledAt && isSameDay(new Date(task.scheduledAt), today)),
-    [tasks, today],
+  // Sun..Sat of the current week -- switching selectedDate re-filters tasks/schedules (both
+  // already fully fetched by pullSnapshot, see useCalendarData.ts) client-side, same as the
+  // isSameDay filter this replaces. Habits stay pinned to today below: a check-in only ever means
+  // "today," matching what the reminder notification's action buttons already do (task 11.6).
+  const weekDates = useMemo(() => {
+    const start = startOfWeek(today);
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+      return date;
+    });
+  }, [today]);
+
+  const activeHabits = useMemo(() => habits.filter((habit) => !habit.archived), [habits]);
+
+  const selectedTasks = useMemo(
+    () => tasks.filter((task) => task.scheduledAt && isSameDay(new Date(task.scheduledAt), selectedDate)),
+    [tasks, selectedDate],
   );
 
-  const todaySchedules = useMemo(
-    () => schedules.filter((schedule) => schedule.enabled && schedule.daysOfWeek.includes(today.getDay())),
-    [schedules, today],
+  const selectedSchedules = useMemo(
+    () => schedules.filter((schedule) => schedule.enabled && schedule.daysOfWeek.includes(selectedDate.getDay())),
+    [schedules, selectedDate],
   );
 
   const streak = useMemo(
     () => computePomodoroStreak(completedPomodoroDateKeys(pomodoroSessions)),
     [pomodoroSessions],
   );
+
+  function handleHabitComplete(habitId: string) {
+    void checkIn(habitId, { date: todayKey(), value: 1, status: 'DONE' });
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#212e28' }}>
@@ -107,24 +145,87 @@ export default function HomeScreen() {
             </Text>
           ) : null}
 
+          <TutorialTarget id="home-week">
+            <XStack gap="$2" justifyContent="space-between">
+              {weekDates.map((date) => {
+                const isSelected = isSameDay(date, selectedDate);
+                const isToday = isSameDay(date, today);
+                return (
+                  <YStack
+                    key={date.toISOString()}
+                    flex={1}
+                    alignItems="center"
+                    gap="$1"
+                    paddingVertical="$2"
+                    borderRadius={12}
+                    backgroundColor={isSelected ? '$accent' : 'transparent'}
+                    borderWidth={1}
+                    borderColor={isSelected ? '$accent' : isToday ? '$accent' : '$borderColor'}
+                    onPress={() => setSelectedDate(date)}
+                  >
+                    <Text fontSize="$1" fontWeight="600" color={isSelected ? '#0a1c13' : '$muted'}>
+                      {DAY_ABBREVIATIONS_ES[date.getDay()]}
+                    </Text>
+                    <Text fontSize="$4" fontWeight="700" color={isSelected ? '#0a1c13' : '$color'}>
+                      {date.getDate()}
+                    </Text>
+                  </YStack>
+                );
+              })}
+            </XStack>
+          </TutorialTarget>
+
+          <TutorialTarget id="home-habits">
+            <AppCard>
+              <YStack gap="$1">
+                <H2 margin={0} fontSize="$5">
+                  Habitos de hoy
+                </H2>
+                {isHabitsLoading ? (
+                  <Paragraph margin={0} color="$muted">
+                    Cargando...
+                  </Paragraph>
+                ) : activeHabits.length === 0 ? (
+                  <Paragraph margin={0} color="$muted">
+                    Todavia no agregaste ningun habito.
+                  </Paragraph>
+                ) : (
+                  <YStack>
+                    {activeHabits.map((habit) => (
+                      <HabitChecklistRow
+                        key={habit.id}
+                        habit={habit}
+                        records={habitRecords}
+                        isBusy={isHabitsMutating}
+                        onComplete={() => handleHabitComplete(habit.id)}
+                      />
+                    ))}
+                  </YStack>
+                )}
+              </YStack>
+            </AppCard>
+          </TutorialTarget>
+
           <TutorialTarget id="home-tasks">
             <AppCard>
               <YStack gap="$3">
                 <H2 margin={0} fontSize="$5">
-                  Tareas de hoy
+                  Tareas extra
                 </H2>
                 {isLoading ? (
                   <Paragraph margin={0} color="$muted">
                     Cargando...
                   </Paragraph>
-                ) : todayTasks.length === 0 ? (
+                ) : selectedTasks.length === 0 ? (
                   <Paragraph margin={0} color="$muted">
-                    No hay tareas programadas para hoy.
+                    No hay tareas programadas para este dia.
                   </Paragraph>
                 ) : (
-                  <YStack>
-                    {todayTasks.map((task) => (
-                      <TaskRow key={task.id} task={task} isBusy={isMutating} onComplete={() => void completeTask(task)} />
+                  <YStack gap="$2">
+                    {selectedTasks.map((task) => (
+                      <YStack key={task.id} backgroundColor="$overlaySubtle" borderRadius={10} paddingHorizontal="$3">
+                        <TaskRow task={task} isBusy={isMutating} onComplete={() => void completeTask(task)} />
+                      </YStack>
                     ))}
                   </YStack>
                 )}
@@ -142,13 +243,13 @@ export default function HomeScreen() {
                   <Paragraph margin={0} color="$muted">
                     Cargando...
                   </Paragraph>
-                ) : todaySchedules.length === 0 ? (
+                ) : selectedSchedules.length === 0 ? (
                   <Paragraph margin={0} color="$muted">
-                    No hay horarios configurados para hoy.
+                    No hay horarios configurados para este dia.
                   </Paragraph>
                 ) : (
                   <YStack>
-                    {todaySchedules.map((schedule) => (
+                    {selectedSchedules.map((schedule) => (
                       <ScheduleRow key={schedule.id} schedule={schedule} />
                     ))}
                   </YStack>
