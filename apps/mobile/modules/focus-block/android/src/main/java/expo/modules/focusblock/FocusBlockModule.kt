@@ -33,6 +33,22 @@ class FocusBlockModule : Module() {
       appContext.reactContext?.let { context -> FocusBlockPrefs.writeNight(context, enabled, blockedPackages.toSet()) }
     }
 
+    // Task 11.22. startMinutes/endMinutes are minutes-since-midnight (e.g. 22:30 -> 1350); the
+    // >=10h-duration validation lives entirely on the JS side (lib/nightBlock/state.ts) before this
+    // is ever called -- this layer just stores whatever it's given, same "native side has no
+    // business logic of its own" pattern as setNightBlockingState above.
+    Function("setNightWindow") { startMinutes: Int, endMinutes: Int ->
+      appContext.reactContext?.let { context -> FocusBlockPrefs.setNightWindow(context, startMinutes, endMinutes) }
+    }
+
+    Function("getNightWindowStartMinutes") {
+      appContext.reactContext?.let { context -> FocusBlockPrefs.nightStartMinutes(context) } ?: (22 * 60 + 30)
+    }
+
+    Function("getNightWindowEndMinutes") {
+      appContext.reactContext?.let { context -> FocusBlockPrefs.nightEndMinutes(context) } ?: (8 * 60)
+    }
+
     // AccessibilityServices can't be enabled programmatically -- Android requires an explicit,
     // manual toggle in system Settings (this permission class lets an app observe every app the
     // user opens, so auto-enabling it would be a real abuse vector). This just reports status.

@@ -19,6 +19,25 @@ export function setNightBlockingState(enabled: boolean, blockedPackages: string[
   FocusBlockModule.setNightBlockingState(enabled, blockedPackages);
 }
 
+// Task 11.22: the night window (previously a fixed 22:30-08:00 constant). Minutes are since
+// midnight (e.g. 22:30 -> 1350). The >=10h-duration check lives in lib/nightBlock/state.ts, not
+// here -- this is just the native push, same "no business logic on this side" shape as
+// setNightBlockingState above.
+export function setNightWindow(startMinutes: number, endMinutes: number): void {
+  if (Platform.OS !== 'android') return;
+  FocusBlockModule.setNightWindow(startMinutes, endMinutes);
+}
+
+export function getNightWindowStartMinutes(): number {
+  if (Platform.OS !== 'android') return 22 * 60 + 30;
+  return FocusBlockModule.getNightWindowStartMinutes();
+}
+
+export function getNightWindowEndMinutes(): number {
+  if (Platform.OS !== 'android') return 8 * 60;
+  return FocusBlockModule.getNightWindowEndMinutes();
+}
+
 export function isAccessibilityServiceEnabled(): boolean {
   if (Platform.OS !== 'android') return false;
   return FocusBlockModule.isAccessibilityServiceEnabled();

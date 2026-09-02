@@ -24,6 +24,15 @@ internal object FocusBlockPrefs {
   private const val KEY_NIGHT_ENABLED = "night_enabled"
   private const val KEY_NIGHT_BLOCKED_PACKAGES = "night_blocked_packages"
 
+  // Task 11.22: the window itself (previously a fixed 22:30-08:00 constant in NightBlockRules.kt)
+  // is now user-configurable -- JS enforces the >=10h minimum before ever calling setNightWindow,
+  // this layer just stores whatever it's given. Defaults match the original hardcoded values so an
+  // upgrade with no configured window yet behaves identically to before this task.
+  private const val KEY_NIGHT_START_MINUTES = "night_start_minutes"
+  private const val KEY_NIGHT_END_MINUTES = "night_end_minutes"
+  private const val DEFAULT_NIGHT_START_MINUTES = 22 * 60 + 30
+  private const val DEFAULT_NIGHT_END_MINUTES = 8 * 60
+
   private fun prefs(context: Context): SharedPreferences =
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -50,4 +59,17 @@ internal object FocusBlockPrefs {
 
   fun nightBlockedPackages(context: Context): Set<String> =
     prefs(context).getStringSet(KEY_NIGHT_BLOCKED_PACKAGES, emptySet()) ?: emptySet()
+
+  fun setNightWindow(context: Context, startMinutes: Int, endMinutes: Int) {
+    prefs(context).edit()
+      .putInt(KEY_NIGHT_START_MINUTES, startMinutes)
+      .putInt(KEY_NIGHT_END_MINUTES, endMinutes)
+      .apply()
+  }
+
+  fun nightStartMinutes(context: Context): Int =
+    prefs(context).getInt(KEY_NIGHT_START_MINUTES, DEFAULT_NIGHT_START_MINUTES)
+
+  fun nightEndMinutes(context: Context): Int =
+    prefs(context).getInt(KEY_NIGHT_END_MINUTES, DEFAULT_NIGHT_END_MINUTES)
 }

@@ -7,17 +7,14 @@ import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useOnboarding } from '../context/OnboardingContext';
 import { useBlockList } from '../hooks/useBlockList';
 import { useInstalledApps } from '../hooks/useInstalledApps';
+import { useNightWindow } from '../hooks/useNightWindow';
 import { useScreenTime } from '../hooks/useScreenTime';
+import { formatNightWindowMinutes } from '../lib/nightBlock/state';
 import type { AppUsageRecord } from '../lib/screenTime/api';
 import { isKnownDistractingApp } from '../lib/screenTime/distractingApps';
 
 const MAX_ROWS = 10;
 const MAX_SUGGESTIONS = 5;
-
-const SCOPE_OPTIONS: { scope: BlockListScope; label: string }[] = [
-  { scope: 'FOCUS', label: 'Indefinidamente (Enfoque)' },
-  { scope: 'NIGHT', label: 'Solo de noche (22:30-8:00)' },
-];
 
 function formatDuration(totalTimeMs: number): string {
   const totalMinutes = Math.round(totalTimeMs / 60_000);
@@ -62,10 +59,21 @@ export default function ScreenTimeScreen() {
   const blockList = useBlockList();
   // Which list a suggestion gets added to when tapped -- FOCUS (blocked whenever a pomodoro/work
   // schedule is active, no end date until removed by hand) or NIGHT (the existing automatic
-  // 22:30-8:00 window from task 11.9/11.10, jog-to-unlock and all). Deliberately a single choice
-  // for the whole panel rather than per-suggestion, since a user picking "block my socials" is
-  // almost always choosing one strategy for all of them at once.
+  // overnight window from task 11.9/11.10/11.22, jog/step-to-unlock and all). Deliberately a
+  // single choice for the whole panel rather than per-suggestion, since a user picking "block my
+  // socials" is almost always choosing one strategy for all of them at once.
   const [blockScope, setBlockScope] = useState<BlockListScope>('FOCUS');
+  const nightWindow = useNightWindow();
+  const scopeOptions = useMemo<{ scope: BlockListScope; label: string }[]>(
+    () => [
+      { scope: 'FOCUS', label: 'Indefinidamente (Enfoque)' },
+      {
+        scope: 'NIGHT',
+        label: `Solo de noche (${formatNightWindowMinutes(nightWindow.startMinutes)}-${formatNightWindowMinutes(nightWindow.endMinutes)})`,
+      },
+    ],
+    [nightWindow.startMinutes, nightWindow.endMinutes],
+  );
   // Labels make this list actually useful (raw package names are hard to scan) -- auto-loaded
   // here, unlike blocklist.tsx's load-on-demand button, since this screen's whole purpose is
   // showing readable app names, not picking apps to block.
@@ -227,7 +235,7 @@ export default function ScreenTimeScreen() {
                         Por cuanto tiempo bloquearlas
                       </Text>
                       <XStack gap="$2" flexWrap="wrap">
-                        {SCOPE_OPTIONS.map((option) => (
+                        {scopeOptions.map((option) => (
                           <AppButton
                             key={option.scope}
                             variant={blockScope === option.scope ? 'primary' : 'ghost'}

@@ -14,6 +14,18 @@ class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModul
     throw new Error('El bloqueo real de apps solo esta disponible en Android.');
   }
 
+  setNightWindow(): void {
+    throw new Error('El bloqueo real de apps solo esta disponible en Android.');
+  }
+
+  getNightWindowStartMinutes(): number {
+    return 22 * 60 + 30;
+  }
+
+  getNightWindowEndMinutes(): number {
+    return 8 * 60;
+  }
+
   isAccessibilityServiceEnabled(): boolean {
     return false;
   }

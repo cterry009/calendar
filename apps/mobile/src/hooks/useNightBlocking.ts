@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react';
 import { useBlockList } from './useBlockList';
 import { useNightBlockEnabled } from './useNightBlockEnabled';
-import { setNightBlockingState } from '../lib/focusBlock/api';
+import { useNightWindow } from './useNightWindow';
+import { setNightBlockingState, setNightWindow } from '../lib/focusBlock/api';
 
 // Matches useFocusBlocking.ts's WORK_HOURS_CHECK_INTERVAL_MS -- same reason, see the refetch
 // effect below.
@@ -23,6 +24,7 @@ const BLOCK_LIST_REFETCH_INTERVAL_MS = 30_000;
 export function useNightBlocking(): void {
   const { entries, refetch } = useBlockList();
   const [enabled] = useNightBlockEnabled();
+  const { startMinutes, endMinutes } = useNightWindow();
 
   // Real bug found on-device (same class useFocusBlocking.ts already documents and works around
   // for the FOCUS list): this hook's own useBlockList() instance is separate from
@@ -51,4 +53,11 @@ export function useNightBlocking(): void {
   useEffect(() => {
     setNightBlockingState(enabled, nightPackageNames);
   }, [enabled, nightPackageNames]);
+
+  // Task 11.22: pushed independently of the enabled/packages effect above since it changes on its
+  // own schedule (a settings edit, not a block-list mutation) -- same "push whatever changed"
+  // shape, no reason to couple them into one effect.
+  useEffect(() => {
+    setNightWindow(startMinutes, endMinutes);
+  }, [startMinutes, endMinutes]);
 }

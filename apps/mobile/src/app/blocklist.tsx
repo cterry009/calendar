@@ -1,6 +1,6 @@
 import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Stack, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import { Input } from 'tamagui';
 import { BlockListEntryRow } from '../components/blocklist/BlockListEntryRow';
@@ -11,6 +11,8 @@ import { useOnboarding } from '../context/OnboardingContext';
 import { useBlockList } from '../hooks/useBlockList';
 import { useInstalledApps } from '../hooks/useInstalledApps';
 import { useNightBlockEnabled } from '../hooks/useNightBlockEnabled';
+import { useNightWindow } from '../hooks/useNightWindow';
+import { MIN_NIGHT_WINDOW_MINUTES, formatNightWindowMinutes, nightWindowDurationMinutes } from '../lib/nightBlock/state';
 import {
   isAccessibilityServiceEnabled,
   isFullScreenIntentAllowed,
@@ -38,8 +40,19 @@ import type { BlockListScope } from '@calendar/shared';
  */
 const SCOPE_TABS: { scope: BlockListScope; label: string }[] = [
   { scope: 'FOCUS', label: 'Enfoque' },
-  { scope: 'NIGHT', label: 'Nocturna (22:30-8am)' },
+  { scope: 'NIGHT', label: 'Nocturna' },
 ];
+
+// Returns null for anything that isn't a plain "H:MM"/"HH:MM" 24h time -- the caller shows a
+// generic parse error rather than trying to guess what the user meant.
+function parseTimeInput(value: string): number | null {
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
 
 export default function BlockListScreen() {
   const { entries, isLoading, isMutating, error, createEntry, deleteEntry } = useBlockList();
@@ -48,6 +61,18 @@ export default function BlockListScreen() {
   const [search, setSearch] = useState('');
   const [activeScope, setActiveScope] = useState<BlockListScope>('FOCUS');
   const [nightEnabled, setNightEnabled] = useNightBlockEnabled();
+  const nightWindow = useNightWindow();
+  const [startInput, setStartInput] = useState(() => formatNightWindowMinutes(nightWindow.startMinutes));
+  const [endInput, setEndInput] = useState(() => formatNightWindowMinutes(nightWindow.endMinutes));
+  const [windowError, setWindowError] = useState<string | null>(null);
+
+  // The hook's initial value is a synchronous placeholder (the real one comes from an async
+  // AsyncStorage read) -- this re-syncs the displayed text once that resolves, and again after a
+  // successful save (confirming what actually got persisted).
+  useEffect(() => {
+    setStartInput(formatNightWindowMinutes(nightWindow.startMinutes));
+    setEndInput(formatNightWindowMinutes(nightWindow.endMinutes));
+  }, [nightWindow.startMinutes, nightWindow.endMinutes]);
   const [accessibilityEnabled, setAccessibilityEnabled] = useState(false);
   const [fullScreenIntentAllowed, setFullScreenIntentAllowed] = useState(false);
   const [batteryOptimizationIgnored, setBatteryOptimizationIgnored] = useState(false);
@@ -99,6 +124,19 @@ export default function BlockListScreen() {
       hardMode: false,
       scope: activeScope,
     });
+  }
+
+  async function saveNightWindow() {
+    const startMinutes = parseTimeInput(startInput);
+    const endMinutes = parseTimeInput(endInput);
+
+    if (startMinutes === null || endMinutes === null) {
+      setWindowError('Escribi la hora en formato HH:MM, por ejemplo 22:30.');
+      return;
+    }
+
+    const result = await nightWindow.setWindow({ startMinutes, endMinutes });
+    setWindowError(result.ok ? null : result.error);
   }
 
   return (
@@ -153,9 +191,11 @@ export default function BlockListScreen() {
                   Bloqueo nocturno
                 </H2>
                 <Paragraph margin={0} color="$muted">
-                  Bloquea automaticamente las apps de esta lista todas las noches de 22:30 a 8:00.
-                  Si te despertas antes de las 7, siguen bloqueadas hasta que salgas a trotar (si la
-                  deteccion de actividad esta activa) o hasta las 8:00, lo que ocurra primero.
+                  Bloquea automaticamente las apps de esta lista todas las noches, de{' '}
+                  {formatNightWindowMinutes(nightWindow.startMinutes)} a {formatNightWindowMinutes(nightWindow.endMinutes)}.
+                  Si te despertas antes de que termine la ventana, siguen bloqueadas hasta que
+                  salgas a trotar, des 1000 pasos (si la deteccion de actividad/pasos esta activa),
+                  o hasta que termine la ventana -- lo que ocurra primero.
                 </Paragraph>
                 <XStack gap="$2">
                   <AppButton variant={nightEnabled ? 'primary' : 'ghost'} onPress={() => setNightEnabled(true)}>
@@ -165,6 +205,42 @@ export default function BlockListScreen() {
                     Desactivado
                   </AppButton>
                 </XStack>
+
+                <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor="$borderColor">
+                  <Text fontWeight="700" fontSize="$3">
+                    Horario (minimo 10 horas)
+                  </Text>
+                  <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                    <YStack gap="$1">
+                      <Text color="$muted" fontSize="$2">
+                        Inicio
+                      </Text>
+                      <Input value={startInput} onChangeText={setStartInput} placeholder="22:30" width={100} />
+                    </YStack>
+                    <YStack gap="$1">
+                      <Text color="$muted" fontSize="$2">
+                        Fin
+                      </Text>
+                      <Input value={endInput} onChangeText={setEndInput} placeholder="08:00" width={100} />
+                    </YStack>
+                    <AppButton variant="primary" onPress={() => void saveNightWindow()}>
+                      Guardar horario
+                    </AppButton>
+                  </XStack>
+                  {windowError ? (
+                    <Text color="$danger" fontSize="$2">
+                      {windowError}
+                    </Text>
+                  ) : (
+                    <Text color="$muted" fontSize="$2">
+                      Dura{' '}
+                      {Math.round((nightWindowDurationMinutes(nightWindow.startMinutes, nightWindow.endMinutes) / 60) * 10) /
+                        10}{' '}
+                      horas (minimo {MIN_NIGHT_WINDOW_MINUTES / 60}h). La hora de inicio debe ser
+                      mas tarde que la de fin -- la ventana siempre cruza la medianoche.
+                    </Text>
+                  )}
+                </YStack>
               </YStack>
             </AppCard>
           ) : null}
