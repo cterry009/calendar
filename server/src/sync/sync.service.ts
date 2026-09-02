@@ -1000,9 +1000,24 @@ export class SyncService {
       return this.prisma.habitRecord.findFirst({ where: { id: change.id, userId } });
     }
     if (change.clientId) {
-      return this.prisma.habitRecord.findFirst({
+      const byClientId = this.prisma.habitRecord.findFirst({
         where: { userId, clientId: change.clientId },
       });
+      // habitId+date is the schema's other unique key (@@unique([habitId, date])) -- a clientId
+      // miss doesn't mean no record exists for that day, just that this particular offline-
+      // generated id hasn't been seen before. Two different clientIds queued for the same
+      // habit+day (e.g. a duplicate offline check-in) would otherwise both fall through to
+      // create() below and the second one dies on that constraint instead of merging into the
+      // first, which is exactly the case this fallback catches.
+      if (change.habitId && change.date) {
+        return byClientId.then(
+          (record) => record ?? this.prisma.habitRecord.findFirst({ where: { userId, habitId: change.habitId, date: new Date(change.date!) } }),
+        );
+      }
+      return byClientId;
+    }
+    if (change.habitId && change.date) {
+      return this.prisma.habitRecord.findFirst({ where: { userId, habitId: change.habitId, date: new Date(change.date) } });
     }
     return null;
   }
