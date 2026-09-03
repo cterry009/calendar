@@ -1,8 +1,10 @@
 import type { HabitRecordStatus, HabitType, TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
+import type { SyncBlockEventRecord } from '../blockEvents/types';
 import type { SyncBlockListRecord } from '../blocklist/types';
 import type { SyncFitnessRecord } from '../fitness/types';
 import type { SyncFloorsClimbedRecord } from '../floors/types';
 import type { SyncPomodoroRecord } from '../pomodoro/types';
+import type { SyncDailyScreenTimeRecord } from '../screenTime/types';
 import type { SyncStepCountRecord } from '../steps/types';
 
 // Mirrors apps/web/src/lib/tasks/types.ts's SyncTaskRecord -- the server's sync payload adds
@@ -87,6 +89,8 @@ export interface SyncSnapshot {
   dailyStepCounts: SyncStepCountRecord[];
   dailyFloorsClimbed: SyncFloorsClimbedRecord[];
   blockListEntries: SyncBlockListRecord[];
+  blockEvents: SyncBlockEventRecord[];
+  dailyScreenTime: SyncDailyScreenTimeRecord[];
   habits: SyncHabit[];
   habitRecords: SyncHabitRecord[];
   syncedAt: string;

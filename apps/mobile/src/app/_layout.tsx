@@ -16,6 +16,7 @@ import { useFocusBlocking } from '../hooks/useFocusBlocking';
 import { useHabitReminders } from '../hooks/useHabitReminders';
 import { useJogDetection } from '../hooks/useJogDetection';
 import { useNightBlocking } from '../hooks/useNightBlocking';
+import { useScreenTimeSync } from '../hooks/useScreenTimeSync';
 import { useStepTrackingService } from '../hooks/useStepTrackingService';
 
 // @tamagui/animations-react-native's RN `Animated.interpolate()` calls fail under
@@ -74,6 +75,13 @@ function BlockEventsBridge() {
   return null;
 }
 
+// Doesn't need any provider (reads via useScreenTime()'s own SyncContext-independent native call
+// and pushes via syncBatch) -- kept alongside the other bridges below for consistency.
+function ScreenTimeSyncBridge() {
+  useScreenTimeSync();
+  return null;
+}
+
 function RootNavigator() {
   const { isLoading, isAuthenticated } = useAuth();
 
@@ -127,6 +135,7 @@ function RootNavigator() {
         <StepTrackingBridge />
         <HabitRemindersBridge />
         <BlockEventsBridge />
+        <ScreenTimeSyncBridge />
         <OnboardingProvider>
           <YStack flex={1}>
             <SyncStatusBanner />

@@ -5,6 +5,7 @@ import { SyncEventsService } from '../realtime/sync-events.service';
 import {
   BlockEventSyncChangeDto,
   BlockListSyncChangeDto,
+  DailyScreenTimeSyncChangeDto,
   DetoxPlanSyncChangeDto,
   FitnessSyncChangeDto,
   FloorsClimbedSyncChangeDto,
@@ -39,6 +40,7 @@ export class SyncService {
       dailyStepCounts,
       dailyFloorsClimbed,
       blockEvents,
+      dailyScreenTime,
       detoxPlan,
       serotoninSession,
       habits,
@@ -63,6 +65,7 @@ export class SyncService {
         where: { userId, occurredAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
         orderBy: { occurredAt: 'desc' },
       }),
+      this.prisma.dailyScreenTime.findMany({ where: { userId } }),
       this.prisma.detoxPlan.findUnique({ where: { userId } }),
       this.prisma.serotoninSession.findUnique({ where: { userId } }),
       this.prisma.habit.findMany({ where: { userId, deletedAt: null } }),
@@ -80,6 +83,7 @@ export class SyncService {
       dailyStepCounts,
       dailyFloorsClimbed,
       blockEvents,
+      dailyScreenTime,
       habits,
       habitRecords,
       journalEntries,
@@ -215,6 +219,18 @@ export class SyncService {
         this.bucketResult(result, 'blockEvents', outcome);
         if (outcome.status === 'applied') {
           changedEntities.add('blockEvents');
+        }
+      }
+    }
+
+    if (dto.dailyScreenTime?.length) {
+      result.applied.dailyScreenTime = [];
+      result.conflicts.dailyScreenTime = [];
+      for (const change of dto.dailyScreenTime) {
+        const outcome = await this.applyDailyScreenTimeChange(userId, change);
+        this.bucketResult(result, 'dailyScreenTime', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('dailyScreenTime');
         }
       }
     }
@@ -775,6 +791,40 @@ export class SyncService {
     });
 
     return { status: 'applied', clientKey: change.id, record };
+  }
+
+  // Task 8.3. Keyed on (userId, date), same as applyStepCountChange/applyFloorsClimbedChange, but
+  // a plain updatedAt-wins overwrite instead of their max()-merge -- screen time only ever comes
+  // from one Android phone per account in practice (unlike a pedometer, there's no multi-device
+  // scenario where an older sync could under-report a day that another device already reported
+  // more completely), so the ordinary conflict rule every other synced entity uses is enough.
+  private async applyDailyScreenTimeChange(
+    userId: string,
+    change: DailyScreenTimeSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const date = this.truncateToUtcDay(change.date);
+    const key = change.id;
+
+    const existing = await this.prisma.dailyScreenTime.findUnique({
+      where: { userId_date: { userId, date } },
+    });
+
+    if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+      return { status: 'conflict', clientKey: key, server: existing };
+    }
+
+    const data = {
+      date,
+      totalMinutes: change.totalMinutes,
+      topApps: change.topApps as unknown as Prisma.InputJsonValue,
+      updatedAt: new Date(change.updatedAt),
+    };
+
+    const record = existing
+      ? await this.prisma.dailyScreenTime.update({ where: { id: existing.id }, data })
+      : await this.prisma.dailyScreenTime.create({ data: { ...data, userId } });
+
+    return { status: 'applied', clientKey: key, record };
   }
 
   // Opt-in per habit (Habit.linkedFitnessActivityType) rather than fuzzy-matching titles: a

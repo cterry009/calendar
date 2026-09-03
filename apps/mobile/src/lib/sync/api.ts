@@ -19,6 +19,7 @@ export interface SyncBatchPayload {
   habits?: unknown[];
   habitRecords?: unknown[];
   blockEvents?: unknown[];
+  dailyScreenTime?: unknown[];
 }
 
 export interface SyncBatchResponse {

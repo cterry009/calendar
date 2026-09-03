@@ -128,6 +128,7 @@ model User {
   fitnessEntries     FitnessEntry[]
   dailyStepCounts    DailyStepCount[]
   dailyFloorsClimbed DailyFloorsClimbed[]
+  dailyScreenTime    DailyScreenTime[]
   analyticsSnapshots AnalyticsSnapshot[]
   detoxPlan          DetoxPlan?
   serotoninSession   SerotoninSession?
@@ -375,6 +376,32 @@ model DailyFloorsClimbed {
 
   @@unique([userId, date])
   @@map("daily_floors_climbed")
+}
+
+// Task 8.3: reverses task 11.18's original "deliberately local-only, not synced" decision for
+// screen time, now that the explicit ask is for the web dashboard to show it too. Syncs a *daily
+// aggregate* (totalMinutes + the top few apps' minutes), not a raw per-app-open event log --
+// keeps 11.18's original privacy-shaped reasoning (a full cross-app usage timeline never leaves
+// the device) while still giving web something real to show. `topApps` is a small JSON array
+// (`{ packageName, minutes }[]`, capped client-side) rather than its own table -- it's a derived
+// snapshot recomputed fresh from Android's UsageStatsManager on every push, not data with its own
+// identity/lifecycle worth normalizing. No `source`/multi-device merge logic like
+// DailyStepCount/DailyFloorsClimbed: unlike a pedometer, only one Android phone per account
+// realistically has usage-stats access at all, so the ordinary `updatedAt`-wins conflict rule
+// every other synced entity uses is sufficient here.
+model DailyScreenTime {
+  id           String   @id @default(cuid())
+  userId       String
+  date         DateTime
+  totalMinutes Int
+  topApps      Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_screen_time")
 }
 
 // ─── Serotonin detox plan ────────────────────────────────────────────────────

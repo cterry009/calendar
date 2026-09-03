@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsBoolean,
@@ -424,6 +425,42 @@ export class FloorsClimbedSyncChangeDto {
   source?: FitnessSource;
 }
 
+// Task 8.3, one entry of DailyScreenTimeSyncChangeDto.topApps below.
+export class TopAppUsageDto {
+  @IsString()
+  @MinLength(1)
+  packageName!: string;
+
+  @IsInt()
+  @Min(0)
+  minutes!: number;
+}
+
+// No `deleted` flag, same reasoning as StepCountSyncChangeDto/FloorsClimbedSyncChangeDto -- a
+// per-day aggregate that gets corrected by a fresh sync, not removed via the UI. `topApps` capped
+// at 10 -- this is a display snapshot, not a full per-app ledger.
+export class DailyScreenTimeSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsDateString()
+  date!: string;
+
+  @IsInt()
+  @Min(0)
+  totalMinutes!: number;
+
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => TopAppUsageDto)
+  topApps!: TopAppUsageDto[];
+
+  @IsDateString()
+  updatedAt!: string;
+}
+
 // Task 8.2. `id` is required and client-generated (a UUID, from the native focus-block module) --
 // unlike every other DTO's optional server-assigned id, this one has to be stable across a retried
 // offline-queue flush, since it's the only idempotency key a pure "record this happened" event has.
@@ -677,6 +714,12 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => BlockEventSyncChangeDto)
   blockEvents?: BlockEventSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DailyScreenTimeSyncChangeDto)
+  dailyScreenTime?: DailyScreenTimeSyncChangeDto[];
 
   @IsOptional()
   @IsArray()
