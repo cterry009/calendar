@@ -11,6 +11,7 @@ import { NotificationsProvider } from '../context/NotificationsContext';
 import { OnboardingProvider } from '../context/OnboardingContext';
 import { PomodoroProvider } from '../context/PomodoroContext';
 import { SyncProvider } from '../context/SyncContext';
+import { useBlockEvents } from '../hooks/useBlockEvents';
 import { useFocusBlocking } from '../hooks/useFocusBlocking';
 import { useHabitReminders } from '../hooks/useHabitReminders';
 import { useJogDetection } from '../hooks/useJogDetection';
@@ -61,6 +62,15 @@ function StepTrackingBridge() {
 // other bridges below for consistency, same as JogDetectionBridge.
 function HabitRemindersBridge() {
   useHabitReminders();
+  return null;
+}
+
+// Doesn't need any provider (reads native SharedPreferences + calls syncBatch directly) -- kept
+// alongside the other bridges below for consistency, same as JogDetectionBridge. Mounted only
+// once authenticated (below), same reasoning as every other bridge here: syncBatch needs a valid
+// access token.
+function BlockEventsBridge() {
+  useBlockEvents();
   return null;
 }
 
@@ -116,6 +126,7 @@ function RootNavigator() {
         <NightBlockingBridge />
         <StepTrackingBridge />
         <HabitRemindersBridge />
+        <BlockEventsBridge />
         <OnboardingProvider>
           <YStack flex={1}>
             <SyncStatusBanner />

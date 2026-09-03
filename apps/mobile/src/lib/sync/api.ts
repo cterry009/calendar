@@ -18,6 +18,7 @@ export interface SyncBatchPayload {
   blockListEntries?: unknown[];
   habits?: unknown[];
   habitRecords?: unknown[];
+  blockEvents?: unknown[];
 }
 
 export interface SyncBatchResponse {

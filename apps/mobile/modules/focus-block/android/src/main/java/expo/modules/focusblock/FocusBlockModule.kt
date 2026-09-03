@@ -58,6 +58,16 @@ class FocusBlockModule : Module() {
       appContext.reactContext?.let { context -> FocusBlockPrefs.nightEndMinutes(context) } ?: (8 * 60)
     }
 
+    // Task 8.2. Returns and clears the native pending-BlockEvent queue in one call (see
+    // FocusBlockPrefs.drainPendingBlockEvents's doc comment for the atomicity reasoning) -- called
+    // from useBlockEvents.ts on mount/foreground, handing the result straight to the existing
+    // offline sync queue so network delivery/retry is the JS layer's job, not this bridge's.
+    Function("drainPendingBlockEvents") {
+      val context = appContext.reactContext
+      val events: List<Map<String, String?>> = if (context != null) FocusBlockPrefs.drainPendingBlockEvents(context) else emptyList()
+      events
+    }
+
     // AccessibilityServices can't be enabled programmatically -- Android requires an explicit,
     // manual toggle in system Settings (this permission class lets an app observe every app the
     // user opens, so auto-enabling it would be a real abuse vector). This just reports status.

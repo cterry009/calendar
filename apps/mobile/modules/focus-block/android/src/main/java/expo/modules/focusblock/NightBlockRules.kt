@@ -32,6 +32,14 @@ internal object NightBlockRules {
   private fun isEveningPortion(now: Calendar, nightStartMinutes: Int): Boolean =
     minutesSinceMidnight(now) >= nightStartMinutes
 
+  // Task 8.2: true only while the morning portion's own cutoff hasn't passed yet -- used to tell
+  // an early jog/step unlock (still inside the window, blocking stopped only because the user
+  // moved) apart from the window simply ending on schedule, so FocusBlockAccessibilityService can
+  // log a NIGHT_UNLOCK BlockEvent for the former and not the latter (the scheduled end isn't a
+  // user action worth counting as an "unlock").
+  fun isInMorningPortion(now: Calendar, morningEndMinutes: Int): Boolean =
+    minutesSinceMidnight(now) < morningEndMinutes
+
   /**
    * The full configured window, crossing midnight, ignoring the jog/step exception entirely -- a
    * single "start <= now" check can't express a range that wraps past midnight, hence the OR.

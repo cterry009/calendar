@@ -11,7 +11,8 @@ export type SyncEntityType =
   | 'serotoninSession'
   | 'habits'
   | 'habitRecords'
-  | 'journalEntries';
+  | 'journalEntries'
+  | 'blockEvents';
 
 export interface SyncChangeResult<T = unknown> {
   status: 'applied' | 'conflict' | 'skipped';

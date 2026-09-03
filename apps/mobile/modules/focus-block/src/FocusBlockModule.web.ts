@@ -1,5 +1,5 @@
 import { registerWebModule, NativeModule } from 'expo';
-import type { FocusBlockNativeModule } from './FocusBlock.types';
+import type { FocusBlockNativeModule, NativePendingBlockEvent } from './FocusBlock.types';
 
 // A browser can't watch which "app" is in the foreground outside its own tab -- there is no web
 // equivalent of an Android AccessibilityService. lib/focusBlock/api.ts guards every call behind
@@ -48,6 +48,10 @@ class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModul
 
   openBatteryOptimizationSettings(): void {
     throw new Error('El bloqueo real de apps solo esta disponible en Android.');
+  }
+
+  drainPendingBlockEvents(): NativePendingBlockEvent[] {
+    return [];
   }
 }
 

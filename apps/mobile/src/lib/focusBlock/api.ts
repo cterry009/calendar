@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import FocusBlockModule from '../../../modules/focus-block/src';
+import type { NativePendingBlockEvent } from '../../../modules/focus-block/src/FocusBlock.types';
 
 // Every export here no-ops (or throws, for the two that don't have a sensible silent fallback) on
 // anything but Android -- there is no OS-level "what app is in the foreground" concept on web/iOS
@@ -78,4 +79,13 @@ export function openBatteryOptimizationSettings(): void {
     throw new Error('El bloqueo real de apps solo esta disponible en Android.');
   }
   FocusBlockModule.openBatteryOptimizationSettings();
+}
+
+// Task 8.2: hands back whatever BlockEvent rows the AccessibilityService logged natively since
+// the last drain, clearing them from native storage in the same call -- see
+// FocusBlockPrefs.drainPendingBlockEvents's doc comment for why that's atomic. Empty array (not
+// an error) off-Android, since there's genuinely nothing to drain there.
+export function drainPendingBlockEvents(): NativePendingBlockEvent[] {
+  if (Platform.OS !== 'android') return [];
+  return FocusBlockModule.drainPendingBlockEvents();
 }

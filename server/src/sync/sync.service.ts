@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SyncEventsService } from '../realtime/sync-events.service';
 import {
+  BlockEventSyncChangeDto,
   BlockListSyncChangeDto,
   DetoxPlanSyncChangeDto,
   FitnessSyncChangeDto,
@@ -37,6 +38,7 @@ export class SyncService {
       fitnessEntries,
       dailyStepCounts,
       dailyFloorsClimbed,
+      blockEvents,
       detoxPlan,
       serotoninSession,
       habits,
@@ -53,6 +55,14 @@ export class SyncService {
       this.prisma.fitnessEntry.findMany({ where: { userId } }),
       this.prisma.dailyStepCount.findMany({ where: { userId } }),
       this.prisma.dailyFloorsClimbed.findMany({ where: { userId } }),
+      // Bounded to the last 30 days -- unlike every other synced entity here, a block event is a
+      // high-frequency telemetry row (potentially dozens a day), not something the client ever
+      // needs its full lifetime history of on every pull. The dashboard trend (task 8.4/8.6) only
+      // ever looks at a recent window anyway.
+      this.prisma.blockEvent.findMany({
+        where: { userId, occurredAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
+        orderBy: { occurredAt: 'desc' },
+      }),
       this.prisma.detoxPlan.findUnique({ where: { userId } }),
       this.prisma.serotoninSession.findUnique({ where: { userId } }),
       this.prisma.habit.findMany({ where: { userId, deletedAt: null } }),
@@ -69,6 +79,7 @@ export class SyncService {
       fitnessEntries,
       dailyStepCounts,
       dailyFloorsClimbed,
+      blockEvents,
       habits,
       habitRecords,
       journalEntries,
@@ -192,6 +203,18 @@ export class SyncService {
         this.bucketResult(result, 'dailyFloorsClimbed', outcome);
         if (outcome.status === 'applied') {
           changedEntities.add('dailyFloorsClimbed');
+        }
+      }
+    }
+
+    if (dto.blockEvents?.length) {
+      result.applied.blockEvents = [];
+      result.conflicts.blockEvents = [];
+      for (const change of dto.blockEvents) {
+        const outcome = await this.applyBlockEventChange(userId, change);
+        this.bucketResult(result, 'blockEvents', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('blockEvents');
         }
       }
     }
@@ -726,6 +749,32 @@ export class SyncService {
       : await this.prisma.dailyFloorsClimbed.create({ data: { ...data, userId } });
 
     return { status: 'applied', clientKey: key, record };
+  }
+
+  // Task 8.2. No conflict/update path at all -- a block event is immutable once logged, so the
+  // only question is "have we already recorded this exact client-generated id." That makes this
+  // idempotent-create the simplest apply* method in this file: no isServerNewer check, no merge.
+  private async applyBlockEventChange(
+    userId: string,
+    change: BlockEventSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const existing = await this.prisma.blockEvent.findFirst({ where: { id: change.id, userId } });
+    if (existing) {
+      return { status: 'skipped', clientKey: change.id };
+    }
+
+    const record = await this.prisma.blockEvent.create({
+      data: {
+        id: change.id,
+        userId,
+        identifier: change.identifier ?? null,
+        scope: change.scope,
+        trigger: change.trigger,
+        occurredAt: new Date(change.occurredAt),
+      },
+    });
+
+    return { status: 'applied', clientKey: change.id, record };
   }
 
   // Opt-in per habit (Habit.linkedFitnessActivityType) rather than fuzzy-matching titles: a

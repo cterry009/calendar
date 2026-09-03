@@ -68,6 +68,15 @@ enum FocusTriggerKind {
   WIFI
 }
 
+// Task 8.2: what kind of blocking moment a BlockEvent row records. BLOCKED_OPEN_ATTEMPT is the
+// user actually opening a listed app while it's enforced (FOCUS or NIGHT); NIGHT_UNLOCK is the
+// morning-portion unlock transition (jog or 1000+ steps, see NightBlockRules.kt) firing, which
+// has no associated app -- identifier is null for that trigger.
+enum BlockEventTrigger {
+  BLOCKED_OPEN_ATTEMPT
+  NIGHT_UNLOCK
+}
+
 enum FitnessIntensity {
   LOW
   MEDIUM
@@ -125,6 +134,7 @@ model User {
   habits             Habit[]
   habitRecords       HabitRecord[]
   journalEntries     JournalEntry[]
+  blockEvents        BlockEvent[]
 
   @@map("users")
 }
@@ -256,6 +266,30 @@ model BlockListEntry {
   @@unique([userId, kind, identifier, scope])
   @@index([userId])
   @@map("block_list_entries")
+}
+
+// Task 8.2: a pure append-only telemetry log -- "how many times did blocking actually trigger,"
+// a metric that didn't exist anywhere before this (see tasks.md 8.2). No updatedAt/no update path
+// at all: a past event is never edited, only ever created once. `id` is client-generated
+// (native Kotlin, a UUID) and used directly as the idempotency key on sync -- the native side can
+// only hand a batch of pending events to the JS offline queue when the app is next foregrounded,
+// and that queue can retry a flush, so `id` has to be stable across retries rather than
+// server-assigned. No deviceId, matching FitnessEntry/DailyStepCount/DailyFloorsClimbed's existing
+// convention of not tracking per-record device provenance. `identifier` is nullable: a
+// NIGHT_UNLOCK event isn't tied to any one app.
+model BlockEvent {
+  id         String            @id
+  userId     String
+  identifier String?
+  scope      BlockListScope
+  trigger    BlockEventTrigger
+  occurredAt DateTime
+  createdAt  DateTime          @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, occurredAt])
+  @@map("block_events")
 }
 
 // A trigger widens how focus-blocking activates beyond a running session

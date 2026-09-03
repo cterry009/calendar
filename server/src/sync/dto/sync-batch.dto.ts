@@ -17,6 +17,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
+  BlockEventTrigger,
   BlockListKind,
   BlockListScope,
   DevicePlatform,
@@ -423,6 +424,29 @@ export class FloorsClimbedSyncChangeDto {
   source?: FitnessSource;
 }
 
+// Task 8.2. `id` is required and client-generated (a UUID, from the native focus-block module) --
+// unlike every other DTO's optional server-assigned id, this one has to be stable across a retried
+// offline-queue flush, since it's the only idempotency key a pure "record this happened" event has.
+// No `deleted`/update path -- a block event is never edited or removed once logged.
+export class BlockEventSyncChangeDto {
+  @IsString()
+  @MinLength(1)
+  id!: string;
+
+  @IsOptional()
+  @IsString()
+  identifier?: string;
+
+  @IsEnum(BlockListScope)
+  scope!: BlockListScope;
+
+  @IsEnum(BlockEventTrigger)
+  trigger!: BlockEventTrigger;
+
+  @IsDateString()
+  occurredAt!: string;
+}
+
 export class DetoxPlanSyncChangeDto {
   @IsOptional()
   @IsString()
@@ -647,6 +671,12 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => FocusTriggerSyncChangeDto)
   focusTriggers?: FocusTriggerSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BlockEventSyncChangeDto)
+  blockEvents?: BlockEventSyncChangeDto[];
 
   @IsOptional()
   @IsArray()

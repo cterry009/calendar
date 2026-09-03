@@ -1,5 +1,5 @@
 import { NativeModule, requireNativeModule } from 'expo';
-import type { FocusBlockNativeModule } from './FocusBlock.types';
+import type { FocusBlockNativeModule, NativePendingBlockEvent } from './FocusBlock.types';
 
 declare class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModule {
   setBlockingState(active: boolean, blockedPackages: string[]): void;
@@ -13,6 +13,7 @@ declare class FocusBlockModule extends NativeModule<{}> implements FocusBlockNat
   openFullScreenIntentSettings(): void;
   isIgnoringBatteryOptimizations(): boolean;
   openBatteryOptimizationSettings(): void;
+  drainPendingBlockEvents(): NativePendingBlockEvent[];
 }
 
 export default requireNativeModule<FocusBlockModule>('FocusBlock');

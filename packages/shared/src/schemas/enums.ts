@@ -51,6 +51,10 @@ export const HabitRecordStatusSchema = z.enum(['DONE', 'SKIPPED']);
 
 export const FocusTriggerKindSchema = z.enum(['LOCATION', 'WIFI']);
 
+// Task 8.2: what kind of blocking moment a BlockEvent row records -- see BlockEvent's own doc
+// comment in schema.prisma for why NIGHT_UNLOCK has no associated app (identifier is optional).
+export const BlockEventTriggerSchema = z.enum(['BLOCKED_OPEN_ATTEMPT', 'NIGHT_UNLOCK']);
+
 export type DevicePlatform = z.infer<typeof DevicePlatformSchema>;
 export type TaskDifficulty = z.infer<typeof TaskDifficultySchema>;
 export type TaskPriority = z.infer<typeof TaskPrioritySchema>;
@@ -64,3 +68,4 @@ export type FitnessSource = z.infer<typeof FitnessSourceSchema>;
 export type HabitType = z.infer<typeof HabitTypeSchema>;
 export type HabitRecordStatus = z.infer<typeof HabitRecordStatusSchema>;
 export type FocusTriggerKind = z.infer<typeof FocusTriggerKindSchema>;
+export type BlockEventTrigger = z.infer<typeof BlockEventTriggerSchema>;

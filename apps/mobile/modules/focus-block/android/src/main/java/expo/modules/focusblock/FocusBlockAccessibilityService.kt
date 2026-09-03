@@ -29,13 +29,51 @@ class FocusBlockAccessibilityService : AccessibilityService() {
   override fun onAccessibilityEvent(event: AccessibilityEvent) {
     if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
 
+    // Task 8.2: checked on every qualifying event regardless of which app is foregrounded --
+    // the jog/step unlock can happen while the user is in an allowed app (or the launcher), not
+    // necessarily the exact moment they try to open a blocked one.
+    checkNightUnlockTransition()
+
     val foregroundPackage = event.packageName?.toString() ?: return
     if (foregroundPackage == packageName) return // never block our own app
 
-    if (!isBlocked(foregroundPackage)) return
+    val blockedScope = blockedScope(foregroundPackage) ?: return
 
     performGlobalAction(GLOBAL_ACTION_HOME)
     FocusBlockNotifications.showBlockedAlert(this, foregroundPackage)
+    FocusBlockPrefs.addPendingBlockEvent(this, foregroundPackage, blockedScope, "BLOCKED_OPEN_ATTEMPT")
+  }
+
+  // Task 8.2: fires exactly once per unlock, the instant NightBlockRules stops blocking the
+  // morning portion while it's still genuinely inside that portion (see
+  // NightBlockRules.isInMorningPortion's doc comment for why that check excludes the window
+  // simply running out on schedule).
+  private fun checkNightUnlockTransition() {
+    if (!FocusBlockPrefs.isNightEnabled(this)) {
+      FocusBlockPrefs.setWasMorningBlocking(this, false)
+      return
+    }
+
+    val now = Calendar.getInstance()
+    val morningEndMinutes = FocusBlockPrefs.nightEndMinutes(this)
+    if (!NightBlockRules.isInMorningPortion(now, morningEndMinutes)) {
+      FocusBlockPrefs.setWasMorningBlocking(this, false)
+      return
+    }
+
+    val isBlockingNow = NightBlockRules.isNightListBlocking(
+      now,
+      FocusBlockPrefs.nightStartMinutes(this),
+      morningEndMinutes,
+      JogStatusReader.hasJoggedToday(this),
+      StepCountReader.dailySteps(this),
+    )
+
+    if (FocusBlockPrefs.wasMorningBlocking(this) && !isBlockingNow) {
+      FocusBlockPrefs.addPendingBlockEvent(this, null, "NIGHT", "NIGHT_UNLOCK")
+    }
+
+    FocusBlockPrefs.setWasMorningBlocking(this, isBlockingNow)
   }
 
   // Task 11.10/11.11/11.22: two independent trigger families, both consulted on every event.
@@ -48,21 +86,25 @@ class FocusBlockAccessibilityService : AccessibilityService() {
   //   decision (NightBlockRules/JogStatusReader/StepCountReader) is 100% native, correct even if
   //   the RN process has been dead for hours -- see NightBlockRules.kt's doc comment for why that
   //   split is the point of this whole design.
-  private fun isBlocked(pkg: String): Boolean {
-    if (FocusBlockPrefs.isActive(this) && pkg in FocusBlockPrefs.blockedPackages(this)) return true
+  // Task 8.2: returns which list actually blocked this package ("FOCUS"/"NIGHT", matching
+  // BlockListScope) instead of a plain Boolean, so the caller can log a BlockEvent with the right
+  // scope -- the two branches are otherwise unchanged from before this task.
+  private fun blockedScope(pkg: String): String? {
+    if (FocusBlockPrefs.isActive(this) && pkg in FocusBlockPrefs.blockedPackages(this)) return "FOCUS"
 
-    if (!FocusBlockPrefs.isNightEnabled(this)) return false
-    if (pkg !in FocusBlockPrefs.nightBlockedPackages(this)) return false
+    if (!FocusBlockPrefs.isNightEnabled(this)) return null
+    if (pkg !in FocusBlockPrefs.nightBlockedPackages(this)) return null
 
     val hasJoggedToday = JogStatusReader.hasJoggedToday(this)
     val stepsToday = StepCountReader.dailySteps(this)
-    return NightBlockRules.isNightListBlocking(
+    val blocking = NightBlockRules.isNightListBlocking(
       Calendar.getInstance(),
       FocusBlockPrefs.nightStartMinutes(this),
       FocusBlockPrefs.nightEndMinutes(this),
       hasJoggedToday,
       stepsToday,
     )
+    return if (blocking) "NIGHT" else null
   }
 
   override fun onInterrupt() {
