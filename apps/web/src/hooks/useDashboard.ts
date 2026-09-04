@@ -34,6 +34,12 @@ export function useDashboard(): UseDashboardResult {
         tasks: snapshot.tasks,
         pomodoroSessions: snapshot.pomodoroSessions,
         fitnessEntries: snapshot.fitnessEntries,
+        habits: snapshot.habits,
+        habitRecords: snapshot.habitRecords,
+        dailyStepCounts: snapshot.dailyStepCounts,
+        dailyFloorsClimbed: snapshot.dailyFloorsClimbed,
+        blockEvents: snapshot.blockEvents,
+        dailyScreenTime: snapshot.dailyScreenTime,
       });
       setMetrics(nextMetrics);
       setSyncedAt(snapshot.syncedAt);

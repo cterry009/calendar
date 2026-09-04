@@ -15,7 +15,11 @@ export interface PomodoroStreakResult {
 
 export const DEFAULT_GRACE_DAYS = 2;
 
-function dateKey(date: Date): string {
+// Exported for task 8.4: computePomodoroStreak's streak-walking logic is fully generic (despite
+// the name, it just counts consecutive "credited" local-date keys with grace-day forgiveness) --
+// reused as-is for habit-completion streaks, which need to build their own "credited day" set
+// using this exact local-date convention to stay consistent with the cursor this function walks.
+export function dateKey(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');

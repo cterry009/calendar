@@ -30,10 +30,54 @@ export interface DashboardFitnessInput {
   durationMinutes: number;
 }
 
+// Task 8.4: the cross-platform metrics added below all read from these -- optional (not part of
+// every existing caller/test) so a snapshot that omits them just yields an honest hasData:false
+// sub-metric instead of a type error. Same minimal-structural-type approach as the fields above.
+export interface DashboardHabitInput {
+  archived: boolean;
+}
+
+export interface DashboardHabitRecordInput {
+  date: string;
+  status: string;
+}
+
+export interface DashboardStepCountInput {
+  date: string;
+  steps: number;
+}
+
+export interface DashboardFloorsClimbedInput {
+  date: string;
+  floors: number;
+}
+
+export interface DashboardBlockEventInput {
+  occurredAt: string;
+  trigger: string;
+}
+
+export interface DashboardTopAppUsage {
+  packageName: string;
+  minutes: number;
+}
+
+export interface DashboardScreenTimeInput {
+  date: string;
+  totalMinutes: number;
+  topApps: DashboardTopAppUsage[];
+}
+
 export interface DashboardSnapshot {
   tasks: DashboardTaskInput[];
   pomodoroSessions: DashboardPomodoroInput[];
   fitnessEntries: DashboardFitnessInput[];
+  habits?: DashboardHabitInput[];
+  habitRecords?: DashboardHabitRecordInput[];
+  dailyStepCounts?: DashboardStepCountInput[];
+  dailyFloorsClimbed?: DashboardFloorsClimbedInput[];
+  blockEvents?: DashboardBlockEventInput[];
+  dailyScreenTime?: DashboardScreenTimeInput[];
 }
 
 export interface DashboardWeekMetric {
@@ -63,6 +107,46 @@ export interface EstimatedVsActualMetric {
   variancePct: number;
 }
 
+// Task 8.4. A single day/value point, shared shape for every new trend chart below (steps,
+// floors, block-events) -- FocusByDayPoint already established this exact shape for focus hours,
+// this just generalizes the field name since "focusHours" doesn't fit steps/floors/block counts.
+export interface DashboardTrendPoint {
+  date: string;
+  label: string;
+  value: number;
+}
+
+export interface HabitCompletionMetric {
+  hasData: boolean;
+  activeHabitCount: number;
+  completedToday: number;
+  /** Consecutive days (grace-forgiving, see computePomodoroStreak) with at least one habit marked DONE. */
+  currentStreak: number;
+}
+
+export interface DeviceSensorMetric {
+  hasData: boolean;
+  todaySteps: number;
+  todayFloors: number;
+  stepsByDay: DashboardTrendPoint[];
+  floorsByDay: DashboardTrendPoint[];
+}
+
+export interface BlockEventMetric {
+  hasData: boolean;
+  blockedAttempts: DashboardWeekMetric;
+  nightUnlocks: DashboardWeekMetric;
+  blockedByDay: DashboardTrendPoint[];
+}
+
+export interface ScreenTimeMetric {
+  hasData: boolean;
+  todayMinutes: number;
+  weekAverageMinutes: number;
+  byDay: DashboardTrendPoint[];
+  topAppsToday: DashboardTopAppUsage[];
+}
+
 export interface DashboardMetrics {
   hasData: boolean;
   tasksCompleted: DashboardWeekMetric;
@@ -73,4 +157,8 @@ export interface DashboardMetrics {
   estimationAccuracy: EstimationAccuracyReport;
   completionByDifficulty: DifficultyCompletionMetric[];
   fitnessCorrelation: FitnessCorrelationReport;
+  habitCompletion: HabitCompletionMetric;
+  deviceSensors: DeviceSensorMetric;
+  blockEvents: BlockEventMetric;
+  screenTime: ScreenTimeMetric;
 }

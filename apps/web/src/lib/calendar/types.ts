@@ -139,6 +139,42 @@ export interface SyncJournalEntry {
   updatedAt: string;
 }
 
+// Task 8.4/8.5. Android-sourced (steps/floors from device sensors, screen time from
+// UsageStatsManager, block events from the AccessibilityService -- see tasks.md 8.2/8.3), but the
+// server already returns them for any account via the shared /sync/pull, empty arrays included --
+// this was never typed on the web side before now simply because nothing here read it yet.
+export interface SyncDailyStepCount {
+  id: string;
+  date: string;
+  steps: number;
+}
+
+export interface SyncDailyFloorsClimbed {
+  id: string;
+  date: string;
+  floors: number;
+}
+
+export interface SyncBlockEvent {
+  id: string;
+  identifier: string | null;
+  scope: 'FOCUS' | 'NIGHT';
+  trigger: 'BLOCKED_OPEN_ATTEMPT' | 'NIGHT_UNLOCK';
+  occurredAt: string;
+}
+
+export interface SyncTopAppUsage {
+  packageName: string;
+  minutes: number;
+}
+
+export interface SyncDailyScreenTime {
+  id: string;
+  date: string;
+  totalMinutes: number;
+  topApps: SyncTopAppUsage[];
+}
+
 export interface SyncSnapshot {
   tasks: SyncTask[];
   schedules: SyncSchedule[];
@@ -146,6 +182,10 @@ export interface SyncSnapshot {
   blockListEntries: unknown[];
   focusTriggers: unknown[];
   fitnessEntries: SyncFitnessEntry[];
+  dailyStepCounts: SyncDailyStepCount[];
+  dailyFloorsClimbed: SyncDailyFloorsClimbed[];
+  blockEvents: SyncBlockEvent[];
+  dailyScreenTime: SyncDailyScreenTime[];
   detoxPlan: SyncDetoxPlanRecord | null;
   serotoninSession: SyncSerotoninSessionRecord | null;
   habits: SyncHabit[];
