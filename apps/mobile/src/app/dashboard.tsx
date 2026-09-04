@@ -1,3 +1,4 @@
+import type { DashboardMetrics, DashboardTrendPoint } from '@calendar/shared';
 import { AppButton, AppCard, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Stack as RouterStack } from 'expo-router';
 import { MetricCard } from '../components/dashboard/MetricCard';
@@ -7,6 +8,42 @@ import { useOnboarding } from '../context/OnboardingContext';
 import { useDashboard } from '../hooks/useDashboard';
 
 const DIFFICULTY_LABELS = { EASY: 'Faciles', MEDIUM: 'Medias', HARD: 'Dificiles' } as const;
+
+// Task 8.6: factors out the 14-day bar-chart shape the focus-hours chart below already used once
+// -- steps/floors/block-events/screen-time all need the identical bars, just a different color --
+// so this avoids copy-pasting the XStack/YStack markup four more times. Same minimal style
+// focusByDay's own chart already uses: just the day-abbreviation label under each bar, no per-bar
+// value text (the summary numbers above each chart already show the formatted totals).
+function TrendBars({ points, color = '$accent' }: { points: DashboardTrendPoint[]; color?: string }) {
+  const maxValue = Math.max(1, ...points.map((point) => point.value));
+  return (
+    <XStack alignItems="flex-end" gap="$1" height={100}>
+      {points.map((point) => {
+        const heightPct = Math.max(4, (point.value / maxValue) * 100);
+        return (
+          <YStack key={point.date} flex={1} alignItems="center" gap="$1">
+            <YStack width="100%" height={80} justifyContent="flex-end">
+              <YStack width="100%" height={`${heightPct}%`} backgroundColor={color} borderRadius={4} />
+            </YStack>
+            <Text fontSize={9} color="$muted">
+              {point.label.slice(0, 2)}
+            </Text>
+          </YStack>
+        );
+      })}
+    </XStack>
+  );
+}
+
+function hasCrossPlatformData(metrics: DashboardMetrics): boolean {
+  return metrics.habitCompletion.hasData || metrics.deviceSensors.hasData || metrics.blockEvents.hasData || metrics.screenTime.hasData;
+}
+
+function formatMinutes(value: number): string {
+  const hours = Math.floor(value / 60);
+  const minutes = Math.round(value % 60);
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
 
 function translateTendency(tendency: 'underestimate' | 'overestimate' | 'balanced') {
   if (tendency === 'underestimate') return 'subestimacion';
@@ -54,13 +91,15 @@ export default function DashboardScreen() {
 
           {isLoading || !metrics ? (
             <Paragraph color="$muted">Cargando...</Paragraph>
-          ) : !metrics.hasData ? (
+          ) : !metrics.hasData && !hasCrossPlatformData(metrics) ? (
             <AppCard>
               <Paragraph margin={0} color="$muted">
                 Todavia no hay suficientes datos para mostrar estadisticas.
               </Paragraph>
             </AppCard>
-          ) : (
+          ) : null}
+
+          {!isLoading && metrics && metrics.hasData ? (
             <>
               <TutorialTarget id="dashboard-metrics">
                 <XStack gap="$3" flexWrap="wrap">
@@ -191,7 +230,163 @@ export default function DashboardScreen() {
                 </YStack>
               </AppCard>
             </>
-          )}
+          ) : null}
+
+          {!isLoading && metrics && hasCrossPlatformData(metrics) ? (
+            <>
+              <YStack gap="$1">
+                <H2 margin={0} fontSize="$6">
+                  Multiplataforma
+                </H2>
+                <Paragraph margin={0} color="$muted">
+                  Sensores, bloqueo real y tiempo de pantalla -- se ve igual en la web.
+                </Paragraph>
+              </YStack>
+
+              {metrics.habitCompletion.hasData ? (
+                <AppCard>
+                  <YStack gap="$4">
+                    <H2 margin={0} fontSize="$6">
+                      Habitos
+                    </H2>
+                    <XStack gap="$3" flexWrap="wrap">
+                      <MetricCard title="Habitos activos" value={String(metrics.habitCompletion.activeHabitCount)} subtitle="" />
+                      <MetricCard title="Cumplidos hoy" value={String(metrics.habitCompletion.completedToday)} subtitle="" />
+                      <MetricCard
+                        title="Racha actual"
+                        value={`${metrics.habitCompletion.currentStreak} dia${metrics.habitCompletion.currentStreak === 1 ? '' : 's'}`}
+                        subtitle=""
+                      />
+                    </XStack>
+                  </YStack>
+                </AppCard>
+              ) : null}
+
+              {metrics.deviceSensors.hasData ? (
+                <>
+                  <AppCard>
+                    <YStack gap="$4">
+                      <H2 margin={0} fontSize="$6">
+                        Pasos (14 dias)
+                      </H2>
+                      <Text color="$muted" fontSize="$2">
+                        Hoy: {metrics.deviceSensors.todaySteps.toLocaleString('es-ES')} pasos
+                      </Text>
+                      <TrendBars points={metrics.deviceSensors.stepsByDay} />
+                    </YStack>
+                  </AppCard>
+                  <AppCard>
+                    <YStack gap="$4">
+                      <H2 margin={0} fontSize="$6">
+                        Pisos subidos (14 dias)
+                      </H2>
+                      <Text color="$muted" fontSize="$2">
+                        Hoy: {metrics.deviceSensors.todayFloors} pisos
+                      </Text>
+                      <TrendBars points={metrics.deviceSensors.floorsByDay} />
+                    </YStack>
+                  </AppCard>
+                </>
+              ) : null}
+
+              {metrics.blockEvents.hasData ? (
+                <>
+                  <AppCard>
+                    <YStack gap="$4">
+                      <H2 margin={0} fontSize="$6">
+                        Bloqueo real
+                      </H2>
+                      <XStack gap="$4" flexWrap="wrap">
+                        <YStack minWidth={100} flex={1} gap="$1">
+                          <Paragraph margin={0} color="$muted" fontSize="$2">
+                            Intentos bloqueados
+                          </Paragraph>
+                          <Text fontSize="$7" fontWeight="700">
+                            {metrics.blockEvents.blockedAttempts.current}
+                          </Text>
+                          <Text color="$muted" fontSize="$2">
+                            Semana pasada: {metrics.blockEvents.blockedAttempts.previous}
+                          </Text>
+                        </YStack>
+                        <YStack minWidth={100} flex={1} gap="$1">
+                          <Paragraph margin={0} color="$muted" fontSize="$2">
+                            Desbloqueos (trote/pasos)
+                          </Paragraph>
+                          <Text fontSize="$7" fontWeight="700">
+                            {metrics.blockEvents.nightUnlocks.current}
+                          </Text>
+                          <Text color="$muted" fontSize="$2">
+                            Semana pasada: {metrics.blockEvents.nightUnlocks.previous}
+                          </Text>
+                        </YStack>
+                      </XStack>
+                    </YStack>
+                  </AppCard>
+                  <AppCard>
+                    <YStack gap="$4">
+                      <H2 margin={0} fontSize="$6">
+                        Intentos bloqueados (14 dias)
+                      </H2>
+                      <TrendBars points={metrics.blockEvents.blockedByDay} color="$danger" />
+                    </YStack>
+                  </AppCard>
+                </>
+              ) : null}
+
+              {metrics.screenTime.hasData ? (
+                <>
+                  <AppCard>
+                    <YStack gap="$4">
+                      <H2 margin={0} fontSize="$6">
+                        Tiempo de pantalla
+                      </H2>
+                      <XStack gap="$4" flexWrap="wrap">
+                        <YStack minWidth={100} flex={1} gap="$1">
+                          <Paragraph margin={0} color="$muted" fontSize="$2">
+                            Hoy
+                          </Paragraph>
+                          <Text fontSize="$7" fontWeight="700">
+                            {formatMinutes(metrics.screenTime.todayMinutes)}
+                          </Text>
+                        </YStack>
+                        <YStack minWidth={100} flex={1} gap="$1">
+                          <Paragraph margin={0} color="$muted" fontSize="$2">
+                            Promedio (7 dias)
+                          </Paragraph>
+                          <Text fontSize="$7" fontWeight="700">
+                            {formatMinutes(metrics.screenTime.weekAverageMinutes)}
+                          </Text>
+                        </YStack>
+                      </XStack>
+                      {metrics.screenTime.topAppsToday.length > 0 ? (
+                        <YStack gap="$1">
+                          <Paragraph margin={0} color="$muted" fontSize="$2">
+                            Mas usadas hoy
+                          </Paragraph>
+                          {metrics.screenTime.topAppsToday.slice(0, 5).map((app) => (
+                            <XStack key={app.packageName} justifyContent="space-between" paddingVertical="$1">
+                              <Text fontSize="$2">{app.packageName}</Text>
+                              <Text fontSize="$2" color="$muted">
+                                {formatMinutes(app.minutes)}
+                              </Text>
+                            </XStack>
+                          ))}
+                        </YStack>
+                      ) : null}
+                    </YStack>
+                  </AppCard>
+                  <AppCard>
+                    <YStack gap="$4">
+                      <H2 margin={0} fontSize="$6">
+                        Tiempo de pantalla (14 dias)
+                      </H2>
+                      <TrendBars points={metrics.screenTime.byDay} />
+                    </YStack>
+                  </AppCard>
+                </>
+              ) : null}
+            </>
+          ) : null}
         </YStack>
       </TutorialScrollView>
     </YStack>

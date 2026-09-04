@@ -9,6 +9,11 @@ export type {
   EstimatedVsActualMetric,
   DashboardMetrics,
   DashboardSnapshot,
+  DashboardTrendPoint,
+  HabitCompletionMetric,
+  DeviceSensorMetric,
+  BlockEventMetric,
+  ScreenTimeMetric,
 } from '@calendar/shared';
 
 import type { FitnessSyncChangeDto } from '../fitness/sync';
