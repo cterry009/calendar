@@ -105,13 +105,46 @@ export function useHabits(): UseHabitsResult {
     [runMutation],
   );
 
+  // Real bug found and fixed: `syncBatch()` never rejects when offline (or when an online request
+  // fails) -- it queues the change and resolves successfully (see lib/sync/api.ts) -- so
+  // `runMutation`'s `refetch()` above always ran, but `pullSnapshot()` falls back to the *cached*
+  // (pre-change) snapshot in exactly that case. Net effect: tapping a habit's checkbox while
+  // offline briefly showed the busy state, then silently reverted to unchecked, indistinguishable
+  // from the tap doing nothing at all -- even though the check-in was correctly queued and would
+  // land once back online. Fixed by re-applying our own optimistic record on top of whatever
+  // `refetch()` returned: a no-op when the fresh/cached data already reflects it (the normal
+  // online case), a real correction when it doesn't (offline or a flaky connection).
   const checkIn = useCallback(
     (habitId: string, values: HabitCheckInValues) => {
-      const existing = findRecordForDate(records, habitId, values.date.slice(0, 10));
+      const dateKeyStr = values.date.slice(0, 10);
+      const existing = findRecordForDate(records, habitId, dateKeyStr);
+      const optimisticRecord: SyncHabitRecord = {
+        id: existing?.id ?? `pending-${habitId}-${dateKeyStr}`,
+        habitId,
+        date: values.date,
+        value: values.value,
+        status: values.status,
+        autoCompleted: existing?.autoCompleted ?? false,
+        fitnessEntryId: existing?.fitnessEntryId ?? null,
+        createdAt: existing?.createdAt ?? new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
       return runMutation(
         () => syncHabitRecordBatch([buildCheckInPayload(habitId, values, existing?.id)]),
         'No se pudo registrar el habito.',
-      );
+      ).then(() => {
+        setRecords((current) => {
+          const postRefetch = findRecordForDate(current, habitId, dateKeyStr);
+          if (postRefetch && postRefetch.status === values.status && postRefetch.value === values.value) {
+            return current; // refetch already reflects our change (the normal online case)
+          }
+          if (postRefetch) {
+            return current.map((record) => (record.id === postRefetch.id ? optimisticRecord : record));
+          }
+          return [...current, optimisticRecord];
+        });
+      });
     },
     [records, runMutation],
   );
