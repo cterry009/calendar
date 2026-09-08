@@ -10,6 +10,7 @@ import {
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ApiError } from '../lib/api';
 import { useSync } from './SyncContext';
+import { playPomodoroChime, primePomodoroChime } from '../lib/pomodoro/chime';
 import { buildCreatePomodoroPayload, buildUpdatePomodoroPayload, syncPomodoroBatch } from '../lib/pomodoro/sync';
 import { getRemainingSeconds } from '../lib/pomodoro/timer';
 import type { PomodoroConfigFormValues, SyncPomodoroRecord } from '../lib/pomodoro/types';
@@ -196,6 +197,9 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
 
   const start = useCallback(
     async (taskId?: string | null, overrideConfig?: Partial<PomodoroConfigFormValues>) => {
+      // Prime the chime inside this click so the browser's autoplay policy lets the
+      // timer-fired play() through later when a phase completes.
+      primePomodoroChime();
       await transitionSession(
         {
           type: 'START',
@@ -294,6 +298,9 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         await transitionSession(event, false);
+
+        // Sound cue on every real phase completion, regardless of notification permission.
+        playPomodoroChime();
 
         if (
           notificationsEnabled &&

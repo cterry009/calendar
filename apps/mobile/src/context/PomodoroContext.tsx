@@ -14,6 +14,7 @@ import { useNotifications } from './NotificationsContext';
 import { useSync } from './SyncContext';
 import { ApiError } from '../lib/auth/api';
 import { sendLocalNotification } from '../lib/notifications/api';
+import { playPomodoroChime } from '../lib/pomodoro/chime';
 import { buildPomodoroPayload, syncPomodoroBatch } from '../lib/pomodoro/api';
 import { getRemainingSeconds } from '../lib/pomodoro/timer';
 import type { PomodoroConfigFormValues, SyncPomodoroRecord } from '../lib/pomodoro/types';
@@ -247,6 +248,9 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         await transitionSession(event, false);
+
+        // Sound cue on every real phase completion, regardless of notification permission.
+        playPomodoroChime();
 
         if (notificationsEnabled) {
           const title = finishedState === 'FOCUS' ? 'Enfoque finalizado' : 'Descanso finalizado';
