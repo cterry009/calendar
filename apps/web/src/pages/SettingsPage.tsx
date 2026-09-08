@@ -1,5 +1,6 @@
 import { AppCard, H3, Paragraph, XStack, YStack } from '@calendar/ui';
 import { AppearanceToggle } from '../components/AppearanceToggle';
+import { DesktopAutostartCard } from '../components/desktop/DesktopAutostartCard';
 import { LanguageToggle } from '../components/LanguageToggle';
 import { PageHeader } from '../components/PageHeader';
 import { useLanguage } from '../context/LanguageContext';
@@ -38,6 +39,8 @@ export function SettingsPage() {
           </XStack>
         </YStack>
       </AppCard>
+
+      <DesktopAutostartCard />
     </YStack>
   );
 }

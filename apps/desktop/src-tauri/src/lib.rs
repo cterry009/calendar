@@ -21,6 +21,14 @@ fn app_version() -> String {
 pub fn run() {
     tauri::Builder::default()
         .manage(Mutex::new(blocking::ProcessBlockingState::default()))
+        // Task 9.8: user-configurable "start on boot". Registers HKCU\...\Run on Windows; the
+        // `--minimized` arg lets an autostarted launch come up hidden to the tray (handled in
+        // setup() below).
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .args(["--minimized"])
+                .build(),
+        )
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -32,6 +40,12 @@ pub fn run() {
             tray::create(app)?;
             blocking::start_monitor(app.handle());
             hosts::clear_on_startup();
+
+            if std::env::args().any(|a| a == "--minimized") {
+                if let Some(w) = tauri::Manager::get_webview_window(app, "main") {
+                    let _ = w.hide();
+                }
+            }
             Ok(())
         })
         // Tray app: closing the window hides it instead of quitting, so the tray (and the
