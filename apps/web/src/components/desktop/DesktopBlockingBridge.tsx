@@ -77,25 +77,7 @@ export function DesktopBlockingBridge() {
       });
   }, [isOverlayVisible, websiteKey, blockedWebsites]);
 
-  // A process that was actually killed. The full "blocked" overlay is task 9.6; for now this just
-  // surfaces it in the console so the enforcement is observable during development.
-  useEffect(() => {
-    if (!isDesktop) return;
-    let unlisten: (() => void) | undefined;
-    let cancelled = false;
-    void import('@tauri-apps/api/event').then(({ listen }) =>
-      listen<string>('process-blocked', (event) => {
-        console.info(`[desktop] blocked process terminated: ${event.payload}`);
-      }).then((fn) => {
-        if (cancelled) fn();
-        else unlisten = fn;
-      }),
-    );
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, []);
+  // The `process-blocked` event -> the visible card lives in DesktopBlockedOverlay (task 9.6).
 
   return null;
 }
