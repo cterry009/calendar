@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AppButton, AppCard, H2, Paragraph, XStack, YStack } from '@calendar/ui';
 import { BlockListForm } from '../components/blocklist/BlockListForm';
 import { BlockListList } from '../components/blocklist/BlockListList';
+import { DesktopBlockingCard } from '../components/blocklist/DesktopBlockingCard';
 import { FocusTriggerForm } from '../components/focusTriggers/FocusTriggerForm';
 import { FocusTriggerList } from '../components/focusTriggers/FocusTriggerList';
 import { PageHeader } from '../components/PageHeader';
@@ -69,6 +70,8 @@ export function BlockListPage() {
       </AppCard>
 
       {error ? <StatusCard tone="error" message={error} /> : null}
+
+      <DesktopBlockingCard />
 
       {showCreateForm ? (
         <BlockListForm

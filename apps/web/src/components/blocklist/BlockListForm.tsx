@@ -89,7 +89,13 @@ export function BlockListForm({ mode, initialEntry, isSubmitting, onSubmit, onCa
           </YStack>
 
           <YStack gap="$2">
-            <Label>Identificador (dominio, package o ejecutable)</Label>
+            <Label>
+              {draft.kind === 'WEBSITE'
+                ? 'Dominio (p. ej. instagram.com)'
+                : draft.kind === 'DESKTOP_APP'
+                  ? 'Ejecutable (p. ej. chrome.exe)'
+                  : 'Package (p. ej. com.instagram.android)'}
+            </Label>
             <Input
               value={draft.identifier}
               onChangeText={(value: string) => setField('identifier', value)}
