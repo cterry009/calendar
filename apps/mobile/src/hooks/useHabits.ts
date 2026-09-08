@@ -130,8 +130,17 @@ export function useHabits(): UseHabitsResult {
         updatedAt: new Date().toISOString(),
       };
 
+      // Only a real server id may go into the sync payload as `id`. A `pending-*` id is a
+      // local-only placeholder for an optimistic record that never reached the server (see the
+      // optimisticRecord above); sending it as `id` makes the server look up a row that doesn't
+      // exist, fall through to create(), and hit the @@unique([habitId, date]) constraint (P2002)
+      // when a record for that habit/day already synced under a different id -- which stalls the
+      // whole offline queue. Passing undefined instead makes buildCheckInPayload attach a fresh
+      // clientId, the path the server already merges by habitId+date.
+      const serverId = existing?.id && !existing.id.startsWith('pending-') ? existing.id : undefined;
+
       return runMutation(
-        () => syncHabitRecordBatch([buildCheckInPayload(habitId, values, existing?.id)]),
+        () => syncHabitRecordBatch([buildCheckInPayload(habitId, values, serverId)]),
         'No se pudo registrar el habito.',
       ).then(() => {
         setRecords((current) => {

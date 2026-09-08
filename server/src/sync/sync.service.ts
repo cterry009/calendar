@@ -1094,29 +1094,30 @@ export class SyncService {
     return { status: 'applied', clientKey: key, record };
   }
 
-  private findHabitRecord(userId: string, change: HabitRecordSyncChangeDto) {
+  private async findHabitRecord(userId: string, change: HabitRecordSyncChangeDto) {
     if (change.id) {
-      return this.prisma.habitRecord.findFirst({ where: { id: change.id, userId } });
+      const byId = await this.prisma.habitRecord.findFirst({ where: { id: change.id, userId } });
+      if (byId) return byId;
     }
     if (change.clientId) {
-      const byClientId = this.prisma.habitRecord.findFirst({
+      const byClientId = await this.prisma.habitRecord.findFirst({
         where: { userId, clientId: change.clientId },
       });
-      // habitId+date is the schema's other unique key (@@unique([habitId, date])) -- a clientId
-      // miss doesn't mean no record exists for that day, just that this particular offline-
-      // generated id hasn't been seen before. Two different clientIds queued for the same
-      // habit+day (e.g. a duplicate offline check-in) would otherwise both fall through to
-      // create() below and the second one dies on that constraint instead of merging into the
-      // first, which is exactly the case this fallback catches.
-      if (change.habitId && change.date) {
-        return byClientId.then(
-          (record) => record ?? this.prisma.habitRecord.findFirst({ where: { userId, habitId: change.habitId, date: new Date(change.date!) } }),
-        );
-      }
-      return byClientId;
+      if (byClientId) return byClientId;
     }
+    // habitId+date is the schema's other unique key (@@unique([habitId, date])). Every lookup
+    // above can miss without meaning "no record exists for that day": a synthetic client id
+    // ("pending-<habitId>-<date>", never persisted server-side), a clientId this server hasn't
+    // seen (a duplicate offline check-in, or one from another device), or a real id that was
+    // since deleted. Any of those would otherwise fall through to create() and die on this
+    // constraint (P2002) -- which, because one throwing change fails the whole /sync/batch, would
+    // stall the client's offline queue permanently on every retry. Falling back to habitId+date
+    // turns all of those into an update/merge of the existing row instead. This completes the
+    // partial fix from task 7.22, which only added this fallback on the clientId path.
     if (change.habitId && change.date) {
-      return this.prisma.habitRecord.findFirst({ where: { userId, habitId: change.habitId, date: new Date(change.date) } });
+      return this.prisma.habitRecord.findFirst({
+        where: { userId, habitId: change.habitId, date: new Date(change.date) },
+      });
     }
     return null;
   }
