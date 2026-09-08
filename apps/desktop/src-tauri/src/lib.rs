@@ -5,6 +5,7 @@
 //! autostart) are added as Tauri commands / plugins in tasks 9.2-9.8.
 
 mod blocking;
+mod hosts;
 mod tray;
 
 use std::sync::Mutex;
@@ -30,6 +31,7 @@ pub fn run() {
             }
             tray::create(app)?;
             blocking::start_monitor(app.handle());
+            hosts::clear_on_startup();
             Ok(())
         })
         // Tray app: closing the window hides it instead of quitting, so the tray (and the
@@ -46,7 +48,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             app_version,
             tray::set_tray_state,
-            blocking::set_process_blocking
+            blocking::set_process_blocking,
+            hosts::set_website_blocking,
+            hosts::request_hosts_access
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
