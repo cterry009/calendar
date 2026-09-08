@@ -1,4 +1,5 @@
 ﻿import { Outlet } from 'react-router-dom';
+import { DesktopBlockingBridge } from '../components/desktop/DesktopBlockingBridge';
 import { DesktopTrayBridge } from '../components/desktop/DesktopTrayBridge';
 import { SoftFocusOverlay } from '../components/focus/SoftFocusOverlay';
 import { PanelHost } from '../components/panels/PanelHost';
@@ -24,6 +25,7 @@ export function ProtectedAppLayout() {
                 <QuickAddProvider>
                   <AppNav />
                   <DesktopTrayBridge />
+                  <DesktopBlockingBridge />
                   <SyncStatusBanner />
                   <Outlet />
                   <PanelHost />

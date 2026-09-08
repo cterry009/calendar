@@ -4,7 +4,10 @@
 //! the browser. Desktop-only capabilities (system tray, process/website blocking sidecar, boot
 //! autostart) are added as Tauri commands / plugins in tasks 9.2-9.8.
 
+mod blocking;
 mod tray;
+
+use std::sync::Mutex;
 
 /// Minimal command so the frontend <-> Rust bridge is wired and testable from day one
 /// (`invoke('app_version')`).
@@ -16,6 +19,7 @@ fn app_version() -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(Mutex::new(blocking::ProcessBlockingState::default()))
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -25,6 +29,7 @@ pub fn run() {
                 )?;
             }
             tray::create(app)?;
+            blocking::start_monitor(app.handle());
             Ok(())
         })
         // Tray app: closing the window hides it instead of quitting, so the tray (and the
@@ -38,7 +43,11 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![app_version, tray::set_tray_state])
+        .invoke_handler(tauri::generate_handler![
+            app_version,
+            tray::set_tray_state,
+            blocking::set_process_blocking
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
