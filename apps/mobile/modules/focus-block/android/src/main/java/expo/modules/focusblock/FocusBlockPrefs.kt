@@ -24,6 +24,13 @@ internal object FocusBlockPrefs {
   private const val KEY_ACTIVE = "active"
   private const val KEY_BLOCKED_PACKAGES = "blocked_packages"
 
+  // Task 7.28 ("bloqueo total"): when active AND this flag is on, FocusBlockAccessibilityService
+  // kicks *any* foreground app that isn't on its safety allowlist back to the home screen, not
+  // just the ones in KEY_BLOCKED_PACKAGES -- the mobile equivalent of apps/web's mandatory
+  // full-screen focus overlay. JS-pushed on the same setBlockingState call as KEY_ACTIVE, so it's
+  // always as fresh as the active flag itself.
+  private const val KEY_LOCKDOWN = "lockdown"
+
   // Task 11.9/11.10. A second, independent pair of keys (not reusing KEY_ACTIVE/KEY_BLOCKED_PACKAGES)
   // -- the night list is a deliberately separate list from the focus/pomodoro one (see
   // BlockListScope's doc comment in schema.prisma), not a filtered view of it, so its native state
@@ -43,14 +50,17 @@ internal object FocusBlockPrefs {
   private fun prefs(context: Context): SharedPreferences =
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-  fun write(context: Context, active: Boolean, blockedPackages: Set<String>) {
+  fun write(context: Context, active: Boolean, blockedPackages: Set<String>, lockdown: Boolean) {
     prefs(context).edit()
       .putBoolean(KEY_ACTIVE, active)
       .putStringSet(KEY_BLOCKED_PACKAGES, blockedPackages)
+      .putBoolean(KEY_LOCKDOWN, lockdown)
       .apply()
   }
 
   fun isActive(context: Context): Boolean = prefs(context).getBoolean(KEY_ACTIVE, false)
+
+  fun isLockdown(context: Context): Boolean = prefs(context).getBoolean(KEY_LOCKDOWN, false)
 
   fun blockedPackages(context: Context): Set<String> =
     prefs(context).getStringSet(KEY_BLOCKED_PACKAGES, emptySet()) ?: emptySet()

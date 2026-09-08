@@ -12,7 +12,9 @@ export interface NativePendingBlockEvent {
 }
 
 export interface FocusBlockNativeModule {
-  setBlockingState(active: boolean, blockedPackages: string[]): void;
+  // `lockdown` (task 7.28): when true and `active`, the AccessibilityService blocks every
+  // non-allowlisted foreground app, not just the ones in `blockedPackages`.
+  setBlockingState(active: boolean, blockedPackages: string[], lockdown: boolean): void;
   setNightBlockingState(enabled: boolean, blockedPackages: string[]): void;
   setNightWindow(startMinutes: number, endMinutes: number): void;
   getNightWindowStartMinutes(): number;

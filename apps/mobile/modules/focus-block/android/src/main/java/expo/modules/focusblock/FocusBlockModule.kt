@@ -22,8 +22,10 @@ class FocusBlockModule : Module() {
     // "Return type mismatch: expected 'Any?', actual 'Unit'" from the Expo Modules Kotlin DSL's
     // generic Function() overload; found by an actual `gradlew assembleDebug` run, not by
     // inspection). `?.let` sidesteps it entirely.
-    Function("setBlockingState") { active: Boolean, blockedPackages: List<String> ->
-      appContext.reactContext?.let { context -> FocusBlockPrefs.write(context, active, blockedPackages.toSet()) }
+    Function("setBlockingState") { active: Boolean, blockedPackages: List<String>, lockdown: Boolean ->
+      appContext.reactContext?.let { context ->
+        FocusBlockPrefs.write(context, active, blockedPackages.toSet(), lockdown)
+      }
     }
 
     // Task 11.9. Same fire-and-forget shape as setBlockingState above, called from

@@ -17,10 +17,17 @@ export default function BlockedScreen() {
   const params = useLocalSearchParams<{ package?: string }>();
   const { entries } = useBlockList();
 
-  const label = useMemo(() => {
-    const entry = entries.find((item) => item.identifier === params.package);
-    return entry?.label ?? params.package ?? 'esta app';
-  }, [entries, params.package]);
+  // Task 7.28: under total lockdown the blocked package won't be in the block list at all -- any
+  // app that isn't allowlisted gets kicked. Fall back to a lockdown-specific message instead of
+  // claiming it's "en tu lista de bloqueo".
+  const listedEntry = useMemo(
+    () => entries.find((item) => item.identifier === params.package),
+    [entries, params.package],
+  );
+  const label = listedEntry?.label ?? params.package ?? 'esta app';
+  const message = listedEntry
+    ? `${label} esta en tu lista de bloqueo y tenes un enfoque activo ahora mismo (pomodoro, tarea u horario de trabajo). Volvamos a lo que estabas haciendo.`
+    : 'Tenes el bloqueo total activo durante este enfoque (pomodoro u horario de trabajo). Cualquier app que abras te trae de vuelta hasta que termine. Las llamadas y Ajustes siguen disponibles.';
 
   return (
     <YStack flex={1} backgroundColor="$background" alignItems="center" justifyContent="center" padding="$6">
@@ -32,8 +39,7 @@ export default function BlockedScreen() {
             App bloqueada
           </H1>
           <Paragraph margin={0} textAlign="center" color="$muted">
-            {label} esta en tu lista de bloqueo y tenes un enfoque activo ahora mismo (pomodoro,
-            tarea u horario de trabajo). Volvamos a lo que estabas haciendo.
+            {message}
           </Paragraph>
           <AppButton variant="primary" onPress={() => router.replace('/')}>
             Volver al enfoque

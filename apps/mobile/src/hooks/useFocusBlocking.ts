@@ -6,6 +6,7 @@ import type { SyncScheduleRecord } from '../lib/calendar/types';
 import { setBlockingState } from '../lib/focusBlock/api';
 import { pullSnapshot } from '../lib/sync/api';
 import { useBlockList } from './useBlockList';
+import { useFocusLockdownEnabled } from './useFocusLockdownEnabled';
 
 // Matches apps/web's SoftFocusContext WORK_HOURS_CHECK_INTERVAL_MS -- work-hours boundary
 // crossings aren't driven by any data change, so this is the only thing that needs a timer here.
@@ -16,6 +17,7 @@ export interface FocusBlockingState {
   isPomodoroBlocking: boolean;
   isWorkHoursActive: boolean;
   blockedPackageNames: string[];
+  lockdownEnabled: boolean;
 }
 
 /**
@@ -37,6 +39,7 @@ export function useFocusBlocking(): FocusBlockingState {
   const { isBlocking: isPomodoroBlocking } = usePomodoro();
   const { entries, refetch: refetchBlockList } = useBlockList();
   const { registerRefetch } = useSync();
+  const [lockdownEnabled] = useFocusLockdownEnabled();
   const [schedules, setSchedules] = useState<SyncScheduleRecord[]>([]);
   const [now, setNow] = useState(() => new Date());
 
@@ -91,8 +94,8 @@ export function useFocusBlocking(): FocusBlockingState {
   );
 
   useEffect(() => {
-    setBlockingState(isActive, blockedPackageNames);
-  }, [isActive, blockedPackageNames]);
+    setBlockingState(isActive, blockedPackageNames, lockdownEnabled);
+  }, [isActive, blockedPackageNames, lockdownEnabled]);
 
-  return { isActive, isPomodoroBlocking, isWorkHoursActive, blockedPackageNames };
+  return { isActive, isPomodoroBlocking, isWorkHoursActive, blockedPackageNames, lockdownEnabled };
 }

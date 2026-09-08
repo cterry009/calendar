@@ -10,6 +10,7 @@ import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useOnboarding } from '../context/OnboardingContext';
 import { useBlockList } from '../hooks/useBlockList';
 import { useInstalledApps } from '../hooks/useInstalledApps';
+import { useFocusLockdownEnabled } from '../hooks/useFocusLockdownEnabled';
 import { useNightBlockEnabled } from '../hooks/useNightBlockEnabled';
 import { useNightWindow } from '../hooks/useNightWindow';
 import { MIN_NIGHT_WINDOW_MINUTES, formatNightWindowMinutes, nightWindowDurationMinutes } from '../lib/nightBlock/state';
@@ -120,6 +121,7 @@ export default function BlockListScreen() {
   const [search, setSearch] = useState('');
   const [activeScope, setActiveScope] = useState<BlockListScope>('FOCUS');
   const [nightEnabled, setNightEnabled] = useNightBlockEnabled();
+  const [lockdownEnabled, setLockdownEnabled] = useFocusLockdownEnabled();
   const nightWindow = useNightWindow();
   const [startInput, setStartInput] = useState(() => formatNightWindowMinutes(nightWindow.startMinutes));
   const [endInput, setEndInput] = useState(() => formatNightWindowMinutes(nightWindow.endMinutes));
@@ -370,9 +372,37 @@ export default function BlockListScreen() {
                     Bloqueo real
                   </H2>
                   {accessibilityEnabled ? (
-                    <Text color="$accent" fontSize="$3">
-                      Activado -- las apps de esta lista se bloquean de verdad durante un enfoque.
-                    </Text>
+                    <YStack gap="$3">
+                      <Text color="$accent" fontSize="$3">
+                        Activado -- las apps se bloquean de verdad durante un enfoque.
+                      </Text>
+
+                      <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor="$borderColor">
+                        <H2 margin={0} fontSize="$4">
+                          Bloqueo total durante enfoque
+                        </H2>
+                        <Paragraph margin={0} color="$muted">
+                          Con esto activado, durante un pomodoro o tu horario de trabajo cualquier
+                          otra app te devuelve al inicio -- no solo las de tu lista. Las llamadas,
+                          Ajustes de Android y el teclado siguen disponibles. Desactivado, solo se
+                          bloquean las apps que agregues abajo.
+                        </Paragraph>
+                        <XStack gap="$2">
+                          <AppButton
+                            variant={lockdownEnabled ? 'primary' : 'ghost'}
+                            onPress={() => setLockdownEnabled(true)}
+                          >
+                            Total
+                          </AppButton>
+                          <AppButton
+                            variant={!lockdownEnabled ? 'primary' : 'ghost'}
+                            onPress={() => setLockdownEnabled(false)}
+                          >
+                            Solo mi lista
+                          </AppButton>
+                        </XStack>
+                      </YStack>
+                    </YStack>
                   ) : (
                     <YStack gap="$2">
                       <Paragraph margin={0} color="$muted">

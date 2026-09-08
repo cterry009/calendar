@@ -2,7 +2,7 @@ import { NativeModule, requireNativeModule } from 'expo';
 import type { FocusBlockNativeModule, NativePendingBlockEvent } from './FocusBlock.types';
 
 declare class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModule {
-  setBlockingState(active: boolean, blockedPackages: string[]): void;
+  setBlockingState(active: boolean, blockedPackages: string[], lockdown: boolean): void;
   setNightBlockingState(enabled: boolean, blockedPackages: string[]): void;
   setNightWindow(startMinutes: number, endMinutes: number): void;
   getNightWindowStartMinutes(): number;

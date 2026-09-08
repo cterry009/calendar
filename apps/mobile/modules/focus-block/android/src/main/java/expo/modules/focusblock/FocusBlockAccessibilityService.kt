@@ -1,6 +1,10 @@
 package expo.modules.focusblock
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings
+import android.telecom.TelecomManager
 import android.view.accessibility.AccessibilityEvent
 import java.util.Calendar
 
@@ -37,11 +41,84 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     val foregroundPackage = event.packageName?.toString() ?: return
     if (foregroundPackage == packageName) return // never block our own app
 
+    // Task 7.28 "bloqueo total": during an active focus/work session with lockdown on, kick *any*
+    // app that isn't on the safety allowlist -- not just the ones in the FOCUS block list. This is
+    // the mobile equivalent of apps/web's mandatory full-screen focus overlay. The per-list
+    // blockedScope() check below still runs when lockdown is off (or for a NIGHT-list app), so the
+    // two modes coexist. Logged as a FOCUS BLOCKED_OPEN_ATTEMPT so it feeds the same dashboard
+    // "intentos bloqueados" metric as an ordinary block-list hit.
+    if (FocusBlockPrefs.isActive(this) &&
+      FocusBlockPrefs.isLockdown(this) &&
+      !isFocusAllowlisted(foregroundPackage)
+    ) {
+      performGlobalAction(GLOBAL_ACTION_HOME)
+      FocusBlockNotifications.showBlockedAlert(this, foregroundPackage)
+      FocusBlockPrefs.addPendingBlockEvent(this, foregroundPackage, "FOCUS", "BLOCKED_OPEN_ATTEMPT")
+      return
+    }
+
     val blockedScope = blockedScope(foregroundPackage) ?: return
 
     performGlobalAction(GLOBAL_ACTION_HOME)
     FocusBlockNotifications.showBlockedAlert(this, foregroundPackage)
     FocusBlockPrefs.addPendingBlockEvent(this, foregroundPackage, blockedScope, "BLOCKED_OPEN_ATTEMPT")
+  }
+
+  // Apps that must stay reachable even under total lockdown: this app itself, the launcher (or the
+  // home-kick would loop forever), the system UI (status bar / notification shade / recents /
+  // transitions), the phone stack (so calls -- including emergency -- and their in-call UI work),
+  // the OS Settings app (a real escape hatch: the user can always disable this accessibility
+  // service, and blocking Settings would be user-hostile and pointless since that path stays open
+  // anyway), the current keyboard, and the permission/installer UIs. Everything else is blocked.
+  // Launcher + dialer + IME packages are resolved from PackageManager once and cached -- they only
+  // change if the user switches their default launcher/keyboard, rare enough that a process
+  // restart to pick it up is fine.
+  private val staticAllowlist = setOf(
+    "com.android.systemui",
+    "com.android.settings",
+    "com.android.phone",
+    "com.android.server.telecom",
+    "com.android.incallui",
+    "com.google.android.permissioncontroller",
+    "com.android.permissioncontroller",
+    "com.google.android.packageinstaller",
+    "com.android.packageinstaller",
+  )
+  private var dynamicAllowlist: Set<String> = emptySet()
+
+  private fun isFocusAllowlisted(pkg: String): Boolean {
+    if (pkg == packageName) return true
+    if (pkg in staticAllowlist) return true
+    if (dynamicAllowlist.isEmpty()) {
+      dynamicAllowlist = resolveDynamicAllowlist()
+    }
+    return pkg in dynamicAllowlist
+  }
+
+  private fun resolveDynamicAllowlist(): Set<String> {
+    val out = mutableSetOf<String>()
+
+    // Every installed home/launcher app (there can be several; the active one can change).
+    val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+    packageManager.queryIntentActivities(homeIntent, 0).forEach { info ->
+      info.activityInfo?.packageName?.let(out::add)
+    }
+
+    // Default phone/dialer app (emergency calls must always go through).
+    runCatching {
+      val telecom = getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
+      telecom?.defaultDialerPackage?.let(out::add)
+    }
+
+    // Current keyboard, so text entry (in our own app, the dialer, etc.) isn't interrupted.
+    runCatching {
+      Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
+        ?.substringBefore('/')
+        ?.takeIf { it.isNotEmpty() }
+        ?.let(out::add)
+    }
+
+    return out
   }
 
   // Task 8.2: fires exactly once per unlock, the instant NightBlockRules stops blocking the

@@ -8,9 +8,13 @@ import type { NativePendingBlockEvent } from '../../../modules/focus-block/src/F
 // computation on every platform since it's cheap and platform-agnostic; only the native push is
 // gated here, one guard point instead of scattering Platform.OS checks through the hook.
 
-export function setBlockingState(active: boolean, blockedPackages: string[]): void {
+// `lockdown` (task 7.28): with it on, an active focus/work session blocks every non-allowlisted
+// app, not only the ones in `blockedPackages` -- the mobile equivalent of apps/web's mandatory
+// full-screen focus overlay. The allowlist (own app, launcher, system UI, phone/dialer, Settings,
+// keyboard) is resolved natively; see FocusBlockAccessibilityService.isFocusAllowlisted.
+export function setBlockingState(active: boolean, blockedPackages: string[], lockdown: boolean): void {
   if (Platform.OS !== 'android') return;
-  FocusBlockModule.setBlockingState(active, blockedPackages);
+  FocusBlockModule.setBlockingState(active, blockedPackages, lockdown);
 }
 
 // Task 11.9: the NIGHT-scope list's push, kept fully separate from setBlockingState above --
