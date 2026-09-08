@@ -319,3 +319,83 @@
 
   **Deliberately not in this slice**: heart rate, sleep, and other metrics needing hardware this phone doesn't have or a Health Connect integration (a separate, larger integration, not a tweak of this one -- same reasoning task 12.6 already gave for why it stayed out of that slice too); iOS (no device/simulator available, consistent with the rest of this mobile port).
 
+## 13. Documentation (final -- after 9-12)
+
+> Written last, once Windows (section 9), analytics/fitness (11), and polish/release (12) are done, so
+> the docs describe the shipped system, not a moving target. Lives in a new top-level `docs/` folder.
+> Today the only design writeup is `openspec/changes/calendar-productivity-app/design.md`, a
+> chronological decision log -- this is the opposite: a structured, current-state reference organized by
+> layer and by device. Every doc names real files/paths; a stale path or code reference is a bug to fix
+> in the same pass. Diagrams are Mermaid committed inline in the markdown so they render on GitHub with
+> no build step.
+
+- [ ] 13.1 Scaffold `docs/` and write `docs/README.md` as the index: a one-paragraph project summary, a
+  table of contents linking every doc below, and the single most important artifact -- a **master
+  information-flow diagram** showing the full round trip: device UI / OS sensors -> platform-local store
+  (web IndexedDB `apps/web/src/lib/offline/idb.ts` / mobile expo-sqlite `apps/mobile/src/lib/offline/db.ts`
+  -- one snapshot blob + one append-only mutation queue) -> `POST /sync/batch` -> NestJS `SyncService`
+  (per-entity `apply*Change` + conflict resolution) -> Postgres, and the return path Postgres ->
+  `GET /sync/pull` -> `SyncSnapshot` -> local cache -> `@calendar/shared` `buildDashboardMetrics` ->
+  dashboard UI, plus the Socket.io `sync:changes` realtime fan-out that tells other devices to re-pull.
+  Layers explicitly labelled (UI / shared logic / local persistence / transport / API / domain / DB).
+
+- [ ] 13.2 `docs/architecture.md` -- the layered view: the Turborepo layout and why it is source-first
+  with no npm workspaces (each package keeps its own `node_modules`; Metro/Vite alias straight into
+  `packages/*/src`), the dependency direction (`apps/*` and `server` both depend on `packages/shared`;
+  `packages/shared` is pure TS with zero DOM/RN/Node imports, which is what lets the same
+  `buildDashboardMetrics` / pomodoro state machine / estimation-accuracy code run identically on web,
+  mobile, and desktop), and `packages/ui` (Tamagui "Emerald Focus" tokens, dark + light themes from task
+  5.12). One Mermaid module-dependency graph.
+
+- [ ] 13.3 `docs/sync-and-offline.md` -- the cross-cutting doc, the core of "how information flows between
+  devices". Cover: the `SyncSnapshot` / `SyncBatchPayload` shape and that the `Sync*Record` types are
+  deliberately hand-duplicated per platform, not shared (task 7.5's reasoning); the offline-queue
+  lifecycle on each platform (queue-on-offline, queue-on-failed-online-request, flush triggers:
+  NetInfo `online` event, `AppState` foreground, 5s poll while the queue is non-empty; the
+  `SyncStatusBanner` message precedence); and a **per-entity conflict-resolution table** -- for every
+  synced model, which rule applies and why: `updatedAt`-wins (tasks, schedules, most), `max(value)`
+  merge (`DailyStepCount`, `DailyFloorsClimbed` -- monotonic sensor counters, tasks 12.6/12.8),
+  idempotent client-id create (`BlockEvent` -- immutable telemetry, task 8.2), single-row-per-user JSON
+  blob (`DetoxPlan`, `SerotoninSession`, `DailyScreenTime`), and the `habitId`+`date` fallback cascade
+  in `findHabitRecord` (tasks 7.22 / 8.7). Add a "known sync hazards" subsection covering the two real
+  failure modes already hit and fixed (100kb -> 10mb body limit, task 7.16; the P2002 poisoned-queue
+  stall, task 8.7).
+
+- [ ] 13.4 `docs/backend.md` + `docs/data-model.md`. `backend.md`: NestJS module map, the auth model
+  (email/password + JWT access 15m / refresh 30d with rotation; `SessionExpiredError` only on a real 401
+  from `/auth/refresh` -- task 7.17; OAuth Google/Apple), device registration/revocation, the
+  `/sync/pull` + `/sync/batch` request/response contract, the Socket.io gateway, and a pointer to
+  Swagger at `/docs`. `data-model.md`: every Prisma model as a table (fields, indexes, the unique keys
+  that matter for sync) with a column for **which platforms write it** (e.g. `BlockEvent` -> Android +
+  Windows only; `DailyScreenTime` -> Android only; `Task` / `PomodoroSession` -> all).
+
+- [ ] 13.5 `docs/platforms/` -- one doc per client, each with its own device-scoped data-flow diagram
+  (what this platform produces, what it only consumes, what is degraded/unavailable and why):
+  - `web.md` -- Vite/React, calendar-as-hub IA (task 4.17) with slide-over panels (5.1), IndexedDB
+    offline, `FrictionOverlay` as the only "blocking" the web can do (no OS interception), the ES/EN
+    i18n mechanism (5.11), dark/light appearance (5.12).
+  - `android.md` -- Expo Router; the local native modules (`modules/focus-block` AccessibilityService +
+    `fullScreenIntent` overlay + night-block window + jog/step unlock; `modules/activity-recognition`;
+    `modules/step-tracking` foreground service; `modules/screen-time` `UsageStatsManager`) and the
+    **SharedPreferences bridge contract** between the JS layer and the native services (the one channel
+    that works with the RN process dead); the permission ladder (Accessibility, `QUERY_ALL_PACKAGES`,
+    `PACKAGE_USAGE_STATS`, `POST_NOTIFICATIONS` / `USE_FULL_SCREEN_INTENT`, battery-optimization
+    exemption) and that none can be granted programmatically; the confirmed reliability caveat
+    (`am force-stop` silently unbinds the AccessibilityService -- tasks 6.9 / 7.24).
+  - `windows.md` -- Tauri 2 shell, the Rust sidecar for process blocking, hosts-file / DNS website
+    blocking, system tray, auto-start (section 9). Written once 9 lands.
+  - `ios-macos.md` -- the deliberately-degraded story (web + detox plan, no deep OS blocking; section
+    10, low priority) so the gap is documented rather than looking unfinished.
+
+- [ ] 13.6 `docs/blocking.md` -- the cross-platform blocking spec on one page: the shared data contract
+  (`BlockListEntry` with `hardMode` (5.6), `scope` FOCUS/NIGHT (7.8); `FocusTrigger` LOCATION/WIFI
+  (5.8)), the trigger sources (pomodoro `isBlocking`, work-hours `isNowWithinWorkSchedule`, the night
+  window, location), and a table of how each platform enforces it (web: friction / confirm only;
+  Android: AccessibilityService home-kick + `fullScreenIntent` notification overlay; Windows: process
+  kill + hosts file), with the "specify once, enforce natively later" entries called out.
+
+- [ ] 13.7 Wire it together: add a "Documentation" section to the top-level `README.md` linking
+  `docs/README.md`; cross-link `design.md` from `docs/` as the historical decision log and vice-versa;
+  add a short "keep docs current" note to `AGENTS.md` / `CLAUDE.md` so future changes update the
+  relevant `docs/*` page. Verify every file path and code reference in `docs/` resolves against the tree
+  at completion time.
