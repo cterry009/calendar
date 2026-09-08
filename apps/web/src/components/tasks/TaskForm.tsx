@@ -115,7 +115,6 @@ export function TaskForm({
     setComplexityTouched(mode === 'edit');
     setDifficultyTouched(mode === 'edit');
     // pomodoroLength intentionally excluded -- it shouldn't reset an in-progress draft on its own.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTask, initialScheduledAt, initialTitle, initialEstimatedPomodoros, mode]);
 
   const estimatedMinutesPreview = (Number(draft.estimatedPomodoros) || 1) * pomodoroLength;
@@ -144,7 +143,6 @@ export function TaskForm({
     }));
     // Re-suggest only when the underlying text/duration changes, not on every keystroke into
     // complexity/difficulty themselves (those are handled by the touched flags instead).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, draft.title, draft.description, draft.estimatedPomodoros, complexityTouched, difficultyTouched]);
 
   const title = useMemo(

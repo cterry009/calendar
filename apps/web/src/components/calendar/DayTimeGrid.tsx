@@ -44,7 +44,6 @@ export function DayTimeGrid({
     const anchorMinute = bars.length > 0 ? Math.min(...bars.map((bar) => bar.startMinute)) : 7 * 60;
     scrollRef.current.scrollTop = Math.max(0, (anchorMinute / 60) * rowHeightPx - rowHeightPx);
     // Re-anchor when the viewed date or zoom level changes, not on every bar recompute.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, zoom]);
 
   useEffect(() => {

@@ -31,7 +31,6 @@ export function MiniMonthCalendar({ selectedDate, onSelectDate }: MiniMonthCalen
   useEffect(() => {
     setCursorMonth(startOfDay(selectedDate));
     // Re-center the visible month only when the selected month/year actually changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate.getFullYear(), selectedDate.getMonth()]);
 
   const today = startOfDay(new Date());

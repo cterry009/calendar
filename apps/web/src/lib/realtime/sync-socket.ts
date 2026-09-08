@@ -12,7 +12,7 @@ export interface SyncChangesEvent {
 export type SyncChangesHandler = (event: SyncChangesEvent) => void;
 
 let socket: Socket | null = null;
-let handlers = new Set<SyncChangesHandler>();
+const handlers = new Set<SyncChangesHandler>();
 
 function getSocketUrl(): string {
   return env.apiUrl;

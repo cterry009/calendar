@@ -55,7 +55,6 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
     const anchorMinute = allBars.length > 0 ? Math.min(...allBars.map((bar) => bar.startMinute)) : 7 * 60;
     scrollRef.current.scrollTop = Math.max(0, (anchorMinute / 60) * rowHeightPx - rowHeightPx);
     // Re-anchor when the viewed week or zoom level changes, not on every bar recompute.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekDays[0]?.toISOString(), zoom]);
 
   useEffect(() => {
