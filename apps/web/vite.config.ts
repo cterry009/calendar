@@ -30,7 +30,11 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['react-native-web'],
+    // `@tauri-apps/api/*` is only dynamic-imported (DesktopTrayBridge, task 9.2). Pre-bundling it
+    // here means Vite doesn't trigger a mid-load dep re-optimization the first time the desktop
+    // shell opens the page -- that re-optimization otherwise races the WebView2's initial load
+    // and leaves it blank until a manual reload.
+    include: ['react-native-web', '@tauri-apps/api/core', '@tauri-apps/api/event'],
   },
   define: {
     __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production'),
