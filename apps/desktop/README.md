@@ -24,6 +24,16 @@ npm install
 npm run dev        # = tauri dev
 ```
 
+O bien doble clic en **`apps/desktop/launch-dev.cmd`** (hay un acceso directo
+«Calendar Productivity» en el escritorio que apunta a este archivo): arranca el
+servidor de API en su propia ventana si no está corriendo, y luego `npm run dev`.
+Mantené la ventana de consola abierta mientras uses la app.
+
+> Todavía no hay un build autónomo doble-clic (`tauri build` produce un `.exe`
+> pero la app aún necesita el backend local en `:3000`, y el bundle de producción
+> tiene un bug de pantalla en blanco pendiente de arreglar). Hasta el deploy del
+> backend (tarea 12.5) el flujo de desarrollo es la forma de correr el cliente.
+
 `tauri dev` arranca el dev server de `apps/web` (`beforeDevCommand`), espera a
 `http://localhost:5173`, compila el crate Rust y abre la ventana WebView2 cargando esa URL.
 Recarga en caliente el frontend vía Vite; un cambio en `src-tauri/**` recompila el crate.
