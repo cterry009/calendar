@@ -58,14 +58,40 @@ export function useCalendarData(): UseCalendarDataResult {
 
   useEffect(() => registerRefetch(refetch), [registerRefetch, refetch]);
 
+  // Same fix as useHabits.ts's checkIn: syncTaskBatch() never rejects when offline (or when an
+  // online request fails) -- it queues the change and resolves successfully -- so the refetch()
+  // below always runs, but pullSnapshot() falls back to the stale pre-change snapshot in exactly
+  // that case. Without correcting for it, tapping "completar" on a task would silently revert to
+  // not-completed. Re-apply our own optimistic record on top of whatever refetch() returned: a
+  // no-op when the fresh/cached data already reflects it, a real correction when it doesn't.
   const completeTask = useCallback(
     async (task: SyncTaskRecord) => {
       setIsMutating(true);
       setError(null);
 
+      const nowIso = new Date().toISOString();
+      const optimisticTask: SyncTaskRecord = {
+        ...task,
+        status: 'COMPLETED',
+        actualMinutes: task.estimatedMinutes,
+        completedAt: nowIso,
+        updatedAt: nowIso,
+      };
+
       try {
         await syncTaskBatch([buildCompleteTaskPayload(task, task.estimatedMinutes)]);
         await refetch();
+        setTasks((current) => {
+          const postRefetch = current.find((entry) => entry.id === task.id);
+          if (postRefetch?.status === 'COMPLETED') {
+            return current; // refetch already reflects our change (the normal online case)
+          }
+          return sortTasks(
+            postRefetch
+              ? current.map((entry) => (entry.id === task.id ? optimisticTask : entry))
+              : [...current, optimisticTask],
+          );
+        });
       } catch (errorValue) {
         setError(errorValue instanceof ApiError ? errorValue.message : 'No se pudo completar la tarea.');
         throw errorValue;

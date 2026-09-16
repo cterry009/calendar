@@ -1,3 +1,4 @@
+import * as Crypto from 'expo-crypto';
 import { useCallback, useEffect, useState } from 'react';
 import { useSync } from '../context/SyncContext';
 import { ApiError } from '../lib/auth/api';
@@ -54,14 +55,27 @@ export function useBlockList(): UseBlockListResult {
 
   useEffect(() => registerRefetch(refetch), [registerRefetch, refetch]);
 
+  // Same fix as useFitness.ts's executeMutation: syncBlockListBatch() never rejects when offline
+  // (or when an online request fails) -- it queues the change and resolves successfully -- so a
+  // plain refetch() afterwards would silently revert to the stale pre-change list, e.g. toggling
+  // an installed app into the block list and having it disappear again on the next refetch.
+  // Checks the `queued` flag and, when true, patches `entries` directly instead of trusting a
+  // refetch that can't possibly reflect a mutation the server never received yet.
   const executeMutation = useCallback(
-    async (changes: Parameters<typeof syncBlockListBatch>[0]) => {
+    async (
+      changes: Parameters<typeof syncBlockListBatch>[0],
+      applyOptimistically: (current: SyncBlockListRecord[]) => SyncBlockListRecord[],
+    ) => {
       setIsMutating(true);
       setError(null);
 
       try {
-        await syncBlockListBatch(changes);
-        await refetch();
+        const response = await syncBlockListBatch(changes);
+        if (response.queued) {
+          setEntries((current) => sortByLabel(applyOptimistically(current)));
+        } else {
+          await refetch();
+        }
       } catch (errorValue) {
         setError(errorValue instanceof ApiError ? errorValue.message : 'No se pudo sincronizar la lista de bloqueo.');
         throw errorValue;
@@ -74,14 +88,29 @@ export function useBlockList(): UseBlockListResult {
 
   const createEntry = useCallback(
     async (values: BlockListFormValues) => {
-      await executeMutation([buildCreateBlockListPayload(values)]);
+      const nowIso = new Date().toISOString();
+      const optimisticEntry: SyncBlockListRecord = {
+        id: `pending-${Crypto.randomUUID()}`,
+        kind: values.kind,
+        identifier: values.identifier.trim(),
+        label: values.label.trim(),
+        platform: values.platform,
+        highDopamine: values.highDopamine,
+        enabled: values.enabled,
+        hardMode: values.hardMode,
+        scope: values.scope,
+        updatedAt: nowIso,
+      };
+      await executeMutation([buildCreateBlockListPayload(values)], (current) => [...current, optimisticEntry]);
     },
     [executeMutation],
   );
 
   const deleteEntry = useCallback(
     async (entryId: string) => {
-      await executeMutation([buildDeleteBlockListPayload(entryId)]);
+      await executeMutation([buildDeleteBlockListPayload(entryId)], (current) =>
+        current.filter((entry) => entry.id !== entryId),
+      );
     },
     [executeMutation],
   );

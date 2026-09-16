@@ -141,8 +141,19 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       try {
-        await syncPomodoroBatch([buildPomodoroPayload(nextSession)]);
-        await refetch();
+        const response = await syncPomodoroBatch([buildPomodoroPayload(nextSession)]);
+        if (response.queued) {
+          // The mutation only got queued (offline, or a failed online request) -- a refetch()
+          // here would pull the stale pre-mutation snapshot (server or offline cache) and revert
+          // this change right back, e.g. leaving a just-cancelled session looking active again and
+          // the total-lockdown block never lifting no matter how many times the user cancels. We
+          // already know the intended next state, so apply it directly instead of round-tripping.
+          setSession(nextSession);
+          setConfig(toConfig(nextSession));
+          setNow(Date.now());
+        } else {
+          await refetch();
+        }
       } catch (errorValue) {
         setError(errorValue instanceof ApiError ? errorValue.message : 'No se pudo sincronizar la sesion pomodoro.');
         throw errorValue;

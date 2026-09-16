@@ -48,10 +48,31 @@ class StepTrackingService : Service(), SensorEventListener {
     ensureChannel()
     val notification = buildNotification(StepTrackingPrefs.getDailySteps(this), StepTrackingPrefs.getDailyGoal(this))
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-      startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
-    } else {
-      startForeground(NOTIFICATION_ID, notification)
+    // Real bug found and fixed: useStepTrackingService.ts called startTracking() unconditionally
+    // on every app launch (task 11.16), with no permission check of its own. On Android 14+
+    // (UPSIDE_DOWN_CAKE), starting a FOREGROUND_SERVICE_TYPE_HEALTH service throws a
+    // SecurityException unless the underlying data-access permission (ACTIVITY_RECOGNITION, here)
+    // is already granted, not just declared in the manifest -- and that exception was never
+    // caught, so it took down the whole app process on every single launch until the permission
+    // got granted through some other path. On a fresh install that "other path" never gets a
+    // chance to run first: this crashed before the user ever saw a UI. The real fix is on the JS
+    // side (useStepTrackingService.ts now checks the permission before ever calling
+    // startForegroundService()), since Android requires startForeground() to be called here no
+    // matter what once that's been called -- simply skipping it, without JS's guard, trips a
+    // *different* crash (ForegroundServiceDidNotStartInTimeException, confirmed on-device). This
+    // try/catch is only a defense-in-depth net for edge cases the JS guard can't fully cover (e.g.
+    // permission revoked in Settings between the JS check and this call, or the OS's own
+    // START_STICKY restart after that revocation) -- SecurityException here is caught and turned
+    // into a clean stop instead of an uncaught crash.
+    try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
+      } else {
+        startForeground(NOTIFICATION_ID, notification)
+      }
+    } catch (error: SecurityException) {
+      stopSelf()
+      return START_NOT_STICKY
     }
 
     val sensor = stepSensor

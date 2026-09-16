@@ -31,25 +31,37 @@ internal object NightBlockAlarmScheduler {
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
+  // Real bug found and fixed: this used to let a SecurityException from setAlarmClock() propagate
+  // straight up through FocusBlockModule's setNightWindow/setNightBlockingState (called from
+  // useNightBlocking.ts on every app launch) and crash the whole render tree -- confirmed
+  // on-device, traced to the manifest missing SCHEDULE_EXACT_ALARM entirely (fixed there too; see
+  // AndroidManifest.xml's comment). Caught here as well, defense-in-depth: a missing/revoked exact
+  // alarm permission should mean "no night-start alarm", not "no app", same tolerance the rest of
+  // this module already gives missing permissions elsewhere (accessibility service, battery
+  // optimization, full-screen intent).
   fun reschedule(context: Context) {
-    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-    val operation = alarmOperation(context)
+    try {
+      val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+      val operation = alarmOperation(context)
 
-    if (!FocusBlockPrefs.isNightEnabled(context)) {
-      alarmManager.cancel(operation)
-      return
+      if (!FocusBlockPrefs.isNightEnabled(context)) {
+        alarmManager.cancel(operation)
+        return
+      }
+
+      val triggerAt = nextTriggerMillis(FocusBlockPrefs.nightStartMinutes(context))
+      // Shown if the user taps the alarm-clock icon in the status bar before it fires -- reuses the
+      // app's own launch intent rather than building one by hand (see the FocusBlockModule doc
+      // comment on Class.forName-style package-name assembly being the kind of thing that only
+      // breaks on a real device).
+      val showIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
+        PendingIntent.getActivity(context, REQUEST_CODE, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+      }
+
+      alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, showIntent), operation)
+    } catch (error: SecurityException) {
+      // No exact-alarm permission available -- degrade to no alarm rather than crashing.
     }
-
-    val triggerAt = nextTriggerMillis(FocusBlockPrefs.nightStartMinutes(context))
-    // Shown if the user taps the alarm-clock icon in the status bar before it fires -- reuses the
-    // app's own launch intent rather than building one by hand (see the FocusBlockModule doc
-    // comment on Class.forName-style package-name assembly being the kind of thing that only
-    // breaks on a real device).
-    val showIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
-      PendingIntent.getActivity(context, REQUEST_CODE, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-    }
-
-    alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, showIntent), operation)
   }
 
   // Next occurrence of startMinutes (minutes-since-midnight): today if it hasn't passed yet,

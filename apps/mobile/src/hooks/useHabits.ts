@@ -1,3 +1,4 @@
+import * as Crypto from 'expo-crypto';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { computeHabitScore } from '@calendar/shared';
 import { useSync } from '../context/SyncContext';
@@ -12,7 +13,7 @@ import {
 } from '../lib/habits/sync';
 import { findRecordForDate } from '../lib/habits/today';
 import type { HabitCheckInValues, HabitFormValues, SyncHabit, SyncHabitRecord } from '../lib/habits/types';
-import { pullSnapshot } from '../lib/sync/api';
+import { pullSnapshot, type SyncBatchResponse } from '../lib/sync/api';
 
 export interface HabitWithScore extends SyncHabit {
   score: number;
@@ -66,14 +67,27 @@ export function useHabits(): UseHabitsResult {
 
   useEffect(() => registerRefetch(refetch), [registerRefetch, refetch]);
 
+  // Same fix as checkIn below (and useCalendarData/useFitness/useBlockList's equivalents):
+  // syncHabitBatch() never rejects when offline (or when an online request fails) -- it queues the
+  // change and resolves successfully -- so a plain refetch() afterwards would silently revert to
+  // the stale pre-change list. When the mutation only got queued, patch `habits` directly instead
+  // of trusting a refetch that can't reflect a change the server never received yet.
   const runMutation = useCallback(
-    async (fn: () => Promise<unknown>, fallbackMessage: string) => {
+    async (
+      fn: () => Promise<SyncBatchResponse>,
+      fallbackMessage: string,
+      applyOptimistically?: (current: SyncHabit[]) => SyncHabit[],
+    ) => {
       setIsMutating(true);
       setError(null);
 
       try {
-        await fn();
-        await refetch();
+        const response = await fn();
+        if (response.queued && applyOptimistically) {
+          setHabits(applyOptimistically);
+        } else {
+          await refetch();
+        }
       } catch (errorValue) {
         setError(errorValue instanceof ApiError ? errorValue.message : fallbackMessage);
         throw errorValue;
@@ -85,8 +99,34 @@ export function useHabits(): UseHabitsResult {
   );
 
   const createHabit = useCallback(
-    (values: HabitFormValues) =>
-      runMutation(() => syncHabitBatch([buildCreateHabitPayload(values)]), 'No se pudo crear el habito.'),
+    (values: HabitFormValues) => {
+      const nowIso = new Date().toISOString();
+      const optimisticHabit: SyncHabit = {
+        id: `pending-${Crypto.randomUUID()}`,
+        clientId: null,
+        title: values.title.trim(),
+        description: values.description?.trim() || null,
+        type: values.type,
+        dailyGoalValue: values.dailyGoalValue,
+        dailyGoalUnit: values.dailyGoalUnit.trim() || 'veces',
+        dailyGoalExtraValue: values.dailyGoalExtraValue ?? null,
+        targetDays: values.targetDays,
+        color: values.color ?? null,
+        category: values.category?.trim() || null,
+        archived: false,
+        linkedFitnessActivityType: values.linkedFitnessActivityType?.trim() || null,
+        reminderStartMinute: values.reminderStartMinute ?? null,
+        reminderEndMinute: values.reminderEndMinute ?? null,
+        reminderDaysOfWeek: values.reminderDaysOfWeek ?? [],
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      return runMutation(
+        () => syncHabitBatch([buildCreateHabitPayload(values)]),
+        'No se pudo crear el habito.',
+        (current) => [...current, optimisticHabit],
+      );
+    },
     [runMutation],
   );
 
@@ -95,13 +135,18 @@ export function useHabits(): UseHabitsResult {
       runMutation(
         () => syncHabitBatch([buildArchiveHabitPayload(habitId, archived)]),
         'No se pudo archivar el habito.',
+        (current) => current.map((habit) => (habit.id === habitId ? { ...habit, archived } : habit)),
       ),
     [runMutation],
   );
 
   const deleteHabit = useCallback(
     (habitId: string) =>
-      runMutation(() => syncHabitBatch([buildDeleteHabitPayload(habitId)]), 'No se pudo eliminar el habito.'),
+      runMutation(
+        () => syncHabitBatch([buildDeleteHabitPayload(habitId)]),
+        'No se pudo eliminar el habito.',
+        (current) => current.filter((habit) => habit.id !== habitId),
+      ),
     [runMutation],
   );
 

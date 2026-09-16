@@ -3,6 +3,16 @@
   <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
   <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <!-- Real bug found and fixed: NightBlockAlarmScheduler.reschedule() uses setAlarmClock(),
+       deliberately chosen (see its doc comment) because alarm clock alarms are exempt from the
+       SCHEDULE_EXACT_ALARM runtime grant gate Android 12+ added for exact alarms. That exemption
+       only applies once the permission is at least declared here, though: with no uses-permission
+       entry at all, every setAlarmClock() call threw an uncaught SecurityException from the very
+       first app launch (confirmed on-device), crashing the whole render tree via
+       FocusBlockModule.setNightWindow/setNightBlockingState. This is a normal install time
+       permission for a setAlarmClock() caller, not a runtime dangerous one: no PermissionsAndroid
+       prompt needed on the JS side. -->
+  <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
   <application>
     <service
       android:name=".FocusBlockAccessibilityService"
