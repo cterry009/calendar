@@ -27,7 +27,7 @@ function sortEntries(items: SyncBlockListRecord[]) {
   return [...items].sort((a, b) => a.label.localeCompare(b.label));
 }
 
-export function useBlockList(): UseBlockListResult {
+export function useBlockList(scope: 'FOCUS' | 'NIGHT' | 'ALL' = 'FOCUS'): UseBlockListResult {
   const { pullSnapshot } = useSync();
   const [entries, setEntries] = useState<SyncBlockListRecord[]>([]);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
@@ -41,13 +41,13 @@ export function useBlockList(): UseBlockListResult {
 
     try {
       const data = await pullSnapshot();
-      // Task 11.8: exclude NIGHT-scope entries (mobile-only, see SyncBlockListRecord's doc
-      // comment) -- treat a missing scope (stale cache from before this field existed) as FOCUS
-      // rather than hiding it.
-      const focusEntries = ((data.blockListEntries as SyncBlockListRecord[]) ?? []).filter(
-        (entry) => (entry.scope ?? 'FOCUS') === 'FOCUS',
-      );
-      setEntries(sortEntries(focusEntries));
+      // A missing scope (stale cache from before this field existed) is treated as FOCUS rather
+      // than hidden. `scope='ALL'` skips the filter entirely -- used by callers that need to
+      // reason about both lists at once (the desktop enforcement bridge, the block-list page's
+      // own scope tabs).
+      const all = (data.blockListEntries as SyncBlockListRecord[]) ?? [];
+      const filtered = scope === 'ALL' ? all : all.filter((entry) => (entry.scope ?? 'FOCUS') === scope);
+      setEntries(sortEntries(filtered));
       setSyncedAt(data.syncedAt);
     } catch (errorValue) {
       if (errorValue instanceof ApiError) {
@@ -60,7 +60,7 @@ export function useBlockList(): UseBlockListResult {
     } finally {
       setIsLoading(false);
     }
-  }, [pullSnapshot]);
+  }, [pullSnapshot, scope]);
 
   useSyncRefetch('blockListEntries', refetch);
 

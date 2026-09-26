@@ -1,45 +1,63 @@
 import { useEffect, useMemo } from 'react';
 import { useBlockList } from '../../hooks/useBlockList';
+import { useNightWindowActive } from '../../hooks/useNightWindowActive';
 import { useSoftFocus } from '../../context/SoftFocusContext';
 import { isDesktop } from '../../lib/desktop';
 
 // Tasks 9.3 + 9.4. Pushes the desktop blocking policy to Rust, which enforces it:
-//   - DESKTOP_APP entries -> apps/desktop/src-tauri/src/blocking.rs terminates matching processes.
+//   - DESKTOP_APP entries -> apps/desktop/src-tauri/src/blocking.rs terminates matching processes
+//     (including `steam:<appid>` identifiers, resolved to the game's real install folder there).
 //   - WEBSITE entries     -> apps/desktop/src-tauri/src/hosts.rs points the domains at 0.0.0.0 in
 //                            the system hosts file.
 // Same "JS owns the policy, native enforces" split as the tray (9.2) and every Android module.
 //
-// "Blocking is active" reuses the web's existing SoftFocus signal (`isOverlayVisible` = pomodoro
-// focus || manual soft-focus || work-hours || location), so the desktop app enforces in exactly
-// the situations the browser already shows its full-screen overlay. Renders nothing; completely
-// inert in a plain browser.
+// Each entry's own `scope` decides *when* it's active, unioned into whatever's currently blocked:
+// FOCUS entries follow the existing SoftFocus signal (`isOverlayVisible` = pomodoro focus ||
+// manual soft-focus || work-hours || location), NIGHT entries follow the fixed 22:30-08:00 window
+// (lib/desktop/nightWindow.ts) via useNightWindowActive(). Rust itself has no notion of scope --
+// it just kills/blocks whatever's in the list it's handed while `active`, so this component is
+// the only place the FOCUS/NIGHT distinction is computed. Renders nothing; completely inert in a
+// plain browser.
+
+function identifiersFor(
+  entries: ReturnType<typeof useBlockList>['entries'],
+  kind: 'DESKTOP_APP' | 'WEBSITE',
+  scope: 'FOCUS' | 'NIGHT',
+): string[] {
+  return entries
+    .filter(
+      (entry) =>
+        entry.enabled &&
+        entry.kind === kind &&
+        (entry.scope ?? 'FOCUS') === scope &&
+        (kind === 'WEBSITE' || entry.platform === 'WINDOWS' || entry.platform == null),
+    )
+    .map((entry) => entry.identifier.trim())
+    .filter(Boolean);
+}
 
 export function DesktopBlockingBridge() {
   const { isOverlayVisible } = useSoftFocus();
-  const { entries } = useBlockList();
+  const isNightActive = useNightWindowActive();
+  const { entries } = useBlockList('ALL');
 
-  const blockedProcesses = useMemo(
-    () =>
-      entries
-        .filter(
-          (entry) =>
-            entry.enabled &&
-            entry.kind === 'DESKTOP_APP' &&
-            (entry.platform === 'WINDOWS' || entry.platform == null),
-        )
-        .map((entry) => entry.identifier.trim())
-        .filter(Boolean),
-    [entries],
-  );
+  const blockedProcesses = useMemo(() => {
+    const focus = isOverlayVisible ? identifiersFor(entries, 'DESKTOP_APP', 'FOCUS') : [];
+    const night = isNightActive ? identifiersFor(entries, 'DESKTOP_APP', 'NIGHT') : [];
+    return Array.from(new Set([...focus, ...night]));
+  }, [entries, isOverlayVisible, isNightActive]);
 
-  const blockedWebsites = useMemo(
-    () =>
-      entries
-        .filter((entry) => entry.enabled && entry.kind === 'WEBSITE')
-        .map((entry) => entry.identifier.trim())
-        .filter(Boolean),
-    [entries],
-  );
+  const blockedWebsites = useMemo(() => {
+    const focus = isOverlayVisible ? identifiersFor(entries, 'WEBSITE', 'FOCUS') : [];
+    const night = isNightActive ? identifiersFor(entries, 'WEBSITE', 'NIGHT') : [];
+    return Array.from(new Set([...focus, ...night]));
+  }, [entries, isOverlayVisible, isNightActive]);
+
+  // Rust's `active` flag is a single on/off gate for the whole list it's handed -- since the list
+  // passed below is already the FOCUS/NIGHT union for whichever window(s) are currently open,
+  // "active" here just means "is there anything to enforce right now."
+  const processesActive = blockedProcesses.length > 0;
+  const websitesActive = blockedWebsites.length > 0;
 
   // join()s stand in for array identity so the effects re-run on content change.
   const blockedKey = blockedProcesses.join(' ');
@@ -49,19 +67,19 @@ export function DesktopBlockingBridge() {
     if (!isDesktop) return;
     void import('@tauri-apps/api/core')
       .then(({ invoke }) =>
-        invoke('set_process_blocking', { active: isOverlayVisible, blocked: blockedProcesses }),
+        invoke('set_process_blocking', { active: processesActive, blocked: blockedProcesses }),
       )
       .catch(() => {
         // Native side not ready / not desktop.
       });
-  }, [isOverlayVisible, blockedKey, blockedProcesses]);
+  }, [processesActive, blockedKey, blockedProcesses]);
 
   useEffect(() => {
     if (!isDesktop) return;
     void import('@tauri-apps/api/core')
       .then(({ invoke }) =>
         invoke<{ changed: boolean; needs_permission: boolean }>('set_website_blocking', {
-          active: isOverlayVisible,
+          active: websitesActive,
           domains: blockedWebsites,
         }),
       )
@@ -75,7 +93,7 @@ export function DesktopBlockingBridge() {
       .catch(() => {
         // Native side not ready / not desktop.
       });
-  }, [isOverlayVisible, websiteKey, blockedWebsites]);
+  }, [websitesActive, websiteKey, blockedWebsites]);
 
   // The `process-blocked` event -> the visible card lives in DesktopBlockedOverlay (task 9.6).
 

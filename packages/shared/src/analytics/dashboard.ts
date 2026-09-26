@@ -4,6 +4,7 @@ import type {
   BlockEventMetric,
   DashboardBlockEventInput,
   DashboardFloorsClimbedInput,
+  DashboardGameTimeInput,
   DashboardHabitInput,
   DashboardHabitRecordInput,
   DashboardMetrics,
@@ -15,11 +16,13 @@ import type {
   DashboardTrendPoint,
   DashboardWeekMetric,
   DeviceSensorMetric,
+  GameTimeMetric,
   HabitCompletionMetric,
   ScreenTimeMetric,
 } from './dashboard-types.js';
 import type { TaskDifficulty } from '../schemas/enums.js';
 import { computePomodoroStreak, dateKey as localDateKey } from '../pomodoro/streak.js';
+import { isKnownDistractingApp } from '../screenTime/socialPackages.js';
 
 // Task 8.1: promoted from apps/web's lib/analytics/aggregate.ts (the original) and
 // apps/mobile's verbatim port -- the two had drifted into two independent copies (see tasks.md
@@ -103,6 +106,7 @@ export function buildDashboardMetrics(snapshot: DashboardSnapshot, now = new Dat
   const deviceSensors = computeDeviceSensors(snapshot.dailyStepCounts, snapshot.dailyFloorsClimbed, rangeStart, now);
   const blockEvents = computeBlockEvents(snapshot.blockEvents, currentWeekStart, previousWeekStart, rangeStart);
   const screenTime = computeScreenTime(snapshot.dailyScreenTime, rangeStart, now);
+  const gameTime = computeGameTime(snapshot.dailyGameTime, rangeStart, now);
 
   return {
     hasData,
@@ -127,6 +131,7 @@ export function buildDashboardMetrics(snapshot: DashboardSnapshot, now = new Dat
     deviceSensors,
     blockEvents,
     screenTime,
+    gameTime,
   };
 }
 
@@ -236,17 +241,67 @@ function computeBlockEvents(
   };
 }
 
+// A day's "social minutes" is the sum of that day's topApps entries matching the curated social
+// list (see socialPackages.ts's doc comment for why a subtotal derived from topApps, not a full
+// per-app ledger the server never stores).
+function socialMinutesForEntry(entry: DashboardScreenTimeInput | undefined): number {
+  if (!entry) return 0;
+  return entry.topApps
+    .filter((app) => isKnownDistractingApp(app.packageName))
+    .reduce((sum, app) => sum + app.minutes, 0);
+}
+
 function computeScreenTime(
   dailyScreenTime: DashboardScreenTimeInput[] | undefined,
   rangeStart: Date,
   now: Date,
 ): ScreenTimeMetric {
   if (!dailyScreenTime || dailyScreenTime.length === 0) {
-    return { hasData: false, todayMinutes: 0, weekAverageMinutes: 0, byDay: [], topAppsToday: [] };
+    return {
+      hasData: false,
+      todayMinutes: 0,
+      weekAverageMinutes: 0,
+      byDay: [],
+      topAppsToday: [],
+      socialMinutesToday: 0,
+      socialByDay: [],
+    };
   }
 
   const byDate = new Map<string, DashboardScreenTimeInput>();
   for (const entry of dailyScreenTime) byDate.set(toDateKey(new Date(entry.date)), entry);
+
+  const byDay = buildTrendSkeleton(rangeStart, (key) => byDate.get(key)?.totalMinutes ?? 0);
+  const lastWeek = byDay.slice(-7);
+  const weekAverageMinutes = lastWeek.length > 0 ? round(lastWeek.reduce((sum, point) => sum + point.value, 0) / 7) : 0;
+
+  const socialByDay = buildTrendSkeleton(rangeStart, (key) => socialMinutesForEntry(byDate.get(key)));
+
+  const todayEntry = byDate.get(toDateKey(now));
+
+  return {
+    hasData: true,
+    todayMinutes: todayEntry?.totalMinutes ?? 0,
+    weekAverageMinutes,
+    byDay,
+    topAppsToday: todayEntry?.topApps ?? [],
+    socialMinutesToday: socialMinutesForEntry(todayEntry),
+    socialByDay,
+  };
+}
+
+// Windows desktop counterpart of computeScreenTime -- same shape/reasoning, see GameTimeMetric.
+function computeGameTime(
+  dailyGameTime: DashboardGameTimeInput[] | undefined,
+  rangeStart: Date,
+  now: Date,
+): GameTimeMetric {
+  if (!dailyGameTime || dailyGameTime.length === 0) {
+    return { hasData: false, todayMinutes: 0, weekAverageMinutes: 0, byDay: [], topGamesToday: [] };
+  }
+
+  const byDate = new Map<string, DashboardGameTimeInput>();
+  for (const entry of dailyGameTime) byDate.set(toDateKey(new Date(entry.date)), entry);
 
   const byDay = buildTrendSkeleton(rangeStart, (key) => byDate.get(key)?.totalMinutes ?? 0);
   const lastWeek = byDay.slice(-7);
@@ -259,7 +314,7 @@ function computeScreenTime(
     todayMinutes: todayEntry?.totalMinutes ?? 0,
     weekAverageMinutes,
     byDay,
-    topAppsToday: todayEntry?.topApps ?? [],
+    topGamesToday: todayEntry?.topGames ?? [],
   };
 }
 

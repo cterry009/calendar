@@ -14,6 +14,7 @@ export type {
   DeviceSensorMetric,
   BlockEventMetric,
   ScreenTimeMetric,
+  GameTimeMetric,
 } from '@calendar/shared';
 
 import type { FitnessSyncChangeDto } from '../fitness/sync';

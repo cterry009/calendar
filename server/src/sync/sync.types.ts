@@ -13,7 +13,9 @@ export type SyncEntityType =
   | 'habitRecords'
   | 'journalEntries'
   | 'blockEvents'
-  | 'dailyScreenTime';
+  | 'dailyScreenTime'
+  | 'dailyGameTime'
+  | 'dailyDesktopAppTime';
 
 export interface SyncChangeResult<T = unknown> {
   status: 'applied' | 'conflict' | 'skipped';

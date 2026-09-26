@@ -461,6 +461,93 @@ export class DailyScreenTimeSyncChangeDto {
   updatedAt!: string;
 }
 
+// Windows desktop counterpart of TopAppUsageDto/DailyScreenTimeSyncChangeDto -- see
+// DailyGameTime's schema.prisma doc comment. `source` is "STEAM" | "RIOT" | "BATTLENET".
+export class TopGameUsageDto {
+  @IsString()
+  @MinLength(1)
+  key!: string;
+
+  @IsString()
+  @MinLength(1)
+  label!: string;
+
+  @IsInt()
+  @Min(0)
+  minutes!: number;
+
+  @IsString()
+  @MinLength(1)
+  source!: string;
+}
+
+// Same shape and reasoning as DailyScreenTimeSyncChangeDto: no `deleted` flag (a per-day
+// aggregate corrected by the next sync, not removed via the UI), `topGames` capped at 10.
+export class DailyGameTimeSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsDateString()
+  date!: string;
+
+  @IsInt()
+  @Min(0)
+  totalMinutes!: number;
+
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => TopGameUsageDto)
+  topGames!: TopGameUsageDto[];
+
+  @IsDateString()
+  updatedAt!: string;
+}
+
+// One entry of DailyDesktopAppTimeSyncChangeDto.topApps -- see DailyDesktopAppTime's schema.prisma
+// doc comment. `key` is the lowercased exe name (also what a DESKTOP_APP block-list entry matches
+// on), `label` the resolved display name. No `source`, unlike TopGameUsageDto: there is a single
+// detector here (the foreground window), not three.
+export class TopDesktopAppUsageDto {
+  @IsString()
+  @MinLength(1)
+  key!: string;
+
+  @IsString()
+  @MinLength(1)
+  label!: string;
+
+  @IsInt()
+  @Min(0)
+  minutes!: number;
+}
+
+// Same shape and reasoning as DailyScreenTimeSyncChangeDto/DailyGameTimeSyncChangeDto: no
+// `deleted` flag (a per-day aggregate corrected by the next sync, not removed via the UI), and
+// `topApps` capped at 10 -- a display snapshot, not a full per-app ledger.
+export class DailyDesktopAppTimeSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsDateString()
+  date!: string;
+
+  @IsInt()
+  @Min(0)
+  totalMinutes!: number;
+
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => TopDesktopAppUsageDto)
+  topApps!: TopDesktopAppUsageDto[];
+
+  @IsDateString()
+  updatedAt!: string;
+}
+
 // Task 8.2. `id` is required and client-generated (a UUID, from the native focus-block module) --
 // unlike every other DTO's optional server-assigned id, this one has to be stable across a retried
 // offline-queue flush, since it's the only idempotency key a pure "record this happened" event has.
@@ -720,6 +807,18 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => DailyScreenTimeSyncChangeDto)
   dailyScreenTime?: DailyScreenTimeSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DailyGameTimeSyncChangeDto)
+  dailyGameTime?: DailyGameTimeSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DailyDesktopAppTimeSyncChangeDto)
+  dailyDesktopAppTime?: DailyDesktopAppTimeSyncChangeDto[];
 
   @IsOptional()
   @IsArray()

@@ -48,6 +48,16 @@ export function ScreenTimePanel({ metric }: ScreenTimePanelProps) {
                 {formatMinutes(metric.weekAverageMinutes)}
               </Text>
             </YStack>
+            {/* Redes sociales: Instagram/TikTok/X/Facebook/YouTube/Reddit/Threads etc, sin
+                WhatsApp -- see packages/shared/src/screenTime/socialPackages.ts. */}
+            <YStack minWidth={180} flex={1} gap="$1" padding="$3" borderRadius="$3" backgroundColor="rgba(255,255,255,0.03)">
+              <Paragraph margin={0} color="$muted">
+                Redes sociales hoy
+              </Paragraph>
+              <Text fontSize="$9" fontWeight="700">
+                {formatMinutes(metric.socialMinutesToday)}
+              </Text>
+            </YStack>
           </XStack>
 
           {metric.topAppsToday.length > 0 ? (

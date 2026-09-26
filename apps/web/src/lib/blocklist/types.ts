@@ -9,10 +9,10 @@ export interface SyncBlockListRecord {
   highDopamine: boolean;
   enabled: boolean;
   hardMode: boolean;
-  // Task 11.8: FOCUS (pomodoro/work-hours, what every entry web can create/edit is) or NIGHT (the
-  // new mobile-only automatic 22:30-08:00 list). useBlockList.ts filters this down to FOCUS-only
-  // before returning entries -- there's no web UI for the NIGHT list, so a NIGHT entry created
-  // from mobile should stay invisible here rather than showing up unfiltered/uneditable.
+  // FOCUS (pomodoro/work-hours/manual focus -- the "Bloqueo total" list) or NIGHT (an automatic
+  // overnight window, task: game-time block suggestions). `useBlockList(scope)` filters to
+  // whichever scope its caller asks for (defaults to 'FOCUS', preserving every pre-existing call
+  // site's behavior); pass 'ALL' to get both.
   scope: BlockListScope;
   updatedAt: string;
 }
@@ -25,6 +25,7 @@ export interface BlockListFormValues {
   highDopamine: boolean;
   enabled: boolean;
   hardMode: boolean;
+  scope: BlockListScope;
 }
 
 export const BLOCK_LIST_KINDS: BlockListKind[] = ['MOBILE_APP', 'WEBSITE', 'DESKTOP_APP'];

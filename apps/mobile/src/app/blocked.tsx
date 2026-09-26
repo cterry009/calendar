@@ -1,4 +1,5 @@
 import { AppButton, AppCard, H1, Paragraph, YStack } from '@calendar/ui';
+import { categorizeBlockedEntry, pickActivitySuggestion, pickMotivationalPhrase } from '@calendar/shared';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import { useBlockList } from '../hooks/useBlockList';
@@ -29,6 +30,21 @@ export default function BlockedScreen() {
     ? `${label} esta en tu lista de bloqueo y tenes un enfoque activo ahora mismo (pomodoro, tarea u horario de trabajo). Volvamos a lo que estabas haciendo.`
     : 'Tenes el bloqueo total activo durante este enfoque (pomodoro u horario de trabajo). Cualquier app que abras te trae de vuelta hasta que termine. Las llamadas y Ajustes siguen disponibles.';
 
+  // User-requested: suggest something concrete instead of just saying no. Categorized the same
+  // way the desktop blocked overlay is (packages/shared/src/blocking/activitySuggestions.ts) --
+  // a known social-feed package suggests reading, anything else falls back to a generic prompt.
+  // Under total lockdown there's no listedEntry (any non-allowlisted app gets kicked, task 7.28),
+  // so that case also falls back to GENERIC rather than guessing.
+  const suggestion = useMemo(
+    () => pickActivitySuggestion(listedEntry ? categorizeBlockedEntry('MOBILE_APP', listedEntry.identifier) : 'GENERIC'),
+    [listedEntry],
+  );
+  // User-requested: reinforce coming back to focus, not just suggest a substitute activity. This
+  // screen is reached via a real fullScreenIntent notification (FocusBlockNotifications.kt) --
+  // Android's own equivalent of desktop's "bring the window to front" (blocking.rs) -- so it's
+  // already the moment the user is most likely to actually read this.
+  const motivationalPhrase = useMemo(() => pickMotivationalPhrase(), [listedEntry]);
+
   return (
     <YStack flex={1} backgroundColor="$background" alignItems="center" justifyContent="center" padding="$6">
       <Stack.Screen options={{ headerShown: false }} />
@@ -40,6 +56,12 @@ export default function BlockedScreen() {
           </H1>
           <Paragraph margin={0} textAlign="center" color="$muted">
             {message}
+          </Paragraph>
+          <Paragraph margin={0} textAlign="center" color="$accent">
+            Mientras tanto: {suggestion}
+          </Paragraph>
+          <Paragraph margin={0} textAlign="center" fontWeight="700">
+            {motivationalPhrase}
           </Paragraph>
           <AppButton variant="primary" onPress={() => router.replace('/')}>
             Volver al enfoque

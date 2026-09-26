@@ -4,7 +4,9 @@
 //! the browser. Desktop-only capabilities (system tray, process/website blocking sidecar, boot
 //! autostart) are added as Tauri commands / plugins in tasks 9.2-9.8.
 
+mod app_tracking;
 mod blocking;
+mod game_tracking;
 mod hosts;
 mod tray;
 
@@ -21,6 +23,8 @@ fn app_version() -> String {
 pub fn run() {
     tauri::Builder::default()
         .manage(Mutex::new(blocking::ProcessBlockingState::default()))
+        .manage(Mutex::new(game_tracking::GameTrackingState::default()))
+        .manage(Mutex::new(app_tracking::AppTrackingState::default()))
         // Task 9.8: user-configurable "start on boot". Registers HKCU\...\Run on Windows; the
         // `--minimized` arg lets an autostarted launch come up hidden to the tray (handled in
         // setup() below).
@@ -29,6 +33,7 @@ pub fn run() {
                 .args(["--minimized"])
                 .build(),
         )
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -39,6 +44,8 @@ pub fn run() {
             }
             tray::create(app)?;
             blocking::start_monitor(app.handle());
+            game_tracking::start_monitor(app.handle());
+            app_tracking::start_monitor(app.handle());
             hosts::clear_on_startup();
 
             if std::env::args().any(|a| a == "--minimized") {
@@ -63,6 +70,8 @@ pub fn run() {
             app_version,
             tray::set_tray_state,
             blocking::set_process_blocking,
+            game_tracking::get_game_time_today,
+            app_tracking::get_app_time_today,
             hosts::set_website_blocking,
             hosts::request_hosts_access
         ])

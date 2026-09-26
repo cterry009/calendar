@@ -5,6 +5,8 @@ import { DeviceSensorsPanel } from '../components/dashboard/DeviceSensorsPanel';
 import { EstimationAccuracyPanel } from '../components/dashboard/EstimationAccuracyPanel';
 import { FitnessCorrelationPanel } from '../components/dashboard/FitnessCorrelationPanel';
 import { FocusHoursChart } from '../components/dashboard/FocusHoursChart';
+import { DesktopAppTimePanel } from '../components/dashboard/DesktopAppTimePanel';
+import { GameTimePanel } from '../components/dashboard/GameTimePanel';
 import { HabitCompletionPanel } from '../components/dashboard/HabitCompletionPanel';
 import { MetricCard } from '../components/dashboard/MetricCard';
 import { ScreenTimePanel } from '../components/dashboard/ScreenTimePanel';
@@ -19,7 +21,13 @@ import type { DashboardMetrics } from '../lib/analytics/types';
 // account can have real habit/sensor/blocking/screen-time data while never having touched web's
 // tasks or pomodoro timer, and should still see it here.
 function hasCrossPlatformData(metrics: DashboardMetrics): boolean {
-  return metrics.habitCompletion.hasData || metrics.deviceSensors.hasData || metrics.blockEvents.hasData || metrics.screenTime.hasData;
+  return (
+    metrics.habitCompletion.hasData ||
+    metrics.deviceSensors.hasData ||
+    metrics.blockEvents.hasData ||
+    metrics.screenTime.hasData ||
+    metrics.gameTime.hasData
+  );
 }
 
 export function DashboardPage() {
@@ -126,6 +134,8 @@ export function DashboardPage() {
           <DeviceSensorsPanel metric={metrics.deviceSensors} />
           <BlockEventsPanel metric={metrics.blockEvents} />
           <ScreenTimePanel metric={metrics.screenTime} />
+          <GameTimePanel metric={metrics.gameTime} />
+          <DesktopAppTimePanel />
         </YStack>
       ) : null}
 

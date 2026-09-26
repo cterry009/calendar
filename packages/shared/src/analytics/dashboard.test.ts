@@ -78,6 +78,7 @@ describe('buildDashboardMetrics', () => {
     expect(metrics.deviceSensors.hasData).toBe(false);
     expect(metrics.blockEvents.hasData).toBe(false);
     expect(metrics.screenTime.hasData).toBe(false);
+    expect(metrics.gameTime.hasData).toBe(false);
   });
 
   it('computes habit completion rate and a two-day streak from check-in records', () => {
@@ -157,5 +158,55 @@ describe('buildDashboardMetrics', () => {
     expect(metrics.screenTime.todayMinutes).toBe(120);
     expect(metrics.screenTime.weekAverageMinutes).toBeCloseTo(17.1, 5); // round(120/7) to 1 decimal, matching dashboard.ts's own round()
     expect(metrics.screenTime.topAppsToday).toEqual([{ packageName: 'com.reddit.frontpage', minutes: 80 }]);
+    // com.reddit.frontpage is on the curated social list -- the whole 80 minutes count as social.
+    expect(metrics.screenTime.socialMinutesToday).toBe(80);
+  });
+
+  it('sums only the social-app minutes into the "redes sociales" subtotal, excluding WhatsApp', () => {
+    const now = new Date('2026-06-17T12:00:00Z');
+    const snapshot: DashboardSnapshot = {
+      ...EMPTY_SNAPSHOT,
+      dailyScreenTime: [
+        {
+          date: '2026-06-17T00:00:00Z',
+          totalMinutes: 200,
+          topApps: [
+            { packageName: 'com.google.android.youtube', minutes: 60 }, // social
+            { packageName: 'com.instagram.android', minutes: 40 }, // social
+            { packageName: 'com.whatsapp', minutes: 90 }, // deliberately not social
+            { packageName: 'com.android.chrome', minutes: 10 }, // not social
+          ],
+        },
+      ],
+    };
+
+    const metrics = buildDashboardMetrics(snapshot, now);
+
+    expect(metrics.screenTime.socialMinutesToday).toBe(100);
+    expect(metrics.screenTime.socialByDay.find((p) => p.date === '2026-06-17')?.value).toBe(100);
+  });
+
+  it('reports gameTime.hasData:false on an empty snapshot and computes today/week/top games otherwise', () => {
+    const empty = buildDashboardMetrics(EMPTY_SNAPSHOT, new Date('2026-06-15T12:00:00Z'));
+    expect(empty.gameTime).toEqual({ hasData: false, todayMinutes: 0, weekAverageMinutes: 0, byDay: [], topGamesToday: [] });
+
+    const now = new Date('2026-06-17T12:00:00Z');
+    const snapshot: DashboardSnapshot = {
+      ...EMPTY_SNAPSHOT,
+      dailyGameTime: [
+        {
+          date: '2026-06-17T00:00:00Z',
+          totalMinutes: 90,
+          topGames: [{ key: '730', label: 'Counter-Strike 2', minutes: 90, source: 'STEAM' }],
+        },
+      ],
+    };
+
+    const metrics = buildDashboardMetrics(snapshot, now);
+
+    expect(metrics.gameTime.hasData).toBe(true);
+    expect(metrics.gameTime.todayMinutes).toBe(90);
+    expect(metrics.gameTime.weekAverageMinutes).toBeCloseTo(12.9, 5);
+    expect(metrics.gameTime.topGamesToday).toEqual([{ key: '730', label: 'Counter-Strike 2', minutes: 90, source: 'STEAM' }]);
   });
 });

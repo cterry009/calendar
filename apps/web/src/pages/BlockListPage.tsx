@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { AppButton, AppCard, H2, Paragraph, XStack, YStack } from '@calendar/ui';
+import type { BlockListScope } from '@calendar/shared';
 import { BlockListForm } from '../components/blocklist/BlockListForm';
 import { BlockListList } from '../components/blocklist/BlockListList';
 import { DesktopBlockingCard } from '../components/blocklist/DesktopBlockingCard';
+import { GameTimeBlockSuggestions } from '../components/blocklist/GameTimeBlockSuggestions';
 import { FocusTriggerForm } from '../components/focusTriggers/FocusTriggerForm';
 import { FocusTriggerList } from '../components/focusTriggers/FocusTriggerList';
 import { PageHeader } from '../components/PageHeader';
@@ -13,6 +15,11 @@ import type { SyncBlockListRecord } from '../lib/blocklist/types';
 import type { SyncFocusTriggerRecord } from '../lib/focusTriggers/types';
 
 export function BlockListPage() {
+  // Which list is being viewed/edited -- FOCUS (default, matches every pre-existing entry's
+  // actual behavior) or NIGHT (task: game-time block suggestions, desktop's first NIGHT-capable
+  // UI -- previously mobile-only, see SyncBlockListRecord's doc comment). Independent lists, same
+  // as mobile's blocklist.tsx Focus/Nocturna tabs.
+  const [viewScope, setViewScope] = useState<BlockListScope>('FOCUS');
   const {
     entries,
     isLoading,
@@ -23,7 +30,7 @@ export function BlockListPage() {
     createEntry,
     updateEntry,
     deleteEntry,
-  } = useBlockList();
+  } = useBlockList(viewScope);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<SyncBlockListRecord | null>(null);
@@ -73,6 +80,25 @@ export function BlockListPage() {
 
       <DesktopBlockingCard />
 
+      <GameTimeBlockSuggestions />
+
+      <XStack gap="$2" flexWrap="wrap">
+        <AppButton
+          type="button"
+          variant={viewScope === 'FOCUS' ? 'primary' : 'ghost'}
+          onPress={() => setViewScope('FOCUS')}
+        >
+          Bloqueo total
+        </AppButton>
+        <AppButton
+          type="button"
+          variant={viewScope === 'NIGHT' ? 'primary' : 'ghost'}
+          onPress={() => setViewScope('NIGHT')}
+        >
+          Nocturno
+        </AppButton>
+      </XStack>
+
       {showCreateForm ? (
         <BlockListForm
           mode="create"
@@ -104,7 +130,11 @@ export function BlockListPage() {
         <BlockListList
           entries={entries}
           isBusy={isMutating}
-          emptyMessage="No hay entradas en la lista de bloqueo."
+          emptyMessage={
+            viewScope === 'NIGHT'
+              ? 'No hay entradas en la lista nocturna.'
+              : 'No hay entradas en la lista de bloqueo total.'
+          }
           onEdit={(entry) => {
             setShowCreateForm(false);
             setEditingEntry(entry);

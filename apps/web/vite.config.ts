@@ -22,6 +22,14 @@ export default defineConfig({
     }),
   ],
   resolve: {
+    // Tamagui registers its config on a module-level singleton inside `@tamagui/web`. This is a
+    // monorepo, so `packages/ui` and `apps/web` each have their own physical copy of these
+    // packages -- two copies means `createTamagui()` writes the config into one singleton while
+    // the components read from the other, and Tamagui throws ("Missing theme." in a production
+    // build, "Can't find Tamagui configuration" in dev). It only ever worked in `vite dev`
+    // because dep pre-bundling happens to collapse both copies into one optimized chunk; the
+    // rollup production build keeps them separate, which is what left `tauri build` blank.
+    dedupe: ['tamagui', '@tamagui/core', '@tamagui/web', 'react', 'react-dom', 'react-native-web'],
     alias: {
       '@calendar/shared': path.resolve(__dirname, '../../packages/shared/src/index.ts'),
       '@calendar/ui': path.resolve(__dirname, '../../packages/ui/src/index.ts'),

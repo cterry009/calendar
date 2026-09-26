@@ -17,6 +17,7 @@ import { useHabitReminders } from '../hooks/useHabitReminders';
 import { useJogDetection } from '../hooks/useJogDetection';
 import { useNightBlocking } from '../hooks/useNightBlocking';
 import { useScreenTimeSync } from '../hooks/useScreenTimeSync';
+import { useUsageWarnings } from '../hooks/useUsageWarnings';
 import { useStepTrackingService } from '../hooks/useStepTrackingService';
 
 // @tamagui/animations-react-native's RN `Animated.interpolate()` calls fail under
@@ -82,6 +83,13 @@ function ScreenTimeSyncBridge() {
   return null;
 }
 
+// Reads the same useScreenTime() data ScreenTimeSyncBridge does, so mounting both costs one
+// native read, not two.
+function UsageWarningsBridge() {
+  useUsageWarnings();
+  return null;
+}
+
 function RootNavigator() {
   const { isLoading, isAuthenticated } = useAuth();
 
@@ -136,6 +144,7 @@ function RootNavigator() {
         <HabitRemindersBridge />
         <BlockEventsBridge />
         <ScreenTimeSyncBridge />
+        <UsageWarningsBridge />
         <OnboardingProvider>
           <YStack flex={1}>
             <SyncStatusBanner />

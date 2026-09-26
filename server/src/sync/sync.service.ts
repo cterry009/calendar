@@ -5,6 +5,8 @@ import { SyncEventsService } from '../realtime/sync-events.service';
 import {
   BlockEventSyncChangeDto,
   BlockListSyncChangeDto,
+  DailyDesktopAppTimeSyncChangeDto,
+  DailyGameTimeSyncChangeDto,
   DailyScreenTimeSyncChangeDto,
   DetoxPlanSyncChangeDto,
   FitnessSyncChangeDto,
@@ -41,6 +43,8 @@ export class SyncService {
       dailyFloorsClimbed,
       blockEvents,
       dailyScreenTime,
+      dailyGameTime,
+      dailyDesktopAppTime,
       detoxPlan,
       serotoninSession,
       habits,
@@ -66,6 +70,8 @@ export class SyncService {
         orderBy: { occurredAt: 'desc' },
       }),
       this.prisma.dailyScreenTime.findMany({ where: { userId } }),
+      this.prisma.dailyGameTime.findMany({ where: { userId } }),
+      this.prisma.dailyDesktopAppTime.findMany({ where: { userId } }),
       this.prisma.detoxPlan.findUnique({ where: { userId } }),
       this.prisma.serotoninSession.findUnique({ where: { userId } }),
       this.prisma.habit.findMany({ where: { userId, deletedAt: null } }),
@@ -84,6 +90,8 @@ export class SyncService {
       dailyFloorsClimbed,
       blockEvents,
       dailyScreenTime,
+      dailyGameTime,
+      dailyDesktopAppTime,
       habits,
       habitRecords,
       journalEntries,
@@ -231,6 +239,30 @@ export class SyncService {
         this.bucketResult(result, 'dailyScreenTime', outcome);
         if (outcome.status === 'applied') {
           changedEntities.add('dailyScreenTime');
+        }
+      }
+    }
+
+    if (dto.dailyGameTime?.length) {
+      result.applied.dailyGameTime = [];
+      result.conflicts.dailyGameTime = [];
+      for (const change of dto.dailyGameTime) {
+        const outcome = await this.applyDailyGameTimeChange(userId, change);
+        this.bucketResult(result, 'dailyGameTime', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('dailyGameTime');
+        }
+      }
+    }
+
+    if (dto.dailyDesktopAppTime?.length) {
+      result.applied.dailyDesktopAppTime = [];
+      result.conflicts.dailyDesktopAppTime = [];
+      for (const change of dto.dailyDesktopAppTime) {
+        const outcome = await this.applyDailyDesktopAppTimeChange(userId, change);
+        this.bucketResult(result, 'dailyDesktopAppTime', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('dailyDesktopAppTime');
         }
       }
     }
@@ -823,6 +855,71 @@ export class SyncService {
     const record = existing
       ? await this.prisma.dailyScreenTime.update({ where: { id: existing.id }, data })
       : await this.prisma.dailyScreenTime.create({ data: { ...data, userId } });
+
+    return { status: 'applied', clientKey: key, record };
+  }
+
+  // Windows desktop counterpart of applyDailyScreenTimeChange -- same updatedAt-wins reasoning:
+  // only one Windows PC per account realistically runs Steam/Riot Client/Battle.net at a time, so
+  // there's no multi-device scenario needing DailyStepCount's max()-merge instead.
+  private async applyDailyGameTimeChange(
+    userId: string,
+    change: DailyGameTimeSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const date = this.truncateToUtcDay(change.date);
+    const key = change.id;
+
+    const existing = await this.prisma.dailyGameTime.findUnique({
+      where: { userId_date: { userId, date } },
+    });
+
+    if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+      return { status: 'conflict', clientKey: key, server: existing };
+    }
+
+    const data = {
+      date,
+      totalMinutes: change.totalMinutes,
+      topGames: change.topGames as unknown as Prisma.InputJsonValue,
+      updatedAt: new Date(change.updatedAt),
+    };
+
+    const record = existing
+      ? await this.prisma.dailyGameTime.update({ where: { id: existing.id }, data })
+      : await this.prisma.dailyGameTime.create({ data: { ...data, userId } });
+
+    return { status: 'applied', clientKey: key, record };
+  }
+
+  // Same updatedAt-wins reasoning as applyDailyGameTimeChange: the rollup describes one Windows
+  // PC's foreground activity, so there's no multi-device merge to do (DailyStepCount's max()-merge
+  // exists because a phone and a watch both count the same steps; two PCs would be counting
+  // genuinely different time, and the last writer owning the day is the honest simple answer).
+  private async applyDailyDesktopAppTimeChange(
+    userId: string,
+    change: DailyDesktopAppTimeSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const date = this.truncateToUtcDay(change.date);
+    const key = change.id;
+
+    const existing = await this.prisma.dailyDesktopAppTime.findUnique({
+      where: { userId_date: { userId, date } },
+    });
+
+    if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+      return { status: 'conflict', clientKey: key, server: existing };
+    }
+
+    const data = {
+      date,
+      totalMinutes: change.totalMinutes,
+      topApps: change.topApps as unknown as Prisma.InputJsonValue,
+      updatedAt: new Date(change.updatedAt),
+    };
+
+    const record = existing
+      ? await this.prisma.dailyDesktopAppTime.update({ where: { id: existing.id }, data })
+      : await this.prisma.dailyDesktopAppTime.create({ data: { ...data, userId } });
 
     return { status: 'applied', clientKey: key, record };
   }

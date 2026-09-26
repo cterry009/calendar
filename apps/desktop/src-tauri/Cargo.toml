@@ -25,3 +25,21 @@ sysinfo = { version = "0.33", default-features = false, features = ["system"] }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-log = "2"
+# Avisos de "llevas una hora" (redes sociales / juegos). Se dispara desde el frontend, que es
+# quien evalua el umbral, igual que el resto de la politica vive en JS.
+tauri-plugin-notification = "2"
+# Task: game-time tracking (Steam/Riot Client/Battle.net). winreg reads the same
+# HKCU\Software\Valve\Steam\Apps\<appid>\Running flag Steam itself uses; chrono gives a real local
+# calendar date for the daily-rollup reset without hand-rolling timezone math.
+winreg = "0.55"
+chrono = "0.4"
+# Task: per-app foreground time tracking (app_tracking.rs). Raw FFI bindings only -- the three
+# calls needed (GetForegroundWindow/GetWindowThreadProcessId for "which app is in front",
+# GetLastInputInfo+GetTickCount for "is the user still here") don't justify the heavier `windows`
+# crate, and 0.59 is already in the tree via tauri so this adds no extra build.
+windows-sys = { version = "0.59", features = [
+  "Win32_Foundation",
+  "Win32_System_SystemInformation",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_WindowsAndMessaging",
+] }

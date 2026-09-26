@@ -1,6 +1,9 @@
 ﻿import { Outlet } from 'react-router-dom';
 import { DesktopBlockedOverlay } from '../components/desktop/DesktopBlockedOverlay';
 import { DesktopBlockingBridge } from '../components/desktop/DesktopBlockingBridge';
+import { DesktopAppTimeBridge } from '../components/desktop/DesktopAppTimeBridge';
+import { DesktopGameTimeBridge } from '../components/desktop/DesktopGameTimeBridge';
+import { DesktopUsageWarnings } from '../components/desktop/DesktopUsageWarnings';
 import { DesktopTrayBridge } from '../components/desktop/DesktopTrayBridge';
 import { SoftFocusOverlay } from '../components/focus/SoftFocusOverlay';
 import { PanelHost } from '../components/panels/PanelHost';
@@ -27,6 +30,9 @@ export function ProtectedAppLayout() {
                   <AppNav />
                   <DesktopTrayBridge />
                   <DesktopBlockingBridge />
+                  <DesktopGameTimeBridge />
+                  <DesktopAppTimeBridge />
+                  <DesktopUsageWarnings />
                   <DesktopBlockedOverlay />
                   <SyncStatusBanner />
                   <Outlet />

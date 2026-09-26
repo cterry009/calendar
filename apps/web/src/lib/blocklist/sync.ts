@@ -12,6 +12,7 @@ export interface BlockListSyncChangeDto {
   highDopamine?: boolean;
   enabled?: boolean;
   hardMode?: boolean;
+  scope?: BlockListFormValues['scope'];
 }
 
 interface SyncBatchResponse {
@@ -30,6 +31,7 @@ function buildUpsertPayload(
     highDopamine: values.highDopamine,
     enabled: values.enabled,
     hardMode: values.hardMode,
+    scope: values.scope,
   };
 }
 

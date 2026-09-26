@@ -1,6 +1,7 @@
 ﻿import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
+import { pickMotivationalPhrase } from '@calendar/shared';
 import { usePomodoro } from '../../context/PomodoroContext';
 import { useSerotoninSession } from '../../context/SerotoninSessionContext';
 import { useSoftFocus } from '../../context/SoftFocusContext';
@@ -80,6 +81,12 @@ export function SoftFocusOverlay() {
   const plannedFocusMin = pomodoro.phaseDurationMinutes ?? pomodoro.config.focusDurationMin;
   const feedbackKey = pomodoro.session ? `${pomodoro.session.id}-${pomodoro.session.completedCycles}` : null;
 
+  // User-requested: while genuinely focused (not trying to exit), reinforce staying with it
+  // instead of only listing distractors to avoid. Re-picked per session/cycle (or per focus
+  // "reason" for non-pomodoro blocking) so it feels fresh across sessions but doesn't flicker on
+  // every re-render within one.
+  const motivationalPhrase = useMemo(() => pickMotivationalPhrase(), [feedbackKey ?? phaseLabel]);
+
   function handleRecordFeedback(fraction: number) {
     if (!feedbackKey) return;
     recordFocusFeedbackSample(Math.max(1, Math.round(plannedFocusMin * fraction)));
@@ -152,6 +159,10 @@ export function SoftFocusOverlay() {
             <Paragraph margin={0} color="$muted">
               {phaseLabel}
             </Paragraph>
+
+            <Text fontWeight="700" color="$accent">
+              {motivationalPhrase}
+            </Text>
 
             {isWorkHoursBlocking ? (
               <Paragraph margin={0} color="$muted">

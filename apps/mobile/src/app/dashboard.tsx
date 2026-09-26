@@ -36,7 +36,13 @@ function TrendBars({ points, color = '$accent' }: { points: DashboardTrendPoint[
 }
 
 function hasCrossPlatformData(metrics: DashboardMetrics): boolean {
-  return metrics.habitCompletion.hasData || metrics.deviceSensors.hasData || metrics.blockEvents.hasData || metrics.screenTime.hasData;
+  return (
+    metrics.habitCompletion.hasData ||
+    metrics.deviceSensors.hasData ||
+    metrics.blockEvents.hasData ||
+    metrics.screenTime.hasData ||
+    metrics.gameTime.hasData
+  );
 }
 
 function formatMinutes(value: number): string {
@@ -357,6 +363,14 @@ export default function DashboardScreen() {
                             {formatMinutes(metrics.screenTime.weekAverageMinutes)}
                           </Text>
                         </YStack>
+                        <YStack minWidth={100} flex={1} gap="$1">
+                          <Paragraph margin={0} color="$muted" fontSize="$2">
+                            Redes sociales hoy
+                          </Paragraph>
+                          <Text fontSize="$7" fontWeight="700">
+                            {formatMinutes(metrics.screenTime.socialMinutesToday)}
+                          </Text>
+                        </YStack>
                       </XStack>
                       {metrics.screenTime.topAppsToday.length > 0 ? (
                         <YStack gap="$1">
@@ -381,6 +395,63 @@ export default function DashboardScreen() {
                         Tiempo de pantalla (14 dias)
                       </H2>
                       <TrendBars points={metrics.screenTime.byDay} />
+                    </YStack>
+                  </AppCard>
+                </>
+              ) : null}
+
+              {/* Windows desktop counterpart of the screen-time cards above -- populated from
+                  Steam/Riot Client/Battle.net (apps/desktop-tauri/src/game_tracking.rs), so this
+                  is absent on an account that never ran the desktop app, same honest-empty-state
+                  convention as every other cross-platform metric here. */}
+              {metrics.gameTime.hasData ? (
+                <>
+                  <AppCard>
+                    <YStack gap="$4">
+                      <H2 margin={0} fontSize="$6">
+                        Tiempo de juego
+                      </H2>
+                      <XStack gap="$4" flexWrap="wrap">
+                        <YStack minWidth={100} flex={1} gap="$1">
+                          <Paragraph margin={0} color="$muted" fontSize="$2">
+                            Hoy
+                          </Paragraph>
+                          <Text fontSize="$7" fontWeight="700">
+                            {formatMinutes(metrics.gameTime.todayMinutes)}
+                          </Text>
+                        </YStack>
+                        <YStack minWidth={100} flex={1} gap="$1">
+                          <Paragraph margin={0} color="$muted" fontSize="$2">
+                            Promedio (7 dias)
+                          </Paragraph>
+                          <Text fontSize="$7" fontWeight="700">
+                            {formatMinutes(metrics.gameTime.weekAverageMinutes)}
+                          </Text>
+                        </YStack>
+                      </XStack>
+                      {metrics.gameTime.topGamesToday.length > 0 ? (
+                        <YStack gap="$1">
+                          <Paragraph margin={0} color="$muted" fontSize="$2">
+                            Jugado hoy
+                          </Paragraph>
+                          {metrics.gameTime.topGamesToday.slice(0, 5).map((game) => (
+                            <XStack key={game.key} justifyContent="space-between" paddingVertical="$1">
+                              <Text fontSize="$2">{game.label}</Text>
+                              <Text fontSize="$2" color="$muted">
+                                {formatMinutes(game.minutes)}
+                              </Text>
+                            </XStack>
+                          ))}
+                        </YStack>
+                      ) : null}
+                    </YStack>
+                  </AppCard>
+                  <AppCard>
+                    <YStack gap="$4">
+                      <H2 margin={0} fontSize="$6">
+                        Tiempo de juego (14 dias)
+                      </H2>
+                      <TrendBars points={metrics.gameTime.byDay} />
                     </YStack>
                   </AppCard>
                 </>

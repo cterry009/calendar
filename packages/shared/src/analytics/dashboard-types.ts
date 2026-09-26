@@ -68,6 +68,21 @@ export interface DashboardScreenTimeInput {
   topApps: DashboardTopAppUsage[];
 }
 
+// Windows desktop counterpart of DashboardTopAppUsage/DashboardScreenTimeInput -- see
+// GameTimeMetric below.
+export interface DashboardTopGameUsage {
+  key: string;
+  label: string;
+  minutes: number;
+  source: string;
+}
+
+export interface DashboardGameTimeInput {
+  date: string;
+  totalMinutes: number;
+  topGames: DashboardTopGameUsage[];
+}
+
 export interface DashboardSnapshot {
   tasks: DashboardTaskInput[];
   pomodoroSessions: DashboardPomodoroInput[];
@@ -78,6 +93,7 @@ export interface DashboardSnapshot {
   dailyFloorsClimbed?: DashboardFloorsClimbedInput[];
   blockEvents?: DashboardBlockEventInput[];
   dailyScreenTime?: DashboardScreenTimeInput[];
+  dailyGameTime?: DashboardGameTimeInput[];
 }
 
 export interface DashboardWeekMetric {
@@ -145,6 +161,21 @@ export interface ScreenTimeMetric {
   weekAverageMinutes: number;
   byDay: DashboardTrendPoint[];
   topAppsToday: DashboardTopAppUsage[];
+  // "Redes sociales" subtotal: todayMinutes/byDay filtered to topApps entries matching the
+  // curated social-app list (packages/shared/src/screenTime/socialPackages.ts). An honest
+  // limitation, not a bug: DailyScreenTime.topApps is capped at the top 10 apps/day, so a social
+  // app outside a given day's top 10 won't be captured here -- acceptable since social apps are
+  // typically top-10 for the accounts this matters to.
+  socialMinutesToday: number;
+  socialByDay: DashboardTrendPoint[];
+}
+
+export interface GameTimeMetric {
+  hasData: boolean;
+  todayMinutes: number;
+  weekAverageMinutes: number;
+  byDay: DashboardTrendPoint[];
+  topGamesToday: DashboardTopGameUsage[];
 }
 
 export interface DashboardMetrics {
@@ -161,4 +192,5 @@ export interface DashboardMetrics {
   deviceSensors: DeviceSensorMetric;
   blockEvents: BlockEventMetric;
   screenTime: ScreenTimeMetric;
+  gameTime: GameTimeMetric;
 }

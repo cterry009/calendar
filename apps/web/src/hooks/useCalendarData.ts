@@ -28,6 +28,8 @@ const EMPTY_SNAPSHOT: Omit<SyncSnapshot, 'syncedAt'> = {
   dailyFloorsClimbed: [],
   blockEvents: [],
   dailyScreenTime: [],
+  dailyGameTime: [],
+  dailyDesktopAppTime: [],
   detoxPlan: null,
   serotoninSession: null,
   habits: [],
@@ -59,6 +61,10 @@ export function useCalendarData(): UseCalendarDataResult {
         dailyFloorsClimbed: data.dailyFloorsClimbed,
         blockEvents: data.blockEvents,
         dailyScreenTime: data.dailyScreenTime,
+        dailyGameTime: data.dailyGameTime,
+        // Falls back for snapshots cached before this field existed, same reason detoxPlan below
+        // coalesces -- an IndexedDB snapshot written by an older build has no key here.
+        dailyDesktopAppTime: data.dailyDesktopAppTime ?? [],
         detoxPlan: data.detoxPlan ?? null,
         serotoninSession: data.serotoninSession ?? null,
         habits: data.habits,

@@ -175,6 +175,33 @@ export interface SyncDailyScreenTime {
   topApps: SyncTopAppUsage[];
 }
 
+export interface SyncTopGameUsage {
+  key: string;
+  label: string;
+  minutes: number;
+  source: string;
+}
+
+export interface SyncDailyGameTime {
+  id: string;
+  date: string;
+  totalMinutes: number;
+  topGames: SyncTopGameUsage[];
+}
+
+export interface SyncTopDesktopAppUsage {
+  key: string;
+  label: string;
+  minutes: number;
+}
+
+export interface SyncDailyDesktopAppTime {
+  id: string;
+  date: string;
+  totalMinutes: number;
+  topApps: SyncTopDesktopAppUsage[];
+}
+
 export interface SyncSnapshot {
   tasks: SyncTask[];
   schedules: SyncSchedule[];
@@ -186,6 +213,8 @@ export interface SyncSnapshot {
   dailyFloorsClimbed: SyncDailyFloorsClimbed[];
   blockEvents: SyncBlockEvent[];
   dailyScreenTime: SyncDailyScreenTime[];
+  dailyGameTime: SyncDailyGameTime[];
+  dailyDesktopAppTime: SyncDailyDesktopAppTime[];
   detoxPlan: SyncDetoxPlanRecord | null;
   serotoninSession: SyncSerotoninSessionRecord | null;
   habits: SyncHabit[];

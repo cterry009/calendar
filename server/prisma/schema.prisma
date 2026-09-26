@@ -119,23 +119,25 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  devices            Device[]
-  tasks              Task[]
-  schedules          Schedule[]
-  pomodoroSessions   PomodoroSession[]
-  blockListEntries   BlockListEntry[]
-  focusTriggers      FocusTrigger[]
-  fitnessEntries     FitnessEntry[]
-  dailyStepCounts    DailyStepCount[]
-  dailyFloorsClimbed DailyFloorsClimbed[]
-  dailyScreenTime    DailyScreenTime[]
-  analyticsSnapshots AnalyticsSnapshot[]
-  detoxPlan          DetoxPlan?
-  serotoninSession   SerotoninSession?
-  habits             Habit[]
-  habitRecords       HabitRecord[]
-  journalEntries     JournalEntry[]
-  blockEvents        BlockEvent[]
+  devices             Device[]
+  tasks               Task[]
+  schedules           Schedule[]
+  pomodoroSessions    PomodoroSession[]
+  blockListEntries    BlockListEntry[]
+  focusTriggers       FocusTrigger[]
+  fitnessEntries      FitnessEntry[]
+  dailyStepCounts     DailyStepCount[]
+  dailyFloorsClimbed  DailyFloorsClimbed[]
+  dailyScreenTime     DailyScreenTime[]
+  dailyGameTime       DailyGameTime[]
+  dailyDesktopAppTime DailyDesktopAppTime[]
+  analyticsSnapshots  AnalyticsSnapshot[]
+  detoxPlan           DetoxPlan?
+  serotoninSession    SerotoninSession?
+  habits              Habit[]
+  habitRecords        HabitRecord[]
+  journalEntries      JournalEntry[]
+  blockEvents         BlockEvent[]
 
   @@map("users")
 }
@@ -404,6 +406,62 @@ model DailyScreenTime {
   @@map("daily_screen_time")
 }
 
+// Windows desktop counterpart to DailyScreenTime -- same shape, same reasoning: only one Windows
+// PC per account realistically runs Steam/Riot Client/Battle.net at a time, so a plain
+// `updatedAt`-wins daily rollup is enough (no DailyStepCount-style multi-device max() merge).
+// `topGames` entries are `{ key, label, minutes, source }` where `key` is the Steam appid (as a
+// string) or the matched exe name for Riot/Battle.net games, and `source` is
+// "STEAM" | "RIOT" | "BATTLENET". See apps/desktop/src-tauri/src/game_tracking.rs for how the
+// per-game detection works (Steam via the HKCU...\Apps\<appid>\Running registry flag Steam itself
+// uses; Riot/Battle.net via a curated known-game-process table).
+model DailyGameTime {
+  id           String   @id @default(cuid())
+  userId       String
+  date         DateTime
+  totalMinutes Int
+  topGames     Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_game_time")
+}
+
+// Per-application foreground time on the Windows desktop -- the generic counterpart of
+// DailyGameTime and the desktop counterpart of DailyScreenTime.
+//
+// **Why a separate table instead of reusing DailyScreenTime**: that model is keyed
+// `@@unique([userId, date])` and is already written by Android. A desktop client writing per-app
+// minutes into it would overwrite the phone's row for the same day (and vice versa), since neither
+// side knows about the other's platform. Adding a `platform` discriminator to its key would mean
+// migrating a path that is already verified on a real device, so the desktop gets its own table --
+// the same choice already made for DailyGameTime.
+//
+// **Do not sum this with DailyGameTime.** They measure different things and overlap on purpose: a
+// Steam game in the foreground is counted here (as active foreground use) and there (as game
+// running). Present them as separate figures, never added into one "total time on the PC".
+//
+// `topApps` entries are `{ key, label, minutes }` where `key` is the lowercased exe name -- the
+// same identifier shape a `DESKTOP_APP` BlockListEntry matches on, so a block suggestion can be
+// built straight from a row here. Only the process name is collected, never window titles.
+// See apps/desktop/src-tauri/src/app_tracking.rs for the foreground/idle detection.
+model DailyDesktopAppTime {
+  id           String   @id @default(cuid())
+  userId       String
+  date         DateTime
+  totalMinutes Int
+  topApps      Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_desktop_app_time")
+}
+
 // ─── Serotonin detox plan ────────────────────────────────────────────────────
 
 model DetoxPlan {
@@ -491,9 +549,9 @@ model Habit {
   // reminderEndMinute is also the notification's fire time for a deadline-style habit (e.g.
   // "wake up before 7am" has no start, just an end); reminderStartMinute matters for a
   // window-style habit (e.g. "arreglarse 7-8am") where the UI wants to show both bounds.
-  reminderStartMinute Int?
-  reminderEndMinute   Int?
-  reminderDaysOfWeek  Int[]     @default([0, 1, 2, 3, 4, 5, 6]) // 0=Sunday..6=Saturday, matches Schedule.daysOfWeek's convention
+  reminderStartMinute       Int?
+  reminderEndMinute         Int?
+  reminderDaysOfWeek        Int[]     @default([0, 1, 2, 3, 4, 5, 6]) // 0=Sunday..6=Saturday, matches Schedule.daysOfWeek's convention
   clientId                  String? // offline sync id from client
   deletedAt                 DateTime?
   createdAt                 DateTime  @default(now())

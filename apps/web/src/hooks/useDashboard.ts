@@ -40,6 +40,7 @@ export function useDashboard(): UseDashboardResult {
         dailyFloorsClimbed: snapshot.dailyFloorsClimbed,
         blockEvents: snapshot.blockEvents,
         dailyScreenTime: snapshot.dailyScreenTime,
+        dailyGameTime: snapshot.dailyGameTime,
       });
       setMetrics(nextMetrics);
       setSyncedAt(snapshot.syncedAt);

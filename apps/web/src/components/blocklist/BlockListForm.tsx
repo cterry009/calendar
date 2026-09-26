@@ -27,6 +27,7 @@ function defaultDraft(entry?: SyncBlockListRecord): BlockListFormValues {
     highDopamine: entry?.highDopamine ?? false,
     enabled: entry?.enabled ?? true,
     hardMode: entry?.hardMode ?? false,
+    scope: entry?.scope ?? 'FOCUS',
   };
 }
 
@@ -122,6 +123,18 @@ export function BlockListForm({ mode, initialEntry, isSubmitting, onSubmit, onCa
                   {BLOCK_LIST_PLATFORM_LABELS[platform]}
                 </option>
               ))}
+            </select>
+          </YStack>
+
+          <YStack gap="$2">
+            <Label>Cuando bloquea</Label>
+            <select
+              value={draft.scope}
+              onChange={(event) => setField('scope', event.target.value as BlockListFormValues['scope'])}
+              style={{ padding: 10, borderRadius: 14, ...fieldStyle }}
+            >
+              <option value="FOCUS">Bloqueo total (enfoque activo)</option>
+              <option value="NIGHT">Nocturno (22:30-08:00)</option>
             </select>
           </YStack>
 

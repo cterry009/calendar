@@ -11,7 +11,9 @@ export type SyncEntityType =
   | 'serotoninSession'
   | 'habits'
   | 'habitRecords'
-  | 'journalEntries';
+  | 'journalEntries'
+  | 'dailyGameTime'
+  | 'dailyDesktopAppTime';
 
 export interface SyncQueueItem {
   id?: number;
@@ -37,6 +39,8 @@ export interface SyncBatchBody {
   habits?: unknown[];
   habitRecords?: unknown[];
   journalEntries?: unknown[];
+  dailyGameTime?: unknown[];
+  dailyDesktopAppTime?: unknown[];
 }
 
 export interface SyncBatchResponse {
