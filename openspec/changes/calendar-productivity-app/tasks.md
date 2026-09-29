@@ -527,6 +527,14 @@
   + `node dist/main.js` boots, that it picks up the current `packages/shared` (source vs. a stale
   `dist/`), and that `prisma migrate deploy` is part of the startup path. Then a nightly `pg_dump`.
 
+  **Progress (2026-09-29):** production mode verified -- `npm run build` + `prisma migrate deploy`
+  + `node dist/main.js` (NODE_ENV=production) boots, listens on 0.0.0.0:3000, login works over the
+  LAN IP, and the compiled output carries the latest sync code. The `packages/shared` concern
+  doesn't apply: the server doesn't import it. Now running that way on the dev PC as a detached
+  process (logs in `%LOCALAPPDATA%\CalendarProductivity\api.log`), but **not** auto-started: a PC
+  reboot still needs Docker Desktop + the API started by hand. Still open: auto-start (user chose
+  to defer it) and the nightly `pg_dump`.
+
 - [ ] 12.10 Run the server on the dedicated always-on Linux machine, reachable from phone and desktop
   anywhere. Replaces the current setup, where the API lives on the dev PC at a LAN IP that DHCP
   reassigns (already caused a real outage: the phone was pointed at a stale `192.168.80.17` after the
