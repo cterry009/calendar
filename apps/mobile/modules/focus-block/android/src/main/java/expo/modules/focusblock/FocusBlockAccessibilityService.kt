@@ -3,6 +3,8 @@ package expo.modules.focusblock
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.telecom.TelecomManager
 import android.view.accessibility.AccessibilityEvent
@@ -28,6 +30,8 @@ import java.util.Calendar
  * "direct foreground user interaction"). Replaced with a `fullScreenIntent` notification
  * (FocusBlockNotifications.kt), the Android-sanctioned way around exactly this restriction.
  */
+private const val WORK_LIMIT_TICK_MS = 60_000L
+
 class FocusBlockAccessibilityService : AccessibilityService() {
 
   override fun onAccessibilityEvent(event: AccessibilityEvent) {
@@ -39,7 +43,10 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     checkNightUnlockTransition()
 
     val foregroundPackage = event.packageName?.toString() ?: return
+    trackForeground(foregroundPackage)
     if (foregroundPackage == packageName) return // never block our own app
+
+    if (applyWorkSocialLimit(foregroundPackage)) return
 
     // Task 7.28 "bloqueo total": during an active focus/work session with lockdown on, kick *any*
     // app that isn't on the safety allowlist -- not just the ones in the FOCUS block list. This is
@@ -182,6 +189,56 @@ class FocusBlockAccessibilityService : AccessibilityService() {
       stepsToday,
     )
     return if (blocking) "NIGHT" else null
+  }
+
+  // ---- Work-hours social limit (WorkSocialLimit.kt) ----
+  //
+  // Window-state events only fire on app switches, not while you scroll inside one app, so a 60s
+  // tick re-evaluates while a social app stays in front. Keyboard / system UI events are ignored
+  // for tracking: they fire on top of the app you are actually using.
+  private val handler = Handler(Looper.getMainLooper())
+  private var currentForeground: String? = null
+  private val tick = object : Runnable {
+    override fun run() {
+      val pkg = currentForeground ?: return
+      if (pkg !in WorkSocialLimit.socialPackages(this@FocusBlockAccessibilityService)) return
+      applyWorkSocialLimit(pkg)
+      handler.postDelayed(this, WORK_LIMIT_TICK_MS)
+    }
+  }
+
+  private fun trackForeground(pkg: String) {
+    if (pkg == "com.android.systemui" || pkg == currentKeyboardPackage()) return
+    if (pkg == currentForeground) return
+    currentForeground = pkg
+    handler.removeCallbacks(tick)
+    if (pkg in WorkSocialLimit.socialPackages(this)) handler.postDelayed(tick, WORK_LIMIT_TICK_MS)
+  }
+
+  private fun currentKeyboardPackage(): String? = runCatching {
+    Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)?.substringBefore('/')
+  }.getOrNull()
+
+  /** Returns true when it kicked the app out. */
+  private fun applyWorkSocialLimit(pkg: String): Boolean {
+    return when (val decision = WorkSocialLimit.evaluate(this, pkg)) {
+      is WorkSocialLimit.Decision.None -> false
+      is WorkSocialLimit.Decision.Notify -> {
+        WorkSocialLimit.notify(this, decision.title, decision.body)
+        false
+      }
+      is WorkSocialLimit.Decision.Block -> {
+        performGlobalAction(GLOBAL_ACTION_HOME)
+        FocusBlockNotifications.showBlockedAlert(this, pkg)
+        FocusBlockPrefs.addPendingBlockEvent(this, pkg, "FOCUS", "BLOCKED_OPEN_ATTEMPT")
+        true
+      }
+    }
+  }
+
+  override fun onDestroy() {
+    handler.removeCallbacks(tick)
+    super.onDestroy()
   }
 
   override fun onInterrupt() {

@@ -120,3 +120,97 @@ export function usageWarningBody(warning: UsageWarning): string {
     ? `Llevas ${time} hoy en redes sociales. Buen momento para cortar.`
     : `Llevas ${time} hoy jugando. Buen momento para cortar.`;
 }
+
+// ---- Weekend evenings: no warnings ----
+//
+// Friday, Saturday and Sunday evenings are free time on purpose, so nothing nags then. The window
+// runs past midnight into the small hours of the next day (Saturday, Sunday and Monday before
+// 06:00), since 01:00 on a Saturday is still Friday night. Night-mode blocking is separate and
+// unaffected -- this only silences the "llevas una hora" warnings.
+export const WEEKEND_QUIET_START_MINUTES = 18 * 60;
+export const WEEKEND_QUIET_END_MINUTES = 6 * 60;
+
+const QUIET_EVENING_DAYS = new Set([5, 6, 0]); // Fri, Sat, Sun
+const QUIET_SMALL_HOURS_DAYS = new Set([6, 0, 1]); // the mornings after them
+
+export function isWeekendEveningQuiet(date: Date): boolean {
+  const minutes = date.getHours() * 60 + date.getMinutes();
+  const day = date.getDay();
+  if (QUIET_EVENING_DAYS.has(day) && minutes >= WEEKEND_QUIET_START_MINUTES) return true;
+  return QUIET_SMALL_HOURS_DAYS.has(day) && minutes < WEEKEND_QUIET_END_MINUTES;
+}
+
+// An explicit WORK block in the calendar outranks the weekend rule: if you scheduled work on a
+// Friday evening, the strict work-hours limit applies there too.
+export function shouldSuppressUsageWarnings(date: Date, inWorkHours: boolean): boolean {
+  return !inWorkHours && isWeekendEveningQuiet(date);
+}
+
+// ---- Work hours: strict game limit (desktop) ----
+//
+// Inside a WORK block the game warnings stop being advice. The sequence rides the normal
+// escalation schedule, so it needs no clock of its own: the warning at 60 min is the usual one,
+// the first one due at or past 90 min is the final warning ("the next one closes the game"), and
+// the next one after that starts a 5-minute countdown, after which the client kills the game and
+// keeps games blocked for the rest of the work block. With the default schedule that is
+// 60 -> 90 -> 120 -> closed at 125.
+//
+// Always a warning before the close, even when you start playing already past 90 minutes: the
+// final warning is tracked as its own flag, not inferred from the minute count.
+export const WORK_HOURS_FINAL_WARNING_MINUTES = 90;
+export const WORK_HOURS_CLOSE_GRACE_MINUTES = 5;
+
+export type GameWarningKind = 'NORMAL' | 'FINAL' | 'CLOSE';
+
+export function classifyGameWarning(
+  minutes: number,
+  context: { inWorkHours: boolean; finalWarningGiven: boolean },
+): GameWarningKind {
+  if (!context.inWorkHours) return 'NORMAL';
+  if (context.finalWarningGiven) return 'CLOSE';
+  return minutes >= WORK_HOURS_FINAL_WARNING_MINUTES ? 'FINAL' : 'NORMAL';
+}
+
+export function gameWarningTitle(kind: GameWarningKind): string {
+  if (kind === 'FINAL') return 'Último aviso en horario de trabajo';
+  if (kind === 'CLOSE') return `El juego se cierra en ${WORK_HOURS_CLOSE_GRACE_MINUTES} minutos`;
+  return usageWarningTitle('GAMES');
+}
+
+export function gameWarningBody(kind: GameWarningKind, minutes: number): string {
+  const time = formatMinutes(minutes);
+  if (kind === 'FINAL') {
+    return `Llevas ${time} hoy jugando y estás en horario de trabajo. El próximo aviso cierra el juego.`;
+  }
+  if (kind === 'CLOSE') {
+    return `Llevas ${time} hoy jugando. Guarda la partida: en ${WORK_HOURS_CLOSE_GRACE_MINUTES} minutos se cierra y los juegos quedan bloqueados hasta que termine tu horario de trabajo.`;
+  }
+  return usageWarningBody({ category: 'GAMES', minutes });
+}
+
+// The same strict limit applies to social media in work hours (desktop: standalone social clients;
+// Android: WorkSocialLimit.kt, which carries the same wording natively).
+export function socialLimitWarningTitle(kind: GameWarningKind): string {
+  if (kind === 'FINAL') return 'Último aviso en horario de trabajo';
+  if (kind === 'CLOSE') return `Las redes sociales se cierran en ${WORK_HOURS_CLOSE_GRACE_MINUTES} minutos`;
+  return usageWarningTitle('SOCIAL');
+}
+
+export function socialLimitWarningBody(kind: GameWarningKind, minutes: number): string {
+  const time = formatMinutes(minutes);
+  if (kind === 'FINAL') {
+    return `Llevas ${time} hoy en redes sociales y estás en horario de trabajo. El próximo aviso las cierra.`;
+  }
+  if (kind === 'CLOSE') {
+    return `Llevas ${time} hoy en redes sociales. En ${WORK_HOURS_CLOSE_GRACE_MINUTES} minutos se cierran y quedan bloqueadas hasta que termine tu horario de trabajo.`;
+  }
+  return usageWarningBody({ category: 'SOCIAL', minutes });
+}
+
+export function limitWarningTitle(category: UsageWarningCategory, kind: GameWarningKind): string {
+  return category === 'GAMES' ? gameWarningTitle(kind) : socialLimitWarningTitle(kind);
+}
+
+export function limitWarningBody(category: UsageWarningCategory, kind: GameWarningKind, minutes: number): string {
+  return category === 'GAMES' ? gameWarningBody(kind, minutes) : socialLimitWarningBody(kind, minutes);
+}

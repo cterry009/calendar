@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import {
   evaluateUsageWarnings,
+  isWeekendEveningQuiet,
   sumSocialMobileMinutes,
   usageWarningBody,
   usageWarningTitle,
@@ -9,6 +10,7 @@ import {
 import { useScreenTime } from './useScreenTime';
 import { sendLocalNotification } from '../lib/notifications/api';
 import { platformStorage } from '../lib/platformStorage';
+import { isNativeWorkHours } from '../lib/focusBlock/api';
 
 // "Llevas una hora en redes sociales" -- the Android half of the shared usage warnings, using the
 // same threshold and the same curated social list as the desktop client
@@ -56,6 +58,13 @@ export function useUsageWarnings(): void {
   useEffect(() => {
     if (!isSupported || !hasAccess || todayUsage.length === 0) return;
     if (notifyingRef.current) return;
+    // Friday to Sunday evenings are free time: no warnings (shared rule, usageWarnings.ts). Checked
+    // on its own rather than via shouldSuppressUsageWarnings: the "a WORK block overrides it" part
+    // exists for the desktop's strict game limit, which has no Android counterpart.
+    if (isWeekendEveningQuiet(new Date())) return;
+    // Inside a WORK block the native service owns the social warnings (WorkSocialLimit.kt: 60 ->
+    // final at 90 -> close after 5 min), and it sees them live instead of only on app open.
+    if (isNativeWorkHours()) return;
 
     const socialMinutes = sumSocialMobileMinutes(
       todayUsage.map((entry) => ({

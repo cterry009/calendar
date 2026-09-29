@@ -8,6 +8,14 @@ import {
   usageWarningBody,
   usageWarningTitle,
   warningIntervalMinutes,
+  WORK_HOURS_CLOSE_GRACE_MINUTES,
+  classifyGameWarning,
+  gameWarningBody,
+  gameWarningTitle,
+  isWeekendEveningQuiet,
+  shouldSuppressUsageWarnings,
+  limitWarningBody,
+  limitWarningTitle,
 } from './usageWarnings.js';
 
 describe('evaluateUsageWarnings', () => {
@@ -139,5 +147,83 @@ describe('warning copy', () => {
   it('names the category in the title', () => {
     expect(usageWarningTitle('SOCIAL')).toContain('redes sociales');
     expect(usageWarningTitle('GAMES')).toContain('juego');
+  });
+});
+
+// 2026-09-25 is a Friday.
+function at(day: number, hours: number, minutes = 0): Date {
+  return new Date(2026, 8, day, hours, minutes, 0, 0);
+}
+
+describe('isWeekendEveningQuiet', () => {
+  it('is quiet on Friday, Saturday and Sunday evenings from 18:00', () => {
+    expect(isWeekendEveningQuiet(at(25, 18, 0))).toBe(true);
+    expect(isWeekendEveningQuiet(at(26, 21, 30))).toBe(true);
+    expect(isWeekendEveningQuiet(at(27, 23, 59))).toBe(true);
+  });
+
+  it('is not quiet on those days before 18:00', () => {
+    expect(isWeekendEveningQuiet(at(25, 17, 59))).toBe(false);
+    expect(isWeekendEveningQuiet(at(26, 11, 0))).toBe(false);
+  });
+
+  it('carries into the small hours of the following day, until 06:00', () => {
+    expect(isWeekendEveningQuiet(at(26, 1, 0))).toBe(true); // Sat 01:00 = Friday night
+    expect(isWeekendEveningQuiet(at(28, 5, 59))).toBe(true); // Mon 05:59 = Sunday night
+    expect(isWeekendEveningQuiet(at(28, 6, 0))).toBe(false);
+  });
+
+  it('never applies Monday to Thursday evenings', () => {
+    expect(isWeekendEveningQuiet(at(28, 20, 0))).toBe(false); // Mon
+    expect(isWeekendEveningQuiet(at(24, 22, 0))).toBe(false); // Thu
+    expect(isWeekendEveningQuiet(at(25, 2, 0))).toBe(false); // Fri 02:00 = Thursday night
+  });
+
+  it('is overridden by an explicit work block', () => {
+    expect(shouldSuppressUsageWarnings(at(25, 19, 0), false)).toBe(true);
+    expect(shouldSuppressUsageWarnings(at(25, 19, 0), true)).toBe(false);
+  });
+});
+
+describe('classifyGameWarning', () => {
+  const outside = { inWorkHours: false, finalWarningGiven: false };
+
+  it('is always a normal warning outside work hours', () => {
+    expect(classifyGameWarning(200, outside)).toBe('NORMAL');
+    expect(classifyGameWarning(200, { inWorkHours: false, finalWarningGiven: true })).toBe('NORMAL');
+  });
+
+  it('gives the normal warning at 60 min during work hours', () => {
+    expect(classifyGameWarning(60, { inWorkHours: true, finalWarningGiven: false })).toBe('NORMAL');
+  });
+
+  it('gives the final warning from 90 min during work hours', () => {
+    expect(classifyGameWarning(90, { inWorkHours: true, finalWarningGiven: false })).toBe('FINAL');
+  });
+
+  it('warns before closing even when first seen well past 90 min', () => {
+    expect(classifyGameWarning(170, { inWorkHours: true, finalWarningGiven: false })).toBe('FINAL');
+  });
+
+  it('closes on the warning after the final one', () => {
+    expect(classifyGameWarning(120, { inWorkHours: true, finalWarningGiven: true })).toBe('CLOSE');
+  });
+
+  it('lines up with the escalation schedule: 60 -> 90 -> 120', () => {
+    expect(nextWarningThreshold(60)).toBe(90);
+    expect(nextWarningThreshold(90)).toBe(120);
+  });
+
+  it('says what happens next in the copy', () => {
+    expect(gameWarningBody('FINAL', 90)).toContain('El próximo aviso cierra el juego');
+    expect(gameWarningTitle('CLOSE')).toContain(`${WORK_HOURS_CLOSE_GRACE_MINUTES} minutos`);
+  });
+});
+
+describe('limit warning copy', () => {
+  it('names the right category', () => {
+    expect(limitWarningTitle('SOCIAL', 'CLOSE')).toContain('redes sociales');
+    expect(limitWarningTitle('GAMES', 'CLOSE')).toContain('juego');
+    expect(limitWarningBody('SOCIAL', 'FINAL', 95)).toContain('El próximo aviso las cierra');
   });
 });

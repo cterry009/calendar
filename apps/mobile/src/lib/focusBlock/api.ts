@@ -93,3 +93,28 @@ export function drainPendingBlockEvents(): NativePendingBlockEvent[] {
   if (Platform.OS !== 'android') return [];
   return FocusBlockModule.drainPendingBlockEvents();
 }
+
+// Work-hours social limit, evaluated natively (WorkSocialLimit.kt) so it works while this app is
+// closed. `windows` are the enabled WORK schedules.
+export function setWorkSocialLimit(
+  windows: Array<{ days: number[]; start: number; end: number }>,
+  socialPackages: string[],
+): void {
+  if (Platform.OS !== 'android') return;
+  // try: an installed binary older than this JS (dev builds get new JS over Metro) lacks it.
+  try {
+    FocusBlockModule.setWorkSocialLimit(JSON.stringify(windows), socialPackages);
+  } catch {
+    // Needs a native rebuild; the limit just isn't enforced until then.
+  }
+}
+
+/** Native view of "inside a WORK block right now" -- false off Android. */
+export function isNativeWorkHours(): boolean {
+  if (Platform.OS !== 'android') return false;
+  try {
+    return FocusBlockModule.isWorkHours();
+  } catch {
+    return false;
+  }
+}

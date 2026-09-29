@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useBlockList } from '../../hooks/useBlockList';
 import { useNightWindowActive } from '../../hooks/useNightWindowActive';
+import { useWorkGameLock } from '../../hooks/useWorkGameLock';
 import { useSoftFocus } from '../../context/SoftFocusContext';
 import { isDesktop } from '../../lib/desktop';
 
@@ -13,8 +14,8 @@ import { isDesktop } from '../../lib/desktop';
 //
 // Each entry's own `scope` decides *when* it's active, unioned into whatever's currently blocked:
 // FOCUS entries follow the existing SoftFocus signal (`isOverlayVisible` = pomodoro focus ||
-// manual soft-focus || work-hours || location), NIGHT entries follow the fixed 22:30-08:00 window
-// (lib/desktop/nightWindow.ts) via useNightWindowActive(). Rust itself has no notion of scope --
+// manual soft-focus || work-hours || location), NIGHT entries follow the user-configured night window
+// (lib/desktop/nightWindow.ts, on/off + HH:MM) via useNightWindowActive(). Rust itself has no notion of scope --
 // it just kills/blocks whatever's in the list it's handed while `active`, so this component is
 // the only place the FOCUS/NIGHT distinction is computed. Renders nothing; completely inert in a
 // plain browser.
@@ -37,15 +38,19 @@ function identifiersFor(
 }
 
 export function DesktopBlockingBridge() {
-  const { isOverlayVisible } = useSoftFocus();
+  const { isOverlayVisible, isWithinWorkSchedule } = useSoftFocus();
   const isNightActive = useNightWindowActive();
   const { entries } = useBlockList('ALL');
+  // Games locked by the strict work-hours limit (DesktopUsageWarnings starts the countdown; this
+  // enforces it). Not block-list entries -- a temporary union that disappears when the WORK block
+  // ends.
+  const workLockedGames = useWorkGameLock(isWithinWorkSchedule);
 
   const blockedProcesses = useMemo(() => {
     const focus = isOverlayVisible ? identifiersFor(entries, 'DESKTOP_APP', 'FOCUS') : [];
     const night = isNightActive ? identifiersFor(entries, 'DESKTOP_APP', 'NIGHT') : [];
-    return Array.from(new Set([...focus, ...night]));
-  }, [entries, isOverlayVisible, isNightActive]);
+    return Array.from(new Set([...focus, ...night, ...workLockedGames]));
+  }, [entries, isOverlayVisible, isNightActive, workLockedGames]);
 
   const blockedWebsites = useMemo(() => {
     const focus = isOverlayVisible ? identifiersFor(entries, 'WEBSITE', 'FOCUS') : [];

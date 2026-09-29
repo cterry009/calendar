@@ -17,6 +17,9 @@ interface SoftFocusContextValue {
   manualRemainingSeconds: number;
   isOverlayVisible: boolean;
   isWorkHoursActive: boolean;
+  // Raw "inside an enabled WORK block right now", ignoring the overlay dismissal above. For rules
+  // that must stay strict even when the soft overlay was waved away (the work-hours game limit).
+  isWithinWorkSchedule: boolean;
   isLocationActive: boolean;
   activeLocationTriggerLabel: string | null;
   startManualFocus: (minutes: number) => void;
@@ -242,6 +245,7 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
       manualRemainingSeconds,
       isOverlayVisible: pomodoro.isBlocking || manualSoftFocus.active || isWorkHoursActive || isLocationActive,
       isWorkHoursActive,
+      isWithinWorkSchedule: rawIsWorkHoursActive,
       isLocationActive,
       activeLocationTriggerLabel: matchedLocationTrigger?.label ?? null,
       startManualFocus,
@@ -258,6 +262,7 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
       manualSoftFocus,
       matchedLocationTrigger,
       pomodoro.isBlocking,
+      rawIsWorkHoursActive,
       startManualFocus,
       stopManualFocus,
     ],

@@ -52,6 +52,19 @@ class FocusBlockModule : Module() {
       }
     }
 
+    // Work-hours social limit (WorkSocialLimit.kt). windowsJson is the enabled WORK schedules as
+    // [{"days":[..],"start":m,"end":m}]; pushed by useFocusBlocking.ts whenever schedules change.
+    Function("setWorkSocialLimit") { windowsJson: String, socialPackages: List<String> ->
+      appContext.reactContext?.let { context ->
+        WorkSocialLimit.writeConfig(context, windowsJson, socialPackages.toSet())
+      }
+    }
+
+    // Lets JS defer to the native limit: during work hours, social warnings are native-only.
+    Function("isWorkHours") {
+      appContext.reactContext?.let { context -> WorkSocialLimit.isWorkHours(context) } ?: false
+    }
+
     Function("getNightWindowStartMinutes") {
       appContext.reactContext?.let { context -> FocusBlockPrefs.nightStartMinutes(context) } ?: (22 * 60 + 30)
     }

@@ -14,6 +14,14 @@ class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModul
     throw new Error('El bloqueo real de apps solo esta disponible en Android.');
   }
 
+  isWorkHours(): boolean {
+    return false;
+  }
+
+  setWorkSocialLimit(): void {
+    // No-op off Android, like the other state pushes.
+  }
+
   setNightWindow(): void {
     throw new Error('El bloqueo real de apps solo esta disponible en Android.');
   }

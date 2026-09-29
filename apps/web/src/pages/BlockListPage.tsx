@@ -4,6 +4,7 @@ import type { BlockListScope } from '@calendar/shared';
 import { BlockListForm } from '../components/blocklist/BlockListForm';
 import { BlockListList } from '../components/blocklist/BlockListList';
 import { DesktopBlockingCard } from '../components/blocklist/DesktopBlockingCard';
+import { DesktopNightSettingsCard } from '../components/blocklist/DesktopNightSettingsCard';
 import { GameTimeBlockSuggestions } from '../components/blocklist/GameTimeBlockSuggestions';
 import { FocusTriggerForm } from '../components/focusTriggers/FocusTriggerForm';
 import { FocusTriggerList } from '../components/focusTriggers/FocusTriggerList';
@@ -98,6 +99,8 @@ export function BlockListPage() {
           Nocturno
         </AppButton>
       </XStack>
+
+      {viewScope === 'NIGHT' ? <DesktopNightSettingsCard /> : null}
 
       {showCreateForm ? (
         <BlockListForm

@@ -37,3 +37,8 @@ const KNOWN_DISTRACTING_PACKAGES = new Set([
 export function isKnownDistractingApp(packageName: string): boolean {
   return KNOWN_DISTRACTING_PACKAGES.has(packageName);
 }
+
+/** The list itself, for the Android work-hours social limit, which evaluates it natively. */
+export function knownDistractingPackages(): string[] {
+  return [...KNOWN_DISTRACTING_PACKAGES];
+}

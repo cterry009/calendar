@@ -3,7 +3,9 @@ import { AppButton, AppCard, H2, Paragraph, Text, XStack, YStack } from '@calend
 import { useBlockList } from '../../hooks/useBlockList';
 import { useGameTime } from '../../hooks/useGameTime';
 import { isDesktop } from '../../lib/desktop';
-import { formatNightWindowMinutes, DEFAULT_NIGHT_END_MINUTES, DEFAULT_NIGHT_START_MINUTES } from '../../lib/desktop/nightWindow';
+import { useNightSettings } from '../../hooks/useNightWindowActive';
+import { formatNightWindowMinutes } from '../../lib/desktop/nightWindow';
+import { gameBlockIdentifier } from '../../lib/gameTime/identifier';
 import type { BlockListScope } from '@calendar/shared';
 import type { SyncTopGameUsage } from '../../lib/calendar/types';
 
@@ -15,14 +17,9 @@ const MAX_SUGGESTIONS = 5;
 // whole-panel scope choice mobile uses (a user picking "block my games" is choosing one strategy
 // for all of them at once, not per-suggestion).
 //
-// A Steam game's `key` is its numeric appid, not a process name -- blocking.rs resolves a
-// `steam:<appid>` identifier to the game's real install folder and kills anything running from
-// it. Riot/Battle.net entries' `key` is already the matched exe name (game_tracking.rs's
-// KNOWN_GAME_PROCESSES table), so it's used as the block-list identifier directly, identical to
-// any other DESKTOP_APP entry.
-function identifierFor(game: SyncTopGameUsage): string {
-  return game.source === 'STEAM' ? `steam:${game.key}` : game.key;
-}
+// A Steam game's `key` is its numeric appid, not a process name -- see lib/gameTime/identifier.ts
+// for how that becomes a block-list identifier.
+const identifierFor = (game: SyncTopGameUsage): string => gameBlockIdentifier(game);
 
 function formatMinutes(value: number): string {
   const hours = Math.floor(value / 60);
@@ -34,16 +31,17 @@ export function GameTimeBlockSuggestions() {
   const gameTime = useGameTime();
   const [blockScope, setBlockScope] = useState<BlockListScope>('FOCUS');
   const blockList = useBlockList('ALL');
+  const { window: nightWindow } = useNightSettings();
 
   const scopeOptions = useMemo<{ scope: BlockListScope; label: string }[]>(
     () => [
       { scope: 'FOCUS', label: 'Bloqueo total (enfoque)' },
       {
         scope: 'NIGHT',
-        label: `Solo de noche (${formatNightWindowMinutes(DEFAULT_NIGHT_START_MINUTES)}-${formatNightWindowMinutes(DEFAULT_NIGHT_END_MINUTES)})`,
+        label: `Solo de noche (${formatNightWindowMinutes(nightWindow.startMinutes)}-${formatNightWindowMinutes(nightWindow.endMinutes)})`,
       },
     ],
-    [],
+    [nightWindow.startMinutes, nightWindow.endMinutes],
   );
 
   // An identifier already blocked in the *selected* scope shouldn't be suggested again; being

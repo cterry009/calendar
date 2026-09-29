@@ -3,7 +3,8 @@ import { usePomodoro } from '../context/PomodoroContext';
 import { useSync } from '../context/SyncContext';
 import { isNowWithinWorkSchedule } from '../lib/calendar/utils';
 import type { SyncScheduleRecord } from '../lib/calendar/types';
-import { setBlockingState } from '../lib/focusBlock/api';
+import { setBlockingState, setWorkSocialLimit } from '../lib/focusBlock/api';
+import { knownDistractingPackages } from '@calendar/shared';
 import { pullSnapshot } from '../lib/sync/api';
 import { useBlockList } from './useBlockList';
 import { useFocusLockdownEnabled } from './useFocusLockdownEnabled';
@@ -96,6 +97,17 @@ export function useFocusBlocking(): FocusBlockingState {
   useEffect(() => {
     setBlockingState(isActive, blockedPackageNames, lockdownEnabled);
   }, [isActive, blockedPackageNames, lockdownEnabled]);
+
+  // The strict social limit during work hours runs natively (WorkSocialLimit.kt); it only needs the
+  // WORK windows and the social list, pushed whenever the schedules change.
+  const workWindowsKey = JSON.stringify(
+    schedules
+      .filter((schedule) => schedule.enabled && schedule.kind === 'WORK')
+      .map((schedule) => ({ days: schedule.daysOfWeek, start: schedule.startMinute, end: schedule.endMinute })),
+  );
+  useEffect(() => {
+    setWorkSocialLimit(JSON.parse(workWindowsKey), knownDistractingPackages());
+  }, [workWindowsKey]);
 
   return { isActive, isPomodoroBlocking, isWorkHoursActive, blockedPackageNames, lockdownEnabled };
 }

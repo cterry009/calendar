@@ -5,6 +5,8 @@ declare class FocusBlockModule extends NativeModule<{}> implements FocusBlockNat
   setBlockingState(active: boolean, blockedPackages: string[], lockdown: boolean): void;
   setNightBlockingState(enabled: boolean, blockedPackages: string[]): void;
   setNightWindow(startMinutes: number, endMinutes: number): void;
+  setWorkSocialLimit(windowsJson: string, socialPackages: string[]): void;
+  isWorkHours(): boolean;
   getNightWindowStartMinutes(): number;
   getNightWindowEndMinutes(): number;
   isAccessibilityServiceEnabled(): boolean;
