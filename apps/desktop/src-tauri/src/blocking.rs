@@ -82,6 +82,24 @@ pub fn set_process_blocking(
 
 /// True when `proc_name` (a process's file name, e.g. "chrome.exe") should be blocked given a
 /// user-entered `ident` ("chrome.exe" or "chrome", already lowercased).
+/// Block-list identifier meaning "every game", pushed by the frontend during a work focus so games
+/// are closed from the first minute, not only the ones already in the block list or played today.
+pub const ALL_GAMES_IDENTIFIER: &str = "games:*";
+
+/// Install roots that only hold games (and their launchers). Path-based rather than a name list so
+/// a game that was never tracked still counts: every Steam library keeps games under
+/// `steamapps\common`, and Epic / EA default to their own folders.
+const GAME_PATH_MARKERS: &[&str] = &["\\steamapps\\common\\", "\\epic games\\", "\\ea games\\"];
+
+/// Whether a process is a game: a known Riot / Battle.net game exe, or anything running from a
+/// game install root. `exe_lower` is the lowercased full executable path when available.
+fn is_game_process(name_lower: &str, exe_lower: Option<&str>) -> bool {
+    if game_tracking::KNOWN_GAME_PROCESSES.iter().any(|(exe, _, _)| *exe == name_lower) {
+        return true;
+    }
+    exe_lower.is_some_and(|path| GAME_PATH_MARKERS.iter().any(|marker| path.contains(marker)))
+}
+
 fn name_matches(proc_name_lower: &str, ident: &str) -> bool {
     if proc_name_lower == ident {
         return true;
@@ -153,8 +171,11 @@ pub fn start_monitor(app: &AppHandle) {
                     if name_lower.is_empty() || CRITICAL_DENYLIST.contains(&name_lower.as_str()) {
                         continue;
                     }
+                    let exe_lower = process.exe().map(|exe| exe.to_string_lossy().to_lowercase());
                     let is_blocked = blocked.iter().any(|ident| {
-                        if let Some(appid) = ident.strip_prefix("steam:") {
+                        if ident == ALL_GAMES_IDENTIFIER {
+                            is_game_process(&name_lower, exe_lower.as_deref())
+                        } else if let Some(appid) = ident.strip_prefix("steam:") {
                             resolve_steam_block_dir(appid, steam_path.as_ref(), &mut steam_dir_cache)
                                 .is_some_and(|dir| process.exe().is_some_and(|exe| exe.starts_with(dir)))
                         } else {
@@ -194,4 +215,30 @@ pub fn start_monitor(app: &AppHandle) {
             }
         })
         .expect("spawn process-blocker thread");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_games_by_install_root_in_any_steam_library() {
+        let exe = r"d:\steamlibrary\steamapps\common\total war warhammer iii\warhammer3.exe";
+        assert!(is_game_process("warhammer3.exe", Some(exe)));
+        let exe = r"c:\program files\epic games\fortnite\fortniteclient-win64-shipping.exe";
+        assert!(is_game_process("fortniteclient-win64-shipping.exe", Some(exe)));
+    }
+
+    #[test]
+    fn detects_known_riot_and_battlenet_games_by_name() {
+        assert!(is_game_process("valorant-win64-shipping.exe", None));
+        assert!(is_game_process("overwatch.exe", None));
+    }
+
+    #[test]
+    fn leaves_ordinary_apps_and_the_steam_client_alone() {
+        assert!(!is_game_process("code.exe", Some(r"c:\users\x\appdata\local\programs\microsoft vs code\code.exe")));
+        assert!(!is_game_process("steam.exe", Some(r"c:\program files (x86)\steam\steam.exe")));
+        assert!(!is_game_process("chrome.exe", None));
+    }
 }

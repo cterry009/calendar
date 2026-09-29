@@ -61,6 +61,11 @@ const SOCIAL_DESKTOP_EXECUTABLES = new Set([
   'tumblr.exe',
 ]);
 
+/** Standalone social clients on Windows (lowercased exe names). */
+export function socialDesktopExecutables(): string[] {
+  return [...SOCIAL_DESKTOP_EXECUTABLES];
+}
+
 export function isSocialDesktopApp(exeName: string): boolean {
   return SOCIAL_DESKTOP_EXECUTABLES.has(exeName.toLowerCase());
 }

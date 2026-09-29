@@ -42,3 +42,26 @@ export function isKnownDistractingApp(packageName: string): boolean {
 export function knownDistractingPackages(): string[] {
   return [...KNOWN_DISTRACTING_PACKAGES];
 }
+
+// The same social set as websites, for the desktop's hosts-file block during a work focus. The
+// hosts writer adds the `www.` variant itself; mobile-web and alternate hosts are listed explicitly
+// since a hosts file has no wildcards. YouTube included, matching the app list above.
+export const SOCIAL_WEBSITE_DOMAINS: readonly string[] = [
+  'instagram.com',
+  'facebook.com',
+  'm.facebook.com',
+  'tiktok.com',
+  'x.com',
+  'twitter.com',
+  'mobile.twitter.com',
+  'reddit.com',
+  'old.reddit.com',
+  'threads.net',
+  'threads.com',
+  'snapchat.com',
+  'linkedin.com',
+  'pinterest.com',
+  'tumblr.com',
+  'youtube.com',
+  'm.youtube.com',
+];

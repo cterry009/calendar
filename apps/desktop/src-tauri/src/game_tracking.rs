@@ -48,7 +48,7 @@ const STATE_FILE_NAME: &str = "game_time_state.json";
 
 /// (process name lowercased incl. .exe, display label, source). Only real game processes --
 /// never the launcher chrome itself, since the launcher alone isn't "playing".
-const KNOWN_GAME_PROCESSES: &[(&str, &str, &str)] = &[
+pub(crate) const KNOWN_GAME_PROCESSES: &[(&str, &str, &str)] = &[
     ("leagueclientux.exe", "League of Legends", "RIOT"),
     ("league of legends.exe", "League of Legends", "RIOT"),
     ("valorant-win64-shipping.exe", "Valorant", "RIOT"),

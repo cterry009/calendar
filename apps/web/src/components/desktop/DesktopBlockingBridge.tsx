@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useBlockList } from '../../hooks/useBlockList';
 import { useNightWindowActive } from '../../hooks/useNightWindowActive';
 import { useWorkGameLock } from '../../hooks/useWorkGameLock';
+import { focusBlockTargets } from '../../lib/desktop/focusBlockTargets';
 import { useSoftFocus } from '../../context/SoftFocusContext';
 import { isDesktop } from '../../lib/desktop';
 
@@ -45,18 +46,22 @@ export function DesktopBlockingBridge() {
   // enforces it). Not block-list entries -- a temporary union that disappears when the WORK block
   // ends.
   const workLockedGames = useWorkGameLock(isWithinWorkSchedule);
+  // In a work focus (pomodoro, manual focus, or a WORK block -- the latter even if its soft overlay
+  // was dismissed), every game and the social apps/sites are blocked outright, list or no list.
+  const inWorkFocus = isOverlayVisible || isWithinWorkSchedule;
+  const focusTargets = useMemo(() => focusBlockTargets(inWorkFocus), [inWorkFocus]);
 
   const blockedProcesses = useMemo(() => {
     const focus = isOverlayVisible ? identifiersFor(entries, 'DESKTOP_APP', 'FOCUS') : [];
     const night = isNightActive ? identifiersFor(entries, 'DESKTOP_APP', 'NIGHT') : [];
-    return Array.from(new Set([...focus, ...night, ...workLockedGames]));
-  }, [entries, isOverlayVisible, isNightActive, workLockedGames]);
+    return Array.from(new Set([...focus, ...night, ...workLockedGames, ...focusTargets.processes]));
+  }, [entries, isOverlayVisible, isNightActive, workLockedGames, focusTargets]);
 
   const blockedWebsites = useMemo(() => {
     const focus = isOverlayVisible ? identifiersFor(entries, 'WEBSITE', 'FOCUS') : [];
     const night = isNightActive ? identifiersFor(entries, 'WEBSITE', 'NIGHT') : [];
-    return Array.from(new Set([...focus, ...night]));
-  }, [entries, isOverlayVisible, isNightActive]);
+    return Array.from(new Set([...focus, ...night, ...focusTargets.websites]));
+  }, [entries, isOverlayVisible, isNightActive, focusTargets]);
 
   // Rust's `active` flag is a single on/off gate for the whole list it's handed -- since the list
   // passed below is already the FOCUS/NIGHT union for whichever window(s) are currently open,

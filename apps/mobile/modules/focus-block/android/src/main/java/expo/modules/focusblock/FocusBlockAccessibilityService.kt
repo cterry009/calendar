@@ -3,6 +3,7 @@ package expo.modules.focusblock
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -45,6 +46,11 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     val foregroundPackage = event.packageName?.toString() ?: return
     trackForeground(foregroundPackage)
     if (foregroundPackage == packageName) return // never block our own app
+
+    // Work focus: social media and games are off limits from the first minute, whether or not
+    // they're on the block list. "Focus" = inside a WORK block (evaluated natively from the pushed
+    // schedules, so it holds with the app closed) or a pomodoro/work session JS reported active.
+    if (kickIfInWorkFocus(foregroundPackage)) return
 
     if (applyWorkSocialLimit(foregroundPackage)) return
 
@@ -201,7 +207,10 @@ class FocusBlockAccessibilityService : AccessibilityService() {
   private val tick = object : Runnable {
     override fun run() {
       val pkg = currentForeground ?: return
-      if (pkg !in WorkSocialLimit.socialPackages(this@FocusBlockAccessibilityService)) return
+      if (!isSocialOrGame(pkg)) return
+      // Catches an app that was already open when a WORK block or pomodoro began: no window event
+      // fires for it, so without this it would stay usable until the next app switch.
+      if (kickIfInWorkFocus(pkg)) return
       applyWorkSocialLimit(pkg)
       handler.postDelayed(this, WORK_LIMIT_TICK_MS)
     }
@@ -212,12 +221,40 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     if (pkg == currentForeground) return
     currentForeground = pkg
     handler.removeCallbacks(tick)
-    if (pkg in WorkSocialLimit.socialPackages(this)) handler.postDelayed(tick, WORK_LIMIT_TICK_MS)
+    if (isSocialOrGame(pkg)) handler.postDelayed(tick, WORK_LIMIT_TICK_MS)
   }
 
   private fun currentKeyboardPackage(): String? = runCatching {
     Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)?.substringBefore('/')
   }.getOrNull()
+
+  // Social = the shared curated list JS pushes (WorkSocialLimit.socialPackages). Games = the app's
+  // own declared category: Android category "game" (set via android:appCategory / Play's listing),
+  // plus the legacy isGame flag older games still use. Unlike the "social" category -- rejected as
+  // unreliable on real hardware (socialPackages.ts) -- "game" is what game packages actually carry.
+  // Cached: a package's category doesn't change while it's installed.
+  private val gameCache = HashMap<String, Boolean>()
+
+  private fun isSocialOrGame(pkg: String): Boolean {
+    if (pkg in WorkSocialLimit.socialPackages(this)) return true
+    return gameCache.getOrPut(pkg) {
+      runCatching {
+        val info = packageManager.getApplicationInfo(pkg, 0)
+        @Suppress("DEPRECATION")
+        info.category == ApplicationInfo.CATEGORY_GAME || (info.flags and ApplicationInfo.FLAG_IS_GAME) != 0
+      }.getOrDefault(false)
+    }
+  }
+
+  /** Kicks a social app or game out if a work focus is on; true when it did. */
+  private fun kickIfInWorkFocus(pkg: String): Boolean {
+    if (!isSocialOrGame(pkg)) return false
+    if (!WorkSocialLimit.isWorkHours(this) && !FocusBlockPrefs.isActive(this)) return false
+    performGlobalAction(GLOBAL_ACTION_HOME)
+    FocusBlockNotifications.showBlockedAlert(this, pkg)
+    FocusBlockPrefs.addPendingBlockEvent(this, pkg, "FOCUS", "BLOCKED_OPEN_ATTEMPT")
+    return true
+  }
 
   /** Returns true when it kicked the app out. */
   private fun applyWorkSocialLimit(pkg: String): Boolean {
