@@ -236,7 +236,9 @@
 
   **Verified on the Galaxy S23:** online -> green banner; API stopped + cold start -> app opens in seconds on cached data with the red banner (previously hung); API restarted -> banner back to green within 30s with no interaction. The phone was also moved from `synctest@local.test` to `dev@local.test`, the account the desktop syncs to. Still true: the installed build is a debug one that needs Metro to boot -- 12.11 remains the fix for that.
 
-- [x] 7.31 User-requested: the strict work-hours limit (9.13) for social media too. **Android, native** (`modules/focus-block/.../WorkSocialLimit.kt`), because JS can only read usage while the app is in the foreground -- exactly when you aren't scrolling Instagram. `useFocusBlocking` pushes the enabled WORK windows and the shared social list (`knownDistractingPackages()`); the resident accessibility service evaluates on every app switch and on a 60s tick while a social app stays in front: 60 min warning -> final warning at 90 -> 5-minute countdown at 120 -> every listed social app is kicked to home until the WORK block ends. Minutes come from `UsageEvents` resume/pause pairs (the aggregate stats only fold a session in when it ends; the open one is the one that matters). JS `useUsageWarnings` defers to it inside work hours (`isNativeWorkHours`). **Desktop:** the same sequence for standalone social clients, with its own state (`workGameLimit.ts` is now per category; `useWorkGameLock` also kills today's social exes) -- rarely fires, since desktop social happens in a browser the tracker can't see into. Verified: native rebuild installs, the service's prefs hold the 14 WORK windows and 13 packages. **Not yet verified end to end** (needs >60 min of social use inside a work block), and it requires the app's accessibility service to be enabled on the phone -- currently it is off.
+- [x] 7.31 User-requested: the strict work-hours limit (9.13) for social media too. **Android, native** (`modules/focus-block/.../WorkSocialLimit.kt`), because JS can only read usage while the app is in the foreground -- exactly when you aren't scrolling Instagram. `useFocusBlocking` pushes the enabled WORK windows and the shared social list (`knownDistractingPackages()`); the resident accessibility service evaluates on every app switch and on a 60s tick while a social app stays in front: 60 min warning -> final warning at 90 -> 5-minute countdown at 120 -> every listed social app is kicked to home until the WORK block ends. Minutes come from `UsageEvents` resume/pause pairs (the aggregate stats only fold a session in when it ends; the open one is the one that matters). JS `useUsageWarnings` defers to it inside work hours (`isNativeWorkHours`). **Desktop:** the same sequence for standalone social clients, with its own state (`workGameLimit.ts` is now per category; `useWorkGameLock` also kills today's social exes) -- rarely fires, since desktop social happens in a browser the tracker can't see into. Verified: native rebuild installs, the service's prefs hold the 14 WORK windows and 13 packages. **Not yet verified end to end** (needs >60 min of social use inside a work block), and it requires the app's accessibility service to be enabled on the phone.
+
+  **Follow-up (2026-09-29):** the user enabled the service and reported it "no funcionó". Cause: the test session's own `adb shell am crash` restarts had put the service in Android's "Crashed services" list -- enabled in Settings but never bound, so nothing ran. Toggling the setting does not clear that state; `adb install -r` of the same APK did, followed by a remove/re-add of the component in `enabled_accessibility_services` (keeping AppBlock, Bitwarden and the launcher). Confirmed bound via `dumpsys accessibility`. Testing on-device must not use `am crash`/`force-stop`. The limit itself is still pending an end-to-end check inside a work block.
 
 ## 8. Cross-platform analytics & dashboard integration (web + mobile)
 
@@ -487,7 +489,7 @@
 
   **Deliberately not in this slice**: heart rate, sleep, and other metrics needing hardware this phone doesn't have or a Health Connect integration (a separate, larger integration, not a tweak of this one -- same reasoning task 12.6 already gave for why it stayed out of that slice too); iOS (no device/simulator available, consistent with the rest of this mobile port).
 
-- [ ] 12.9 Cover `SyncService` with tests -- the one large piece of business logic in this repo with
+- [x] 12.9 Cover `SyncService` with tests -- the one large piece of business logic in this repo with
   **zero** test files. `server/src/sync/sync.service.ts` is ~1,300 lines and owns every conflict rule
   in the project, and a bug there fails silently: it doesn't crash, it quietly loses or resurrects a
   row. The rules are already non-obvious enough to have been argued out in comments and would each
@@ -504,6 +506,27 @@
   mocked client would happily hide. `apps/mobile` has 0 test files too; lower priority, since its
   logic mostly delegates to `packages/shared` (16 files, well covered) and to native modules.
 
+  **Done (2026-09-29):** `server/test/sync.service.test.ts`, 22 integration tests, `npm test` in
+  `server/` (Vitest). They run the real `SyncService` (built by hand -- no Nest DI needed) against
+  its own `calendar_test` database on the same Postgres, derived from `DATABASE_URL`; a global setup
+  runs `prisma migrate deploy` on it and every test truncates `users` (everything cascades). The dev
+  database is never touched (verified). Covered: updatedAt-wins create/update/retry-by-clientId, the
+  conflict path returning the server row, an older delete not killing a newer edit, soft delete
+  leaving the pull, cross-user isolation (another user's id can't be written), max()-merge for steps
+  and floors, one row per (user, day) for the rollups plus their conflict rule, UTC-day bucketing
+  (including a characterization test of the known UTC-5 evening gap for steps, to flip when that
+  timezone pass lands), BlockEvent UUID idempotency, habit check-ins merging on (habit, day) across
+  clientIds, `ScheduleCompletion` idempotency/undo/cross-user/cascade, habits being full replaces,
+  the pull's 30/60-day bounds, and the realtime notification (entities + source device; silent on
+  conflict-only batches). **Mutation-checked:** disabling `isServerNewer` fails 4 tests; disabling
+  the steps max()-merge fails 1 (the first draft of that test passed anyway because the highest
+  value arrived last -- reordered so the lowest arrives last).
+
+- [ ] 12.12 Verify the server in production mode before relying on it unattended (prerequisite for
+  12.10 or any auto-start): so far it has only ever run as `nest start --watch`. Check `nest build`
+  + `node dist/main.js` boots, that it picks up the current `packages/shared` (source vs. a stale
+  `dist/`), and that `prisma migrate deploy` is part of the startup path. Then a nightly `pg_dump`.
+
 - [ ] 12.10 Run the server on the dedicated always-on Linux machine, reachable from phone and desktop
   anywhere. Replaces the current setup, where the API lives on the dev PC at a LAN IP that DHCP
   reassigns (already caused a real outage: the phone was pointed at a stale `192.168.80.17` after the
@@ -518,13 +541,27 @@
   `dev@local.test` / `devpassword123` account from `prisma/seed.ts` is public knowledge in this repo --
   that account reads screen time, habits and journal entries.
 
-- [ ] 12.11 Ship a release APK for Android so the phone stops depending on Metro. The installed build
+- [x] 12.11 Ship a release APK for Android so the phone stops depending on Metro. The installed build
   is a debug one (`flags=[ DEBUGGABLE ... ]`), which loads its JS bundle from the dev server at launch
   and therefore hangs on the splash screen the moment the PC isn't serving it -- this is not a bug and
   no amount of server work fixes it; it needs a standalone build with the bundle embedded. Blocks any
   real day-to-day use of the mobile app, and blocks 12.4's Play Store listing. Note `EXPO_PUBLIC_*`
   values are inlined at bundle time, so the API URL from 12.10 has to be correct *when the APK is
   built*, not just in `.env`.
+
+  **Done (2026-09-29), triggered by the user reporting "no inicia":** the debug build had launched
+  while Metro was down, logged "Unable to load script", destroyed its React host and then ignored
+  every relaunch/deep link until the process restarted. `cd apps/mobile/android && ./gradlew
+  assembleRelease` -> `app-release.apk`, installed with `adb install -r` over the debug build (same
+  debug keystore, so data and session carry over; a real upload keystore is still needed for 12.4's
+  Play listing). **One release-only bug found and fixed:** the app opened but showed "Sin conexion"
+  -- Android release builds block cleartext `http://` and the Expo template only allows it in the
+  debug manifests. Fixed at the source, `app.json` -> `expo-build-properties` ->
+  `android.usesCleartextTraffic: true` (the API is plain HTTP on the LAN / Tailscale; revisit if it
+  ever moves behind HTTPS), then `expo prebuild`. Verified with Metro stopped and no adb reverse: the
+  app opens on the home screen, and the server saw the phone refresh its session and sync screen
+  time within seconds. The API address is no longer a build-time lock-in either, thanks to 7.30's
+  editable server URL. The accessibility service had to be re-bound after each install (see 7.31).
 
 ## 13. Documentation (final -- after 9-12)
 
