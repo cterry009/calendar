@@ -5,7 +5,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
-import { SyncStatusBanner } from '../components/SyncStatusBanner';
+import { ServerConnectionBanner } from '../components/ServerConnectionBanner';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { NotificationsProvider } from '../context/NotificationsContext';
 import { OnboardingProvider } from '../context/OnboardingContext';
@@ -116,6 +116,7 @@ function RootNavigator() {
         <Stack.Screen name="pomodoro" />
         <Stack.Screen name="fitness" />
         <Stack.Screen name="habits" />
+        <Stack.Screen name="calendar" />
         <Stack.Screen name="dashboard" />
         <Stack.Screen name="blocklist" />
         <Stack.Screen name="screen-time" />
@@ -125,10 +126,12 @@ function RootNavigator() {
         <Stack.Screen name="login" />
         <Stack.Screen name="register" />
       </Stack.Protected>
+      {/* Outside both guards: a wrong server address is what blocks login in the first place. */}
+      <Stack.Screen name="server" />
     </Stack>
   );
 
-  // NotificationsProvider/PomodoroProvider/SyncStatusBanner only mounted once authenticated --
+  // NotificationsProvider/PomodoroProvider/ServerConnectionBanner only mounted once authenticated --
   // nothing to sync or notify about pre-login, and pulling requires a valid access token anyway.
   if (!isAuthenticated) {
     return navigator;
@@ -147,7 +150,7 @@ function RootNavigator() {
         <UsageWarningsBridge />
         <OnboardingProvider>
           <YStack flex={1}>
-            <SyncStatusBanner />
+            <ServerConnectionBanner />
             {navigator}
           </YStack>
         </OnboardingProvider>

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthFormField } from '../components/AuthFormField';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../lib/auth/api';
+import { ServerUnreachableError } from '../lib/server/connection';
 
 export default function RegisterScreen() {
   const { register } = useAuth();
@@ -25,7 +26,9 @@ export default function RegisterScreen() {
       // No navigation call needed -- _layout.tsx's Stack.Protected guard redirects to "/" as
       // soon as AuthContext's isAuthenticated flips true.
     } catch (error) {
-      setErrorMessage(error instanceof ApiError ? error.message : 'No se pudo crear la cuenta.');
+      setErrorMessage(
+        error instanceof ApiError || error instanceof ServerUnreachableError ? error.message : 'No se pudo crear la cuenta.',
+      );
     } finally {
       setIsSubmitting(false);
     }

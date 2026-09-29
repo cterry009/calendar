@@ -1,4 +1,4 @@
-import { env } from './env';
+import { fetchWithTimeout } from '../server/connection';
 import { clearSession, getAccessToken, getRefreshToken, loadSession, saveSession, updateSessionTokens } from './storage';
 import type { AuthSession, AuthUser, LoginInput, RegisterInput } from './types';
 import { DEVICE_PLATFORM, getDeviceLabel } from './device';
@@ -36,17 +36,41 @@ async function parseError(response: Response): Promise<string> {
   return response.statusText || 'Request failed';
 }
 
-async function refreshAccessToken(): Promise<string | null> {
+// Single flight. The server rotates the refresh token on every use, so two requests that both
+// hit an expired access token and refresh in parallel would race: the first rotates the token,
+// the second presents the now-stale one, gets a 401, and -- read as "session revoked" -- wiped a
+// perfectly valid session. Confirmed on-device: it logged the phone out at startup once the boot
+// stopped serializing requests behind fetchProfile. Every concurrent caller now awaits one refresh.
+let refreshInFlight: Promise<string | null> | null = null;
+
+function refreshAccessToken(): Promise<string | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = doRefreshAccessToken().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+async function doRefreshAccessToken(): Promise<string | null> {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) return null;
 
-  const response = await fetch(`${env.apiUrl}/auth/refresh`, {
+  const response = await fetchWithTimeout('/auth/refresh', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refreshToken }),
   });
 
   if (response.status === 401) {
+    // Belt and braces for the race above: if the stored token changed while this request was in
+    // flight, someone else already refreshed successfully -- this 401 is about the old token, not
+    // the session.
+    const current = await loadSession();
+    if (current && current.refreshToken !== refreshToken) {
+      return current.accessToken;
+    }
+
     // The refresh token itself was genuinely rejected (invalid, expired, revoked) -- this is the
     // only case that should actually log the user out. Throwing (rather than just returning
     // null) lets this propagate all the way up through apiFetch to the caller as a distinct
@@ -88,7 +112,9 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}, retryOnU
     headers.set('Authorization', `Bearer ${accessToken}`);
   }
 
-  const execute = () => fetch(`${env.apiUrl}${path}`, { ...init, headers });
+  // Throws ServerUnreachableError (with a readable message) instead of hanging when the server
+  // isn't there -- see lib/server/connection.ts.
+  const execute = () => fetchWithTimeout(path, { ...init, headers });
   let response = await execute();
 
   if (response.status === 401 && retryOnUnauthorized && (await getRefreshToken())) {

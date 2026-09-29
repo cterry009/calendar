@@ -2,6 +2,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
 import { flushSyncQueue, subscribeSyncStatus, type SyncStatus } from '../lib/sync/api';
+import { subscribeConnection } from '../lib/server/connection';
 
 interface SyncContextValue extends SyncStatus {
   flushQueue: () => Promise<void>;
@@ -72,6 +73,21 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       appStateSubscription.remove();
     };
   }, [flushQueue]);
+
+  useEffect(() => {
+    // The connection monitor (lib/server/connection.ts) pings the server on its own, so it notices
+    // a server coming back even while no screen is making requests. On that transition, push the
+    // queue and have mounted screens re-pull: what they show may be the offline cache.
+    let wasOnline: boolean | null = null;
+    return subscribeConnection((next) => {
+      const online = next.state === 'online';
+      if (next.state === 'checking') return;
+      if (online && wasOnline === false) {
+        void flushQueue().finally(runRegisteredRefetches);
+      }
+      wasOnline = online;
+    });
+  }, [flushQueue, runRegisteredRefetches]);
 
   useEffect(() => {
     // Fallback trigger, so a queued mutation eventually flushes even if every event-based trigger

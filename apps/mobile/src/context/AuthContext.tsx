@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { SessionExpiredError, fetchProfile, login as apiLogin, logout as apiLogout, register as apiRegister } from '../lib/auth/api';
 import { loadSession, saveSession } from '../lib/auth/storage';
+import { loadServerUrl } from '../lib/server/connection';
 import type { AuthUser, LoginInput, RegisterInput } from '../lib/auth/types';
 
 // OAuth (Google/Apple) is deliberately not ported here -- apps/web's OAuthButtons.tsx loads
@@ -25,13 +26,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
 
     const restoreSession = async () => {
+      await loadServerUrl();
       const session = await loadSession();
       if (!session) {
         if (isMounted) setIsLoading(false);
         return;
       }
 
-      if (isMounted) setUser(session.user);
+      // Open the app on the stored session right away. The profile refresh below used to gate the
+      // loading screen, and with the server unreachable it never settled -- the app looked frozen.
+      // Everything after this line is a background refresh; the offline cache covers the rest.
+      if (isMounted) {
+        setUser(session.user);
+        setIsLoading(false);
+      }
 
       try {
         const profile = await fetchProfile();

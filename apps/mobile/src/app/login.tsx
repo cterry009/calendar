@@ -1,11 +1,13 @@
 import { AppButton, AppCard, Eyebrow, H1, Paragraph, Text, YStack } from '@calendar/ui';
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthFormField } from '../components/AuthFormField';
+import { ServerConnectionBanner } from '../components/ServerConnectionBanner';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../lib/auth/api';
+import { ServerUnreachableError } from '../lib/server/connection';
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -24,14 +26,21 @@ export default function LoginScreen() {
       // No navigation call needed -- _layout.tsx's Stack.Protected guard redirects to "/" as
       // soon as AuthContext's isAuthenticated flips true.
     } catch (error) {
-      setErrorMessage(error instanceof ApiError ? error.message : 'No se pudo iniciar sesion.');
+      setErrorMessage(
+        error instanceof ApiError || error instanceof ServerUnreachableError ? error.message : 'No se pudo iniciar sesion.',
+      );
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#212e28' }}>
+    <View style={{ flex: 1, backgroundColor: '#212e28' }}>
+      {/* The root layout only mounts this once logged in; without it here, a login that can't reach
+          the server just spins with no hint why. Tap it to change the server address. */}
+      <ServerConnectionBanner />
+      {/* Top edge excluded: the banner above already pads for the status bar. */}
+      <SafeAreaView style={{ flex: 1 }} edges={['left', 'right', 'bottom']}>
       {/* A real bug found testing this exact screen on-device: without a ScrollView, this
           screen's content was just a fixed flex:1/justifyContent:center YStack -- Android's
           android:windowSoftInputMode="adjustResize" (already set in AndroidManifest.xml) does
@@ -90,6 +99,7 @@ export default function LoginScreen() {
           </Paragraph>
         </YStack>
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
