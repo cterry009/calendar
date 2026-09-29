@@ -6,7 +6,8 @@ import { usePomodoro } from '../../context/PomodoroContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
 import { useFitness } from '../../hooks/useFitness';
 import { useTasks } from '../../hooks/useTasks';
-import type { CalendarViewMode } from '../../lib/calendar/types';
+import type { CalendarEvent, CalendarViewMode } from '../../lib/calendar/types';
+import { toggleEventDone } from '../../lib/calendar/completions';
 import {
   addDays,
   buildEventsForRange,
@@ -71,6 +72,11 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
     await data.refetch();
   }
 
+  async function handleToggleDone(event: CalendarEvent) {
+    await toggleEventDone(event);
+    await data.refetch();
+  }
+
   async function handleStartFocusSegment(focusDurationMin: number, taskId?: string) {
     await pomodoro.start(taskId, { focusDurationMin });
     openPanel('pomodoro');
@@ -86,11 +92,24 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
           schedules: data.schedules,
           pomodoroSessions: data.pomodoroSessions,
           fitnessEntries: data.fitnessEntries,
+          habits: data.habits,
+          habitRecords: data.habitRecords,
+          scheduleCompletions: data.scheduleCompletions,
         },
         range.start,
         range.end,
       ),
-    [data.fitnessEntries, data.pomodoroSessions, data.schedules, data.tasks, range.end, range.start],
+    [
+      data.fitnessEntries,
+      data.habitRecords,
+      data.habits,
+      data.pomodoroSessions,
+      data.scheduleCompletions,
+      data.schedules,
+      data.tasks,
+      range.end,
+      range.start,
+    ],
   );
 
   const dayEvents = useMemo(() => eventsForDate(events, selectedDate), [events, selectedDate]);
@@ -163,6 +182,7 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
               isCreatingFitness={fitnessData.isMutating}
               onStartFocusSegment={handleStartFocusSegment}
               isStartingFocus={pomodoro.isMutating}
+              onToggleDone={handleToggleDone}
             />
             <WeekView days={weekSummary} onSelectDay={selectDay} />
           </YStack>

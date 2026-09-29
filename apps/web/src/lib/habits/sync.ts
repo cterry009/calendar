@@ -18,6 +18,9 @@ export interface HabitSyncChangeDto {
   category?: string;
   archived?: boolean;
   linkedFitnessActivityType?: string;
+  reminderStartMinute?: number;
+  reminderEndMinute?: number;
+  reminderDaysOfWeek?: number[];
 }
 
 export interface HabitRecordSyncChangeDto {
@@ -60,6 +63,10 @@ function buildHabitUpsertPayload(values: HabitFormValues): Omit<HabitSyncChangeD
     color: values.color ?? undefined,
     category: values.category?.trim() || undefined,
     linkedFitnessActivityType: values.linkedFitnessActivityType?.trim() || undefined,
+    // Omitted (undefined) clears it server-side: habit edits are full replaces.
+    reminderStartMinute: values.reminderStartMinute ?? undefined,
+    reminderEndMinute: values.reminderEndMinute ?? undefined,
+    reminderDaysOfWeek: values.reminderDaysOfWeek,
   };
 }
 

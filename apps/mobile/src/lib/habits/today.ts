@@ -4,9 +4,15 @@ import type { SyncHabitRecord } from './types';
 // the mobile list/check-in screen and notification response handler need. Web's streak/score-
 // history sampling (calendar-grid-specific) isn't ported; the mobile screen is a flat list, not a
 // grid.
+// Local calendar day. A stored record `date` is the UTC midnight of the key it was saved with, so
+// its key is its first 10 chars. The old toISOString() version made "today" tomorrow every evening
+// in UTC-5 (after 19:00) -- same fix as apps/web/src/lib/habits/today.ts.
 export function dateKey(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toISOString().slice(0, 10);
+  if (typeof date === 'string') return date.slice(0, 10);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 export function todayKey(): string {

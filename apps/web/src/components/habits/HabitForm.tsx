@@ -6,6 +6,7 @@ import { ColorSwatchPicker } from './ColorSwatchPicker';
 import { DEFAULT_HABIT_COLOR, HABIT_TYPE_DESCRIPTIONS, HABIT_TYPE_LABELS } from '../../lib/habits/labels';
 import { HABIT_TYPES, type HabitFormValues } from '../../lib/habits/types';
 import type { SyncHabit } from '../../lib/calendar/types';
+import { ALL_DAYS, formatTimeInput, parseTimeInput, validateTimeBlock } from '../../lib/habits/timeBlock';
 
 interface HabitFormProps {
   mode: 'create' | 'edit';
@@ -26,7 +27,14 @@ interface HabitFormDraft {
   color: string;
   category: string;
   linkedFitnessActivityType: string;
+  blockStart: string;
+  blockEnd: string;
+  blockDays: number[];
 }
+
+const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+// Shown Monday first, like the rest of the calendar.
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 function defaultDraft(habit?: SyncHabit): HabitFormDraft {
   return {
@@ -40,6 +48,9 @@ function defaultDraft(habit?: SyncHabit): HabitFormDraft {
     color: habit?.color ?? DEFAULT_HABIT_COLOR,
     category: habit?.category ?? '',
     linkedFitnessActivityType: habit?.linkedFitnessActivityType ?? '',
+    blockStart: formatTimeInput(habit?.reminderStartMinute ?? null),
+    blockEnd: formatTimeInput(habit?.reminderEndMinute ?? null),
+    blockDays: habit?.reminderDaysOfWeek?.length ? habit.reminderDaysOfWeek : ALL_DAYS,
   };
 }
 
@@ -93,6 +104,18 @@ export function HabitForm({ mode, initialHabit, isSubmitting, onSubmit, onCancel
       dailyGoalExtraValue = parsed;
     }
 
+    const blockStart = parseTimeInput(draft.blockStart);
+    const blockEnd = parseTimeInput(draft.blockEnd);
+    if (blockStart === undefined || blockEnd === undefined) {
+      setError('Escribe las horas del bloque en formato HH:MM, por ejemplo 07:30.');
+      return;
+    }
+    const blockError = validateTimeBlock(blockStart, blockEnd, draft.blockDays);
+    if (blockError) {
+      setError(blockError);
+      return;
+    }
+
     await onSubmit({
       title: trimmedTitle,
       description: draft.description.trim() || null,
@@ -104,7 +127,19 @@ export function HabitForm({ mode, initialHabit, isSubmitting, onSubmit, onCancel
       color: draft.color,
       category: draft.category.trim() || null,
       linkedFitnessActivityType: draft.linkedFitnessActivityType.trim() || null,
+      reminderStartMinute: blockEnd == null ? null : blockStart,
+      reminderEndMinute: blockEnd,
+      reminderDaysOfWeek: [...draft.blockDays].sort(),
     });
+  }
+
+  function toggleBlockDay(day: number) {
+    setDraft((current) => ({
+      ...current,
+      blockDays: current.blockDays.includes(day)
+        ? current.blockDays.filter((value) => value !== day)
+        : [...current.blockDays, day],
+    }));
   }
 
   return (
@@ -217,6 +252,46 @@ export function HabitForm({ mode, initialHabit, isSubmitting, onSubmit, onCancel
             Si registras un ejercicio en Fitness con este mismo nombre (sin importar mayusculas), el check-in de hoy
             se completa solo.
           </Paragraph>
+        </YStack>
+
+        <YStack gap="$2">
+          <Label>Bloque en el horario (opcional)</Label>
+          <Paragraph size="$1" color="$muted" margin={0}>
+            Cuando lo haces. Aparece como bloque en tu calendario y el telefono te lo recuerda. Solo hora de fin si
+            es algo "antes de las X" (p. ej. despertarse antes de las 07:00).
+          </Paragraph>
+          <XStack gap="$3" flexWrap="wrap">
+            <YStack minWidth={120} flex={1}>
+              <FormField
+                id="habit-block-start"
+                label="Inicio (opcional)"
+                placeholder="07:00"
+                value={draft.blockStart}
+                onChangeText={(value: string) => setField('blockStart', value)}
+              />
+            </YStack>
+            <YStack minWidth={120} flex={1}>
+              <FormField
+                id="habit-block-end"
+                label="Fin / hora limite"
+                placeholder="08:00"
+                value={draft.blockEnd}
+                onChangeText={(value: string) => setField('blockEnd', value)}
+              />
+            </YStack>
+          </XStack>
+          <XStack gap="$2" flexWrap="wrap">
+            {DAY_ORDER.map((day) => (
+              <AppButton
+                key={day}
+                type="button"
+                variant={draft.blockDays.includes(day) ? 'primary' : 'ghost'}
+                onPress={() => toggleBlockDay(day)}
+              >
+                {DAY_LABELS[day]}
+              </AppButton>
+            ))}
+          </XStack>
         </YStack>
 
         <YStack gap="$2">

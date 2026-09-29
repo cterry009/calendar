@@ -81,6 +81,15 @@ export interface SyncHabitRecord {
   updatedAt: string;
 }
 
+/** A schedule block marked done on a day (server ScheduleCompletion); `date` is that day's UTC midnight. */
+export interface SyncScheduleCompletion {
+  id: string;
+  scheduleId: string;
+  date: string;
+  clientId: string | null;
+  updatedAt: string;
+}
+
 export interface SyncSnapshot {
   tasks: SyncTaskRecord[];
   schedules: SyncScheduleRecord[];
@@ -93,5 +102,7 @@ export interface SyncSnapshot {
   dailyScreenTime: SyncDailyScreenTimeRecord[];
   habits: SyncHabit[];
   habitRecords: SyncHabitRecord[];
+  // Optional: snapshots cached before this existed don't have it.
+  scheduleCompletions?: SyncScheduleCompletion[];
   syncedAt: string;
 }

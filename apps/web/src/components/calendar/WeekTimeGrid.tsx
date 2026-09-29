@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, XStack, YStack } from '@calendar/ui';
 import type { CalendarEvent } from '../../lib/calendar/types';
 import { eventsForDate, isSameDay } from '../../lib/calendar/utils';
-import { buildDayBars, clampZoom, DEFAULT_ZOOM, layoutBars, minuteOfDay, ZOOM_STEP } from './timeGridLayout';
+import { buildDayBars, clampZoom, DEFAULT_ZOOM, layoutBars, minuteOfDay, outlineFill, ZOOM_STEP } from './timeGridLayout';
 import { ZoomControls } from './ZoomControls';
 
 const BASE_ROW_HEIGHT_PX = 48;
@@ -163,11 +163,13 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
                   borderWidth={1}
                   borderColor={bar.color}
                   backgroundColor="rgba(255,255,255,0.03)"
+                  opacity={bar.done ? 0.45 : 1}
                   paddingHorizontal="$1"
                   overflow="hidden"
                 >
                   {bar.height >= 14 ? (
                     <Text fontSize="$1" color={bar.color} fontWeight="600" lineHeight={12}>
+                      {bar.done ? '✓ ' : ''}
                       {bar.label}
                     </Text>
                   ) : null}
@@ -184,13 +186,22 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
                   height={bar.height}
                   title={`${bar.label} · ${bar.detail}`}
                   borderRadius="$2"
-                  backgroundColor={bar.color}
+                  backgroundColor={bar.variant === 'outline' ? outlineFill(bar.color) : bar.color}
+                  borderWidth={bar.variant === 'outline' ? 1 : 0}
+                  borderColor={bar.variant === 'outline' ? bar.color : undefined}
                   paddingHorizontal="$1"
                   overflow="hidden"
                   zIndex={2}
+                  opacity={bar.done ? 0.5 : 1}
                 >
                   {bar.height >= 14 ? (
-                    <Text fontSize="$1" fontWeight="700" color="#0a1c13" lineHeight={12}>
+                    <Text
+                      fontSize="$1"
+                      fontWeight="700"
+                      color={bar.variant === 'outline' ? bar.color : '#0a1c13'}
+                      lineHeight={12}
+                    >
+                      {bar.done ? '✓ ' : ''}
                       {bar.label}
                     </Text>
                   ) : null}

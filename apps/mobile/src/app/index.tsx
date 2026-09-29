@@ -3,7 +3,8 @@ import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, XStack, YStack } 
 import { Link } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScheduleRow } from '../components/calendar/ScheduleRow';
+import { AgendaRow } from '../components/calendar/AgendaRow';
+import { useDayAgenda } from '../hooks/useDayAgenda';
 import { TaskRow } from '../components/calendar/TaskRow';
 import { HabitChecklistRow } from '../components/habits/HabitChecklistRow';
 import { TutorialScrollView } from '../components/onboarding/TutorialScrollView';
@@ -35,7 +36,7 @@ function startOfWeek(date: Date): Date {
 export default function HomeScreen() {
   const { user, logout } = useAuth();
   const { startTour } = useOnboarding();
-  const { tasks, schedules, pomodoroSessions, isLoading, isMutating, error, completeTask } = useCalendarData();
+  const { tasks, pomodoroSessions, isLoading, isMutating, error, completeTask } = useCalendarData();
   const {
     habits,
     records: habitRecords,
@@ -67,10 +68,11 @@ export default function HomeScreen() {
     [tasks, selectedDate],
   );
 
-  const selectedSchedules = useMemo(
-    () => schedules.filter((schedule) => schedule.enabled && schedule.daysOfWeek.includes(selectedDate.getDay())),
-    [schedules, selectedDate],
-  );
+  // "Horario de hoy" = the day's work/rest blocks plus habits with a time block, in time order,
+  // each markable as done -- the same agenda and records as the Calendario screen. Tasks have
+  // their own card above.
+  const agenda = useDayAgenda(selectedDate);
+  const selectedAgenda = useMemo(() => agenda.blocks.filter((block) => block.kind !== 'task'), [agenda.blocks]);
 
   const streak = useMemo(
     () => computePomodoroStreak(completedPomodoroDateKeys(pomodoroSessions)),
@@ -114,6 +116,11 @@ export default function HomeScreen() {
               <Link href="/fitness" asChild>
                 <AppButton variant="ghost" flexGrow={1} flexBasis={140}>
                   Fitness
+                </AppButton>
+              </Link>
+              <Link href="/calendar" asChild>
+                <AppButton variant="primary" flexGrow={1} flexBasis={140}>
+                  Calendario
                 </AppButton>
               </Link>
               <Link href="/dashboard" asChild>
@@ -239,18 +246,23 @@ export default function HomeScreen() {
                 <H2 margin={0} fontSize="$5">
                   Horario de hoy
                 </H2>
-                {isLoading ? (
+                {agenda.isLoading ? (
                   <Paragraph margin={0} color="$muted">
                     Cargando...
                   </Paragraph>
-                ) : selectedSchedules.length === 0 ? (
+                ) : selectedAgenda.length === 0 ? (
                   <Paragraph margin={0} color="$muted">
                     No hay horarios configurados para este dia.
                   </Paragraph>
                 ) : (
                   <YStack>
-                    {selectedSchedules.map((schedule) => (
-                      <ScheduleRow key={schedule.id} schedule={schedule} />
+                    {selectedAgenda.map((block) => (
+                      <AgendaRow
+                        key={block.id}
+                        block={block}
+                        busy={agenda.busyId === block.id}
+                        onToggle={(item) => void agenda.toggleDone(item)}
+                      />
                     ))}
                   </YStack>
                 )}

@@ -11,6 +11,7 @@ export type SyncEntityType =
   | 'serotoninSession'
   | 'habits'
   | 'habitRecords'
+  | 'scheduleCompletions'
   | 'journalEntries'
   | 'blockEvents'
   | 'dailyScreenTime'

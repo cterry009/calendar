@@ -19,10 +19,19 @@ export interface GridBar {
   endMinute: number;
   color: string;
   lane: 'background' | 'foreground';
+  /** outline: tinted fill + colored border and text (habits), instead of a solid fill. */
+  variant?: 'solid' | 'outline';
+  /** Block (or habit) marked done for the day: drawn dimmed with a check. */
+  done?: boolean;
   interactive?: boolean;
   /** Set when this bar is a pomodoro segment claimed by a task, so starting it can be linked
    * back to that task. */
   taskId?: string;
+}
+
+/** Translucent fill for an outline bar; hex colors only (theme tokens can't take an alpha suffix). */
+export function outlineFill(color: string): string {
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? `${color}2e` : 'rgba(255,255,255,0.06)';
 }
 
 export function minuteOfDay(date: Date): number {
@@ -92,6 +101,7 @@ export function buildDayBars(events: CalendarEvent[]): GridBar[] {
             endMinute: segment.endMinute,
             color: EVENT_TYPE_COLOR.task,
             lane: 'background',
+            done: block.meta?.done,
             interactive: true,
             taskId: current.task.id,
           });
@@ -108,6 +118,7 @@ export function buildDayBars(events: CalendarEvent[]): GridBar[] {
             endMinute: segment.endMinute,
             color: SEGMENT_COLOR[segment.type],
             lane: 'background',
+            done: block.meta?.done,
             interactive: segment.type === 'pomodoro',
           });
         }
@@ -121,6 +132,7 @@ export function buildDayBars(events: CalendarEvent[]): GridBar[] {
         endMinute: minuteOfDay(block.end),
         color: EVENT_TYPE_COLOR.rest,
         lane: 'background',
+        done: block.meta?.done,
       });
     }
   }
@@ -134,8 +146,10 @@ export function buildDayBars(events: CalendarEvent[]): GridBar[] {
       detail: `${minuteToLabel(minuteOfDay(event.start))} - ${minuteToLabel(minuteOfDay(event.end))}`,
       startMinute: minuteOfDay(event.start),
       endMinute: minuteOfDay(event.end),
-      color: EVENT_TYPE_COLOR[event.type],
+      color: event.type === 'habit' ? event.meta?.habitColor ?? EVENT_TYPE_COLOR.habit : EVENT_TYPE_COLOR[event.type],
       lane: 'foreground',
+      done: event.meta?.done,
+      variant: event.type === 'habit' ? 'outline' : 'solid',
     });
   }
 

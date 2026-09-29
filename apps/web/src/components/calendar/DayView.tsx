@@ -8,6 +8,7 @@ import { StatusCard } from '../StatusCard';
 import { QuickAddTask } from '../tasks/QuickAddTask';
 import type { CalendarEvent } from '../../lib/calendar/types';
 import { isSameDay } from '../../lib/calendar/utils';
+import { isCompletable } from '../../lib/calendar/completions';
 import type { FitnessFormValues } from '../../lib/fitness/types';
 import type { TaskFormValues } from '../../lib/tasks/types';
 import {
@@ -57,6 +58,30 @@ interface DayViewProps {
   isCreatingFitness: boolean;
   onStartFocusSegment: (focusDurationMin: number, taskId?: string) => Promise<void>;
   isStartingFocus: boolean;
+  /** Marks a work/rest block or a habit block done (or undoes it) for this day. */
+  onToggleDone: (event: CalendarEvent) => Promise<void>;
+}
+
+function DoneToggle({ event, onToggle }: { event: CalendarEvent; onToggle: (event: CalendarEvent) => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const done = Boolean(event.meta?.done);
+  return (
+    <AppButton
+      type="button"
+      variant={done ? 'primary' : 'ghost'}
+      disabled={busy}
+      onPress={async () => {
+        setBusy(true);
+        try {
+          await onToggle(event);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {done ? '✓ Hecho' : 'Marcar hecho'}
+    </AppButton>
+  );
 }
 
 function minuteOfDay(date: Date): number {
@@ -189,8 +214,10 @@ export function DayView({
   isCreatingFitness,
   onStartFocusSegment,
   isStartingFocus,
+  onToggleDone,
 }: DayViewProps) {
   const [openFitnessFormBlockId, setOpenFitnessFormBlockId] = useState<string | null>(null);
+  const habitEvents = events.filter((event) => event.type === 'habit');
   const isSelectedDateToday = isSameDay(selectedDate, new Date());
 
   const blocks = events
@@ -264,6 +291,29 @@ export function DayView({
           </>
         )}
 
+        {habitEvents.length > 0 ? (
+          <YStack gap="$2" padding="$4" borderRadius="$4" borderWidth={1} borderColor="$borderColor">
+            <Text fontWeight="700">Habitos del dia</Text>
+            {habitEvents.map((habit) => (
+              <XStack key={habit.id} justifyContent="space-between" alignItems="center" gap="$3" flexWrap="wrap">
+                <XStack flex={1} gap="$2" alignItems="center" opacity={habit.meta?.done ? 0.6 : 1}>
+                  <YStack width={4} alignSelf="stretch" borderRadius={2} backgroundColor={habit.meta?.habitColor ?? '$accent'} />
+                  <YStack>
+                    <Text fontWeight="700">
+                      {habit.meta?.done ? '✓ ' : ''}
+                      {habit.title}
+                    </Text>
+                    <Text color="$muted" fontSize="$2">
+                      {habit.meta?.habitWhen ?? formatTimeRange(habit.start, habit.end)}
+                    </Text>
+                  </YStack>
+                </XStack>
+                <DoneToggle event={habit} onToggle={onToggleDone} />
+              </XStack>
+            ))}
+          </YStack>
+        ) : null}
+
         {blocks.map((block) => {
           const items = otherEvents.filter((event) => isWithinBlock(event, block));
           const isWork = block.type === 'work';
@@ -282,14 +332,18 @@ export function DayView({
               backgroundColor="rgba(255,255,255,0.02)"
               data-tutorial={isWork ? 'day-work-block' : 'day-rest-block'}
             >
-              <YStack>
-                <Text fontWeight="700" color={EVENT_TYPE_COLOR[block.type]}>
-                  {EVENT_TYPE_LABEL[block.type]}: {block.title}
-                </Text>
-                <Text color="$muted" fontSize="$2">
-                  {formatTimeRange(block.start, block.end)}
-                </Text>
-              </YStack>
+              <XStack justifyContent="space-between" alignItems="center" gap="$3" flexWrap="wrap">
+                <YStack flex={1} opacity={block.meta?.done ? 0.6 : 1}>
+                  <Text fontWeight="700" color={EVENT_TYPE_COLOR[block.type]}>
+                    {block.meta?.done ? '✓ ' : ''}
+                    {EVENT_TYPE_LABEL[block.type]}: {block.title}
+                  </Text>
+                  <Text color="$muted" fontSize="$2">
+                    {formatTimeRange(block.start, block.end)}
+                  </Text>
+                </YStack>
+                {isCompletable(block) ? <DoneToggle event={block} onToggle={onToggleDone} /> : null}
+              </XStack>
 
               {isWork ? (
                 <FocusPlanSummary

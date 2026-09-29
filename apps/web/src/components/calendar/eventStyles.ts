@@ -7,6 +7,7 @@ export const EVENT_TYPE_LABEL: Record<CalendarEvent['type'], string> = {
   rest: 'Descanso',
   pomodoro: 'Pomodoro',
   fitness: 'Fitness',
+  habit: 'Habito',
 };
 
 export const EVENT_TYPE_COLOR: Record<CalendarEvent['type'], string> = {
@@ -14,7 +15,11 @@ export const EVENT_TYPE_COLOR: Record<CalendarEvent['type'], string> = {
   work: '$success',
   rest: '$warning',
   pomodoro: '$muted',
-  fitness: '$info',
+  // Real theme tokens or hex only: '$info' / '$primary' don't exist in the Tamagui theme
+  // (packages/ui tokens.ts), and an unresolved token rendered as a broken color.
+  fitness: '#4ecde0',
+  // Fallback only -- habit bars use each habit's own color (meta.habitColor).
+  habit: '$accent',
 };
 
 export const SEGMENT_LABEL: Record<FocusPlanSegment['type'], string> = {

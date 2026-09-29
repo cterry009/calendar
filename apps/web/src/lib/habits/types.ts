@@ -16,6 +16,11 @@ export interface HabitFormValues {
   color: string | null;
   category: string | null;
   linkedFitnessActivityType: string | null;
+  // Time block (lib/habits/timeBlock.ts). Always sent: the server replaces the whole habit on
+  // every edit, so leaving these out used to wipe a block set from the phone.
+  reminderStartMinute: number | null;
+  reminderEndMinute: number | null;
+  reminderDaysOfWeek: number[];
 }
 
 export interface HabitCheckInValues {

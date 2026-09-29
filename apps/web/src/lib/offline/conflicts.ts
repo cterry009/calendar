@@ -11,6 +11,7 @@ const ENTITY_LABELS: Record<SyncEntityType, string> = {
   serotoninSession: 'bienestar diario',
   habits: 'habitos',
   habitRecords: 'registros de habitos',
+  scheduleCompletions: 'bloques hechos',
   journalEntries: 'notas de habitos',
   dailyGameTime: 'tiempo de juego',
   dailyDesktopAppTime: 'tiempo por aplicacion',

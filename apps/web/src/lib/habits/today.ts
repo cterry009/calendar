@@ -2,9 +2,20 @@ import { computeHabitScore, getCompletionTier } from '@calendar/shared';
 import type { HabitCellVisualState } from './labels';
 import type { SyncHabit, SyncHabitRecord } from './types';
 
+// Day keys are the *local* calendar day. A record's stored `date` is the UTC midnight of the key
+// it was saved with, so its key is just the first 10 chars. The old toISOString() version turned
+// "today" into tomorrow every evening in UTC-5 (after 19:00), so a check-in landed on the wrong day.
 export function dateKey(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toISOString().slice(0, 10);
+  if (typeof date === 'string') return date.slice(0, 10);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// Key arithmetic runs on UTC midnights, so format those in UTC.
+function utcKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }
 
 export function todayKey(): string {
@@ -14,7 +25,7 @@ export function todayKey(): string {
 export function shiftDateKey(key: string, deltaDays: number): string {
   const d = new Date(`${key}T00:00:00.000Z`);
   d.setUTCDate(d.getUTCDate() + deltaDays);
-  return dateKey(d);
+  return utcKey(d);
 }
 
 export function daysBetween(startKey: string, endKey: string): number {
@@ -58,7 +69,7 @@ export function lastNDateKeys(n: number, endKey: string = todayKey()): string[] 
   for (let i = n - 1; i >= 0; i--) {
     const day = new Date(end);
     day.setUTCDate(day.getUTCDate() - i);
-    keys.push(dateKey(day));
+    keys.push(utcKey(day));
   }
   return keys;
 }

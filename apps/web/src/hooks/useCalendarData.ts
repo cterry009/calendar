@@ -11,6 +11,9 @@ interface UseCalendarDataResult {
   blockListEntries: SyncSnapshot['blockListEntries'];
   focusTriggers: SyncSnapshot['focusTriggers'];
   fitnessEntries: SyncSnapshot['fitnessEntries'];
+  habits: SyncSnapshot['habits'];
+  scheduleCompletions: SyncSnapshot['scheduleCompletions'];
+  habitRecords: SyncSnapshot['habitRecords'];
   syncedAt: string | null;
   isLoading: boolean;
   error: string | null;
@@ -35,6 +38,7 @@ const EMPTY_SNAPSHOT: Omit<SyncSnapshot, 'syncedAt'> = {
   habits: [],
   habitRecords: [],
   journalEntries: [],
+  scheduleCompletions: [],
 };
 
 export function useCalendarData(): UseCalendarDataResult {
@@ -70,6 +74,7 @@ export function useCalendarData(): UseCalendarDataResult {
         habits: data.habits,
         habitRecords: data.habitRecords,
         journalEntries: data.journalEntries,
+        scheduleCompletions: data.scheduleCompletions ?? [],
       });
       setSyncedAt(data.syncedAt);
     } catch (errorValue) {

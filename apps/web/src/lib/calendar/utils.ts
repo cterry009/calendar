@@ -3,12 +3,18 @@
   CalendarEvent,
   MonthDaySummary,
   SyncFitnessEntry,
+  SyncHabit,
+  SyncHabitRecord,
+  SyncScheduleCompletion,
   SyncPomodoroSession,
   SyncSchedule,
   SyncSnapshot,
   SyncTask,
   WeekDaySummary,
 } from './types';
+import { describeTimeBlock, hasTimeBlock, timeBlockRange } from '../habits/timeBlock';
+import { DEFAULT_HABIT_COLOR } from '../habits/labels';
+import { dateKey, findRecordForDate } from '../habits/today';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -142,7 +148,9 @@ function scheduleEventsForRange(
   schedules: SyncSchedule[],
   rangeStart: Date,
   rangeEnd: Date,
+  completions: SyncScheduleCompletion[] = [],
 ): CalendarEvent[] {
+  const doneKeys = new Set(completions.map((c) => `${c.scheduleId}:${dateKey(c.date)}`));
   const events: CalendarEvent[] = [];
   for (let cursor = startOfDay(rangeStart); cursor <= rangeEnd; cursor = addDays(cursor, 1)) {
     const current = startOfDay(cursor);
@@ -161,6 +169,8 @@ function scheduleEventsForRange(
         start,
         end,
         meta: {
+          scheduleId: schedule.id,
+          done: doneKeys.has(`${schedule.id}:${dateKey(current)}`),
           kind: schedule.kind,
           pomodoroMin: schedule.pomodoroMin,
           shortBreakMin: schedule.shortBreakMin,
@@ -175,8 +185,51 @@ function scheduleEventsForRange(
   return events;
 }
 
+// Habits with a time block (lib/habits/timeBlock.ts) become calendar blocks on the days they
+// apply to. Archived / deleted habits never show; habits without a block stay off the calendar.
+function habitEventsForRange(
+  habits: SyncHabit[],
+  rangeStart: Date,
+  rangeEnd: Date,
+  records: SyncHabitRecord[] = [],
+): CalendarEvent[] {
+  const events: CalendarEvent[] = [];
+  const scheduled = habits.filter((habit) => !habit.archived && hasTimeBlock(habit));
+
+  for (let cursor = startOfDay(rangeStart); cursor <= rangeEnd; cursor = addDays(cursor, 1)) {
+    const current = startOfDay(cursor);
+    for (const habit of scheduled) {
+      const days = habit.reminderDaysOfWeek?.length ? habit.reminderDaysOfWeek : [0, 1, 2, 3, 4, 5, 6];
+      if (!days.includes(current.getDay())) continue;
+      const range = timeBlockRange(habit);
+      if (!range) continue;
+      const start = minuteToDate(current, range.start);
+      const end = minuteToDate(current, range.end);
+      if (!overlapsRange(start, end, rangeStart, rangeEnd)) continue;
+      const record = findRecordForDate(records, habit.id, dateKey(current));
+      events.push({
+        id: `habit-${habit.id}-${current.toISOString()}`,
+        type: 'habit',
+        title: habit.title,
+        start,
+        end,
+        meta: {
+          habitId: habit.id,
+          habitWhen: describeTimeBlock(habit) ?? undefined,
+          habitColor: habit.color ?? DEFAULT_HABIT_COLOR,
+          done: record?.status === 'DONE',
+          habitRecordId: record?.id,
+        },
+      });
+    }
+  }
+
+  return events;
+}
+
 export function buildEventsForRange(
-  snapshot: Pick<SyncSnapshot, 'tasks' | 'schedules' | 'pomodoroSessions' | 'fitnessEntries'>,
+  snapshot: Pick<SyncSnapshot, 'tasks' | 'schedules' | 'pomodoroSessions' | 'fitnessEntries'> &
+    Partial<Pick<SyncSnapshot, 'habits' | 'habitRecords' | 'scheduleCompletions'>>,
   rangeStart: Date,
   rangeEnd: Date,
 ): CalendarEvent[] {
@@ -195,14 +248,26 @@ export function buildEventsForRange(
       Boolean(event && overlapsRange(event.start, event.end, normalizedStart, normalizedEnd)),
     );
 
-  const scheduleEvents = scheduleEventsForRange(snapshot.schedules, normalizedStart, normalizedEnd);
+  const scheduleEvents = scheduleEventsForRange(
+    snapshot.schedules,
+    normalizedStart,
+    normalizedEnd,
+    snapshot.scheduleCompletions,
+  );
   const fitnessEvents = snapshot.fitnessEntries
     .map(fitnessToEvent)
     .filter((event): event is CalendarEvent =>
       Boolean(event && overlapsRange(event.start, event.end, normalizedStart, normalizedEnd)),
     );
 
-  return [...taskEvents, ...scheduleEvents, ...pomodoroEvents, ...fitnessEvents].sort(
+  const habitEvents = habitEventsForRange(
+    snapshot.habits ?? [],
+    normalizedStart,
+    normalizedEnd,
+    snapshot.habitRecords,
+  );
+
+  return [...taskEvents, ...scheduleEvents, ...pomodoroEvents, ...fitnessEvents, ...habitEvents].sort(
     (a, b) => a.start.getTime() - b.start.getTime(),
   );
 }

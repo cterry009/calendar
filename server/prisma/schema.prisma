@@ -136,6 +136,7 @@ model User {
   serotoninSession    SerotoninSession?
   habits              Habit[]
   habitRecords        HabitRecord[]
+  scheduleCompletions ScheduleCompletion[]
   journalEntries      JournalEntry[]
   blockEvents         BlockEvent[]
 
@@ -212,10 +213,33 @@ model Schedule {
   pomodorosPerChunk Int?
   chunks            Int? // number of pomodoro blocks (separated by long breaks); must fit within startMinute..endMinute
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completions ScheduleCompletion[]
 
   @@index([userId, kind])
   @@map("schedules")
+}
+
+// A recurring schedule block marked done on a given day ("hice este bloque de trabajo hoy").
+// Same shape as HabitRecord: one row per block per day, deleted to undo. `date` is the local
+// calendar day, sent by clients as YYYY-MM-DD and stored as that day's UTC midnight -- the same
+// convention HabitRecord.date uses, so both compare by the same date key.
+model ScheduleCompletion {
+  id         String   @id @default(cuid())
+  userId     String
+  scheduleId String
+  date       DateTime
+  clientId   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, date])
+  @@unique([userId, clientId])
+  @@index([userId, date])
+  @@map("schedule_completions")
 }
 
 // ─── Pomodoro ────────────────────────────────────────────────────────────────

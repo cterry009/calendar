@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, XStack, YStack } from '@calendar/ui';
 import type { CalendarEvent } from '../../lib/calendar/types';
-import { buildDayBars, clampZoom, DEFAULT_ZOOM, layoutBars, minuteOfDay, ZOOM_STEP } from './timeGridLayout';
+import { buildDayBars, clampZoom, DEFAULT_ZOOM, layoutBars, minuteOfDay, outlineFill, ZOOM_STEP } from './timeGridLayout';
 import { ZoomControls } from './ZoomControls';
 
 const BASE_ROW_HEIGHT_PX = 96;
@@ -144,12 +144,13 @@ export function DayTimeGrid({
                 paddingVertical={bar.height >= 30 ? 4 : 0}
                 overflow="hidden"
                 cursor={canStart ? 'pointer' : 'default'}
-                opacity={canStart && isStartingFocus ? 0.6 : 1}
+                opacity={bar.done ? 0.45 : canStart && isStartingFocus ? 0.6 : 1}
                 onPress={canStart ? () => void onStartFocusSegment(bar.endMinute - bar.startMinute, bar.taskId) : undefined}
               >
                 {bar.height >= 18 ? (
                   <Text fontSize="$3" color={bar.color} fontWeight={isCurrent ? '800' : '600'} lineHeight={18}>
                     {canStart ? '▶ ' : ''}
+                    {bar.done ? '✓ ' : ''}
                     {bar.label}
                   </Text>
                 ) : null}
@@ -162,34 +163,42 @@ export function DayTimeGrid({
             );
           })}
 
-          {foregroundBars.map((bar) => (
-            <YStack
-              key={bar.id}
-              position="absolute"
-              top={bar.top}
-              left={22}
-              right={6}
-              height={bar.height}
-              title={`${bar.label} · ${bar.detail}`}
-              borderRadius="$3"
-              backgroundColor={bar.color}
-              paddingHorizontal="$3"
-              paddingVertical={bar.height >= 30 ? 4 : 0}
-              overflow="hidden"
-              zIndex={2}
-            >
-              {bar.height >= 18 ? (
-                <Text fontSize="$3" fontWeight="800" color="#0a1c13" lineHeight={18}>
-                  {bar.label}
-                </Text>
-              ) : null}
-              {bar.height >= 50 ? (
-                <Text fontSize="$2" color="#0a1c13" opacity={0.8}>
-                  {bar.detail}
-                </Text>
-              ) : null}
-            </YStack>
-          ))}
+          {foregroundBars.map((bar) => {
+            const outline = bar.variant === 'outline';
+            return (
+              <YStack
+                key={bar.id}
+                position="absolute"
+                top={bar.top}
+                left={22}
+                right={6}
+                height={bar.height}
+                title={`${bar.label} · ${bar.detail}`}
+                borderRadius="$3"
+                backgroundColor={outline ? outlineFill(bar.color) : bar.color}
+                borderWidth={outline ? 1 : 0}
+                borderColor={outline ? bar.color : undefined}
+                borderLeftWidth={outline ? 4 : 0}
+                paddingHorizontal="$3"
+                paddingVertical={bar.height >= 30 ? 4 : 0}
+                overflow="hidden"
+                zIndex={2}
+                opacity={bar.done ? 0.5 : 1}
+              >
+                {bar.height >= 18 ? (
+                  <Text fontSize="$3" fontWeight="800" color={outline ? bar.color : '#0a1c13'} lineHeight={18}>
+                    {bar.done ? '✓ ' : ''}
+                    {bar.label}
+                  </Text>
+                ) : null}
+                {bar.height >= 50 ? (
+                  <Text fontSize="$2" color={outline ? '$muted' : '#0a1c13'} opacity={outline ? 1 : 0.8}>
+                    {bar.detail}
+                  </Text>
+                ) : null}
+              </YStack>
+            );
+          })}
 
           {isToday && nowMinute >= 0 ? (
             <YStack position="absolute" top={(nowMinute / 60) * rowHeightPx} left={0} right={0} height={2} backgroundColor="$error" zIndex={3} />

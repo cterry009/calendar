@@ -11,6 +11,7 @@ export type SyncEntityType =
   | 'serotoninSession'
   | 'habits'
   | 'habitRecords'
+  | 'scheduleCompletions'
   | 'journalEntries'
   | 'dailyGameTime'
   | 'dailyDesktopAppTime';
@@ -38,6 +39,7 @@ export interface SyncBatchBody {
   serotoninSession?: unknown[];
   habits?: unknown[];
   habitRecords?: unknown[];
+  scheduleCompletions?: unknown[];
   journalEntries?: unknown[];
   dailyGameTime?: unknown[];
   dailyDesktopAppTime?: unknown[];

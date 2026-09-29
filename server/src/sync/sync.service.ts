@@ -14,6 +14,7 @@ import {
   FocusTriggerSyncChangeDto,
   HabitRecordSyncChangeDto,
   HabitSyncChangeDto,
+  ScheduleCompletionSyncChangeDto,
   JournalEntrySyncChangeDto,
   PomodoroSyncChangeDto,
   ScheduleSyncChangeDto,
@@ -50,6 +51,7 @@ export class SyncService {
       habits,
       habitRecords,
       journalEntries,
+      scheduleCompletions,
     ] = await Promise.all([
       this.prisma.task.findMany({
         where: { userId, deletedAt: null },
@@ -77,6 +79,11 @@ export class SyncService {
       this.prisma.habit.findMany({ where: { userId, deletedAt: null } }),
       this.prisma.habitRecord.findMany({ where: { userId } }),
       this.prisma.journalEntry.findMany({ where: { userId } }),
+      // Last 60 days: clients only show "done" marks on the calendar around the current weeks,
+      // and this grows by up to ~20 rows a day.
+      this.prisma.scheduleCompletion.findMany({
+        where: { userId, date: { gte: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) } },
+      }),
     ]);
 
     return {
@@ -95,6 +102,7 @@ export class SyncService {
       habits,
       habitRecords,
       journalEntries,
+      scheduleCompletions,
       detoxPlan: detoxPlan
         ? {
             id: detoxPlan.id,
@@ -311,6 +319,18 @@ export class SyncService {
         this.bucketResult(result, 'habitRecords', outcome);
         if (outcome.status === 'applied') {
           changedEntities.add('habitRecords');
+        }
+      }
+    }
+
+    if (dto.scheduleCompletions?.length) {
+      result.applied.scheduleCompletions = [];
+      result.conflicts.scheduleCompletions = [];
+      for (const change of dto.scheduleCompletions) {
+        const outcome = await this.applyScheduleCompletionChange(userId, change);
+        this.bucketResult(result, 'scheduleCompletions', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('scheduleCompletions');
         }
       }
     }
@@ -1188,6 +1208,59 @@ export class SyncService {
       ? await this.prisma.habitRecord.update({ where: { id: existing.id }, data })
       : await this.prisma.habitRecord.create({ data: { ...data, userId } });
 
+    return { status: 'applied', clientKey: key, record };
+  }
+
+  // Idempotent by (scheduleId, date): marking the same block done twice -- from the phone and the
+  // PC, or a retried offline flush -- resolves to the one row instead of tripping the unique key.
+  private async applyScheduleCompletionChange(
+    userId: string,
+    change: ScheduleCompletionSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const key = this.clientKey(change);
+    const date = change.date ? new Date(change.date) : null;
+
+    let existing = change.id
+      ? await this.prisma.scheduleCompletion.findFirst({ where: { id: change.id, userId } })
+      : null;
+    if (!existing && change.clientId) {
+      existing = await this.prisma.scheduleCompletion.findFirst({ where: { userId, clientId: change.clientId } });
+    }
+    if (!existing && change.scheduleId && date) {
+      existing = await this.prisma.scheduleCompletion.findFirst({
+        where: { userId, scheduleId: change.scheduleId, date },
+      });
+    }
+
+    if (change.deleted) {
+      if (!existing) {
+        return { status: 'skipped', clientKey: key };
+      }
+      await this.prisma.scheduleCompletion.delete({ where: { id: existing.id } });
+      return { status: 'applied', clientKey: key, record: { id: existing.id } };
+    }
+
+    if (!change.scheduleId || !date) {
+      throw new BadRequestException('Schedule completion changes require scheduleId and date');
+    }
+    if (existing) {
+      return { status: 'applied', clientKey: key, record: existing };
+    }
+
+    const schedule = await this.prisma.schedule.findFirst({ where: { id: change.scheduleId, userId } });
+    if (!schedule) {
+      return { status: 'skipped', clientKey: key };
+    }
+
+    const record = await this.prisma.scheduleCompletion.create({
+      data: {
+        userId,
+        scheduleId: change.scheduleId,
+        date,
+        clientId: change.clientId ?? null,
+        updatedAt: new Date(change.updatedAt),
+      },
+    });
     return { status: 'applied', clientKey: key, record };
   }
 

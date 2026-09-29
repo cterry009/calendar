@@ -734,6 +734,34 @@ export class HabitRecordSyncChangeDto {
   fitnessEntryId?: string;
 }
 
+// A schedule block marked done on a day. Undo = deleted:true. `date` is the local day
+// (YYYY-MM-DD); see ScheduleCompletion in schema.prisma.
+export class ScheduleCompletionSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsOptional()
+  @IsString()
+  clientId?: string;
+
+  @IsDateString()
+  updatedAt!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  deleted?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  scheduleId?: string;
+
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+}
+
 export class JournalEntrySyncChangeDto {
   @IsOptional()
   @IsString()
@@ -861,6 +889,12 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => HabitRecordSyncChangeDto)
   habitRecords?: HabitRecordSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ScheduleCompletionSyncChangeDto)
+  scheduleCompletions?: ScheduleCompletionSyncChangeDto[];
 
   @IsOptional()
   @IsArray()

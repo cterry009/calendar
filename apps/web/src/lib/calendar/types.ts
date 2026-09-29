@@ -10,7 +10,7 @@ import type {
 
 export type CalendarViewMode = 'day' | 'week' | 'month';
 
-export type CalendarEventType = 'task' | 'work' | 'rest' | 'pomodoro' | 'fitness';
+export type CalendarEventType = 'task' | 'work' | 'rest' | 'pomodoro' | 'fitness' | 'habit';
 
 export interface SyncTask {
   id: string;
@@ -202,6 +202,15 @@ export interface SyncDailyDesktopAppTime {
   topApps: SyncTopDesktopAppUsage[];
 }
 
+/** A schedule block marked done on a day (server ScheduleCompletion). `date` is that day's UTC midnight. */
+export interface SyncScheduleCompletion {
+  id: string;
+  scheduleId: string;
+  date: string;
+  clientId: string | null;
+  updatedAt: string;
+}
+
 export interface SyncSnapshot {
   tasks: SyncTask[];
   schedules: SyncSchedule[];
@@ -220,6 +229,7 @@ export interface SyncSnapshot {
   habits: SyncHabit[];
   habitRecords: SyncHabitRecord[];
   journalEntries: SyncJournalEntry[];
+  scheduleCompletions: SyncScheduleCompletion[];
   syncedAt: string;
 }
 
@@ -243,6 +253,17 @@ export interface CalendarEvent {
     longBreakMin?: number | null;
     pomodorosPerChunk?: number | null;
     chunks?: number | null;
+    habitId?: string;
+    /** "antes de las 07:00" or "08:00-09:00" -- how the habit's block was defined. */
+    habitWhen?: string;
+    /** The habit's own color (hex) -- habits are drawn in it, outlined, to stand apart from tasks. */
+    habitColor?: string;
+    /** Work/rest schedule this block came from (for marking it done). */
+    scheduleId?: string;
+    /** Marked done for this day: a ScheduleCompletion for blocks, a DONE HabitRecord for habits. */
+    done?: boolean;
+    /** The day's HabitRecord id, so un-marking can delete it. */
+    habitRecordId?: string;
   };
 }
 
