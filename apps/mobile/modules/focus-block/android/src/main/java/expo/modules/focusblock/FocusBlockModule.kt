@@ -60,6 +60,12 @@ class FocusBlockModule : Module() {
       }
     }
 
+    // Texts for the native "App bloqueada" popup (BlockPopup.kt): the shared activity suggestions
+    // by category and the motivational phrases, as JSON.
+    Function("setBlockPopupContent") { json: String ->
+      appContext.reactContext?.let { context -> BlockPopup.writeContent(context, json) }
+    }
+
     // Lets JS defer to the native limit: during work hours, social warnings are native-only.
     Function("isWorkHours") {
       appContext.reactContext?.let { context -> WorkSocialLimit.isWorkHours(context) } ?: false

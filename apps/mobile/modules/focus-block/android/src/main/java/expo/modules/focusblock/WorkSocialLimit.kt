@@ -45,7 +45,7 @@ internal object WorkSocialLimit {
   private const val CHANNEL_ID = "work_social_limit"
   private const val NOTIFICATION_ID = 8241
 
-  data class WorkWindow(val days: Set<Int>, val startMinute: Int, val endMinute: Int)
+  data class WorkWindow(val days: Set<Int>, val startMinute: Int, val endMinute: Int, val label: String? = null)
 
   sealed class Decision {
     object None : Decision()
@@ -80,6 +80,7 @@ internal object WorkSocialLimit {
           (0 until days.length()).map { days.getInt(it) }.toSet(),
           item.getInt("start"),
           item.getInt("end"),
+          item.optString("label").takeIf { it.isNotBlank() },
         )
       }
     }.getOrDefault(emptyList())
@@ -103,6 +104,16 @@ internal object WorkSocialLimit {
     if (lastWarned == null) WARNING_MINUTES else lastWarned + warningInterval(lastWarned)
 
   fun isWorkHours(context: Context): Boolean = isInWorkWindow(Calendar.getInstance(), windows(context))
+
+  /** The WORK window covering now, if any -- for the block popup's "why". */
+  fun currentWorkWindow(context: Context): WorkWindow? {
+    val now = Calendar.getInstance()
+    val day = now.get(Calendar.DAY_OF_WEEK) - 1
+    val minute = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+    return windows(context).firstOrNull { day in it.days && minute >= it.startMinute && minute < it.endMinute }
+  }
+
+  fun clock(minute: Int): String = "%02d:%02d".format(minute / 60, minute % 60)
 
   // ---- Per-day state ----
 

@@ -19,6 +19,7 @@ export interface FocusBlockNativeModule {
   setNightWindow(startMinutes: number, endMinutes: number): void;
   setWorkSocialLimit(windowsJson: string, socialPackages: string[]): void;
   isWorkHours(): boolean;
+  setBlockPopupContent(json: string): void;
   getNightWindowStartMinutes(): number;
   getNightWindowEndMinutes(): number;
   isAccessibilityServiceEnabled(): boolean;

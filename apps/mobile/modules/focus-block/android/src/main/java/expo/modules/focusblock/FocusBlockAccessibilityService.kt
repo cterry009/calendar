@@ -32,6 +32,7 @@ import java.util.Calendar
  * (FocusBlockNotifications.kt), the Android-sanctioned way around exactly this restriction.
  */
 private const val WORK_LIMIT_TICK_MS = 60_000L
+private const val POPUP_DELAY_MS = 350L
 
 class FocusBlockAccessibilityService : AccessibilityService() {
 
@@ -64,17 +65,17 @@ class FocusBlockAccessibilityService : AccessibilityService() {
       FocusBlockPrefs.isLockdown(this) &&
       !isFocusAllowlisted(foregroundPackage)
     ) {
-      performGlobalAction(GLOBAL_ACTION_HOME)
-      FocusBlockNotifications.showBlockedAlert(this, foregroundPackage)
-      FocusBlockPrefs.addPendingBlockEvent(this, foregroundPackage, "FOCUS", "BLOCKED_OPEN_ATTEMPT")
+      blockAndExplain(foregroundPackage, "FOCUS", focusReason())
       return
     }
 
     val blockedScope = blockedScope(foregroundPackage) ?: return
 
-    performGlobalAction(GLOBAL_ACTION_HOME)
-    FocusBlockNotifications.showBlockedAlert(this, foregroundPackage)
-    FocusBlockPrefs.addPendingBlockEvent(this, foregroundPackage, blockedScope, "BLOCKED_OPEN_ATTEMPT")
+    blockAndExplain(
+      foregroundPackage,
+      blockedScope,
+      if (blockedScope == "NIGHT") "es horario de bloqueo nocturno" else focusReason(),
+    )
   }
 
   // Apps that must stay reachable even under total lockdown: this app itself, the launcher (or the
@@ -246,13 +247,41 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     }
   }
 
+  /**
+   * Every block goes through here: back to home, logged as a BlockEvent, a notification (kept for
+   * the lock screen and the notification history) and the full-screen popup explaining it.
+   */
+  private fun blockAndExplain(pkg: String, scope: String, reason: String) {
+    performGlobalAction(GLOBAL_ACTION_HOME)
+    val label = appLabel(pkg)
+    val category = when {
+      pkg in WorkSocialLimit.socialPackages(this) -> BlockPopup.Category.SOCIAL
+      isSocialOrGame(pkg) -> BlockPopup.Category.GAME
+      else -> BlockPopup.Category.GENERIC
+    }
+    FocusBlockNotifications.showBlockedAlert(this, pkg, label, reason)
+    FocusBlockPrefs.addPendingBlockEvent(this, pkg, scope, "BLOCKED_OPEN_ATTEMPT")
+    // After the home action settles, so the popup lands on the launcher, not the closing app.
+    handler.postDelayed({ BlockPopup.show(this, label, reason, category) }, POPUP_DELAY_MS)
+  }
+
+  private fun appLabel(pkg: String): String = runCatching {
+    packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
+  }.getOrDefault(pkg)
+
+  /** "estas en tu bloque de trabajo «Estudio B2» (hasta 12:30)", or the generic focus reason. */
+  private fun focusReason(): String {
+    val window = WorkSocialLimit.currentWorkWindow(this)
+      ?: return "tenes un enfoque activo (pomodoro u horario de trabajo)"
+    val name = window.label?.let { " «$it»" } ?: ""
+    return "estas en tu bloque de trabajo$name (hasta ${WorkSocialLimit.clock(window.endMinute)})"
+  }
+
   /** Kicks a social app or game out if a work focus is on; true when it did. */
   private fun kickIfInWorkFocus(pkg: String): Boolean {
     if (!isSocialOrGame(pkg)) return false
     if (!WorkSocialLimit.isWorkHours(this) && !FocusBlockPrefs.isActive(this)) return false
-    performGlobalAction(GLOBAL_ACTION_HOME)
-    FocusBlockNotifications.showBlockedAlert(this, pkg)
-    FocusBlockPrefs.addPendingBlockEvent(this, pkg, "FOCUS", "BLOCKED_OPEN_ATTEMPT")
+    blockAndExplain(pkg, "FOCUS", focusReason())
     return true
   }
 
@@ -265,9 +294,7 @@ class FocusBlockAccessibilityService : AccessibilityService() {
         false
       }
       is WorkSocialLimit.Decision.Block -> {
-        performGlobalAction(GLOBAL_ACTION_HOME)
-        FocusBlockNotifications.showBlockedAlert(this, pkg)
-        FocusBlockPrefs.addPendingBlockEvent(this, pkg, "FOCUS", "BLOCKED_OPEN_ATTEMPT")
+        blockAndExplain(pkg, "FOCUS", "se acabo tu tiempo de redes sociales en horario de trabajo")
         true
       }
     }

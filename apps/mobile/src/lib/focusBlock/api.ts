@@ -97,7 +97,7 @@ export function drainPendingBlockEvents(): NativePendingBlockEvent[] {
 // Work-hours social limit, evaluated natively (WorkSocialLimit.kt) so it works while this app is
 // closed. `windows` are the enabled WORK schedules.
 export function setWorkSocialLimit(
-  windows: Array<{ days: number[]; start: number; end: number }>,
+  windows: Array<{ days: number[]; start: number; end: number; label?: string }>,
   socialPackages: string[],
 ): void {
   if (Platform.OS !== 'android') return;
@@ -116,5 +116,18 @@ export function isNativeWorkHours(): boolean {
     return FocusBlockModule.isWorkHours();
   } catch {
     return false;
+  }
+}
+
+// Texts for the native block popup (BlockPopup.kt), from the shared lists the desktop popup uses.
+export function setBlockPopupContent(content: {
+  suggestions: Record<string, string[]>;
+  phrases: string[];
+}): void {
+  if (Platform.OS !== 'android') return;
+  try {
+    FocusBlockModule.setBlockPopupContent(JSON.stringify(content));
+  } catch {
+    // Older native build without it: the popup falls back to its built-in texts.
   }
 }

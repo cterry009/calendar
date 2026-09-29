@@ -3,8 +3,8 @@ import { usePomodoro } from '../context/PomodoroContext';
 import { useSync } from '../context/SyncContext';
 import { isNowWithinWorkSchedule } from '../lib/calendar/utils';
 import type { SyncScheduleRecord } from '../lib/calendar/types';
-import { setBlockingState, setWorkSocialLimit } from '../lib/focusBlock/api';
-import { knownDistractingPackages } from '@calendar/shared';
+import { setBlockPopupContent, setBlockingState, setWorkSocialLimit } from '../lib/focusBlock/api';
+import { activitySuggestionsByCategory, knownDistractingPackages, motivationalPhrases } from '@calendar/shared';
 import { pullSnapshot } from '../lib/sync/api';
 import { useBlockList } from './useBlockList';
 import { useFocusLockdownEnabled } from './useFocusLockdownEnabled';
@@ -103,11 +103,21 @@ export function useFocusBlocking(): FocusBlockingState {
   const workWindowsKey = JSON.stringify(
     schedules
       .filter((schedule) => schedule.enabled && schedule.kind === 'WORK')
-      .map((schedule) => ({ days: schedule.daysOfWeek, start: schedule.startMinute, end: schedule.endMinute })),
+      .map((schedule) => ({
+        days: schedule.daysOfWeek,
+        start: schedule.startMinute,
+        end: schedule.endMinute,
+        // Shown in the block popup: "estas en tu bloque de trabajo «Estudio B2»".
+        label: schedule.label ?? undefined,
+      })),
   );
   useEffect(() => {
     setWorkSocialLimit(JSON.parse(workWindowsKey), knownDistractingPackages());
   }, [workWindowsKey]);
+
+  useEffect(() => {
+    setBlockPopupContent({ suggestions: activitySuggestionsByCategory(), phrases: motivationalPhrases() });
+  }, []);
 
   return { isActive, isPomodoroBlocking, isWorkHoursActive, blockedPackageNames, lockdownEnabled };
 }

@@ -57,7 +57,12 @@ internal object FocusBlockNotifications {
     return manager.canUseFullScreenIntent()
   }
 
-  fun showBlockedAlert(context: Context, blockedPackage: String) {
+  fun showBlockedAlert(
+    context: Context,
+    blockedPackage: String,
+    appLabel: String = blockedPackage,
+    reason: String = "volviste a un enfoque activo",
+  ) {
     if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
 
     ensureChannel(context)
@@ -74,8 +79,9 @@ internal object FocusBlockNotifications {
 
     val notification = NotificationCompat.Builder(context, CHANNEL_ID)
       .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-      .setContentTitle("App bloqueada")
-      .setContentText("Volviste a un enfoque activo -- toca para volver a la app.")
+      .setContentTitle("$appLabel bloqueada")
+      .setContentText("Se cerro porque $reason.")
+      .setStyle(NotificationCompat.BigTextStyle().bigText("Se cerro porque $reason. Toca para volver a la app."))
       .setPriority(NotificationCompat.PRIORITY_HIGH)
       .setCategory(NotificationCompat.CATEGORY_CALL)
       .setFullScreenIntent(pendingIntent, true)

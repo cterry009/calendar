@@ -55,3 +55,8 @@ export function categorizeBlockedEntry(
   if (kind === 'MOBILE_APP') return isKnownDistractingApp(identifier) ? 'SOCIAL' : 'GENERIC';
   return 'GENERIC';
 }
+
+/** All suggestions by bucket -- pushed to Android's native block popup, which can't import this. */
+export function activitySuggestionsByCategory(): Record<BlockCategory, string[]> {
+  return { SOCIAL: [...SOCIAL_ACTIVITIES], GAME: [...GAME_ACTIVITIES], GENERIC: [...GENERIC_ACTIVITIES] };
+}

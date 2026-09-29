@@ -27,3 +27,8 @@ const MOTIVATIONAL_PHRASES = [
 export function pickMotivationalPhrase(): string {
   return MOTIVATIONAL_PHRASES[Math.floor(Math.random() * MOTIVATIONAL_PHRASES.length)];
 }
+
+/** The full list, for Android's native block popup. */
+export function motivationalPhrases(): string[] {
+  return [...MOTIVATIONAL_PHRASES];
+}
