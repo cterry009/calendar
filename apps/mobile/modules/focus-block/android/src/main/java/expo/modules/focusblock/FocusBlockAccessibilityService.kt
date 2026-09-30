@@ -33,6 +33,8 @@ import java.util.Calendar
  */
 private const val WORK_LIMIT_TICK_MS = 60_000L
 private const val POPUP_DELAY_MS = 350L
+private const val NIGHT_WARNING_LEAD_MIN = 30
+private const val NIGHT_WARNING_EVERY_MS = 15 * 60_000L
 
 class FocusBlockAccessibilityService : AccessibilityService() {
 
@@ -52,6 +54,7 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     // they're on the block list. "Focus" = inside a WORK block (evaluated natively from the pushed
     // schedules, so it holds with the app closed) or a pomodoro/work session JS reported active.
     if (kickIfInWorkFocus(foregroundPackage)) return
+    if (applyNightRule(foregroundPackage)) return
 
     if (applyWorkSocialLimit(foregroundPackage)) return
 
@@ -212,6 +215,7 @@ class FocusBlockAccessibilityService : AccessibilityService() {
       // Catches an app that was already open when a WORK block or pomodoro began: no window event
       // fires for it, so without this it would stay usable until the next app switch.
       if (kickIfInWorkFocus(pkg)) return
+      if (applyNightRule(pkg)) return
       applyWorkSocialLimit(pkg)
       handler.postDelayed(this, WORK_LIMIT_TICK_MS)
     }
@@ -275,6 +279,44 @@ class FocusBlockAccessibilityService : AccessibilityService() {
       ?: return "tenes un enfoque activo (pomodoro u horario de trabajo)"
     val name = window.label?.let { " «$it»" } ?: ""
     return "estas en tu bloque de trabajo$name (hasta ${WorkSocialLimit.clock(window.endMinute)})"
+  }
+
+  // ---- Night: social media and games ----
+  //
+  // With night mode on, the half hour before the window opens warns every 15 minutes while a
+  // social app or game is in front ("en 30 min se bloquean..."), and from the window's start
+  // (22:30 by default) they're blocked with the same rule as the NIGHT list: all evening, then in
+  // the morning until a jog / 1000 steps / the cutoff (NightBlockRules).
+  private var lastNightWarningAt = 0L
+
+  /** True when it kicked the app out. */
+  private fun applyNightRule(pkg: String): Boolean {
+    if (!FocusBlockPrefs.isNightEnabled(this) || !isSocialOrGame(pkg)) return false
+    val now = Calendar.getInstance()
+    val start = FocusBlockPrefs.nightStartMinutes(this)
+    val blocking = NightBlockRules.isNightListBlocking(
+      now,
+      start,
+      FocusBlockPrefs.nightEndMinutes(this),
+      JogStatusReader.hasJoggedToday(this),
+      StepCountReader.dailySteps(this),
+    )
+    if (blocking) {
+      blockAndExplain(pkg, "NIGHT", "es horario de bloqueo nocturno (desde las ${WorkSocialLimit.clock(start)})")
+      return true
+    }
+
+    val minutesLeft = NightBlockRules.minutesUntilNightStart(now, start)
+    val nowMs = System.currentTimeMillis()
+    if (minutesLeft in 1..NIGHT_WARNING_LEAD_MIN && nowMs - lastNightWarningAt >= NIGHT_WARNING_EVERY_MS) {
+      lastNightWarningAt = nowMs
+      val category = if (pkg in WorkSocialLimit.socialPackages(this)) BlockPopup.Category.SOCIAL else BlockPopup.Category.GAME
+      val title = "Bloqueo nocturno en $minutesLeft min"
+      val body = "A las ${WorkSocialLimit.clock(start)} se bloquean las redes sociales y los juegos hasta manana. Buen momento para ir cerrando."
+      WorkSocialLimit.notify(this, title, body)
+      BlockPopup.showWarning(this, title, body, category)
+    }
+    return false
   }
 
   /** Kicks a social app or game out if a work focus is on; true when it did. */

@@ -4,6 +4,7 @@ import { DesktopBlockingBridge } from '../components/desktop/DesktopBlockingBrid
 import { DesktopAppTimeBridge } from '../components/desktop/DesktopAppTimeBridge';
 import { DesktopGameTimeBridge } from '../components/desktop/DesktopGameTimeBridge';
 import { DesktopUsageWarnings } from '../components/desktop/DesktopUsageWarnings';
+import { DesktopNightWarnings } from '../components/desktop/DesktopNightWarnings';
 import { DesktopTrayBridge } from '../components/desktop/DesktopTrayBridge';
 import { SoftFocusOverlay } from '../components/focus/SoftFocusOverlay';
 import { PanelHost } from '../components/panels/PanelHost';
@@ -33,6 +34,7 @@ export function ProtectedAppLayout() {
                   <DesktopGameTimeBridge />
                   <DesktopAppTimeBridge />
                   <DesktopUsageWarnings />
+                  <DesktopNightWarnings />
                   <DesktopBlockedOverlay />
                   <SyncStatusBanner />
                   <Outlet />

@@ -40,6 +40,10 @@ internal object NightBlockRules {
   fun isInMorningPortion(now: Calendar, morningEndMinutes: Int): Boolean =
     minutesSinceMidnight(now) < morningEndMinutes
 
+  /** Minutes until tonight's window opens (0 at the start minute itself), wrapping midnight. */
+  fun minutesUntilNightStart(now: Calendar, nightStartMinutes: Int): Int =
+    ((nightStartMinutes - minutesSinceMidnight(now)) % (24 * 60) + 24 * 60) % (24 * 60)
+
   /**
    * The full configured window, crossing midnight, ignoring the jog/step exception entirely -- a
    * single "start <= now" check can't express a range that wraps past midnight, hence the OR.

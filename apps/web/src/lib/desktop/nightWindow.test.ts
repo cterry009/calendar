@@ -4,6 +4,8 @@ import {
   DEFAULT_NIGHT_START_MINUTES,
   formatNightWindowMinutes,
   isWithinNightWindow,
+  minutesUntilNightStart,
+  nightWarningDue,
   parseNightTimeInput,
   validateNightWindow,
 } from './nightWindow';
@@ -83,5 +85,29 @@ describe('isWithinNightWindow with a custom window', () => {
   it('follows the configured hours, not the default', () => {
     expect(isWithinNightWindow(atTime(21, 30), 21 * 60, 7 * 60)).toBe(true);
     expect(isWithinNightWindow(atTime(7, 30), 21 * 60, 7 * 60)).toBe(false);
+  });
+});
+
+describe('nightWarningDue', () => {
+  const settings = { enabled: true, window: { startMinutes: 22 * 60 + 30, endMinutes: 8 * 60 } };
+
+  it('warns from 22:00, not before', () => {
+    expect(nightWarningDue(atTime(21, 59), settings, null)).toBeNull();
+    expect(nightWarningDue(atTime(22, 0), settings, null)).toBe(30);
+  });
+
+  it('waits 15 minutes between warnings', () => {
+    const first = atTime(22, 0).getTime();
+    expect(nightWarningDue(atTime(22, 10), settings, first)).toBeNull();
+    expect(nightWarningDue(atTime(22, 15), settings, first)).toBe(15);
+  });
+
+  it('stops once the window has started (blocking takes over) and when night mode is off', () => {
+    expect(nightWarningDue(atTime(22, 30), settings, null)).toBeNull();
+    expect(nightWarningDue(atTime(22, 10), { ...settings, enabled: false }, null)).toBeNull();
+  });
+
+  it('wraps midnight for a window that starts after it', () => {
+    expect(minutesUntilNightStart(atTime(23, 50), 20)).toBe(30);
   });
 });

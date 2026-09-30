@@ -62,9 +62,44 @@ internal object BlockPopup {
   }
 
   fun show(service: AccessibilityService, appLabel: String, reason: String, category: Category) {
+    val (suggestion, phrase) = pick(service, category)
+    showCard(
+      service,
+      title = "App bloqueada",
+      accentColor = "#E5484D",
+      message = "Se cerro $appLabel porque $reason.",
+      boxText = suggestion,
+      footer = phrase,
+      button = "Volver al enfoque",
+    )
+  }
+
+  /** Same card as a heads-up rather than a block (amber): the pre-night-block warnings. */
+  fun showWarning(service: AccessibilityService, title: String, message: String, category: Category) {
+    val (suggestion, _) = pick(service, category)
+    showCard(
+      service,
+      title = title,
+      accentColor = "#E0B64C",
+      message = message,
+      boxText = suggestion,
+      footer = null,
+      button = "Entendido",
+    )
+  }
+
+  private fun showCard(
+    service: AccessibilityService,
+    title: String,
+    accentColor: String,
+    message: String,
+    boxText: String,
+    footer: String?,
+    button: String,
+  ) {
     val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     dismiss(windowManager)
-    val (suggestion, phrase) = pick(service, category)
+    val suggestion = boxText
 
     fun dp(value: Int) = TypedValue.applyDimension(
       TypedValue.COMPLEX_UNIT_DIP, value.toFloat(), service.resources.displayMetrics,
@@ -78,7 +113,7 @@ internal object BlockPopup {
       setPadding(0, 0, 0, dp(10))
     }
 
-    val danger = Color.parseColor("#E5484D")
+    val danger = Color.parseColor(accentColor)
     val accent = Color.parseColor("#4EE0A0")
     val muted = Color.parseColor("#A9B8B0")
     val body = Color.parseColor("#F2F7F4")
@@ -91,8 +126,8 @@ internal object BlockPopup {
         setColor(Color.parseColor("#FA212836"))
         setStroke(dp(2), danger)
       }
-      addView(text("App bloqueada", 24f, danger, bold = true))
-      addView(text("Se cerro $appLabel porque $reason.", 16f, muted))
+      addView(text(title, 24f, danger, bold = true))
+      addView(text(message, 16f, muted))
       addView(
         LinearLayout(service).apply {
           orientation = LinearLayout.VERTICAL
@@ -107,10 +142,10 @@ internal object BlockPopup {
         LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
           .apply { bottomMargin = dp(14) },
       )
-      addView(text(phrase, 15f, muted))
+      footer?.let { addView(text(it, 15f, muted)) }
       addView(
         Button(service).apply {
-          this.text = "Volver al enfoque"
+          this.text = button
           isAllCaps = false
           setTextColor(Color.parseColor("#0A1C13"))
           background = GradientDrawable().apply {

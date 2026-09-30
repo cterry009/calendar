@@ -49,7 +49,12 @@ export function DesktopBlockingBridge() {
   // In a work focus (pomodoro, manual focus, or a WORK block -- the latter even if its soft overlay
   // was dismissed), every game and the social apps/sites are blocked outright, list or no list.
   const inWorkFocus = isOverlayVisible || isWithinWorkSchedule;
-  const focusTargets = useMemo(() => focusBlockTargets(inWorkFocus), [inWorkFocus]);
+  // The night window (on/off + hours in the Nocturno tab) blocks the same targets: from 22:30 by
+  // default, social media and games are off until morning, list or no list.
+  const focusTargets = useMemo(
+    () => focusBlockTargets(inWorkFocus || isNightActive),
+    [inWorkFocus, isNightActive],
+  );
 
   const blockedProcesses = useMemo(() => {
     const focus = isOverlayVisible ? identifiersFor(entries, 'DESKTOP_APP', 'FOCUS') : [];

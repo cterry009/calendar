@@ -148,3 +148,30 @@ export function setNightWindow(next: NightWindow): { ok: true } | { ok: false; e
   publish({ ...getNightSettings(), window: next });
   return result;
 }
+
+// ---- Pre-night warnings ----
+//
+// The half hour before the window opens warns every 15 minutes that social media and games are
+// about to be blocked (22:00 and 22:15 with the default 22:30 start). Same numbers as Android's
+// accessibility service (NIGHT_WARNING_LEAD_MIN / NIGHT_WARNING_EVERY_MS).
+export const NIGHT_WARNING_LEAD_MINUTES = 30;
+export const NIGHT_WARNING_EVERY_MINUTES = 15;
+
+/** Minutes until tonight's window opens (0 at the start minute), wrapping midnight. */
+export function minutesUntilNightStart(date: Date, startMinutes: number): number {
+  const now = date.getHours() * 60 + date.getMinutes();
+  return (((startMinutes - now) % 1440) + 1440) % 1440;
+}
+
+/** Minutes left when a warning is due now, otherwise null. */
+export function nightWarningDue(
+  now: Date,
+  settings: NightSettings,
+  lastWarnedAtMs: number | null,
+): number | null {
+  if (!settings.enabled) return null;
+  const left = minutesUntilNightStart(now, settings.window.startMinutes);
+  if (left < 1 || left > NIGHT_WARNING_LEAD_MINUTES) return null;
+  if (lastWarnedAtMs !== null && now.getTime() - lastWarnedAtMs < NIGHT_WARNING_EVERY_MINUTES * 60_000) return null;
+  return left;
+}
