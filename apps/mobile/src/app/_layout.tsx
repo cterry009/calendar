@@ -131,6 +131,7 @@ function RootNavigator() {
         <Stack.Screen name="index" />
         <Stack.Screen name="pomodoro" />
         <Stack.Screen name="plan" />
+        <Stack.Screen name="schedules" />
         <Stack.Screen name="fitness" />
         <Stack.Screen name="habits" />
         <Stack.Screen name="calendar" />
