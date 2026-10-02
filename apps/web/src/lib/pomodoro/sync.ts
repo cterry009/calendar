@@ -17,6 +17,8 @@ export interface PomodoroSyncChangeDto {
   interrupted?: boolean;
   startedAt?: string;
   endedAt?: string;
+  blockEndAt?: string | null;
+  attentionProfile?: SyncPomodoroRecord['attentionProfile'];
 }
 
 interface SyncBatchResponse {
@@ -38,6 +40,8 @@ function buildPayloadFromSession(
     | 'interrupted'
     | 'startedAt'
     | 'endedAt'
+    | 'blockEndAt'
+    | 'attentionProfile'
   >,
 ): Omit<PomodoroSyncChangeDto, 'id' | 'updatedAt'> {
   return {
@@ -52,6 +56,8 @@ function buildPayloadFromSession(
     interrupted: session.interrupted,
     startedAt: session.startedAt ?? undefined,
     endedAt: session.endedAt ?? undefined,
+    blockEndAt: session.blockEndAt ?? null,
+    attentionProfile: session.attentionProfile ?? null,
   };
 }
 

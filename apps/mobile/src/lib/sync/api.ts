@@ -11,6 +11,7 @@ export interface SyncBatchPayload {
   tasks?: unknown[];
   schedules?: unknown[];
   pomodoroSessions?: unknown[];
+  focusEvents?: unknown[];
   fitnessEntries?: unknown[];
   dailyStepCounts?: unknown[];
   dailyFloorsClimbed?: unknown[];

@@ -1,0 +1,935 @@
+{
+ "version": 3,
+ "normas": "normas-de-atencion.md",
+ "etiquetado_por": "Claude Opus 5.5, 2026-10-01 (AN1 de nuevo el 2026-10-02, tras reestructurarse en la bóveda)",
+ "nota": "Anclas: tareas reales del pensum etiquetadas a mano según las normas v1. Sirven como ejemplos para Gemini y como datos de entrenamiento para Laya. 'clave' es el clientId de la importación (note:...) 'titulo:...' para tareas sueltas, o 'reglas:...' para ejemplos sacados del bloque de carrera y los hitos de Prompt_app_calendario.md (aún no son tareas). Las 3 tareas de prueba ('Tarea ... estimado') no se etiquetan.",
+ "anclas": [
+  {
+   "clave": "note:pensum_analisis.md#AN1#1",
+   "titulo": "AN1 · Axiomas de R, supremo, arquimediana, densidad, raíces; repaso de numerabilidad",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Análisis real de entrada: demostraciones cortas, una idea a la vez."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN1#2",
+   "titulo": "AN1 · Sucesiones y series en R, límite superior e inferior",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Criterios de convergencia y lim sup/inf: varias definiciones que se encadenan."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN1#3",
+   "titulo": "AN1 · Espacios métricos y su topología: abiertos, cerrados, clausura, frontera, subespacios, Cantor",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Muchas definiciones nuevas con ejemplos; se retoma desde la última definición."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN1#4",
+   "titulo": "AN1 · Completitud: Cauchy, encaje, Baire, punto fijo de Banach",
+   "tipo": "teoria",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Las pruebas de Baire y del punto fijo son hilos largos que se pierden con una interrupción."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN1#5",
+   "titulo": "AN1 · Compacidad y conexidad",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Equivalencias de compacidad (cubrimientos, sucesiones, completo y totalmente acotado): muy abstracto."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN1#6",
+   "titulo": "AN1 · Funciones continuas: compacidad, conexidad, homeomorfismos",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Aplica lo anterior a funciones: varias piezas conocidas que se combinan."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN1#7",
+   "titulo": "AN1 · Sucesiones de funciones y convergencia uniforme",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Comparar modos de convergencia con contraejemplos."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN1#8",
+   "titulo": "AN1 · Cierre difícil/muy difícil (Picard, Dini, Baire, normas equivalentes)",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Cierre difícil: problemas largos que mezclan todo el bloque."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN2#1",
+   "titulo": "AN2 · Banach y Hilbert, proyección, bases ortonormales, Bessel y Parseval",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Geometría de Hilbert, estándar pero con varias piezas."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN2#2",
+   "titulo": "AN2 · Dual y teorema de Riesz; la delta no es un vector",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Dualidad: abstracción media, prueba corta."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN2#3",
+   "titulo": "AN2 · Operadores acotados, adjunto, espectro; el desplazamiento",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "El espectro y el ejemplo del desplazamiento piden sostener muchas definiciones a la vez."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN2#4",
+   "titulo": "AN2 · Compactos y teorema espectral; Sturm-Liouville",
+   "tipo": "teoria",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Teorema espectral: demostración larga y muy abstracta."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN2#5",
+   "titulo": "AN2 · No acotados: dominio, hermítico vs. autoadjunto",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Distinciones sutiles de dominio; mucha abstracción."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN2#6",
+   "titulo": "AN2 · Semigrupos, generadores, gap espectral, Koopman; convergencia débil",
+   "tipo": "teoria",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Cuatro temas abstractos encadenados en una sesión."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN2#7",
+   "titulo": "AN2 · Cierre difícil/muy difícil",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Cierre difícil de análisis funcional."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN3#1",
+   "titulo": "AN3 · Series de Fourier, núcleo de Dirichlet, Gibbs",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Cálculo concreto con un fenómeno (Gibbs) que seguir."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN3#2",
+   "titulo": "AN3 · Transformada, propiedades, convolución",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Propiedades una a la vez, muy de tabla."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN3#3",
+   "titulo": "AN3 · Plancherel, Riemann-Lebesgue, incertidumbre",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Tres resultados con pruebas de extensión media."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN3#4",
+   "titulo": "AN3 · Distribuciones",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Cambio de marco conceptual: funciones generalizadas."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN3#5",
+   "titulo": "AN3 · Funciones características, cumulantes, estables; calor, Fokker-Planck y FFT",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Aplicaciones encadenadas; conecta probabilidad y EDP."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN3#6",
+   "titulo": "AN3 · Cierre difícil/muy difícil",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Cierre difícil de Fourier."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN4#1",
+   "titulo": "AN4 · Cauchy-Riemann, armónicas, teorema y fórmula de Cauchy",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Variable compleja clásica, pruebas de largo medio."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN4#2",
+   "titulo": "AN4 · Laurent, residuos e integrales reales",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Técnica de cálculo: una integral a la vez."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN4#3",
+   "titulo": "AN4 · Cortes, continuación analítica y Gamma",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Ramas y cortes piden cuidar varias hojas a la vez."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN4#4",
+   "titulo": "AN4 · Punto de silla y Kramers-Kronig",
+   "tipo": "teoria",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Derivaciones asintóticas largas que se rompen si se interrumpen."
+  },
+  {
+   "clave": "note:pensum_analisis.md#AN4#5",
+   "titulo": "AN4 · Cierre difícil/muy difícil",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Cierre difícil de variable compleja."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#00b#1",
+   "titulo": "00b · Conjuntos, subconjuntos, conjunto potencia, operaciones",
+   "tipo": "teoria",
+   "R": 1,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Definiciones básicas; se retoma releyendo la última."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#00b#2",
+   "titulo": "00b · Familias indexadas: uniones e intersecciones arbitrarias",
+   "tipo": "teoria",
+   "R": 1,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Extensión directa de la sesión anterior."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#00b#3",
+   "titulo": "00b · Producto cartesiano, funciones, imagen/preimagen, composición",
+   "tipo": "teoria",
+   "R": 1,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Muchas definiciones que se relacionan (preimagen de uniones, etc.)."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#00b#4",
+   "titulo": "00b · Cardinalidad y numerabilidad",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Argumentos de biyección que hay que seguir completos."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#00b#5",
+   "titulo": "00b · Cierre difícil/muy difícil (Cantor, Russell)",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Pruebas por diagonalización: frágiles, aunque de pocas piezas."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#01#1",
+   "titulo": "01 · Repaso de álgebra lineal (espacios duales, formas bilineales)",
+   "tipo": "repaso",
+   "R": 1,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Repaso de algo ya visto."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#01#2",
+   "titulo": "01 · Espacio tangente vía derivaciones y curvas (1.1)",
+   "tipo": "teoria",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Dos definiciones equivalentes y la prueba de equivalencia: muy abstracto."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#01#3",
+   "titulo": "01 · Campos vectoriales, flujos, corchete de Lie (1.2)",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Cálculo en coordenadas con una idea geométrica detrás."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#01#4",
+   "titulo": "01 · Formas diferenciales y derivada exterior (1.4)",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Álgebra exterior: reglas nuevas que combinar."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#01#5",
+   "titulo": "01 · Derivada de Lie y fórmula de Cartan (1.3)",
+   "tipo": "teoria",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "La prueba de la fórmula de Cartan es larga y se pierde con una interrupción."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#01#6",
+   "titulo": "01 · Ejercicios de cierre",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Ejercicios de cierre: hilo largo por problema."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#01a#1",
+   "titulo": "01a · Espacio topológico, Hausdorff, base numerable",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Topología nueva: varias definiciones y ejemplos."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#01a#2",
+   "titulo": "01a · Vecindad, homeomorfismo, carta, atlas, ejemplo de S^1",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Construir el atlas de S^1 encadena pasos."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#01a#3",
+   "titulo": "01a · Cierre difícil/muy difícil (atlas de S^2, compacidad)",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Cierre difícil de topología."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#02#1",
+   "titulo": "02 · Forma simpléctica y campo hamiltoniano X_H",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Geometría simpléctica de entrada, conecta con mecánica conocida."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#02#2",
+   "titulo": "02 · Corchete de Poisson e identidad de Jacobi (2.1, 2.2)",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "La prueba de Jacobi es un cálculo de varios pasos."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#02#3",
+   "titulo": "02 · Teorema de Liouville (2.3)",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Prueba corta con forma de volumen."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#02#4",
+   "titulo": "02 · Teorema de Darboux y simplectomorfismos (2.4)",
+   "tipo": "teoria",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "La prueba de Darboux (truco de Moser) es larga y abstracta."
+  },
+  {
+   "clave": "note:pensum_geometria_diff_hams.md#02#5",
+   "titulo": "02 · Ejercicios de cierre",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Ejercicios de cierre."
+  },
+  {
+   "clave": "note:pensum_pilar_A.md#A1#1",
+   "titulo": "A1 · Motivación y definición: BG y su aditividad; S_q, límite q→1",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Definiciones y un límite directo."
+  },
+  {
+   "clave": "note:pensum_pilar_A.md#A1#2",
+   "titulo": "A1 · Propiedades: no negatividad, concavidad, expansibilidad; pseudo-aditividad",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Varias propiedades que comparar con BG."
+  },
+  {
+   "clave": "note:pensum_pilar_A.md#A1#3",
+   "titulo": "A1 · Aditividad vs extensividad; criterio q=1-1/ρ; cierre",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Distinción conceptual sutil más cierre."
+  },
+  {
+   "clave": "note:pensum_pilar_A.md#A2#1",
+   "titulo": "A2 · ln_q y e_q: definiciones, corte, EDO y'=y^q, colas de ley de potencia",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Funciones nuevas y su asintótica."
+  },
+  {
+   "clave": "note:pensum_pilar_A.md#A2#2",
+   "titulo": "A2 · q-suma, q-producto, dualidad q↔2-q; q-Gaussianas; cierre",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Álgebra q encadenada más cierre."
+  },
+  {
+   "clave": "note:pensum_pilar_A.md#A3#1",
+   "titulo": "A3 · Repaso de MaxEnt con BG; elección 1",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Arranca con un repaso; la elección 1 es una variación directa."
+  },
+  {
+   "clave": "note:pensum_pilar_A.md#A3#2",
+   "titulo": "A3 · Elección 2 (Curado-Tsallis) y elección 3 (escort), estructura termodinámica",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Comparar tres formalismos a la vez."
+  },
+  {
+   "clave": "note:pensum_pilar_A.md#A3#3",
+   "titulo": "A3 · q-Gaussiana como MaxEnt en el caso continuo; cierre",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Derivación variacional larga más cierre."
+  },
+  {
+   "clave": "note:pensum_pilar_A.md#A4#1",
+   "titulo": "A4 · Superestadística: Gamma → q-exponencial, q=1+2/n",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Una integral clave y su interpretación."
+  },
+  {
+   "clave": "note:pensum_pilar_A.md#A4#2",
+   "titulo": "A4 · Fokker-Planck no lineal: q-Gaussianas, difusión anómala, Barenblatt",
+   "tipo": "teoria",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Solución de Barenblatt: derivación larga."
+  },
+  {
+   "clave": "note:pensum_pilar_A.md#A4#3",
+   "titulo": "A4 · Borde del caos (q_sen, Pesin), q-TCL y sus reservas, q-triplete",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Tres temas abstractos y sus matices."
+  },
+  {
+   "clave": "note:pensum_pilar_A.md#A5#1",
+   "titulo": "A5 · Rényi vs Tsallis y estabilidad de Lesche; críticas termodinámicas y de inferencia",
+   "tipo": "critica",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Leer críticas y comparar argumentos."
+  },
+  {
+   "clave": "note:pensum_pilar_A.md#A5#2",
+   "titulo": "A5 · Críticas a casos concretos; ajuste de colas (Clauset); clasificación (c,d)",
+   "tipo": "critica",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Lectura crítica de artículos."
+  },
+  {
+   "clave": "note:pensum_pilar_B.md#B1#1",
+   "titulo": "B1 · Grafos, matriz de adyacencia, grado, caminatas, clustering; paradoja de la amistad",
+   "tipo": "teoria",
+   "R": 1,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Definiciones de grafos, se retoma fácil."
+  },
+  {
+   "clave": "note:pensum_pilar_B.md#B1#2",
+   "titulo": "B1 · Erdős-Rényi: binomial → Poisson, mundo pequeño, componente gigante",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Cuatro regímenes que seguir."
+  },
+  {
+   "clave": "note:pensum_pilar_B.md#B1#3",
+   "titulo": "B1 · Watts-Strogatz, correlaciones de grado; cierre",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Contenido nuevo más cierre."
+  },
+  {
+   "clave": "note:pensum_pilar_B.md#B2#1",
+   "titulo": "B2 · Ley de potencia, libre de escala, momentos, corte natural",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Cálculos de momentos y regímenes de γ."
+  },
+  {
+   "clave": "note:pensum_pilar_B.md#B2#2",
+   "titulo": "B2 · Modelo BA: campo medio, modelos A y B, solución exacta por ecuación maestra",
+   "tipo": "teoria",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "La solución por ecuación maestra es una derivación larga."
+  },
+  {
+   "clave": "note:pensum_pilar_B.md#B2#3",
+   "titulo": "B2 · Variantes del BA; robustez: Molloy-Reed, fallas vs ataques",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Varias variantes y un criterio."
+  },
+  {
+   "clave": "note:pensum_pilar_B.md#B3#1",
+   "titulo": "B3 · Distribución de grado como MaxEnt de S_q; q_BA=4/3",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Conecta pilar A con B: muchas piezas a la vez."
+  },
+  {
+   "clave": "note:pensum_pilar_B.md#B3#2",
+   "titulo": "B3 · Enlace preferencial geográfico, gas de Thurner-Tsallis, superestadística de grafos",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Tres modelos, lectura comparada."
+  },
+  {
+   "clave": "note:pensum_pilar_B.md#B3#3",
+   "titulo": "B3 · Ajuste correcto: ln_q vs máxima verosimilitud (Lomax); cierre",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Método estadístico con cierre."
+  },
+  {
+   "clave": "note:pensum_pilar_B.md#B4#1",
+   "titulo": "B4 · Caminatas aleatorias, Laplaciano, espectro, vector de Fiedler, relajación",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Álgebra espectral de grafos."
+  },
+  {
+   "clave": "note:pensum_pilar_B.md#B4#2",
+   "titulo": "B4 · Epidemias SIS: umbral, inmunización; sincronización; cierre",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Derivación del umbral más cierre."
+  },
+  {
+   "clave": "note:pensum_pilar_C.md#C1#1",
+   "titulo": "C1 · Optimización como estado fundamental; Metropolis y balance detallado; recocido",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Ideas conocidas de física estadística aplicadas."
+  },
+  {
+   "clave": "note:pensum_pilar_C.md#C1#2",
+   "titulo": "C1 · Calendarios de enfriamiento; FSA y el criterio Σg_t=∞",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Comparar calendarios y su prueba de convergencia."
+  },
+  {
+   "clave": "note:pensum_pilar_C.md#C1#3",
+   "titulo": "C1 · Práctica: SA y FSA en Rastrigin y en un TSP pequeño; cierre",
+   "tipo": "practica",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Implementar y depurar: reentrada cara."
+  },
+  {
+   "clave": "note:pensum_pilar_C.md#C2#1",
+   "titulo": "C2 · Distribución de visitas q_V, límites Gaussiano y Cauchy; aceptación q_A",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Construcción por interpolación con varios límites."
+  },
+  {
+   "clave": "note:pensum_pilar_C.md#C2#2",
+   "titulo": "C2 · Calendario T_qV(t) desde la cola; falta de balance detallado; GenSA/scipy",
+   "tipo": "teoria",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Derivación del calendario desde la cola: hilo largo."
+  },
+  {
+   "clave": "note:pensum_pilar_C.md#C2#3",
+   "titulo": "C2 · Práctica: implementar GSA desde cero y comparar con dual_annealing; cierre",
+   "tipo": "practica",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Implementar desde cero: reentrada cara."
+  },
+  {
+   "clave": "note:pensum_pilar_C.md#C3#1",
+   "titulo": "C3 · Comparación CSA/FSA/GSA, benchmarks, no free lunch",
+   "tipo": "critica",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Comparación de métodos."
+  },
+  {
+   "clave": "note:pensum_pilar_C.md#C3#2",
+   "titulo": "C3 · SGD como Langevin, SGLD; mínimos planos como efecto entrópico",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Analogía física con varios pasos."
+  },
+  {
+   "clave": "note:pensum_pilar_C.md#C3#3",
+   "titulo": "C3 · Ruido de gradiente de cola pesada y tiempos de escape; experimento en PyTorch; cierre",
+   "tipo": "practica",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Experimento en código más cierre."
+  },
+  {
+   "clave": "note:pensum_pilar_D.md#D1#1",
+   "titulo": "D1 · Riesgo empírico, MLE como KL, entropía cruzada, MAP y regularización",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Conexiones directas, una a la vez."
+  },
+  {
+   "clave": "note:pensum_pilar_D.md#D1#2",
+   "titulo": "D1 · MLP, aproximación universal, backpropagation y modo reverso",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Backprop: cálculo encadenado."
+  },
+  {
+   "clave": "note:pensum_pilar_D.md#D1#3",
+   "titulo": "D1 · Softmax como Boltzmann/MaxEnt; entmax como MaxEnt de Tsallis",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Conecta pilar A con ML."
+  },
+  {
+   "clave": "note:pensum_pilar_D.md#D1#4",
+   "titulo": "D1 · Práctica (MLP con backprop manual, sparsemax/entmax); cierre",
+   "tipo": "practica",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Backprop manual en código: depurar gradientes es frágil."
+  },
+  {
+   "clave": "note:pensum_pilar_D.md#D2#1",
+   "titulo": "D2 · Planteamiento de SINDy, LASSO y STLSQ; ejemplo de Lorenz",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Método nuevo con ejemplo guiado."
+  },
+  {
+   "clave": "note:pensum_pilar_D.md#D2#2",
+   "titulo": "D2 · Problemas prácticos de SINDy; extensiones; DMD/Koopman",
+   "tipo": "critica",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Panorama de problemas y extensiones."
+  },
+  {
+   "clave": "note:pensum_pilar_D.md#D2#3",
+   "titulo": "D2 · SINDy estocástico y coeficientes de Kramers-Moyal; sesgo con paso finito; cierre",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Derivación estocástica sutil más cierre."
+  },
+  {
+   "clave": "note:pensum_pilar_D.md#D3#1",
+   "titulo": "D3 · Formulación directa e inversa; PINN + regresión dispersa; conexiones con A, B y C",
+   "tipo": "critica",
+   "R": 2,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Síntesis de los cuatro pilares."
+  },
+  {
+   "clave": "note:pensum_pilar_D.md#D3#2",
+   "titulo": "D3 · Cierre (difusión lineal vs no lineal; MaxEnt y el equilibrio de LBM)",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Cierre conceptual que integra todo."
+  },
+  {
+   "clave": "note:pensum_pilar_D.md#D4#1",
+   "titulo": "D4 · Simetría por permutaciones; embeddings (eigenmaps, DeepWalk/node2vec)",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Varios métodos de embedding."
+  },
+  {
+   "clave": "note:pensum_pilar_D.md#D4#2",
+   "titulo": "D4 · Paso de mensajes, GCN y su normalización; over-smoothing como difusión",
+   "tipo": "teoria",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "GCN y su lectura como difusión."
+  },
+  {
+   "clave": "note:pensum_pilar_D.md#D4#3",
+   "titulo": "D4 · Expresividad y Weisfeiler-Lehman; atención; cierre",
+   "tipo": "cierre",
+   "R": 3,
+   "C": 3,
+   "perfil": "DEEP",
+   "porque": "Prueba de expresividad (WL) más cierre."
+  },
+  {
+   "clave": "titulo:Escribir reporte semanal",
+   "titulo": "Escribir reporte semanal",
+   "tipo": "escritura",
+   "R": 1,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Texto informativo, no argumentativo: se retoma releyendo."
+  },
+  {
+   "clave": "titulo:HAcer ejecercicio",
+   "titulo": "HAcer ejecercicio",
+   "tipo": "fisico",
+   "R": null,
+   "C": null,
+   "perfil": null,
+   "porque": "Actividad física: es un hábito, no un bloque de foco."
+  },
+  {
+   "clave": "reglas:correos",
+   "titulo": "Enviar correos a profesores y recomendadores (ya redactados)",
+   "tipo": "administrativo",
+   "R": 0,
+   "C": 0,
+   "perfil": "MECHANICAL",
+   "porque": "Enviar algo ya escrito: cada correo es independiente."
+  },
+  {
+   "clave": "reglas:registro",
+   "titulo": "Registro de la semana: anotar pomodoros y avances",
+   "tipo": "administrativo",
+   "R": 0,
+   "C": 0,
+   "perfil": "MECHANICAL",
+   "porque": "Rutina de anotar."
+  },
+  {
+   "clave": "reglas:convocatorias",
+   "titulo": "Revisar convocatorias y fechas de cierre de maestrías",
+   "tipo": "busqueda",
+   "R": 1,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Buscar y anotar; se retoma desde la última convocatoria vista."
+  },
+  {
+   "clave": "reglas:tabla-maestrias",
+   "titulo": "Tabla de 8-12 maestrías con requisitos y fecha de cierre",
+   "tipo": "busqueda",
+   "R": 1,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Comparar programas en varias columnas a la vez."
+  },
+  {
+   "clave": "reglas:aplicaciones",
+   "titulo": "Aplicaciones de trabajo dirigidas (3-5 por semana)",
+   "tipo": "escritura",
+   "R": 1,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Adaptar CV y carta a cada oferta: varias piezas, pero se retoma por oferta."
+  },
+  {
+   "clave": "reglas:cv-academico",
+   "titulo": "CV académico v1",
+   "tipo": "escritura",
+   "R": 2,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Redactar secciones una a la vez, con hilo de presentación."
+  },
+  {
+   "clave": "reglas:sop",
+   "titulo": "SOP base v1",
+   "tipo": "escritura",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Texto argumentativo en borrador: el hilo se pierde con cada interrupción."
+  },
+  {
+   "clave": "reglas:repaso-sabado",
+   "titulo": "Repaso: rehacer 2-3 ejercicios sin mirar la solución",
+   "tipo": "repaso",
+   "R": 2,
+   "C": 2,
+   "perfil": "LIGHT",
+   "porque": "Ejercicios ya vistos, pero rehechos sin ayuda: hay que reconstruir el hilo."
+  },
+  {
+   "clave": "reglas:sql",
+   "titulo": "SQL: joins, agregaciones y funciones de ventana",
+   "tipo": "practica",
+   "R": 2,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Consultas una a la vez con resultado inmediato."
+  },
+  {
+   "clave": "reglas:dashboard",
+   "titulo": "Proyecto 2: dashboard en Streamlit con análisis estadístico",
+   "tipo": "practica",
+   "R": 3,
+   "C": 2,
+   "perfil": "DEEP",
+   "porque": "Construir una app con datos: estado de código grande."
+  },
+  {
+   "clave": "reglas:plan-semana",
+   "titulo": "Planear la semana",
+   "tipo": "administrativo",
+   "R": 1,
+   "C": 1,
+   "perfil": "LIGHT",
+   "porque": "Revisar la lista y repartir; se retoma fácil."
+  }
+ ]
+}

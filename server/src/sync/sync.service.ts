@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SyncEventsService } from '../realtime/sync-events.service';
 import {
   BlockEventSyncChangeDto,
+  FocusEventSyncChangeDto,
   BlockListSyncChangeDto,
   DailyDesktopAppTimeSyncChangeDto,
   DailyGameTimeSyncChangeDto,
@@ -141,6 +142,9 @@ export class SyncService {
           changedEntities.add('tasks');
         }
       }
+      if (changedEntities.has('tasks') && dto.tasks.some((change) => !change.deleted)) {
+        this.syncEvents.taskWritten?.(userId);
+      }
     }
 
     if (dto.schedules?.length) {
@@ -235,6 +239,18 @@ export class SyncService {
         this.bucketResult(result, 'blockEvents', outcome);
         if (outcome.status === 'applied') {
           changedEntities.add('blockEvents');
+        }
+      }
+    }
+
+    if (dto.focusEvents?.length) {
+      result.applied.focusEvents = [];
+      result.conflicts.focusEvents = [];
+      for (const change of dto.focusEvents) {
+        const outcome = await this.applyFocusEventChange(userId, change);
+        this.bucketResult(result, 'focusEvents', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('focusEvents');
         }
       }
     }
@@ -358,11 +374,7 @@ export class SyncService {
     return this.compactResult(result);
   }
 
-  private bucketResult(
-    result: SyncBatchResult,
-    entity: SyncEntityType,
-    outcome: SyncChangeResult,
-  ) {
+  private bucketResult(result: SyncBatchResult, entity: SyncEntityType, outcome: SyncChangeResult) {
     if (outcome.status === 'conflict') {
       result.conflicts[entity]?.push(outcome);
       return;
@@ -430,6 +442,11 @@ export class SyncService {
       actualMinutes: change.actualMinutes ?? null,
       difficulty: change.difficulty,
       complexity: change.complexity,
+      attentionReentry: change.attentionReentry,
+      attentionLoad: change.attentionLoad,
+      attentionProfile: change.attentionProfile,
+      attentionSource: change.attentionSource,
+      attentionReason: change.attentionReason,
       priority: change.priority,
       category: change.category ?? null,
       status: change.status,
@@ -553,6 +570,8 @@ export class SyncService {
       interrupted: change.interrupted,
       startedAt: change.startedAt ? new Date(change.startedAt) : null,
       endedAt: change.endedAt ? new Date(change.endedAt) : null,
+      blockEndAt: change.blockEndAt ? new Date(change.blockEndAt) : null,
+      attentionProfile: change.attentionProfile ?? null,
       updatedAt: new Date(change.updatedAt),
     };
 
@@ -563,6 +582,9 @@ export class SyncService {
         })
       : await this.prisma.pomodoroSession.create({
           data: {
+            // Keep the client's id: it already logged focus events under it, and a retried
+            // offline change must find this row instead of creating a second one.
+            ...(change.id ? { id: change.id } : {}),
             userId,
             taskId: change.taskId ?? null,
             state: change.state ?? 'IDLE',
@@ -575,6 +597,8 @@ export class SyncService {
             interrupted: change.interrupted ?? false,
             startedAt: change.startedAt ? new Date(change.startedAt) : null,
             endedAt: change.endedAt ? new Date(change.endedAt) : null,
+            blockEndAt: change.blockEndAt ? new Date(change.blockEndAt) : null,
+            attentionProfile: change.attentionProfile ?? null,
             updatedAt: new Date(change.updatedAt),
           },
         });
@@ -605,9 +629,7 @@ export class SyncService {
     }
 
     if (!change.kind || !change.identifier || !change.label) {
-      throw new BadRequestException(
-        'Block list changes require kind, identifier, and label',
-      );
+      throw new BadRequestException('Block list changes require kind, identifier, and label');
     }
 
     if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
@@ -622,7 +644,7 @@ export class SyncService {
       highDopamine: change.highDopamine ?? false,
       enabled: change.enabled ?? true,
       hardMode: change.hardMode ?? false,
-      scope: change.scope ?? existing?.scope ?? 'FOCUS' as const,
+      scope: change.scope ?? existing?.scope ?? ('FOCUS' as const),
       updatedAt: new Date(change.updatedAt),
     };
 
@@ -661,8 +683,13 @@ export class SyncService {
     if (!change.kind || !change.label) {
       throw new BadRequestException('Focus trigger changes require kind and label');
     }
-    if (change.kind === 'LOCATION' && (change.latitude == null || change.longitude == null || change.radiusMeters == null)) {
-      throw new BadRequestException('Location triggers require latitude, longitude, and radiusMeters');
+    if (
+      change.kind === 'LOCATION' &&
+      (change.latitude == null || change.longitude == null || change.radiusMeters == null)
+    ) {
+      throw new BadRequestException(
+        'Location triggers require latitude, longitude, and radiusMeters',
+      );
     }
     if (change.kind === 'WIFI' && !change.wifiSsid) {
       throw new BadRequestException('Wi-Fi triggers require wifiSsid');
@@ -831,16 +858,55 @@ export class SyncService {
       return { status: 'skipped', clientKey: change.id };
     }
 
-    const record = await this.prisma.blockEvent.create({
-      data: {
-        id: change.id,
-        userId,
-        identifier: change.identifier ?? null,
-        scope: change.scope,
-        trigger: change.trigger,
-        occurredAt: new Date(change.occurredAt),
-      },
-    });
+    try {
+      const record = await this.prisma.blockEvent.create({
+        data: {
+          id: change.id,
+          userId,
+          identifier: change.identifier ?? null,
+          scope: change.scope,
+          trigger: change.trigger,
+          occurredAt: new Date(change.occurredAt),
+        },
+      });
+      return { status: 'applied', clientKey: change.id, record };
+    } catch (error) {
+      if (isDuplicateId(error)) return { status: 'skipped', clientKey: change.id };
+      throw error;
+    }
+  }
+
+  // Focus-block telemetry: immutable like a block event, so an idempotent create on the client id.
+  private async applyFocusEventChange(
+    userId: string,
+    change: FocusEventSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const existing = await this.prisma.focusEvent.findFirst({ where: { id: change.id, userId } });
+    if (existing) {
+      return { status: 'skipped', clientKey: change.id };
+    }
+
+    let record;
+    try {
+      record = await this.prisma.focusEvent.create({
+        data: {
+          id: change.id,
+          userId,
+          kind: change.kind,
+          occurredAt: new Date(change.occurredAt),
+          scheduleId: change.scheduleId ?? null,
+          taskId: change.taskId ?? null,
+          pomodoroSessionId: change.pomodoroSessionId ?? null,
+          attentionProfile: change.attentionProfile ?? null,
+          blockStartAt: change.blockStartAt ? new Date(change.blockStartAt) : null,
+          value: change.value ?? null,
+          meta: (change.meta ?? undefined) as Prisma.InputJsonValue | undefined,
+        },
+      });
+    } catch (error) {
+      if (isDuplicateId(error)) return { status: 'skipped', clientKey: change.id };
+      throw error;
+    }
 
     return { status: 'applied', clientKey: change.id, record };
   }
@@ -1131,7 +1197,7 @@ export class SyncService {
     const data = {
       title: change.title,
       description: change.description ?? null,
-      type: change.type ?? 'NORMAL' as const,
+      type: change.type ?? ('NORMAL' as const),
       dailyGoalValue: change.dailyGoalValue ?? 1,
       dailyGoalUnit: change.dailyGoalUnit ?? 'times',
       dailyGoalExtraValue: change.dailyGoalExtraValue ?? null,
@@ -1197,7 +1263,7 @@ export class SyncService {
       habitId: change.habitId,
       date: new Date(change.date),
       value: change.value ?? 0,
-      status: change.status ?? 'DONE' as const,
+      status: change.status ?? ('DONE' as const),
       autoCompleted: change.autoCompleted ?? false,
       fitnessEntryId: change.fitnessEntryId ?? null,
       clientId: change.clientId ?? existing?.clientId ?? null,
@@ -1224,7 +1290,9 @@ export class SyncService {
       ? await this.prisma.scheduleCompletion.findFirst({ where: { id: change.id, userId } })
       : null;
     if (!existing && change.clientId) {
-      existing = await this.prisma.scheduleCompletion.findFirst({ where: { userId, clientId: change.clientId } });
+      existing = await this.prisma.scheduleCompletion.findFirst({
+        where: { userId, clientId: change.clientId },
+      });
     }
     if (!existing && change.scheduleId && date) {
       existing = await this.prisma.scheduleCompletion.findFirst({
@@ -1247,7 +1315,9 @@ export class SyncService {
       return { status: 'applied', clientKey: key, record: existing };
     }
 
-    const schedule = await this.prisma.schedule.findFirst({ where: { id: change.scheduleId, userId } });
+    const schedule = await this.prisma.schedule.findFirst({
+      where: { id: change.scheduleId, userId },
+    });
     if (!schedule) {
       return { status: 'skipped', clientKey: key };
     }
@@ -1344,4 +1414,13 @@ export class SyncService {
     }
     return null;
   }
+}
+
+/**
+ * The same immutable event sent twice at once (the phone's offline-queue flush racing a direct send)
+ * passes the "already stored?" check twice; the second insert then hits the primary key. It's a
+ * duplicate, not a failure.
+ */
+function isDuplicateId(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 }

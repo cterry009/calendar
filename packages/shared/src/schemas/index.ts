@@ -8,6 +8,7 @@ export * from './focus-trigger.js';
 export * from './daily-step-count.js';
 export * from './daily-floors-climbed.js';
 export * from './block-event.js';
+export * from './focus-event.js';
 export * from './daily-screen-time.js';
 export * from './daily-game-time.js';
 export * from './daily-desktop-app-time.js';

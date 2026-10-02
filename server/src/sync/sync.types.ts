@@ -14,6 +14,7 @@ export type SyncEntityType =
   | 'scheduleCompletions'
   | 'journalEntries'
   | 'blockEvents'
+  | 'focusEvents'
   | 'dailyScreenTime'
   | 'dailyGameTime'
   | 'dailyDesktopAppTime';

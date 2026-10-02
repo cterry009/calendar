@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ATTENTION_PROFILES } from '../attention/profiles.js';
 
 export const DevicePlatformSchema = z.enum([
   'WEB',
@@ -16,6 +17,11 @@ export const TaskStatusSchema = z.enum([
   'COMPLETED',
   'CANCELLED',
 ]);
+
+// Attention profile of a task or a block (docs/planning/normas-de-atencion.md).
+export const AttentionProfileSchema = z.enum(ATTENTION_PROFILES);
+// Who set a task's attention rating: the reference labels, a model, or the user (who wins).
+export const AttentionSourceSchema = z.enum(['REFERENCE', 'MODEL', 'USER']);
 
 export const ScheduleKindSchema = z.enum(['WORK', 'REST']);
 
@@ -69,3 +75,4 @@ export type HabitType = z.infer<typeof HabitTypeSchema>;
 export type HabitRecordStatus = z.infer<typeof HabitRecordStatusSchema>;
 export type FocusTriggerKind = z.infer<typeof FocusTriggerKindSchema>;
 export type BlockEventTrigger = z.infer<typeof BlockEventTriggerSchema>;
+export type AttentionSource = z.infer<typeof AttentionSourceSchema>;

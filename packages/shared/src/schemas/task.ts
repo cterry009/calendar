@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import {
+  AttentionProfileSchema,
+  AttentionSourceSchema,
   TaskDifficultySchema,
   TaskPrioritySchema,
   TaskStatusSchema,
@@ -16,6 +18,11 @@ export const TaskSchema = z.object({
   actualMinutes: z.number().int().min(0).optional().nullable(),
   difficulty: TaskDifficultySchema.default('MEDIUM'),
   complexity: z.number().int().min(1).max(10).default(5),
+  attentionReentry: z.number().int().min(0).max(3).optional().nullable(),
+  attentionLoad: z.number().int().min(0).max(3).optional().nullable(),
+  attentionProfile: AttentionProfileSchema.optional().nullable(),
+  attentionSource: AttentionSourceSchema.optional().nullable(),
+  attentionReason: z.string().optional().nullable(),
   priority: TaskPrioritySchema.default('MEDIUM'),
   category: z.string().max(100).optional().nullable(),
   status: TaskStatusSchema.default('PENDING'),

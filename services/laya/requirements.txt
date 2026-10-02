@@ -1,0 +1,3 @@
+# Laya's HTTP server for task complexity (server/src/planning/complexity.ts).
+# CPU torch is enough: ~100 tasks score in a few seconds.
+laya[serve]==0.3.23

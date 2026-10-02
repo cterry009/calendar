@@ -1,10 +1,13 @@
 import {
   DEFAULT_POMODORO_CONFIG,
+  createBlockPomodoroSession,
   createPomodoroSession,
   getPhaseDurationMinutes,
   isBlockingPhase,
   isPhaseAbandoned,
+  pomodoroTransitionEvents,
   transitionPomodoro,
+  type AttentionProfile,
   type PomodoroEvent,
 } from '@calendar/shared';
 import * as Crypto from 'expo-crypto';
@@ -13,6 +16,8 @@ import { AppState } from 'react-native';
 import { useNotifications } from './NotificationsContext';
 import { useSync } from './SyncContext';
 import { ApiError } from '../lib/auth/api';
+import { logFocusEvent } from '../lib/focusEvents/log';
+import { platformStorage } from '../lib/platformStorage';
 import { sendLocalNotification } from '../lib/notifications/api';
 import { playPomodoroChime } from '../lib/pomodoro/chime';
 import { buildPomodoroPayload, syncPomodoroBatch } from '../lib/pomodoro/api';
@@ -33,11 +38,46 @@ interface PomodoroContextValue {
   toggleNotifications: (enabled: boolean) => Promise<void>;
   refetch: () => Promise<void>;
   start: (taskId?: string | null) => Promise<void>;
+  /** Starts a session for a WORK block: its id, or null if one is already running or the block is nearly over. */
+  startBlock: (block: StartBlockOptions) => Promise<string | null>;
   cancel: () => Promise<void>;
   reset: () => Promise<void>;
 }
 
+export interface StartBlockOptions {
+  scheduleId: string;
+  blockStartAt: Date;
+  blockEndAt: Date;
+  profile: AttentionProfile;
+  taskId?: string | null;
+}
+
+/** Which block a running session belongs to, for the events it logs. */
+interface BlockContext {
+  sessionId: string;
+  scheduleId: string;
+  blockStartAt: string;
+}
+
 const PomodoroContext = createContext<PomodoroContextValue | null>(null);
+
+// Kept on disk, not just in memory: a 90-minute block easily outlives the app process (Android
+// reclaims it), and every event the session logs after that still has to name its block.
+const BLOCK_CONTEXT_KEY = 'calendar:pomodoro-block-context';
+
+async function loadBlockContext(): Promise<BlockContext | null> {
+  try {
+    const raw = await platformStorage.getItem(BLOCK_CONTEXT_KEY);
+    return raw ? (JSON.parse(raw) as BlockContext) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveBlockContext(context: BlockContext): void {
+  void platformStorage.setItem(BLOCK_CONTEXT_KEY, JSON.stringify(context)).catch(() => undefined);
+}
+
 
 const DEFAULT_CONFIG_VALUES: PomodoroConfigFormValues = {
   focusDurationMin: DEFAULT_POMODORO_CONFIG.focusDurationMin,
@@ -92,6 +132,8 @@ function withRecordMetadata(
     interrupted: base.interrupted,
     startedAt: base.startedAt ?? null,
     endedAt: base.endedAt ?? null,
+    blockEndAt: base.blockEndAt ?? null,
+    attentionProfile: base.attentionProfile ?? null,
     createdAt: fallback?.createdAt ?? nowIso,
     updatedAt: nowIso,
   };
@@ -111,6 +153,27 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const transitionInFlightRef = useRef(false);
+  const blockContextRef = useRef<BlockContext | null>(null);
+
+  useEffect(() => {
+    void loadBlockContext().then((saved) => {
+      if (saved && !blockContextRef.current) blockContextRef.current = saved;
+    });
+  }, []);
+
+  const logTransition = useCallback((prev: SyncPomodoroRecord | null, next: SyncPomodoroRecord, reason?: string) => {
+    const block = blockContextRef.current?.sessionId === next.id ? blockContextRef.current : null;
+    for (const event of pomodoroTransitionEvents(prev, next, reason)) {
+      logFocusEvent({
+        ...event,
+        pomodoroSessionId: next.id,
+        taskId: next.taskId ?? undefined,
+        attentionProfile: next.attentionProfile ?? undefined,
+        scheduleId: block?.scheduleId,
+        blockStartAt: block?.blockStartAt,
+      });
+    }
+  }, []);
 
   const refetch = useCallback(async () => {
     setIsLoading(true);
@@ -165,8 +228,11 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   );
 
   const transitionSession = useCallback(
-    async (event: PomodoroEvent, createIfMissing = false) => {
-      const currentMachine = session ? session : createIfMissing ? createPomodoroSession(Crypto.randomUUID(), config) : null;
+    async (event: PomodoroEvent, createIfMissing = false, reason?: string) => {
+      // A finished block session is tied to that block's end: a plain start begins a new session
+      // instead of reusing it (it would have no minutes left).
+      const reusable = session && !(event.type === 'START' && session.blockEndAt) ? session : null;
+      const currentMachine = reusable ?? (createIfMissing ? createPomodoroSession(Crypto.randomUUID(), config) : null);
 
       if (!currentMachine) {
         return;
@@ -177,10 +243,28 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const nextRecord = withRecordMetadata(nextMachine, session);
+      const nextRecord = withRecordMetadata(nextMachine, reusable);
       await persistSession(nextRecord);
+      logTransition(reusable, nextRecord, reason);
     },
-    [config, persistSession, session],
+    [config, logTransition, persistSession, session],
+  );
+
+  const startBlock = useCallback(
+    async ({ scheduleId, blockStartAt, blockEndAt, profile, taskId }: StartBlockOptions) => {
+      if (session?.active) return null;
+      // A fresh session per block (not the reused last one), so each block's events share an id.
+      const base = createBlockPomodoroSession(Crypto.randomUUID(), profile, blockEndAt.toISOString());
+      const started = transitionPomodoro(base, { type: 'START', taskId: taskId ?? undefined });
+      if (started === base) return null;
+      const record = withRecordMetadata(started, null);
+      blockContextRef.current = { sessionId: record.id, scheduleId, blockStartAt: blockStartAt.toISOString() };
+      saveBlockContext(blockContextRef.current);
+      await persistSession(record);
+      logTransition(null, record);
+      return record.id;
+    },
+    [logTransition, persistSession, session?.active],
   );
 
   const start = useCallback(
@@ -236,7 +320,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       // e.g. a leftover session from days ago. Silently end it instead of "completing" a phase
       // nobody actually experienced and auto-cycling into a fresh one (with real focus-mode
       // app-blocking, if that fresh phase is FOCUS) that nobody asked to start just now.
-      void transitionSession({ type: 'CANCEL' }, false).finally(() => {
+      void transitionSession({ type: 'CANCEL' }, false, 'abandoned').finally(() => {
         transitionInFlightRef.current = false;
       });
       return;
@@ -304,6 +388,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       toggleNotifications,
       refetch,
       start,
+      startBlock,
       cancel,
       reset,
     }),
@@ -319,6 +404,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       reset,
       session,
       start,
+      startBlock,
       cancel,
     ],
   );

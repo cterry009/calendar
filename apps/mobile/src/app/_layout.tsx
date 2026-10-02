@@ -6,12 +6,14 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { ServerConnectionBanner } from '../components/ServerConnectionBanner';
+import { FocusBar } from '../components/FocusBar';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { NotificationsProvider } from '../context/NotificationsContext';
 import { OnboardingProvider } from '../context/OnboardingContext';
 import { PomodoroProvider } from '../context/PomodoroContext';
 import { SyncProvider } from '../context/SyncContext';
 import { useBlockEvents } from '../hooks/useBlockEvents';
+import { useBlockPrompts } from '../hooks/useBlockPrompts';
 import { useFocusBlocking } from '../hooks/useFocusBlocking';
 import { useHabitReminders } from '../hooks/useHabitReminders';
 import { useJogDetection } from '../hooks/useJogDetection';
@@ -41,6 +43,13 @@ function FocusBlockingBridge() {
 
 // Doesn't need PomodoroProvider/useBlockList like FocusBlockingBridge does -- kept as its own
 // bridge component anyway for symmetry and so it can be un-mounted independently later if needed.
+// Block-start prompts (notification + "Iniciar"/"En 5 min"/"Hoy no") need usePomodoro() to start
+// the block, so like FocusBlockingBridge this has to run inside PomodoroProvider.
+function BlockPromptsBridge() {
+  useBlockPrompts();
+  return null;
+}
+
 function JogDetectionBridge() {
   useJogDetection();
   return null;
@@ -114,6 +123,7 @@ function RootNavigator() {
       <Stack.Protected guard={isAuthenticated}>
         <Stack.Screen name="index" />
         <Stack.Screen name="pomodoro" />
+        <Stack.Screen name="plan" />
         <Stack.Screen name="fitness" />
         <Stack.Screen name="habits" />
         <Stack.Screen name="calendar" />
@@ -141,6 +151,7 @@ function RootNavigator() {
     <NotificationsProvider>
       <PomodoroProvider>
         <FocusBlockingBridge />
+        <BlockPromptsBridge />
         <JogDetectionBridge />
         <NightBlockingBridge />
         <StepTrackingBridge />
@@ -151,6 +162,7 @@ function RootNavigator() {
         <OnboardingProvider>
           <YStack flex={1}>
             <ServerConnectionBanner />
+            <FocusBar />
             {navigator}
           </YStack>
         </OnboardingProvider>

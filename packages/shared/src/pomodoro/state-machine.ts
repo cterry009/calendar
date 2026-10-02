@@ -1,5 +1,6 @@
 import type { PomodoroConfig, PomodoroSession } from '../schemas/pomodoro.js';
 import type { PomodoroState } from '../schemas/enums.js';
+import { ATTENTION_PROFILE_SPECS, MIN_TRIMMED_FOCUS_MIN, type AttentionProfile } from '../attention/profiles.js';
 
 export type PomodoroEvent =
   | { type: 'START'; taskId?: string | null }
@@ -35,19 +36,41 @@ export function createPomodoroSession(
   };
 }
 
+/**
+ * A session for a WORK block: the profile's pomodoro and break, ending at the block's fixed end.
+ * Started late, it simply fits fewer pomodoros before that end.
+ */
+export function createBlockPomodoroSession(id: string, profile: AttentionProfile, blockEndAt: string): PomodoroSession {
+  const { focusMin, breakMin } = ATTENTION_PROFILE_SPECS[profile];
+  return {
+    ...createPomodoroSession(id, { focusDurationMin: focusMin, shortBreakMin: breakMin, longBreakMin: breakMin, cyclesBeforeLongBreak: 4 }),
+    blockEndAt,
+    attentionProfile: profile,
+  };
+}
+
+/** Minutes from `from` (ISO, default now) to the block's end; null outside block mode. */
+export function minutesToBlockEnd(session: Pick<PomodoroSession, 'blockEndAt'>, from: number = Date.now()): number | null {
+  if (!session.blockEndAt) return null;
+  const end = new Date(session.blockEndAt).getTime();
+  return Number.isNaN(end) ? null : (end - from) / 60_000;
+}
+
 export function getPhaseDurationMinutes(
   session: PomodoroSession,
 ): number | null {
-  switch (session.state) {
-    case 'FOCUS':
-      return session.focusDurationMin;
-    case 'SHORT_BREAK':
-      return session.shortBreakMin;
-    case 'LONG_BREAK':
-      return session.longBreakMin;
-    default:
-      return null;
-  }
+  const base =
+    session.state === 'FOCUS'
+      ? session.focusDurationMin
+      : session.state === 'SHORT_BREAK'
+        ? session.shortBreakMin
+        : session.state === 'LONG_BREAK'
+          ? session.longBreakMin
+          : null;
+  if (base === null || !session.startedAt) return base;
+  // In block mode no phase runs past the block's end.
+  const left = minutesToBlockEnd(session, new Date(session.startedAt).getTime());
+  return left === null ? base : Math.max(0, Math.min(base, left));
 }
 
 export function transitionPomodoro(
@@ -77,6 +100,10 @@ function startFocus(
   if (session.state !== 'IDLE' || session.active) {
     return session;
   }
+  const left = minutesToBlockEnd(session);
+  if (left !== null && left < MIN_TRIMMED_FOCUS_MIN) {
+    return session;
+  }
 
   return {
     ...session,
@@ -95,6 +122,13 @@ function completeFocus(session: PomodoroSession): PomodoroSession {
   }
 
   const nextCompletedCycles = session.completedCycles + 1;
+  const left = minutesToBlockEnd(session);
+  if (left !== null) {
+    // Block mode: short breaks only (the long break is the one between blocks), and the session
+    // ends when the block does.
+    if (left <= 0) return endBlock({ ...session, completedCycles: nextCompletedCycles });
+    return { ...session, state: 'SHORT_BREAK', completedCycles: nextCompletedCycles, startedAt: new Date().toISOString() };
+  }
   const nextState: PomodoroState =
     nextCompletedCycles % session.cyclesBeforeLongBreak === 0
       ? 'LONG_BREAK'
@@ -112,12 +146,21 @@ function completeBreak(session: PomodoroSession): PomodoroSession {
   if (session.state !== 'SHORT_BREAK' && session.state !== 'LONG_BREAK') {
     return session;
   }
+  const left = minutesToBlockEnd(session);
+  if (left !== null && left < MIN_TRIMMED_FOCUS_MIN) {
+    return endBlock(session);
+  }
 
   return {
     ...session,
     state: 'FOCUS',
     startedAt: new Date().toISOString(),
   };
+}
+
+/** The block reached its end: a clean finish, not an interruption. */
+function endBlock(session: PomodoroSession): PomodoroSession {
+  return { ...session, state: 'IDLE', active: false, interrupted: false, endedAt: new Date().toISOString() };
 }
 
 function cancelSession(session: PomodoroSession): PomodoroSession {

@@ -1,4 +1,4 @@
-﻿import type { TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
+import type { AttentionProfile, TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
 
 export interface SyncTaskRecord {
   id: string;
@@ -11,6 +11,8 @@ export interface SyncTaskRecord {
   actualMinutes: number | null;
   difficulty: TaskDifficulty;
   complexity: number;
+  // Attention rating (docs/planning/normas-de-atencion.md); absent from older snapshots.
+  attentionProfile?: AttentionProfile | null;
   priority: TaskPriority;
   category: string | null;
   status: TaskStatus;

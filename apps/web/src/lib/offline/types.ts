@@ -14,7 +14,8 @@ export type SyncEntityType =
   | 'scheduleCompletions'
   | 'journalEntries'
   | 'dailyGameTime'
-  | 'dailyDesktopAppTime';
+  | 'dailyDesktopAppTime'
+  | 'focusEvents';
 
 export interface SyncQueueItem {
   id?: number;
@@ -43,6 +44,7 @@ export interface SyncBatchBody {
   journalEntries?: unknown[];
   dailyGameTime?: unknown[];
   dailyDesktopAppTime?: unknown[];
+  focusEvents?: unknown[];
 }
 
 export interface SyncBatchResponse {

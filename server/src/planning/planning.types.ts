@@ -1,4 +1,4 @@
-import type { TaskPriority } from '@prisma/client';
+import type { AttentionProfile, TaskDifficulty, TaskPriority } from '@prisma/client';
 
 // Everything a planner sees and returns (task 8.13). A planner -- today the deterministic heuristic,
 // later an LLM called through tool use -- only *proposes* `Assignment`s; `validatePlan` is the one
@@ -8,8 +8,14 @@ import type { TaskPriority } from '@prisma/client';
 export interface PlanningTask {
   id: string;
   title: string;
+  description: string | null;
   category: string | null;
   priority: TaskPriority;
+  difficulty: TaskDifficulty;
+  /** 1-10. Inferred by Laya when it's reachable, otherwise the value stored on the task. */
+  complexity: number;
+  /** Attention profile (MECHANICAL / LIGHT / DEEP), null until rated (POST /planning/label). */
+  attentionProfile: AttentionProfile | null;
   pomodoros: number;
   /** Local date (YYYY-MM-DD) it's already on, or null when it still needs a place. */
   scheduledDate: string | null;
@@ -52,6 +58,22 @@ export interface Assignment {
 export interface AcceptedAssignment extends Assignment {
   /** Where inside the block it starts (minutes from local midnight); null for "whenever" tasks. */
   startMinute: number | null;
+  /** The task's complexity (1-10): inside a block, the hardest task goes first. */
+  complexity: number;
+}
+
+export type BlockLoad = 'ligero' | 'medio' | 'exigente';
+
+/** How demanding a block ends up with what the plan puts in it (plus what was already there). */
+export interface BlockRating {
+  scheduleId: string;
+  date: string;
+  label: string | null;
+  /** Pomodoro-weighted average complexity of the new tasks in the block, 1-10. */
+  complexity: number;
+  load: BlockLoad;
+  pomodoros: number;
+  capacity: number;
 }
 
 export interface RejectedAssignment {
@@ -61,9 +83,14 @@ export interface RejectedAssignment {
 
 export interface PlanProposal {
   planner: string;
+  /** Who rated the tasks' complexity: 'laya', or 'stored' (the value saved on each task). */
+  complexitySource: string;
+  /** Planners that failed before the one that answered, with why. */
+  warnings: string[];
   days: string[];
   accepted: AcceptedAssignment[];
   rejected: RejectedAssignment[];
+  blocks: BlockRating[];
   /** Tasks that ended up without a place (never proposed, or proposed and rejected). */
   unplaced: string[];
 }

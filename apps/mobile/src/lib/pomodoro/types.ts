@@ -1,4 +1,4 @@
-import type { PomodoroState } from '@calendar/shared';
+import type { AttentionProfile, PomodoroState } from '@calendar/shared';
 
 export interface SyncPomodoroRecord {
   id: string;
@@ -13,6 +13,9 @@ export interface SyncPomodoroRecord {
   interrupted: boolean;
   startedAt: string | null;
   endedAt: string | null;
+  // Block mode: ends at the WORK block's fixed end (see createBlockPomodoroSession).
+  blockEndAt?: string | null;
+  attentionProfile?: AttentionProfile | null;
   createdAt: string;
   updatedAt: string;
 }

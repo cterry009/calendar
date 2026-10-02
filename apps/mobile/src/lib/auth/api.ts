@@ -100,7 +100,7 @@ async function doRefreshAccessToken(): Promise<string | null> {
   return data.accessToken;
 }
 
-export async function apiFetch<T>(path: string, init: RequestInit = {}, retryOnUnauthorized = true): Promise<T> {
+export async function apiFetch<T>(path: string, init: RequestInit = {}, retryOnUnauthorized = true, timeoutMs?: number): Promise<T> {
   const headers = new Headers(init.headers);
 
   if (init.body && !headers.has('Content-Type')) {
@@ -114,7 +114,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}, retryOnU
 
   // Throws ServerUnreachableError (with a readable message) instead of hanging when the server
   // isn't there -- see lib/server/connection.ts.
-  const execute = () => fetchWithTimeout(path, { ...init, headers });
+  const execute = () => fetchWithTimeout(path, { ...init, headers }, timeoutMs);
   let response = await execute();
 
   if (response.status === 401 && retryOnUnauthorized && (await getRefreshToken())) {

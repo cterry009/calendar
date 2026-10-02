@@ -10,6 +10,26 @@ function task(overrides: Record<string, unknown> = {}) {
   return { clientId: 'task-1', updatedAt: at(0), title: 'Leer AN1', estimatedMinutes: 40, ...overrides };
 }
 
+describe('pomodoro sessions', () => {
+  it('keeps the id the client created the session with, so a retry updates the same row', async () => {
+    const session = { id: '0f2c9a4e-1111-4c5e-9f3a-1b2c3d4e5f60', updatedAt: at(0), state: 'FOCUS', active: true, attentionProfile: 'DEEP' };
+    await h.batch({ pomodoroSessions: [session] });
+    await h.batch({ pomodoroSessions: [{ ...session, updatedAt: at(1), state: 'IDLE', active: false, interrupted: true }] });
+    const rows = await h.prisma.pomodoroSession.findMany({ where: { userId: h.userId } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: session.id, state: 'IDLE', attentionProfile: 'DEEP' });
+  });
+});
+
+describe('attention rating on tasks', () => {
+  it('stores the rating, and a change that omits it leaves it alone', async () => {
+    await h.batch({ tasks: [task({ attentionReentry: 3, attentionLoad: 2, attentionProfile: 'DEEP', attentionSource: 'MODEL', attentionReason: 'Derivación larga.' })] });
+    await h.batch({ tasks: [task({ updatedAt: at(1), title: 'Leer AN1 (editado)' })] });
+    const row = await h.prisma.task.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(row).toMatchObject({ title: 'Leer AN1 (editado)', attentionReentry: 3, attentionLoad: 2, attentionProfile: 'DEEP', attentionSource: 'MODEL' });
+  });
+});
+
 describe('updatedAt wins (tasks)', () => {
   it('creates from a clientId and updates the same row on a newer change', async () => {
     await h.batch({ tasks: [task()] });
@@ -154,6 +174,34 @@ describe('idempotency keys', () => {
     expect(first.applied.blockEvents?.[0].status).toBe('applied');
     expect(retry.applied.blockEvents?.[0].status).toBe('skipped');
     expect(await h.prisma.blockEvent.count({ where: { userId: h.userId } })).toBe(1);
+  });
+
+  it('the same event sent twice at the same time is stored once, without an error', async () => {
+    const event = { id: '5c1d2e3f-0000-4c5e-9f3a-1b2c3d4e5f60', kind: 'FOCUS_STARTED', occurredAt: new Date().toISOString() };
+    const results = await Promise.all([h.batch({ focusEvents: [event] }), h.batch({ focusEvents: [event] })]);
+    expect(results.map((r) => r.applied.focusEvents?.[0].status).sort()).toEqual(['applied', 'skipped']);
+    expect(await h.prisma.focusEvent.count({ where: { userId: h.userId } })).toBe(1);
+  });
+
+  it('a focus event retried with the same client UUID is stored once, with its fields', async () => {
+    const event = {
+      id: '9a1b2c3d-0000-4c5e-9f3a-1b2c3d4e5f60',
+      kind: 'BLOCK_PROMPT_ACCEPTED',
+      occurredAt: '2026-10-05T14:03:00.000Z',
+      blockStartAt: '2026-10-05T14:00:00.000Z',
+      scheduleId: 'b1',
+      attentionProfile: 'DEEP',
+      value: 180,
+      meta: { source: 'notification' },
+    };
+    const first = await h.batch({ focusEvents: [event] });
+    const retry = await h.batch({ focusEvents: [event] });
+
+    expect(first.applied.focusEvents?.[0].status).toBe('applied');
+    expect(retry.applied.focusEvents?.[0].status).toBe('skipped');
+    const rows = await h.prisma.focusEvent.findMany({ where: { userId: h.userId } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ kind: 'BLOCK_PROMPT_ACCEPTED', attentionProfile: 'DEEP', value: 180, meta: { source: 'notification' } });
   });
 
   it('a habit check-in retried under a new clientId merges on (habit, day) instead of failing', async () => {

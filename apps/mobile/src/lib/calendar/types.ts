@@ -1,4 +1,4 @@
-import type { HabitRecordStatus, HabitType, TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
+import type { AttentionProfile, AttentionSource, HabitRecordStatus, HabitType, TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
 import type { SyncBlockEventRecord } from '../blockEvents/types';
 import type { SyncBlockListRecord } from '../blocklist/types';
 import type { SyncFitnessRecord } from '../fitness/types';
@@ -20,6 +20,11 @@ export interface SyncTaskRecord {
   actualMinutes: number | null;
   difficulty: TaskDifficulty;
   complexity: number;
+  // Attention rating (docs/planning/normas-de-atencion.md); absent from older servers.
+  attentionReentry?: number | null;
+  attentionLoad?: number | null;
+  attentionProfile?: AttentionProfile | null;
+  attentionSource?: AttentionSource | null;
   priority: TaskPriority;
   category: string | null;
   status: TaskStatus;

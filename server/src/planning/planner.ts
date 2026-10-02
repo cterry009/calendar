@@ -7,7 +7,8 @@ import type { Assignment, PlanningContext } from './planning.types';
  */
 export interface Planner {
   readonly name: string;
-  propose(ctx: PlanningContext): Promise<Assignment[]>;
+  /** `notes` collects anything the user should know about how the plan was made. */
+  propose(ctx: PlanningContext, notes?: string[]): Promise<Assignment[]>;
 }
 
 export const PLANNER = Symbol('PLANNER');

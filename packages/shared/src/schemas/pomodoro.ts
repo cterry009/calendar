@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PomodoroStateSchema } from './enums.js';
+import { AttentionProfileSchema, PomodoroStateSchema } from './enums.js';
 
 export const PomodoroConfigSchema = z.object({
   focusDurationMin: z.number().int().min(1).default(25),
@@ -21,6 +21,10 @@ export const PomodoroSessionSchema = z.object({
   interrupted: z.boolean().default(false),
   startedAt: z.string().datetime().optional().nullable(),
   endedAt: z.string().datetime().optional().nullable(),
+  // Block mode: a session started for a WORK block ends at the block's fixed end, trimming the
+  // last phase to it, and records the block's attention profile.
+  blockEndAt: z.string().datetime().optional().nullable(),
+  attentionProfile: AttentionProfileSchema.optional().nullable(),
 });
 
 export type PomodoroConfig = z.infer<typeof PomodoroConfigSchema>;

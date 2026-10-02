@@ -2,7 +2,10 @@ import { TaskPriority } from '@prisma/client';
 import type {
   AcceptedAssignment,
   Assignment,
+  BlockLoad,
+  BlockRating,
   PlanningContext,
+  PlanningSlot,
   PlanningTask,
   RejectedAssignment,
 } from './planning.types';
@@ -17,7 +20,7 @@ const PRIORITIES = new Set<string>(Object.values(TaskPriority));
 export function validatePlan(
   ctx: PlanningContext,
   assignments: Assignment[],
-): { accepted: AcceptedAssignment[]; rejected: RejectedAssignment[] } {
+): { accepted: AcceptedAssignment[]; rejected: RejectedAssignment[]; blocks: BlockRating[] } {
   const tasks = new Map(ctx.tasks.map((t) => [t.id, t]));
   const slots = new Map(ctx.slots.map((s) => [slotKey(s.scheduleId, s.date), s]));
   const days = new Set(ctx.days);
@@ -51,18 +54,70 @@ export function validatePlan(
     candidates = candidates.filter((a) => !failures.has(a));
   }
 
-  // 3. Place block tasks one after another inside their block, after what's already there.
-  const cursor = new Map(ctx.slots.map((s) => [slotKey(s.scheduleId, s.date), s.used]));
-  const accepted = candidates.map((a): AcceptedAssignment => {
-    if (a.scheduleId === null) return { ...a, startMinute: null };
-    const key = slotKey(a.scheduleId, a.date);
+  // 3. Inside each block the hardest task goes on top (first), then the rest one after another,
+  // after what's already there -- a study line still keeps its own order.
+  const byBlock = new Map<string, Assignment[]>();
+  const accepted: AcceptedAssignment[] = [];
+  for (const a of candidates) {
+    if (a.scheduleId === null) accepted.push({ ...a, startMinute: null, complexity: tasks.get(a.taskId)!.complexity });
+    else byBlock.set(slotKey(a.scheduleId, a.date), [...(byBlock.get(slotKey(a.scheduleId, a.date)) ?? []), a]);
+  }
+  const blocks: BlockRating[] = [];
+  for (const [key, list] of byBlock) {
     const slot = slots.get(key)!;
-    const before = cursor.get(key)!;
-    cursor.set(key, before + tasks.get(a.taskId)!.pomodoros);
-    return { ...a, startMinute: slot.startMinute + before * (slot.pomodoroMin + slot.shortBreakMin) };
-  });
+    const ordered = hardestFirst(list, tasks);
+    let cursor = slot.used;
+    for (const a of ordered) {
+      const task = tasks.get(a.taskId)!;
+      accepted.push({ ...a, startMinute: slot.startMinute + cursor * (slot.pomodoroMin + slot.shortBreakMin), complexity: task.complexity });
+      cursor += task.pomodoros;
+    }
+    blocks.push(rateBlock(slot, ordered.map((a) => tasks.get(a.taskId)!)));
+  }
+  accepted.sort((a, b) => a.date.localeCompare(b.date) || (a.startMinute ?? 24 * 60) - (b.startMinute ?? 24 * 60));
+  blocks.sort((a, b) => a.date.localeCompare(b.date) || slots.get(slotKey(a.scheduleId, a.date))!.startMinute - slots.get(slotKey(b.scheduleId, b.date))!.startMinute);
 
-  return { accepted, rejected };
+  return { accepted, rejected, blocks };
+}
+
+const PROFILE_RANK = { MECHANICAL: 0, LIGHT: 1, DEEP: 2 } as const;
+
+/** How demanding a task is, for ordering: its attention profile first, then its complexity. */
+function demand(task: PlanningTask): number {
+  return (task.attentionProfile ? PROFILE_RANK[task.attentionProfile] : PROFILE_RANK.LIGHT) * 100 + task.complexity;
+}
+
+/** Most demanding first (stable on ties); tasks of one study line then take their slots in pensum order. */
+export function hardestFirst(list: Assignment[], tasks: Map<string, PlanningTask>): Assignment[] {
+  const sorted = [...list].sort((a, b) => demand(tasks.get(b.taskId)!) - demand(tasks.get(a.taskId)!));
+  const lines = new Map<string, number[]>();
+  sorted.forEach((a, i) => {
+    const line = tasks.get(a.taskId)!.line;
+    if (line) lines.set(line.id, [...(lines.get(line.id) ?? []), i]);
+  });
+  for (const positions of lines.values()) {
+    const inOrder = positions.map((i) => sorted[i]).sort((a, b) => tasks.get(a.taskId)!.line!.order - tasks.get(b.taskId)!.line!.order);
+    positions.forEach((pos, k) => (sorted[pos] = inOrder[k]));
+  }
+  return sorted;
+}
+
+export function loadOf(complexity: number): BlockLoad {
+  return complexity <= 4 ? 'ligero' : complexity <= 6 ? 'medio' : 'exigente';
+}
+
+function rateBlock(slot: PlanningSlot, placed: PlanningTask[]): BlockRating {
+  const pomodoros = placed.reduce((n, t) => n + t.pomodoros, 0);
+  const complexity = Math.round((placed.reduce((n, t) => n + t.complexity * t.pomodoros, 0) / pomodoros) * 10) / 10;
+  return {
+    scheduleId: slot.scheduleId,
+    date: slot.date,
+    label: slot.label,
+    complexity,
+    load: loadOf(complexity),
+    pomodoros: slot.used + pomodoros,
+    capacity: slot.capacity,
+  };
 }
 
 /** Rejects a session dated before an earlier pending session of its line, or with one left undated. */

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "fuente": "Prompt_app_calendario.md (bóveda Notas de Fisica): plantilla semanal y plan por fases",
+  "escrito_por": "Claude Opus 5.5, 2026-10-02",
+  "nota": "Mapa de referencia de líneas de estudio a bloques de trabajo, para cuando Gemini no responde. Cada bloque (buscado por el texto de su título) toma sesiones de sus líneas EN ESTE ORDEN: termina una antes de empezar la siguiente, igual que las fases de las reglas. Fase 1: geometría en B1 y análisis en B2. Fase 2: Pilar A en B2 (después de AN3-AN4). Fase 3: Pilar C y luego Pilar D en B1, y Pilar B en B2. Las notas 04-07 de la fase 2 en B1 no son tareas todavía. Los bloques de código, datos, carrera y repaso no reciben sesiones de estudio nuevas.",
+  "bloques": [
+    {
+      "titulo_contiene": "Estudio B1",
+      "lineas": ["pensum_geometria_diff_hams.md", "pensum_pilar_C.md", "pensum_pilar_D.md"]
+    },
+    {
+      "titulo_contiene": "Estudio B2",
+      "lineas": ["pensum_analisis.md", "pensum_pilar_A.md", "pensum_pilar_B.md"]
+    }
+  ]
+}

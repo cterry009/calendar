@@ -1,4 +1,4 @@
-﻿import { Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { DesktopBlockedOverlay } from '../components/desktop/DesktopBlockedOverlay';
 import { DesktopBlockingBridge } from '../components/desktop/DesktopBlockingBridge';
 import { DesktopAppTimeBridge } from '../components/desktop/DesktopAppTimeBridge';
@@ -6,6 +6,7 @@ import { DesktopGameTimeBridge } from '../components/desktop/DesktopGameTimeBrid
 import { DesktopUsageWarnings } from '../components/desktop/DesktopUsageWarnings';
 import { DesktopNightWarnings } from '../components/desktop/DesktopNightWarnings';
 import { DesktopTrayBridge } from '../components/desktop/DesktopTrayBridge';
+import { BlockStartPrompt } from '../components/focus/BlockStartPrompt';
 import { SoftFocusOverlay } from '../components/focus/SoftFocusOverlay';
 import { PanelHost } from '../components/panels/PanelHost';
 import { GlobalQuickAdd } from '../components/tasks/GlobalQuickAdd';
@@ -40,6 +41,7 @@ export function ProtectedAppLayout() {
                   <Outlet />
                   <PanelHost />
                   <SoftFocusOverlay />
+                  <BlockStartPrompt />
                   <GlobalQuickAdd />
                 </QuickAddProvider>
               </PanelProvider>

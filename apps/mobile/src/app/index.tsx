@@ -138,6 +138,11 @@ export default function HomeScreen() {
                   Habitos
                 </AppButton>
               </Link>
+              <Link href="/plan" asChild>
+                <AppButton variant="ghost" flexGrow={1} flexBasis={140}>
+                  Plan de la semana
+                </AppButton>
+              </Link>
               <Link href="/screen-time" asChild>
                 <AppButton variant="ghost" flexGrow={1} flexBasis={140}>
                   Tiempo de pantalla

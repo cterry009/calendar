@@ -18,12 +18,15 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
+  AttentionProfile,
+  AttentionSource,
   BlockEventTrigger,
   BlockListKind,
   BlockListScope,
   DevicePlatform,
   FitnessIntensity,
   FitnessSource,
+  FocusEventKind,
   FocusTriggerKind,
   HabitRecordStatus,
   HabitType,
@@ -87,6 +90,31 @@ export class TaskSyncChangeDto {
   @Min(1)
   @Max(10)
   complexity?: number;
+
+  // Attention rating (docs/planning/normas-de-atencion.md). Omitted = leave as is; null = clear.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(3)
+  attentionReentry?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(3)
+  attentionLoad?: number | null;
+
+  @IsOptional()
+  @IsEnum(AttentionProfile)
+  attentionProfile?: AttentionProfile | null;
+
+  @IsOptional()
+  @IsEnum(AttentionSource)
+  attentionSource?: AttentionSource | null;
+
+  @IsOptional()
+  @IsString()
+  attentionReason?: string | null;
 
   @IsOptional()
   @IsEnum(TaskPriority)
@@ -237,6 +265,15 @@ export class PomodoroSyncChangeDto {
   @IsOptional()
   @IsDateString()
   endedAt?: string;
+
+  // Block mode (a session for a WORK block, ending at its fixed end).
+  @IsOptional()
+  @IsDateString()
+  blockEndAt?: string | null;
+
+  @IsOptional()
+  @IsEnum(AttentionProfile)
+  attentionProfile?: AttentionProfile | null;
 }
 
 export class BlockListSyncChangeDto {
@@ -571,6 +608,48 @@ export class BlockEventSyncChangeDto {
   occurredAt!: string;
 }
 
+// Focus-block telemetry. Same shape of contract as BlockEventSyncChangeDto: a client-generated id
+// is the idempotency key, and an event is never edited or removed once logged.
+export class FocusEventSyncChangeDto {
+  @IsString()
+  @MinLength(1)
+  id!: string;
+
+  @IsEnum(FocusEventKind)
+  kind!: FocusEventKind;
+
+  @IsDateString()
+  occurredAt!: string;
+
+  @IsOptional()
+  @IsString()
+  scheduleId?: string;
+
+  @IsOptional()
+  @IsString()
+  taskId?: string;
+
+  @IsOptional()
+  @IsString()
+  pomodoroSessionId?: string;
+
+  @IsOptional()
+  @IsEnum(AttentionProfile)
+  attentionProfile?: AttentionProfile;
+
+  @IsOptional()
+  @IsDateString()
+  blockStartAt?: string;
+
+  @IsOptional()
+  @IsInt()
+  value?: number;
+
+  @IsOptional()
+  @IsObject()
+  meta?: Record<string, unknown>;
+}
+
 export class DetoxPlanSyncChangeDto {
   @IsOptional()
   @IsString()
@@ -829,6 +908,12 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => BlockEventSyncChangeDto)
   blockEvents?: BlockEventSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FocusEventSyncChangeDto)
+  focusEvents?: FocusEventSyncChangeDto[];
 
   @IsOptional()
   @IsArray()

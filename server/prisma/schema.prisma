@@ -77,6 +77,36 @@ enum BlockEventTrigger {
   NIGHT_UNLOCK
 }
 
+// Attention profile of a task or a pomodoro block (docs/planning/normas-de-atencion.md):
+// MECHANICAL 15/5 in a 60-min block, LIGHT 25/5 and DEEP 40/5 in 90-min blocks. Set from the
+// (reentry, load) rating by a fixed table, never by a model.
+enum AttentionProfile {
+  MECHANICAL
+  LIGHT
+  DEEP
+}
+
+// Who rated a task's attention: the reference labels (docs/planning/anclas.json), a model, or the user.
+enum AttentionSource {
+  REFERENCE
+  MODEL
+  USER
+}
+
+// What a FocusEvent records. All of it is telemetry for calibrating profiles and training models.
+enum FocusEventKind {
+  BLOCK_PROMPT_ACCEPTED // "Iniciar" on the block-start notification
+  BLOCK_PROMPT_SNOOZED // "En 5 min"
+  BLOCK_PROMPT_DECLINED // "Hoy no"
+  BLOCK_PROMPT_OPENED // tapped the notification without picking an action
+  FOCUS_STARTED
+  FOCUS_COMPLETED
+  BREAK_COMPLETED
+  SESSION_CANCELLED // the user stopped it before the block ended
+  BLOCK_ENDED // the session ran until the block's fixed end
+  CHECK_IN // self-reported minutes of real concentration
+}
+
 enum FitnessIntensity {
   LOW
   MEDIUM
@@ -139,6 +169,7 @@ model User {
   scheduleCompletions ScheduleCompletion[]
   journalEntries      JournalEntry[]
   blockEvents         BlockEvent[]
+  focusEvents         FocusEvent[]
 
   @@map("users")
 }
@@ -176,6 +207,13 @@ model Task {
   actualMinutes      Int?
   difficulty         TaskDifficulty @default(MEDIUM)
   complexity         Int            @default(5) // 1–10
+  // Attention rating (docs/planning/normas-de-atencion.md): reentry cost and mental load, 0-3 each,
+  // and the profile the fixed table gives them. Null until rated.
+  attentionReentry   Int?
+  attentionLoad      Int?
+  attentionProfile   AttentionProfile?
+  attentionSource    AttentionSource?
+  attentionReason    String?
   priority           TaskPriority   @default(MEDIUM)
   category           String?
   status             TaskStatus     @default(PENDING)
@@ -258,6 +296,9 @@ model PomodoroSession {
   interrupted           Boolean       @default(false)
   startedAt             DateTime?
   endedAt               DateTime?
+  // Block mode: the session ends at the WORK block's fixed end, trimming its last phase.
+  blockEndAt            DateTime?
+  attentionProfile      AttentionProfile?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
@@ -304,6 +345,32 @@ model BlockListEntry {
 // server-assigned. No deviceId, matching FitnessEntry/DailyStepCount/DailyFloorsClimbed's existing
 // convention of not tracking per-record device provenance. `identifier` is nullable: a
 // NIGHT_UNLOCK event isn't tied to any one app.
+// Everything that happens around a focus block, logged on the device and synced like BlockEvent:
+// immutable, idempotent on the client-generated id. Raw material for calibrating attention profiles
+// and training the planning models. "Ignored" prompts aren't logged: they're the blocks with no row.
+model FocusEvent {
+  id                String            @id
+  userId            String
+  kind              FocusEventKind
+  occurredAt        DateTime
+  scheduleId        String?
+  taskId            String?
+  pomodoroSessionId String?
+  attentionProfile  AttentionProfile?
+  /// When the block was due to start; occurredAt minus this is how late the user started.
+  blockStartAt      DateTime?
+  /// Seconds for durations (focus elapsed before a cancel, ...), minutes for CHECK_IN.
+  value             Int?
+  meta              Json?
+  createdAt         DateTime          @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, occurredAt])
+  @@index([userId, kind])
+  @@map("focus_events")
+}
+
 model BlockEvent {
   id         String            @id
   userId     String
