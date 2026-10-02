@@ -10,6 +10,7 @@ export * from './pomodoro/streak.js';
 export * from './pomodoro/focus-events.js';
 export * from './pomodoro/focusPlan.js';
 export * from './attention/profiles.js';
+export * from './attention/focus-status.js';
 export * from './notes/pensum.js';
 export * from './analytics/estimation-accuracy.js';
 export * from './analytics/suggestions.js';

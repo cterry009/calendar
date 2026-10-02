@@ -131,3 +131,15 @@ export function setBlockPopupContent(content: {
     // Older native build without it: the popup falls back to its built-in texts.
   }
 }
+
+// The persistent "you're working" notification (useFocusStatusNotification.ts): block, phase and a
+// native countdown to `endsAt`. Called only when what it shows changes; Android redraws the clock.
+export function setFocusStatus(title: string, text: string, endsAt: Date): void {
+  if (Platform.OS !== 'android') return;
+  FocusBlockModule.setFocusStatus(title, text, endsAt.getTime());
+}
+
+export function clearFocusStatus(): void {
+  if (Platform.OS !== 'android') return;
+  FocusBlockModule.clearFocusStatus();
+}

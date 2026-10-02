@@ -18,6 +18,14 @@ class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModul
     // No-op off Android.
   }
 
+  setFocusStatus(): void {
+    // No-op off Android: the web app shows its own timer.
+  }
+
+  clearFocusStatus(): void {
+    // No-op off Android.
+  }
+
   isWorkHours(): boolean {
     return false;
   }

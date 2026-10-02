@@ -14,6 +14,7 @@ import { PomodoroProvider } from '../context/PomodoroContext';
 import { SyncProvider } from '../context/SyncContext';
 import { useBlockEvents } from '../hooks/useBlockEvents';
 import { useBlockPrompts } from '../hooks/useBlockPrompts';
+import { useFocusStatusNotification } from '../hooks/useFocusStatusNotification';
 import { useFocusBlocking } from '../hooks/useFocusBlocking';
 import { useHabitReminders } from '../hooks/useHabitReminders';
 import { useJogDetection } from '../hooks/useJogDetection';
@@ -47,6 +48,12 @@ function FocusBlockingBridge() {
 // the block, so like FocusBlockingBridge this has to run inside PomodoroProvider.
 function BlockPromptsBridge() {
   useBlockPrompts();
+  return null;
+}
+
+// The persistent block/pomodoro notification needs usePomodoro(), so it lives inside PomodoroProvider.
+function FocusStatusBridge() {
+  useFocusStatusNotification();
   return null;
 }
 
@@ -152,6 +159,7 @@ function RootNavigator() {
       <PomodoroProvider>
         <FocusBlockingBridge />
         <BlockPromptsBridge />
+        <FocusStatusBridge />
         <JogDetectionBridge />
         <NightBlockingBridge />
         <StepTrackingBridge />

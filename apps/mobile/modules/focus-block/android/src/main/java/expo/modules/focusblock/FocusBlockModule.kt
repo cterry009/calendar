@@ -62,6 +62,20 @@ class FocusBlockModule : Module() {
 
     // Texts for the native "App bloqueada" popup (BlockPopup.kt): the shared activity suggestions
     // by category and the motivational phrases, as JSON.
+    // The persistent block/pomodoro notification with a native countdown (FocusStatusNotification.kt).
+    // endsAtMs arrives as a JS number (Double).
+    Function("setFocusStatus") { title: String, text: String, endsAtMs: Double ->
+      appContext.reactContext?.let { context ->
+        FocusStatusNotification.show(context, title, text, endsAtMs.toLong())
+      }
+    }
+
+    Function("clearFocusStatus") {
+      appContext.reactContext?.let { context ->
+        FocusStatusNotification.clear(context)
+      }
+    }
+
     Function("setBlockPopupContent") { json: String ->
       appContext.reactContext?.let { context -> BlockPopup.writeContent(context, json) }
     }

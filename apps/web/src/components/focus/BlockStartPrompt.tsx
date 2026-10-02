@@ -5,6 +5,7 @@ import { ATTENTION_PROFILE_SPECS, blockOnDay, type FocusEventKind } from '@calen
 import { usePomodoro } from '../../context/PomodoroContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
 import { isDesktop } from '../../lib/desktop';
+import { notifySystem } from '../../lib/desktop/notify';
 import { logFocusEvent } from '../../lib/focusEvents/log';
 import type { SyncSchedule } from '../../lib/calendar/types';
 
@@ -61,18 +62,6 @@ async function raiseWindow(): Promise<void> {
   await win.setFocus();
 }
 
-async function notify(title: string, body: string): Promise<void> {
-  try {
-    if (isDesktop) {
-      const { isPermissionGranted, requestPermission, sendNotification } = await import('@tauri-apps/plugin-notification');
-      if ((await isPermissionGranted()) || (await requestPermission()) === 'granted') sendNotification({ title, body });
-    } else if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, { body });
-    }
-  } catch {
-    // The in-app prompt is the important part.
-  }
-}
 
 export function BlockStartPrompt() {
   const { schedules, tasks } = useCalendarData();
@@ -86,7 +75,7 @@ export function BlockStartPrompt() {
     setPrompt(next);
     const block = blockOnDay(next.schedule, tasks, next.startAt);
     const end = block.endAt.getHours() * 60 + block.endAt.getMinutes();
-    void notify(next.schedule.label ?? 'Bloque de trabajo', `${hhmm(next.schedule.startMinute)}-${hhmm(end)} · ¿Lo inicias?`);
+    void notifySystem(next.schedule.label ?? 'Bloque de trabajo', `${hhmm(next.schedule.startMinute)}-${hhmm(end)} · ¿Lo inicias?`);
     if (isDesktop) void raiseWindow().catch(() => undefined);
   }, [tasks]);
 
