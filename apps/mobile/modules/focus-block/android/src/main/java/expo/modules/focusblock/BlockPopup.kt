@@ -39,7 +39,7 @@ internal object BlockPopup {
     Category.GAME to listOf("Salir a caminar o estirar 5 minutos."),
     Category.GENERIC to listOf("Respira hondo unas cuantas veces."),
   )
-  private val FALLBACK_PHRASE = "Cada minuto de enfoque cuenta."
+  private val FALLBACK_PHRASE = "Cada minuto de concentración cuenta."
 
   private var current: View? = null
 
