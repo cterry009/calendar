@@ -99,10 +99,16 @@ export function currentFocusStatus(input: {
     const exits = session.exitCount ?? 1;
     const end = session.blockEndAt ? new Date(session.blockEndAt) : inBlock?.endAt;
     if (end && end > now) {
+      // What's left of the pomodoro, frozen at the moment the user left.
+      const leftMs = session.startedAt
+        ? (getPhaseDurationMinutes(session) ?? 0) * 60_000 - (new Date(session.pausedAt).getTime() - new Date(session.startedAt).getTime())
+        : 0;
+      const leftSec = Math.max(0, Math.round(leftMs / 1000));
+      const left = `faltan ${String(Math.floor(leftSec / 60)).padStart(2, '0')}:${String(leftSec % 60).padStart(2, '0')} del pomodoro`;
       return {
         kind: 'pomodoro',
         title: 'Fuera del bloque · en pausa',
-        text: [label, `${exits} ${exits === 1 ? 'salida' : 'salidas'}`, 'toca para volver'].filter(Boolean).join(' · '),
+        text: [label, left, `${exits} ${exits === 1 ? 'salida' : 'salidas'}`, 'toca para volver'].filter(Boolean).join(' · '),
         endsAt: end,
         blockLabel: label,
         key: `paused:${session.id ?? ''}:${exits}`,

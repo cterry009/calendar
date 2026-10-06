@@ -183,6 +183,12 @@ export interface FocusOverlayState {
   running?: boolean;
   paused?: boolean;
   exits?: number;
+  /** FOCUS / SHORT_BREAK / LONG_BREAK: "para terminar este pomodoro" only in a focus phase. */
+  phase?: string;
+  /** What's left of the pomodoro; frozen while out of the block. */
+  remainingMs?: number;
+  /** A line to finish it (finishPomodoroPhrase). */
+  phrase?: string;
 }
 
 export function setFocusOverlayState(state: FocusOverlayState): void {

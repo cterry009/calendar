@@ -1,5 +1,7 @@
 import { AppButton, AppCard, Eyebrow, H1, Paragraph, Text, YStack } from '@calendar/ui';
-import { Link, Stack } from 'expo-router';
+import { finishPomodoroPhrase } from '@calendar/shared';
+import { Link, Stack, useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef } from 'react';
 import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useOnboarding } from '../context/OnboardingContext';
 import { usePomodoro } from '../context/PomodoroContext';
@@ -43,12 +45,25 @@ export default function PomodoroScreen() {
   const inBlock = Boolean(session?.active && session.scheduleId);
   const blockLabel = inBlock ? schedules.find((s) => s.id === session?.scheduleId)?.label : null;
 
+  // "Volver" on the phone's out-of-the-block bar opens this screen with ?volver=1.
+  const { volver } = useLocalSearchParams<{ volver?: string }>();
+  const handledVolver = useRef(false);
+  useEffect(() => {
+    if (volver !== '1' || handledVolver.current || isLoading) return;
+    handledVolver.current = true;
+    if (isOut) void comeBack();
+  }, [volver, isOut, isLoading, comeBack]);
+  const phrase =
+    inBlock && session && (isOut || session.state === 'FOCUS')
+      ? finishPomodoroPhrase(remainingSeconds / 60, session.id + ':' + session.completedCycles + ':' + session.state, isOut)
+      : null;
+
   // Started inside a WORK block, the pomodoro runs in block mode and ends with the block; a plain
   // one cycles focus/break until cancelled, which on the phone looked like a block that never ended.
   const startFocus = async () => {
     const now = new Date();
     const work = activeWorkSchedule(schedules, now, skipped);
-    const block = work ? blockToday({ scheduleId: work.id, startMinute: work.startMinute, endMinute: work.endMinute }, tasks, now) : null;
+    const block = work ? blockToday({ ...work, scheduleId: work.id }, tasks, now) : null;
     if (work && block && now < block.endAt) {
       const id = await startBlock({
         scheduleId: work.id,
@@ -56,6 +71,7 @@ export default function PomodoroScreen() {
         blockEndAt: block.endAt,
         profile: block.profile,
         taskId: block.tasks[0]?.id ?? null,
+        timing: { focusMin: block.focusMin, breakMin: block.breakMin },
       });
       // Too little of the block left for a pomodoro: a plain one instead.
       if (id) return;
@@ -115,11 +131,16 @@ export default function PomodoroScreen() {
 
               <Text color="$muted" fontSize="$2" textAlign="center">
                 {isOut
-                  ? 'En pausa: el tiempo no cuenta hasta que vuelvas.'
+                  ? 'En pausa: te falta esto del pomodoro, y no cuenta hasta que vuelvas.'
                   : phaseDurationMinutes
                     ? `${Math.round(phaseDurationMinutes)} min`
                     : 'Presiona iniciar para comenzar un ciclo'}
               </Text>
+              {phrase ? (
+                <Text color="$accent" fontSize="$4" fontWeight="700" textAlign="center">
+                  {phrase}
+                </Text>
+              ) : null}
               {inBlock ? (
                 <Text color={exits > 0 ? '$warning' : '$muted'} fontSize="$3" fontWeight="600">
                   {exits === 0 ? 'Sin salidas en este bloque' : `Saliste ${exits} ${exits === 1 ? 'vez' : 'veces'} de este bloque`}

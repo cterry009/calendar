@@ -1,4 +1,11 @@
-import { activeWorkSchedule, blockOccurrenceKey, blockSessionId, currentFocusStatus, MIN_TRIMMED_FOCUS_MIN } from '@calendar/shared';
+import {
+  activeWorkSchedule,
+  blockOccurrenceKey,
+  blockSessionId,
+  currentFocusStatus,
+  finishPomodoroPhrase,
+  MIN_TRIMMED_FOCUS_MIN,
+} from '@calendar/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { usePomodoro } from '../context/PomodoroContext';
@@ -19,7 +26,7 @@ import { useCalendarData } from './useCalendarData';
 const CHECK_INTERVAL_MS = 30_000;
 
 export function useBlockFocus(): void {
-  const { session, startBlock, pause, isLoading } = usePomodoro();
+  const { session, startBlock, pause, isLoading, remainingSeconds } = usePomodoro();
   const { schedules, tasks, skipped, pomodoroSessions, isLoading: calendarLoading } = useCalendarData();
   const [now, setNow] = useState(() => new Date());
   const busy = useRef(false);
@@ -48,9 +55,18 @@ export function useBlockFocus(): void {
             running: !session.pausedAt,
             paused: !!session.pausedAt,
             exits: session.exitCount ?? 0,
+            phase: session.state,
+            // What's left of the pomodoro; frozen while out of the block.
+            remainingMs: remainingSeconds * 1000,
+            phrase: finishPomodoroPhrase(
+              remainingSeconds / 60,
+              `${session.id}:${session.completedCycles}:${session.state}`,
+              !!session.pausedAt,
+            ),
           }
         : {},
     );
+    // Pushed on phase changes and pauses, plus the 30 s tick for the phrase's minutes.
   }, [session, schedules, tasks, now, skipped]);
 
   useEffect(() => {
@@ -78,7 +94,7 @@ export function useBlockFocus(): void {
         // Ended or cancelled on purpose (here or on the PC): don't bring it back.
         const id = blockSessionId(work.id, now);
         if (session?.id === id || pomodoroSessions.some((s) => s.id === id)) return;
-        const block = blockToday({ scheduleId: work.id, startMinute: work.startMinute, endMinute: work.endMinute }, tasks, now);
+        const block = blockToday({ ...work, scheduleId: work.id }, tasks, now);
         if (block.endAt.getTime() - now.getTime() < MIN_TRIMMED_FOCUS_MIN * 60_000) return;
         await startBlock({
           scheduleId: work.id,
@@ -86,6 +102,7 @@ export function useBlockFocus(): void {
           blockEndAt: block.endAt,
           profile: block.profile,
           taskId: block.tasks[0]?.id ?? null,
+          timing: { focusMin: block.focusMin, breakMin: block.breakMin },
         });
       } catch {
         // Next tick tries again.
@@ -118,13 +135,14 @@ export function useBlockExit() {
     const work = activeWorkSchedule(schedules, now, skipped);
     if (!work) return;
     await clearBlockExited(blockOccurrenceKey(work.id, now));
-    const block = blockToday({ scheduleId: work.id, startMinute: work.startMinute, endMinute: work.endMinute }, tasks, now);
+    const block = blockToday({ ...work, scheduleId: work.id }, tasks, now);
     await startBlock({
       scheduleId: work.id,
       blockStartAt: block.startAt,
       blockEndAt: block.endAt,
       profile: block.profile,
       taskId: block.tasks[0]?.id ?? null,
+      timing: { focusMin: block.focusMin, breakMin: block.breakMin },
     });
   }, [session, resume, startBlock, schedules, skipped, tasks]);
 

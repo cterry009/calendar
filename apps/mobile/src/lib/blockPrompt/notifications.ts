@@ -28,6 +28,9 @@ export interface BlockPromptData {
   startMinute: number;
   endMinute: number;
   label: string | null;
+  /** The block's configured pomodoro, for its timing when no task decides it. */
+  pomodoroMin?: number | null;
+  shortBreakMin?: number | null;
   /** Times this prompt was already snoozed today. */
   snoozes: number;
 }
@@ -98,7 +101,7 @@ function content(data: BlockPromptData, body: string): Notifications.Notificatio
 
 /** What the prompt says for a block on a given day: real hours, profile and first task. */
 export function promptBody(schedule: SyncScheduleRecord, tasks: SyncTaskRecord[], day: Date): string {
-  const block = blockToday({ scheduleId: schedule.id, startMinute: schedule.startMinute, endMinute: schedule.endMinute }, tasks, day);
+  const block = blockToday({ ...schedule, scheduleId: schedule.id }, tasks, day);
   const end = block.endAt.getHours() * 60 + block.endAt.getMinutes();
   const first = block.tasks[0]?.title;
   return `${hhmm(schedule.startMinute)}-${hhmm(end)} · ${ATTENTION_PROFILE_SPECS[block.profile].name}${first ? ` · ${first}` : ''} · ¿Lo inicias?`;
@@ -133,7 +136,7 @@ export async function scheduleBlockPrompts(
       if (skipped.has(blockOccurrenceKey(s.id, day))) continue;
       const at = localDateAt(s.startMinute, day);
       if (at.getTime() <= now.getTime()) continue;
-      const data: BlockPromptData = { kind: 'block-prompt', scheduleId: s.id, startMinute: s.startMinute, endMinute: s.endMinute, label: s.label, snoozes: 0 };
+      const data: BlockPromptData = { kind: 'block-prompt', scheduleId: s.id, startMinute: s.startMinute, endMinute: s.endMinute, label: s.label, pomodoroMin: s.pomodoroMin, shortBreakMin: s.shortBreakMin, snoozes: 0 };
       jobs.push(
         Notifications.scheduleNotificationAsync({
           identifier: `${PREFIX}${s.id}-${dateKey(day)}`,

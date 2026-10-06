@@ -55,6 +55,8 @@ export interface StartBlockOptions {
   blockEndAt: Date;
   profile: AttentionProfile;
   taskId?: string | null;
+  /** The block's pomodoro and break (blockOnDay); the profile's when omitted. */
+  timing?: { focusMin: number; breakMin: number };
 }
 
 /** Which block a running session belongs to, for the events it logs. */
@@ -112,14 +114,23 @@ function pickCurrentSession(sessions: SyncPomodoroRecord[]): SyncPomodoroRecord 
   // The most recently touched active one: sessions abandoned months ago (test runs, a closed app)
   // can still be flagged active, and taking whichever came first sometimes showed one of those
   // instead of the block running now -- a block that seemed to never end (2026-10-06).
+  // Ignoring ones whose phase ended long ago: nobody is running those, and taking one blocked the
+  // block's own pomodoro from starting.
+  const now = Date.now();
   const active = sessions
-    .filter((entry) => entry.active)
+    .filter((entry) => entry.active && (entry.pausedAt || !isPhaseAbandoned(entry, now)))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
   if (active) {
     return active;
   }
 
-  return [...sessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] ?? null;
+  // Nothing running: the latest one, minus the abandoned "active" ones (shown as running they'd
+  // block the next block's pomodoro just the same).
+  return (
+    [...sessions]
+      .filter((entry) => !entry.active)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] ?? null
+  );
 }
 
 function withRecordMetadata(
@@ -269,7 +280,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   );
 
   const startBlock = useCallback(
-    async ({ scheduleId, blockStartAt, blockEndAt, profile, taskId }: StartBlockOptions) => {
+    async ({ scheduleId, blockStartAt, blockEndAt, profile, taskId, timing }: StartBlockOptions) => {
       const id = blockSessionId(scheduleId, blockStartAt);
       // Already in this block but left it ("Salir"): starting it again is coming back.
       if (session?.active && session.id === id && session.pausedAt) {
@@ -282,7 +293,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       if (session?.active) return null;
       // One session per block occurrence, the same id on every device, so the phone and the PC
       // starting the same block at once land on one row instead of two.
-      const base = { ...createBlockPomodoroSession(id, profile, blockEndAt.toISOString()), scheduleId };
+      const base = { ...createBlockPomodoroSession(id, profile, blockEndAt.toISOString(), timing), scheduleId };
       const started = transitionPomodoro(base, { type: 'START', taskId: taskId ?? undefined });
       if (started === base) return null;
       const record = withRecordMetadata(started, session?.id === id ? session : null);

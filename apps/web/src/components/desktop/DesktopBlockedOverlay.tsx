@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
-import { pickActivitySuggestion } from '@calendar/shared';
+import { finishPomodoroPhrase, pickActivitySuggestion } from '@calendar/shared';
+import { usePomodoro } from '../../context/PomodoroContext';
+import { formatTimer } from '../../lib/pomodoro/timer';
 import { isDesktop } from '../../lib/desktop';
 
 // Task 9.6. Desktop parity of Android's /blocked screen (6.7): when the process blocker
@@ -31,6 +33,9 @@ const DISMISS_MS = 10_000;
 
 export function DesktopBlockedOverlay() {
   const [alert, setAlert] = useState<BlockedAlert | null>(null);
+  // The pomodoro being protected: how long until it's done, ticking (2026-10-06).
+  const { session, remainingSeconds } = usePomodoro();
+  const inFocus = !!session?.active && session.state === 'FOCUS' && !session.pausedAt;
 
   useEffect(() => {
     if (!isDesktop) return;
@@ -105,6 +110,19 @@ export function DesktopBlockedOverlay() {
           Se cerró <Text fontWeight="700">{alert.name}</Text> porque tenés un enfoque activo
           (pomodoro, tarea u horario de trabajo).
         </Paragraph>
+        {inFocus ? (
+          <YStack alignItems="center" gap="$1">
+            <Text fontSize={48} fontWeight="800" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {formatTimer(remainingSeconds)}
+            </Text>
+            <Paragraph margin={0} color="$muted">
+              para terminar este pomodoro
+            </Paragraph>
+            <Text color="$accent" fontWeight="700" textAlign="center">
+              {finishPomodoroPhrase(remainingSeconds / 60, `${session?.id}:${session?.completedCycles}`)}
+            </Text>
+          </YStack>
+        ) : null}
         <YStack gap="$1" padding="$3" borderRadius="$4" backgroundColor="rgba(255,255,255,0.06)">
           <Text fontWeight="700" color="$accent">
             Mientras tanto

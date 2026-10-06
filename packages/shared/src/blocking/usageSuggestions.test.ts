@@ -1,3 +1,4 @@
+import { finishPomodoroPhrase } from './finishPhrases.js';
 import { normalizeWebsiteDomain, rankUsageSuggestions, websiteLabel, websiteMatches } from './usageSuggestions.js';
 
 describe('rankUsageSuggestions', () => {
@@ -57,5 +58,15 @@ describe('websites', () => {
   it('labels a domain readably', () => {
     expect(websiteLabel('youtube.com')).toBe('Youtube');
     expect(websiteLabel('mail.google.com')).toBe('Mail Google');
+  });
+});
+
+describe('finishPomodoroPhrase', () => {
+  it('names the minutes left, keeps one line per seed, and has lines for the last minutes and for a pause', () => {
+    expect(finishPomodoroPhrase(12.2, 's1:1')).toBe(finishPomodoroPhrase(12.2, 's1:1'));
+    expect(finishPomodoroPhrase(12.2, 's1:1')).toMatch(/13|Lo difícil|No hace falta|tendrás|foco/);
+    expect(finishPomodoroPhrase(1, 'x')).toMatch(/minuto|recta final|a punto/);
+    const paused = finishPomodoroPhrase(8, 'p', true);
+    expect(paused).toMatch(/8 minutos|Lo pausaste/);
   });
 });

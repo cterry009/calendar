@@ -44,8 +44,14 @@ export function createPomodoroSession(
  * A session for a WORK block: the profile's pomodoro and break, ending at the block's fixed end.
  * Started late, it simply fits fewer pomodoros before that end.
  */
-export function createBlockPomodoroSession(id: string, profile: AttentionProfile, blockEndAt: string): PomodoroSession {
-  const { focusMin, breakMin } = ATTENTION_PROFILE_SPECS[profile];
+export function createBlockPomodoroSession(
+  id: string,
+  profile: AttentionProfile,
+  blockEndAt: string,
+  /** The block's own pomodoro (blockOnDay's focusMin/breakMin); the profile's when omitted. */
+  timing?: { focusMin: number; breakMin: number },
+): PomodoroSession {
+  const { focusMin, breakMin } = timing ?? ATTENTION_PROFILE_SPECS[profile];
   return {
     ...createPomodoroSession(id, { focusDurationMin: focusMin, shortBreakMin: breakMin, longBreakMin: breakMin, cyclesBeforeLongBreak: 4 }),
     blockEndAt,

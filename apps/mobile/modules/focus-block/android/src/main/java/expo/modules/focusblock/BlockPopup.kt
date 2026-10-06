@@ -6,11 +6,13 @@ import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
+import android.os.SystemClock
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.Chronometer
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -71,6 +73,8 @@ internal object BlockPopup {
       boxText = suggestion,
       footer = phrase,
       button = "Volver al enfoque",
+      // The pomodoro being protected, counting down, with a line to finish it (2026-10-06).
+      pomodoro = FocusOverlay.runningFocus(service),
     )
   }
 
@@ -96,6 +100,7 @@ internal object BlockPopup {
     boxText: String,
     footer: String?,
     button: String,
+    pomodoro: Pair<Long, String>? = null,
   ) {
     val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     dismiss(windowManager)
@@ -128,6 +133,21 @@ internal object BlockPopup {
       }
       addView(text(title, 24f, danger, bold = true))
       addView(text(message, 16f, muted))
+      pomodoro?.let { (endsAt, finishLine) ->
+        addView(
+          Chronometer(service).apply {
+            isCountDown = true
+            base = SystemClock.elapsedRealtime() + (endsAt - System.currentTimeMillis())
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 44f)
+            setTextColor(body)
+            gravity = Gravity.CENTER_HORIZONTAL
+            start()
+          },
+          LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
+        )
+        addView(text("para terminar este pomodoro", 14f, muted).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        if (finishLine.isNotBlank()) addView(text(finishLine, 16f, accent, bold = true).apply { gravity = Gravity.CENTER_HORIZONTAL })
+      }
       addView(
         LinearLayout(service).apply {
           orientation = LinearLayout.VERTICAL

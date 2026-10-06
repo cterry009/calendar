@@ -17,11 +17,15 @@ export interface BlockToday {
   tasks: SyncTaskRecord[];
   /** The block's attention profile: its most demanding task's, LIGHT when none is rated. */
   profile: AttentionProfile;
+  /** Its pomodoro and break: the rated tasks' profile, else the block's own configuration. */
+  focusMin: number;
+  breakMin: number;
+  timingSource: 'tasks' | 'schedule' | 'default';
 }
 
 /** A WORK block on `day` (default today); same rules as the desktop (packages/shared blockOnDay). */
 export function blockToday(
-  block: { scheduleId: string; startMinute: number; endMinute: number },
+  block: { scheduleId: string; startMinute: number; endMinute: number; pomodoroMin?: number | null; shortBreakMin?: number | null },
   tasks: SyncTaskRecord[],
   day: Date = new Date(),
 ): BlockToday {

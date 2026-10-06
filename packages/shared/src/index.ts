@@ -5,6 +5,7 @@ export * from './screenTime/usageWarnings.js';
 export * from './blocking/activitySuggestions.js';
 export * from './blocking/motivationalPhrases.js';
 export * from './blocking/usageSuggestions.js';
+export * from './blocking/finishPhrases.js';
 export * from './serotonin/index.js';
 export * from './pomodoro/state-machine.js';
 export * from './pomodoro/streak.js';

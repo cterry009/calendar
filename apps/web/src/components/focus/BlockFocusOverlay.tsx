@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
-import { ATTENTION_PROFILE_SPECS } from '@calendar/shared';
+import { ATTENTION_PROFILE_SPECS, finishPomodoroPhrase } from '@calendar/shared';
 import { usePomodoro } from '../../context/PomodoroContext';
 import { useSchedules } from '../../hooks/useSchedules';
 import { useTasks } from '../../hooks/useTasks';
@@ -88,6 +88,9 @@ export function BlockFocusOverlay() {
   const task = session.taskId ? tasks.find((t) => t.id === session.taskId) : null;
   const profile = session.attentionProfile ? ATTENTION_PROFILE_SPECS[session.attentionProfile].name : null;
   const exits = session.exitCount ?? 0;
+  // The pomodoro's own countdown (frozen while out): total minus what already passed.
+  const remaining = pomodoro.remainingSeconds;
+  const phraseSeed = `${session.id}:${session.completedCycles}:${session.state}`;
   const exitsLabel = exits === 0 ? 'Sin salidas en este bloque' : `Saliste ${exits} ${exits === 1 ? 'vez' : 'veces'} de este bloque`;
 
   if (isOut) {
@@ -109,6 +112,12 @@ export function BlockFocusOverlay() {
           <Text fontWeight="700">Fuera del bloque · el tiempo no cuenta</Text>
           <Text fontSize="$2" color="$muted">
             {schedule?.label ?? 'Bloque de trabajo'} · {exitsLabel}
+          </Text>
+          <Text fontSize="$2">
+            Te faltan <Text fontWeight="700">{formatTimer(remaining)}</Text> de este pomodoro
+          </Text>
+          <Text fontSize="$2" color="$accent">
+            {finishPomodoroPhrase(remaining / 60, phraseSeed, true)}
           </Text>
         </YStack>
         <AppButton variant="primary" disabled={pomodoro.isMutating} onPress={() => void pomodoro.resume()}>
@@ -157,8 +166,16 @@ export function BlockFocusOverlay() {
             .join(' · ')}
         </Paragraph>
         <Text fontSize={72} fontWeight="800" lineHeight={80} style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {formatTimer(pomodoro.remainingSeconds)}
+          {formatTimer(remaining)}
         </Text>
+        <Paragraph margin={0} color="$muted" marginTop={-8}>
+          {session.state === 'FOCUS' ? 'para terminar este pomodoro' : 'de descanso'}
+        </Paragraph>
+        {session.state === 'FOCUS' ? (
+          <Text color="$accent" fontWeight="700" textAlign="center">
+            {finishPomodoroPhrase(remaining / 60, phraseSeed)}
+          </Text>
+        ) : null}
         {task ? (
           <Paragraph margin={0}>
             Tarea: <Text fontWeight="700">{task.title}</Text>

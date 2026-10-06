@@ -127,6 +127,7 @@ async function handle(
         blockEndAt: block.endAt,
         profile: block.profile,
         taskId: block.tasks[0]?.id ?? null,
+        timing: { focusMin: block.focusMin, breakMin: block.breakMin },
       });
       logFocusEvent({
         kind: 'BLOCK_PROMPT_ACCEPTED',

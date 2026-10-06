@@ -7,7 +7,7 @@ import { blockToday } from '../lib/blockPrompt/block';
 import { MISSED_LOOKBACK_DAYS, missedBlocks, type MissedBlock } from '../lib/blockPrompt/missed';
 import { hhmm } from '../lib/blockPrompt/notifications';
 import { DAY_ABBREVIATIONS_ES, isSameDay } from '../lib/calendar/utils';
-import type { SyncTaskRecord } from '../lib/calendar/types';
+import type { SyncScheduleRecord, SyncTaskRecord } from '../lib/calendar/types';
 import { platformStorage } from '../lib/platformStorage';
 import { pullSnapshot } from '../lib/sync/api';
 
@@ -84,7 +84,7 @@ export function useMissedBlocks(): void {
         const repeat = settled.length === 0 && key === lastShown.current.key && now.getTime() - lastShown.current.at < RUNNING_REPEAT_MS;
         if (missed.length && !repeat) {
           lastShown.current = { key, at: now.getTime() };
-          show(missed, snapshot.tasks, now, state.current);
+          show(missed, snapshot.tasks, snapshot.schedules, now, state.current);
         }
       } catch {
         // Offline with no cache: nothing to compare against, try again next time.
@@ -104,6 +104,7 @@ export function useMissedBlocks(): void {
 function show(
   missed: MissedBlock[],
   tasks: SyncTaskRecord[],
+  schedules: SyncScheduleRecord[],
   now: Date,
   { startBlock, active }: { startBlock: ReturnType<typeof usePomodoro>['startBlock']; active: boolean },
 ): void {
@@ -113,8 +114,15 @@ function show(
 
   const buttons: Parameters<typeof Alert.alert>[2] = [{ text: 'Ver calendario', onPress: () => router.push('/calendar') }];
   if (running) {
+    const config = schedules.find((s) => s.id === running.scheduleId);
     const block = blockToday(
-      { scheduleId: running.scheduleId, startMinute: running.startAt.getHours() * 60 + running.startAt.getMinutes(), endMinute: running.endAt.getHours() * 60 + running.endAt.getMinutes() },
+      {
+        scheduleId: running.scheduleId,
+        startMinute: running.startAt.getHours() * 60 + running.startAt.getMinutes(),
+        endMinute: running.endAt.getHours() * 60 + running.endAt.getMinutes(),
+        pomodoroMin: config?.pomodoroMin,
+        shortBreakMin: config?.shortBreakMin,
+      },
       tasks,
       now,
     );
@@ -127,6 +135,7 @@ function show(
           blockEndAt: block.endAt,
           profile: block.profile,
           taskId: block.tasks[0]?.id ?? null,
+          timing: { focusMin: block.focusMin, breakMin: block.breakMin },
         }),
     });
   }

@@ -132,6 +132,7 @@ export function BlockStartPrompt() {
           blockEndAt: block.endAt,
           profile: block.profile,
           taskId: block.tasks[0]?.id ?? null,
+          timing: { focusMin: block.focusMin, breakMin: block.breakMin },
         });
         logFocusEvent({ kind, ...base, pomodoroSessionId: sessionId ?? undefined, meta: { ...base.meta, started: sessionId !== null } });
         return;

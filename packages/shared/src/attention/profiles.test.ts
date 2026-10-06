@@ -108,3 +108,24 @@ describe('blockOnDay', () => {
     expect([b.endAt.getHours(), b.endAt.getMinutes()]).toEqual([15, 30]);
   });
 });
+
+describe('the block pomodoro: tasks first, then the block configuration', () => {
+  const day = new Date(2026, 9, 6);
+  const block = { startMinute: 540, endMinute: 630, pomodoroMin: 40, shortBreakMin: 10 };
+
+  it('uses the block configuration when no rated task is in it', () => {
+    const b = blockOnDay(block, [], day);
+    expect(b).toMatchObject({ focusMin: 40, breakMin: 10, timingSource: 'schedule', profile: 'DEEP' });
+    expect(b.endAt.getHours() * 60 + b.endAt.getMinutes()).toBe(630);
+  });
+
+  it('a rated task decides over the configuration', () => {
+    const task = { scheduledAt: new Date(2026, 9, 6, 9, 0).toISOString(), status: 'PENDING', attentionProfile: 'MECHANICAL' as const };
+    const b = blockOnDay(block, [task], day);
+    expect(b).toMatchObject({ focusMin: 15, breakMin: 5, timingSource: 'tasks', profile: 'MECHANICAL' });
+  });
+
+  it('without either, the default profile', () => {
+    expect(blockOnDay({ startMinute: 540, endMinute: 630 }, [], day)).toMatchObject({ focusMin: 25, breakMin: 5, timingSource: 'default' });
+  });
+});

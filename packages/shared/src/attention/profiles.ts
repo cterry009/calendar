@@ -104,11 +104,31 @@ export interface BlockOnDay<T extends BlockTaskLike> {
   /** Pending tasks placed in the block that day, in calendar order. */
   tasks: T[];
   profile: AttentionProfile;
+  /** The pomodoro and break the block runs with. */
+  focusMin: number;
+  breakMin: number;
+  /**
+   * Where those come from: the rated tasks in it (their profile), the block's own configuration
+   * (pomodoroMin / shortBreakMin, what the calendar draws), or the default profile.
+   */
+  timingSource: 'tasks' | 'schedule' | 'default';
 }
 
-/** A WORK schedule on a given local day: its tasks, its profile and its real end (device time). */
+/** The profile whose pomodoro is closest to a configured one, for naming it. */
+function profileForFocusMinutes(focusMin: number): AttentionProfile {
+  if (focusMin >= ATTENTION_PROFILE_SPECS.DEEP.focusMin) return 'DEEP';
+  if (focusMin <= ATTENTION_PROFILE_SPECS.MECHANICAL.focusMin) return 'MECHANICAL';
+  return 'LIGHT';
+}
+
+/**
+ * A WORK schedule on a given local day: its tasks, its pomodoro and its real end (device time).
+ * Rated tasks in the block decide (their attention profile); without any, the block's own
+ * configuration does -- found 2026-10-06: blocks configured 40/10 ran 25/5 because no task had been
+ * placed in them yet.
+ */
 export function blockOnDay<T extends BlockTaskLike>(
-  block: { startMinute: number; endMinute: number },
+  block: { startMinute: number; endMinute: number; pomodoroMin?: number | null; shortBreakMin?: number | null },
   tasks: T[],
   day: Date,
 ): BlockOnDay<T> {
@@ -126,6 +146,28 @@ export function blockOnDay<T extends BlockTaskLike>(
       return time >= startAt.getTime() && time < scheduleEnd;
     })
     .sort((a, b) => a.scheduledAt!.localeCompare(b.scheduledAt!));
+  const rated = inBlock.some((t) => !!t.attentionProfile);
+  if (!rated && block.pomodoroMin) {
+    const focusMin = block.pomodoroMin;
+    return {
+      startAt,
+      endAt: at(block.endMinute),
+      tasks: inBlock,
+      profile: profileForFocusMinutes(focusMin),
+      focusMin,
+      breakMin: block.shortBreakMin ?? ATTENTION_PROFILE_SPECS.LIGHT.breakMin,
+      timingSource: 'schedule',
+    };
+  }
   const profile = blockAttentionProfile(inBlock.map((t) => t.attentionProfile));
-  return { startAt, endAt: at(profileBlockEndMinute(profile, block.startMinute, block.endMinute)), tasks: inBlock, profile };
+  const spec = ATTENTION_PROFILE_SPECS[profile];
+  return {
+    startAt,
+    endAt: at(profileBlockEndMinute(profile, block.startMinute, block.endMinute)),
+    tasks: inBlock,
+    profile,
+    focusMin: spec.focusMin,
+    breakMin: spec.breakMin,
+    timingSource: rated ? 'tasks' : 'default',
+  };
 }
