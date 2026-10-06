@@ -105,6 +105,9 @@ enum FocusEventKind {
   SESSION_CANCELLED // the user stopped it before the block ended
   BLOCK_ENDED // the session ran until the block's fixed end
   CHECK_IN // self-reported minutes of real concentration
+  BLOCK_EXITED // "Salir" during a WORK block: the session pauses
+  BLOCK_RESUMED // "Volver al bloque"
+  BLOCK_SKIPPED // "No puedo hacer este bloque" for that day
 }
 
 enum FitnessIntensity {
@@ -262,11 +265,20 @@ model Schedule {
 // Same shape as HabitRecord: one row per block per day, deleted to undo. `date` is the local
 // calendar day, sent by clients as YYYY-MM-DD and stored as that day's UTC midnight -- the same
 // convention HabitRecord.date uses, so both compare by the same date key.
+enum ScheduleCompletionStatus {
+  DONE
+  SKIPPED
+}
+
 model ScheduleCompletion {
   id         String   @id @default(cuid())
   userId     String
   scheduleId String
   date       DateTime
+  // DONE: marked done. SKIPPED: "no puedo hacer este bloque" that day (2026-10-06): no prompt,
+  // no overlay, no blocking, not counted as missed.
+  status     ScheduleCompletionStatus @default(DONE)
+  reason     String?
   clientId   String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -299,6 +311,12 @@ model PomodoroSession {
   // Block mode: the session ends at the WORK block's fixed end, trimming its last phase.
   blockEndAt            DateTime?
   attentionProfile      AttentionProfile?
+  // The WORK block this session belongs to (block mode).
+  scheduleId            String?
+  // "Salir" (2026-10-06): a paused session stops counting; resuming shifts startedAt forward.
+  pausedAt              DateTime?
+  // Times the user left this block with "Salir".
+  exitCount             Int           @default(0)
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 

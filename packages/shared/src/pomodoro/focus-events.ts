@@ -34,6 +34,12 @@ export function pomodoroTransitionEvents(
   if (next.state === 'FOCUS' && !wasFocus) {
     events.push({ kind: 'FOCUS_STARTED', meta: { cycle: next.completedCycles + 1 } });
   }
+  if (same && !prev!.pausedAt && next.pausedAt) {
+    events.push({ kind: 'BLOCK_EXITED', value: next.exitCount ?? 1, meta: { state: next.state } });
+  }
+  if (same && prev!.pausedAt && !next.pausedAt && next.active) {
+    events.push({ kind: 'BLOCK_RESUMED', value: secondsSince(prev!.pausedAt, now) });
+  }
   if (same && prev!.active && !next.active) {
     events.push(
       next.interrupted

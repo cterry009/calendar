@@ -39,7 +39,7 @@ function identifiersFor(
 }
 
 export function DesktopBlockingBridge() {
-  const { isOverlayVisible, isWithinWorkSchedule } = useSoftFocus();
+  const { isFocusActive: isOverlayVisible, isWithinWorkSchedule } = useSoftFocus();
   const isNightActive = useNightWindowActive();
   const { entries } = useBlockList('ALL');
   // Games locked by the strict work-hours limit (DesktopUsageWarnings starts the countdown; this

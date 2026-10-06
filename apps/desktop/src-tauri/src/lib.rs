@@ -6,6 +6,7 @@
 
 mod app_tracking;
 mod blocking;
+mod focus_window;
 mod game_tracking;
 mod hosts;
 mod tray;
@@ -75,6 +76,8 @@ pub fn run() {
             game_tracking::get_game_time_today,
             app_tracking::get_app_time_today,
             website_tracking::get_website_time,
+            focus_window::focus_overlay,
+            focus_window::idle_seconds,
             hosts::set_website_blocking,
             hosts::request_hosts_access
         ])

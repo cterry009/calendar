@@ -76,6 +76,27 @@ class FocusBlockModule : Module() {
       }
     }
 
+    // The pomodoro over the screen during a WORK block (FocusOverlay.kt): what it shows, the exits
+    // made on it, and "Volver al bloque" letting it pop up again.
+    Function("setFocusOverlayState") { json: String ->
+      appContext.reactContext?.let { context ->
+        FocusOverlay.writeState(context, json)
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+          runCatching { FocusOverlay.refresh(FocusBlockAccessibilityService.instance) }
+        }
+      }
+    }
+
+    Function("drainOverlayExits") {
+      val context = appContext.reactContext
+      val exits: List<Map<String, String>> = if (context == null) emptyList() else FocusOverlay.drainExits(context)
+      exits
+    }
+
+    Function("clearOverlayExit") { key: String ->
+      appContext.reactContext?.let { context -> FocusOverlay.clearExited(context, key) }
+    }
+
     // WEBSITE block-list entries, per list (WebsiteUsage.kt / FocusBlockAccessibilityService).
     Function("setBlockedDomains") { focus: List<String>, night: List<String> ->
       appContext.reactContext?.let { context ->

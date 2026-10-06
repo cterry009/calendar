@@ -1,7 +1,7 @@
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Stack } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView } from 'react-native';
+import { Alert, Pressable, ScrollView } from 'react-native';
 import { useDayAgenda } from '../hooks/useDayAgenda';
 import { minuteLabel, type AgendaBlock } from '../lib/calendar/dayAgenda';
 import { DAY_ABBREVIATIONS_ES, isSameDay } from '../lib/calendar/utils';
@@ -53,7 +53,20 @@ function tint(color: string): string {
 export default function CalendarScreen() {
   const today = useMemo(() => new Date(), []);
   const [selectedDate, setSelectedDate] = useState(today);
-  const { blocks, isLoading, busyId, toggleDone } = useDayAgenda(selectedDate);
+  const { blocks, isLoading, busyId, toggleDone, toggleSkip } = useDayAgenda(selectedDate);
+
+  // A work block: "hecho" or "no puedo hacer este bloque" (no prompt, overlay or blocking that
+  // day). Anything already marked: undo it. Habits and rest blocks keep the one-tap toggle.
+  const mark = (block: AgendaBlock) => {
+    if (block.kind !== 'work') return void toggleDone(block);
+    if (block.done) return void toggleDone(block);
+    if (block.skipped) return void toggleSkip(block);
+    Alert.alert(block.title, block.when, [
+      { text: 'No puedo hacer este bloque', onPress: () => void toggleSkip(block) },
+      { text: 'Hecho', onPress: () => void toggleDone(block) },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  };
   const scrollRef = useRef<ScrollView>(null);
 
   const weekDays = useMemo(() => {
@@ -178,7 +191,7 @@ export default function CalendarScreen() {
               <Pressable
                 key={block.id}
                 disabled={busyId === block.id}
-                onPress={() => void toggleDone(block)}
+                onPress={() => mark(block)}
                 style={{ position: 'absolute', top: top(block.startMinute), left: GRID_LEFT, right: 8 }}
               >
                 {block.segments.map((segment, index) => {
@@ -197,7 +210,7 @@ export default function CalendarScreen() {
                       backgroundColor={segment.type === 'pomodoro' ? 'rgba(76,175,130,0.10)' : 'rgba(255,255,255,0.03)'}
                       paddingHorizontal="$2"
                       justifyContent="center"
-                      opacity={block.done ? 0.45 : 1}
+                      opacity={block.done || block.skipped ? 0.45 : 1}
                     >
                       {segmentHeight(segment.startMinute, segment.endMinute) < 16 ? null : index === 0 ? (
                         renderLabel(block, style.color)
@@ -214,7 +227,7 @@ export default function CalendarScreen() {
               <Pressable
                 key={block.id}
                 disabled={busyId === block.id}
-                onPress={() => void toggleDone(block)}
+                onPress={() => mark(block)}
                 style={{ position: 'absolute', top: top(block.startMinute), left: GRID_LEFT, right: 8 }}
               >
                 <YStack
@@ -239,7 +252,7 @@ export default function CalendarScreen() {
               <Pressable
                 key={block.id}
                 disabled={!block.target || busyId === block.id}
-                onPress={() => void toggleDone(block)}
+                onPress={() => mark(block)}
                 style={{ position: 'absolute', top: top(block.startMinute), left: GRID_LEFT + 24, right: 12, zIndex: 2 }}
               >
                 <YStack

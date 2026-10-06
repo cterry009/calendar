@@ -150,7 +150,12 @@ function scheduleEventsForRange(
   rangeEnd: Date,
   completions: SyncScheduleCompletion[] = [],
 ): CalendarEvent[] {
-  const doneKeys = new Set(completions.map((c) => `${c.scheduleId}:${dateKey(c.date)}`));
+  const doneKeys = new Set(
+    completions.filter((c) => (c.status ?? 'DONE') === 'DONE').map((c) => `${c.scheduleId}:${dateKey(c.date)}`),
+  );
+  const skippedKeys = new Set(
+    completions.filter((c) => c.status === 'SKIPPED').map((c) => `${c.scheduleId}:${dateKey(c.date)}`),
+  );
   const events: CalendarEvent[] = [];
   for (let cursor = startOfDay(rangeStart); cursor <= rangeEnd; cursor = addDays(cursor, 1)) {
     const current = startOfDay(cursor);
@@ -171,6 +176,7 @@ function scheduleEventsForRange(
         meta: {
           scheduleId: schedule.id,
           done: doneKeys.has(`${schedule.id}:${dateKey(current)}`),
+          skipped: skippedKeys.has(`${schedule.id}:${dateKey(current)}`),
           kind: schedule.kind,
           pomodoroMin: schedule.pomodoroMin,
           shortBreakMin: schedule.shortBreakMin,

@@ -7,7 +7,7 @@ import { useCalendarData } from '../../hooks/useCalendarData';
 import { useFitness } from '../../hooks/useFitness';
 import { useTasks } from '../../hooks/useTasks';
 import type { CalendarEvent, CalendarViewMode } from '../../lib/calendar/types';
-import { toggleEventDone } from '../../lib/calendar/completions';
+import { toggleEventDone, toggleEventSkipped } from '../../lib/calendar/completions';
 import {
   addDays,
   buildEventsForRange,
@@ -74,6 +74,11 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
 
   async function handleToggleDone(event: CalendarEvent) {
     await toggleEventDone(event);
+    await data.refetch();
+  }
+
+  async function handleToggleSkipped(event: CalendarEvent) {
+    await toggleEventSkipped(event);
     await data.refetch();
   }
 
@@ -183,6 +188,7 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
               onStartFocusSegment={handleStartFocusSegment}
               isStartingFocus={pomodoro.isMutating}
               onToggleDone={handleToggleDone}
+              onToggleSkipped={handleToggleSkipped}
             />
             <WeekView days={weekSummary} onSelectDay={selectDay} />
           </YStack>

@@ -1,14 +1,18 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSync } from '../context/SyncContext';
 import { ApiError } from '../lib/auth/api';
 import { buildCompleteTaskPayload, pullSnapshot, syncTaskBatch } from '../lib/calendar/api';
-import type { SyncScheduleRecord, SyncTaskRecord } from '../lib/calendar/types';
+import { skippedBlockKeys } from '../lib/calendar/skips';
+import type { SyncScheduleCompletion, SyncScheduleRecord, SyncTaskRecord } from '../lib/calendar/types';
 import type { SyncPomodoroRecord } from '../lib/pomodoro/types';
 
 interface UseCalendarDataResult {
   tasks: SyncTaskRecord[];
   schedules: SyncScheduleRecord[];
   pomodoroSessions: SyncPomodoroRecord[];
+  scheduleCompletions: SyncScheduleCompletion[];
+  /** Blocks marked "no puedo" (blockOccurrenceKey). */
+  skipped: Set<string>;
   isLoading: boolean;
   isMutating: boolean;
   error: string | null;
@@ -32,6 +36,7 @@ export function useCalendarData(): UseCalendarDataResult {
   const [tasks, setTasks] = useState<SyncTaskRecord[]>([]);
   const [schedules, setSchedules] = useState<SyncScheduleRecord[]>([]);
   const [pomodoroSessions, setPomodoroSessions] = useState<SyncPomodoroRecord[]>([]);
+  const [scheduleCompletions, setScheduleCompletions] = useState<SyncScheduleCompletion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +50,7 @@ export function useCalendarData(): UseCalendarDataResult {
       setTasks(sortTasks(snapshot.tasks));
       setSchedules(snapshot.schedules);
       setPomodoroSessions(snapshot.pomodoroSessions);
+      setScheduleCompletions(snapshot.scheduleCompletions ?? []);
     } catch (errorValue) {
       setError(errorValue instanceof ApiError ? errorValue.message : 'No se pudo cargar el calendario.');
     } finally {
@@ -102,5 +108,7 @@ export function useCalendarData(): UseCalendarDataResult {
     [refetch],
   );
 
-  return { tasks, schedules, pomodoroSessions, isLoading, isMutating, error, refetch, completeTask };
+  const skipped = useMemo(() => skippedBlockKeys(scheduleCompletions), [scheduleCompletions]);
+
+  return { tasks, schedules, pomodoroSessions, scheduleCompletions, skipped, isLoading, isMutating, error, refetch, completeTask };
 }

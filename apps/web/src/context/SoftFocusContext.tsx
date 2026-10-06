@@ -1,9 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { isWithinRadius } from '@calendar/shared';
+import {
+  activeWorkSchedule,
+  blockOnDay,
+  blockSessionId,
+  isWithinRadius,
+  MIN_TRIMMED_FOCUS_MIN,
+} from '@calendar/shared';
 import { useFocusTriggers } from '../hooks/useFocusTriggers';
 import { useSchedules } from '../hooks/useSchedules';
-import { findActiveWorkSchedule, isNowWithinWorkSchedule } from '../lib/calendar/utils';
-import { generateFocusPlan, resolveFocusPlanConfig } from '../lib/pomodoro/planner';
+import { useSkippedBlocks } from '../hooks/useSkippedBlocks';
+import { useTasks } from '../hooks/useTasks';
 import { usePomodoro } from './PomodoroContext';
 
 interface ManualSoftFocusState {
@@ -15,7 +21,13 @@ interface ManualSoftFocusState {
 interface SoftFocusContextValue {
   manualSoftFocus: ManualSoftFocusState;
   manualRemainingSeconds: number;
+  /** The full-screen focus overlay (SoftFocusOverlay): a plain pomodoro, manual or location focus. */
   isOverlayVisible: boolean;
+  /**
+   * Whether the FOCUS block list is enforced: any focus, or a WORK block the user hasn't left with
+   * "Salir" (after leaving, social media and games stay blocked through isWithinWorkSchedule).
+   */
+  isFocusActive: boolean;
   isWorkHoursActive: boolean;
   // Raw "inside an enabled WORK block right now", ignoring the overlay dismissal above. For rules
   // that must stay strict even when the soft overlay was waved away (the work-hours game limit).
@@ -49,6 +61,9 @@ function getRemainingSeconds(state: ManualSoftFocusState, nowMs: number): number
 export function SoftFocusProvider({ children }: { children: ReactNode }) {
   const pomodoro = usePomodoro();
   const { schedules } = useSchedules();
+  const { tasks } = useTasks();
+  // Blocks marked "no puedo hacer este bloque" today: not work hours at all.
+  const skipped = useSkippedBlocks();
   const { enabledTriggers } = useFocusTriggers();
   const [manualSoftFocus, setManualSoftFocus] = useState<ManualSoftFocusState>({
     active: false,
@@ -157,10 +172,8 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
     }
   }, [manualRemainingSeconds, manualSoftFocus.active, stopManualFocus]);
 
-  const rawIsWorkHoursActive = useMemo(
-    () => isNowWithinWorkSchedule(schedules, new Date(now)),
-    [schedules, now],
-  );
+  const activeSchedule = useMemo(() => activeWorkSchedule(schedules, new Date(now), skipped), [schedules, now, skipped]);
+  const rawIsWorkHoursActive = activeSchedule !== null;
 
   // A dismissal only lasts for the remainder of the current work block: once we're no longer
   // inside any enabled WORK schedule, the flag resets so the next block triggers normally.
@@ -170,45 +183,34 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
     }
   }, [rawIsWorkHoursActive, workHoursDismissed]);
 
-  // Pomodoros activate on their own: whenever "now" lands inside a pomodoro segment of the
-  // active WORK schedule's auto-plan, start a session for it -- no manual "Iniciar" needed.
-  // A ref (not state) tracks the last segment we already started, so this only fires once per
-  // segment instead of on every tick, and a manual cancel during that segment isn't overridden.
-  const autoStartedSegmentKeyRef = useRef<string | null>(null);
+  // Every WORK block runs its pomodoro (2026-10-06): when a block is on and nothing runs, its
+  // block-mode session starts by itself -- one session per block occurrence, the same id the phone
+  // uses (blockSessionId), so both devices share it and its exit count. It ends with the block. A
+  // session for this block that was already ended or cancelled (here or on the phone) isn't
+  // restarted. This replaces starting a plain pomodoro per plan segment, which then cycled
+  // focus/break until cancelled -- one cause of the "block that never ends".
+  const autoStartedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (pomodoro.session?.active) return;
-
+    if (pomodoro.session?.active || pomodoro.isLoading || !activeSchedule) return;
     const nowDate = new Date(now);
-    const activeSchedule = findActiveWorkSchedule(schedules, nowDate);
-    if (!activeSchedule) return;
-
-    const config = resolveFocusPlanConfig({
-      startMinute: activeSchedule.startMinute,
-      endMinute: activeSchedule.endMinute,
-      pomodoroMin: activeSchedule.pomodoroMin,
-      shortBreakMin: activeSchedule.shortBreakMin,
-      longBreakMin: activeSchedule.longBreakMin,
-      pomodorosPerChunk: activeSchedule.pomodorosPerChunk,
-      chunks: activeSchedule.chunks,
+    const id = blockSessionId(activeSchedule.id, nowDate);
+    if (pomodoro.session?.id === id || autoStartedRef.current === id) return;
+    const block = blockOnDay(activeSchedule, tasks, nowDate);
+    if (block.endAt.getTime() - nowDate.getTime() < MIN_TRIMMED_FOCUS_MIN * 60_000) return;
+    autoStartedRef.current = id;
+    void pomodoro.startBlock({
+      scheduleId: activeSchedule.id,
+      blockStartAt: block.startAt,
+      blockEndAt: block.endAt,
+      profile: block.profile,
+      taskId: block.tasks[0]?.id ?? null,
     });
+  }, [now, pomodoro, activeSchedule, tasks]);
 
-    const plan = generateFocusPlan(activeSchedule.startMinute, activeSchedule.endMinute, config);
-    const nowMinute = nowDate.getHours() * 60 + nowDate.getMinutes();
-    const currentSegment = plan.find((segment) => nowMinute >= segment.startMinute && nowMinute < segment.endMinute);
-    if (!currentSegment || currentSegment.type !== 'pomodoro') return;
-
-    const segmentKey = `${activeSchedule.id}-${nowDate.toDateString()}-${currentSegment.startMinute}`;
-    if (autoStartedSegmentKeyRef.current === segmentKey) return;
-
-    autoStartedSegmentKeyRef.current = segmentKey;
-    void pomodoro.start(undefined, {
-      focusDurationMin: currentSegment.endMinute - currentSegment.startMinute,
-      shortBreakMin: config.shortBreakMin,
-      longBreakMin: config.longBreakMin,
-      cyclesBeforeLongBreak: config.pomodorosPerChunk,
-    });
-  }, [now, pomodoro, schedules]);
+  // Left this block with "Salir": the block list lifts until "Volver al bloque".
+  const exitedThisBlock =
+    !!pomodoro.session?.active && !!pomodoro.session.pausedAt && pomodoro.session.scheduleId === activeSchedule?.id;
 
   const isWorkHoursActive = rawIsWorkHoursActive && !workHoursDismissed;
 
@@ -243,7 +245,11 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
     () => ({
       manualSoftFocus,
       manualRemainingSeconds,
-      isOverlayVisible: pomodoro.isBlocking || manualSoftFocus.active || isWorkHoursActive || isLocationActive,
+      // A WORK block's pomodoro has its own overlay (BlockFocusOverlay), not this one.
+      isOverlayVisible:
+        (pomodoro.isBlocking && !pomodoro.session?.scheduleId) || manualSoftFocus.active || isLocationActive,
+      isFocusActive:
+        pomodoro.isBlocking || manualSoftFocus.active || (isWorkHoursActive && !exitedThisBlock) || isLocationActive,
       isWorkHoursActive,
       isWithinWorkSchedule: rawIsWorkHoursActive,
       isLocationActive,

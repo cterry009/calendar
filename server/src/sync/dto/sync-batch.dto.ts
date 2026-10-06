@@ -12,6 +12,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   MinLength,
   ValidateIf,
@@ -29,6 +30,7 @@ import {
   FocusEventKind,
   FocusTriggerKind,
   HabitRecordStatus,
+  ScheduleCompletionStatus,
   HabitType,
   PomodoroState,
   ScheduleKind,
@@ -274,6 +276,20 @@ export class PomodoroSyncChangeDto {
   @IsOptional()
   @IsEnum(AttentionProfile)
   attentionProfile?: AttentionProfile | null;
+
+  // The WORK block it belongs to; paused ("Salir") and how many times the user left it.
+  @IsOptional()
+  @IsString()
+  scheduleId?: string | null;
+
+  @IsOptional()
+  @IsDateString()
+  pausedAt?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  exitCount?: number;
 }
 
 export class BlockListSyncChangeDto {
@@ -839,6 +855,16 @@ export class ScheduleCompletionSyncChangeDto {
   @IsOptional()
   @IsDateString()
   date?: string;
+
+  // DONE (default) or SKIPPED ("no puedo hacer este bloque"), with an optional reason.
+  @IsOptional()
+  @IsEnum(ScheduleCompletionStatus)
+  status?: ScheduleCompletionStatus;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string | null;
 }
 
 export class JournalEntrySyncChangeDto {

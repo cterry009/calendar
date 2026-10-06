@@ -42,12 +42,39 @@ function hhmm(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-/** The enabled WORK schedule whose window contains `now` (device-local time), if any. */
-export function activeWorkSchedule<S extends FocusStatusSchedule>(schedules: S[], now: Date): S | null {
+/** Local YYYY-MM-DD of a date: the day a block occurrence belongs to. */
+export function localDayKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/** One day's occurrence of a block: "<scheduleId>@<YYYY-MM-DD>". */
+export function blockOccurrenceKey(scheduleId: string, day: Date): string {
+  return `${scheduleId}@${localDayKey(day)}`;
+}
+
+/**
+ * The pomodoro session id for one block occurrence, the same on every device: the phone and the
+ * PC starting the same block land on one session (and one exit count).
+ */
+export function blockSessionId(scheduleId: string, day: Date): string {
+  return `block-${scheduleId}-${localDayKey(day)}`;
+}
+
+/**
+ * The enabled WORK schedule whose window contains `now` (device-local time), if any. Blocks marked
+ * "no puedo" for today (`skipped`, blockOccurrenceKey) don't count: no prompt, overlay or blocking.
+ */
+export function activeWorkSchedule<S extends FocusStatusSchedule>(schedules: S[], now: Date, skipped?: ReadonlySet<string>): S | null {
   const minute = now.getHours() * 60 + now.getMinutes();
   return (
     schedules.find(
-      (s) => s.kind === 'WORK' && s.enabled && s.daysOfWeek.includes(now.getDay()) && minute >= s.startMinute && minute < s.endMinute,
+      (s) =>
+        s.kind === 'WORK' &&
+        s.enabled &&
+        s.daysOfWeek.includes(now.getDay()) &&
+        minute >= s.startMinute &&
+        minute < s.endMinute &&
+        !skipped?.has(blockOccurrenceKey(s.id, now)),
     ) ?? null
   );
 }
@@ -57,16 +84,32 @@ export function currentFocusStatus(input: {
   schedules: FocusStatusSchedule[];
   tasks: FocusStatusTask[];
   now?: Date;
+  skipped?: ReadonlySet<string>;
 }): FocusStatus | null {
   const now = input.now ?? new Date();
-  const schedule = activeWorkSchedule(input.schedules, now);
+  const schedule = activeWorkSchedule(input.schedules, now, input.skipped);
   const block = schedule ? blockOnDay(schedule, input.tasks, now) : null;
   // A mechanical block ends 60 minutes in, even if its schedule window runs longer.
   const inBlock = block && now < block.endAt ? block : null;
   const label = schedule?.label ?? null;
 
   const session = input.session;
-  if (session?.active && session.startedAt && session.state !== 'IDLE') {
+  // Left the block with "Salir": nothing counts until "Volver al bloque".
+  if (session?.active && session.pausedAt) {
+    const exits = session.exitCount ?? 1;
+    const end = session.blockEndAt ? new Date(session.blockEndAt) : inBlock?.endAt;
+    if (end && end > now) {
+      return {
+        kind: 'pomodoro',
+        title: 'Fuera del bloque · en pausa',
+        text: [label, `${exits} ${exits === 1 ? 'salida' : 'salidas'}`, 'toca para volver'].filter(Boolean).join(' · '),
+        endsAt: end,
+        blockLabel: label,
+        key: `paused:${session.id ?? ''}:${exits}`,
+      };
+    }
+  }
+  if (session?.active && session.startedAt && session.state !== 'IDLE' && !session.pausedAt) {
     const minutes = getPhaseDurationMinutes(session) ?? 0;
     const endsAt = new Date(new Date(session.startedAt).getTime() + minutes * 60_000);
     const profile = session.attentionProfile ? ATTENTION_PROFILE_SPECS[session.attentionProfile].name : null;

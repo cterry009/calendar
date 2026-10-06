@@ -29,6 +29,9 @@ export interface FocusBlockNativeModule {
   setFocusStatus(title: string, text: string, endsAtMs: number): void;
   clearFocusStatus(): void;
   setBlockedDomains(focus: string[], night: string[]): void;
+  setFocusOverlayState(json: string): void;
+  drainOverlayExits(): { key: string; at: string }[];
+  clearOverlayExit(key: string): void;
   getWebsiteUsage(startMillis: number, endMillis: number): WebsiteUsageRecord[];
   getNightWindowStartMinutes(): number;
   getNightWindowEndMinutes(): number;

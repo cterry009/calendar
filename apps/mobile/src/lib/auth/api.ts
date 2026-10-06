@@ -24,6 +24,22 @@ export class SessionExpiredError extends Error {
   }
 }
 
+// The session can end from any request, not only the one AuthContext makes at startup: before
+// this, a refresh rejected later on (or a session restored without usable tokens) cleared storage
+// while the app kept showing the user as logged in, and every request after that got a 401 in
+// silence -- the phone stopped syncing for days (found 2026-10-06). AuthContext listens and goes
+// back to the login screen.
+const sessionExpiredListeners = new Set<() => void>();
+
+export function onSessionExpired(listener: () => void): () => void {
+  sessionExpiredListeners.add(listener);
+  return () => sessionExpiredListeners.delete(listener);
+}
+
+function notifySessionExpired(): void {
+  sessionExpiredListeners.forEach((listener) => listener());
+}
+
 async function parseError(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as { message?: string | string[] };
@@ -77,6 +93,7 @@ async function doRefreshAccessToken(): Promise<string | null> {
     // signal, instead of collapsing into the same plain 401 a merely-failed-to-refresh request
     // would also produce.
     await clearSession();
+    notifySessionExpired();
     throw new SessionExpiredError();
   }
 
@@ -117,11 +134,19 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}, retryOnU
   const execute = () => fetchWithTimeout(path, { ...init, headers }, timeoutMs);
   let response = await execute();
 
-  if (response.status === 401 && retryOnUnauthorized && (await getRefreshToken())) {
-    const nextToken = await refreshAccessToken();
-    if (nextToken) {
-      headers.set('Authorization', `Bearer ${nextToken}`);
-      response = await execute();
+  if (response.status === 401 && retryOnUnauthorized) {
+    if (await getRefreshToken()) {
+      const nextToken = await refreshAccessToken();
+      if (nextToken) {
+        headers.set('Authorization', `Bearer ${nextToken}`);
+        response = await execute();
+      }
+    } else if (accessToken) {
+      // A 401 with nothing to refresh with: there's no session left, whatever the screen says.
+      // (Only for requests that carried a token -- a wrong password at login is a plain 401.)
+      await clearSession();
+      notifySessionExpired();
+      throw new SessionExpiredError();
     }
   }
 

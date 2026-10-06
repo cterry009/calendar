@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePomodoro } from '../context/PomodoroContext';
 import { useSync } from '../context/SyncContext';
 import { localDateAt } from '../lib/blockPrompt/block';
-import { findActiveWorkSchedule } from '../lib/calendar/utils';
-import type { SyncScheduleRecord } from '../lib/calendar/types';
+import { skippedBlockKeys } from '../lib/calendar/skips';
+import type { SyncScheduleCompletion, SyncScheduleRecord } from '../lib/calendar/types';
 import { setBlockPopupContent, setBlockedDomains, setBlockingState, setWorkSocialLimit } from '../lib/focusBlock/api';
 import {
+  activeWorkSchedule,
   activitySuggestionsByCategory,
   getPhaseDurationMinutes,
   knownDistractingPackages,
@@ -49,12 +50,14 @@ export function useFocusBlocking(): FocusBlockingState {
   const { registerRefetch } = useSync();
   const [lockdownEnabled] = useFocusLockdownEnabled();
   const [schedules, setSchedules] = useState<SyncScheduleRecord[]>([]);
+  const [completions, setCompletions] = useState<SyncScheduleCompletion[]>([]);
   const [now, setNow] = useState(() => new Date());
 
   const refetchSchedules = useCallback(async () => {
     try {
       const snapshot = await pullSnapshot();
       setSchedules(snapshot.schedules);
+      setCompletions(snapshot.scheduleCompletions ?? []);
     } catch {
       // Best-effort: a stale schedule list just means a slightly stale work-hours trigger, not a
       // crash -- the other two inputs (pomodoro, block list) still update independently.
@@ -84,9 +87,14 @@ export function useFocusBlocking(): FocusBlockingState {
     return () => clearInterval(timerId);
   }, [refetchBlockList]);
 
-  const activeWork = findActiveWorkSchedule(schedules, now);
+  // A block marked "no puedo" today isn't work hours: nothing is blocked during it.
+  const skipped = useMemo(() => skippedBlockKeys(completions), [completions]);
+  const activeWork = activeWorkSchedule(schedules, now, skipped);
   const isWorkHoursActive = activeWork !== null;
-  const isActive = isPomodoroBlocking || isWorkHoursActive;
+  // Left this block with "Salir": the list and the total lock lift so the phone can be used for
+  // something else; social media and games stay blocked natively (WorkSocialLimit) until it ends.
+  const exitedThisBlock = !!session?.pausedAt && !!activeWork && session.scheduleId === activeWork.id;
+  const isActive = isPomodoroBlocking || (isWorkHoursActive && !exitedThisBlock);
 
   // When the blocking should lift if nobody says so again: the later of the focus phase's end and
   // the WORK block's end. Handed to the native side so a reclaimed app process can't leave apps
@@ -143,6 +151,9 @@ export function useFocusBlocking(): FocusBlockingState {
         end: schedule.endMinute,
         // Shown in the block popup: "estas en tu bloque de trabajo «Estudio B2»".
         label: schedule.label ?? undefined,
+        id: schedule.id,
+        // Days it was marked "no puedo": not work hours natively either.
+        skip: [...skipped].filter((key) => key.startsWith(`${schedule.id}@`)).map((key) => key.split('@')[1]),
       })),
   );
   useEffect(() => {

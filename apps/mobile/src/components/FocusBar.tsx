@@ -4,6 +4,7 @@ import { router, usePathname } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Pressable } from 'react-native';
 import { usePomodoro } from '../context/PomodoroContext';
+import { useBlockExit } from '../hooks/useBlockFocus';
 import { useCalendarData } from '../hooks/useCalendarData';
 import { formatTimer } from '../lib/pomodoro/timer';
 
@@ -22,6 +23,8 @@ export function FocusBar() {
   const { session, remainingSeconds, cancel, isMutating } = usePomodoro();
   const { tasks, refetch, isLoading } = useCalendarData();
   const pathname = usePathname();
+  const { leave, comeBack, isOut, exits } = useBlockExit();
+  const inBlock = !!session?.scheduleId;
   const task = session?.taskId ? tasks.find((t) => t.id === session.taskId) : null;
   const missingTask = !!session?.active && !!session.taskId && !task;
 
@@ -37,7 +40,8 @@ export function FocusBar() {
   if (!session?.active || pathname === '/pomodoro') return null;
 
   const profile = session.attentionProfile ? ATTENTION_PROFILE_SPECS[session.attentionProfile].name : null;
-  const focus = session.state === 'FOCUS';
+  const focus = session.state === 'FOCUS' && !isOut;
+  const exitsLabel = exits > 0 ? ` · ${exits} ${exits === 1 ? 'salida' : 'salidas'}` : '';
 
   return (
     <Pressable onPress={() => router.push('/pomodoro')}>
@@ -49,13 +53,14 @@ export function FocusBar() {
         alignItems="center"
       >
         <Text fontSize="$6" fontWeight="700" color={focus ? '$accent' : '$warning'} style={{ fontVariant: ['tabular-nums'] }}>
-          {formatTimer(remainingSeconds)}
+          {isOut ? '⏸' : formatTimer(remainingSeconds)}
         </Text>
         <YStack flex={1}>
           <Text fontSize="$2" fontWeight="700" numberOfLines={1}>
-            {PHASES[session.state] ?? session.state}
-            {profile ? ` · ${profile}` : ''}
-            {` · ciclo ${session.completedCycles + (focus ? 1 : 0)}`}
+            {isOut ? 'Fuera del bloque · el tiempo no cuenta' : PHASES[session.state] ?? session.state}
+            {!isOut && profile ? ` · ${profile}` : ''}
+            {!isOut ? ` · ciclo ${session.completedCycles + (focus ? 1 : 0)}` : ''}
+            {exitsLabel}
           </Text>
           {task ? (
             <Text fontSize="$2" color="$muted" numberOfLines={1}>
@@ -63,11 +68,20 @@ export function FocusBar() {
             </Text>
           ) : null}
         </YStack>
-        <Pressable onPress={() => void cancel()} disabled={isMutating} hitSlop={10}>
-          <Text fontSize="$2" fontWeight="700" color="$danger">
-            Cancelar
-          </Text>
-        </Pressable>
+        {inBlock ? (
+          // In a WORK block: leave it (time stops, the exit counts) or come back, not cancel.
+          <Pressable onPress={() => void (isOut ? comeBack() : leave())} disabled={isMutating} hitSlop={10}>
+            <Text fontSize="$2" fontWeight="700" color={isOut ? '$accent' : '$warning'}>
+              {isOut ? 'Volver' : 'Salir'}
+            </Text>
+          </Pressable>
+        ) : (
+          <Pressable onPress={() => void cancel()} disabled={isMutating} hitSlop={10}>
+            <Text fontSize="$2" fontWeight="700" color="$danger">
+              Cancelar
+            </Text>
+          </Pressable>
+        )}
       </XStack>
     </Pressable>
   );

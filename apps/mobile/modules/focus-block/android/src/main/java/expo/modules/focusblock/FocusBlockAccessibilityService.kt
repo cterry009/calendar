@@ -1,8 +1,11 @@
 package expo.modules.focusblock
 
 import android.accessibilityservice.AccessibilityService
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.Build
 import android.content.pm.ApplicationInfo
 import android.os.Handler
 import android.os.Looper
@@ -37,6 +40,7 @@ private const val POPUP_DELAY_MS = 350L
 private const val NIGHT_WARNING_LEAD_MIN = 30
 private const val NIGHT_WARNING_EVERY_MS = 15 * 60_000L
 private const val SITE_TICK_MS = 30_000L
+private const val OVERLAY_TICK_MS = 30_000L
 private const val SITE_READ_THROTTLE_MS = 1_000L
 /** No single gap counts for more than this (a missed screen-off, a long gap between events). */
 private const val SITE_MAX_CREDIT_MS = 60_000L
@@ -437,7 +441,53 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     }
   }
 
+  // ---- The pomodoro over the screen during a WORK block (FocusOverlay.kt) ----
+  //
+  // Checked every 30 s (a block starting needs no event to happen) and on every unlock.
+  private val overlayTick = object : Runnable {
+    override fun run() {
+      runCatching { FocusOverlay.check(this@FocusBlockAccessibilityService, unlocked = false) }
+        .onFailure { android.util.Log.e("FocusOverlay", "check failed", it) }
+      handler.postDelayed(this, OVERLAY_TICK_MS)
+    }
+  }
+
+  private val unlockReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+      if (intent.action == Intent.ACTION_USER_PRESENT) {
+        runCatching { FocusOverlay.check(this@FocusBlockAccessibilityService, unlocked = true) }
+          .onFailure { android.util.Log.e("FocusOverlay", "unlock check failed", it) }
+      }
+    }
+  }
+
+  override fun onServiceConnected() {
+    super.onServiceConnected()
+    instance = this
+    handler.removeCallbacks(overlayTick)
+    handler.post(overlayTick)
+    runCatching {
+      val filter = IntentFilter(Intent.ACTION_USER_PRESENT)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        registerReceiver(unlockReceiver, filter, Context.RECEIVER_EXPORTED)
+      } else {
+        registerReceiver(unlockReceiver, filter)
+      }
+    }
+  }
+
+  companion object {
+    /** The running service, for JS-driven overlay refreshes (null when it isn't bound). */
+    @Volatile
+    var instance: FocusBlockAccessibilityService? = null
+      private set
+  }
+
   override fun onDestroy() {
+    instance = null
+    handler.removeCallbacks(overlayTick)
+    runCatching { unregisterReceiver(unlockReceiver) }
+    FocusOverlay.hide(this)
     handler.removeCallbacks(tick)
     handler.removeCallbacks(siteTick)
     leaveSite()

@@ -572,6 +572,9 @@ export class SyncService {
       endedAt: change.endedAt ? new Date(change.endedAt) : null,
       blockEndAt: change.blockEndAt ? new Date(change.blockEndAt) : null,
       attentionProfile: change.attentionProfile ?? null,
+      scheduleId: change.scheduleId ?? null,
+      pausedAt: change.pausedAt ? new Date(change.pausedAt) : null,
+      exitCount: change.exitCount ?? 0,
       updatedAt: new Date(change.updatedAt),
     };
 
@@ -599,6 +602,9 @@ export class SyncService {
             endedAt: change.endedAt ? new Date(change.endedAt) : null,
             blockEndAt: change.blockEndAt ? new Date(change.blockEndAt) : null,
             attentionProfile: change.attentionProfile ?? null,
+            scheduleId: change.scheduleId ?? null,
+            pausedAt: change.pausedAt ? new Date(change.pausedAt) : null,
+            exitCount: change.exitCount ?? 0,
             updatedAt: new Date(change.updatedAt),
           },
         });
@@ -1311,8 +1317,19 @@ export class SyncService {
     if (!change.scheduleId || !date) {
       throw new BadRequestException('Schedule completion changes require scheduleId and date');
     }
+    const status = change.status ?? 'DONE';
+    const reason = change.reason ?? null;
     if (existing) {
-      return { status: 'applied', clientKey: key, record: existing };
+      // Same day marked again from another device: idempotent, unless it changed between done
+      // and skipped (or its reason).
+      if (existing.status === status && existing.reason === reason) {
+        return { status: 'applied', clientKey: key, record: existing };
+      }
+      const record = await this.prisma.scheduleCompletion.update({
+        where: { id: existing.id },
+        data: { status, reason, updatedAt: new Date(change.updatedAt) },
+      });
+      return { status: 'applied', clientKey: key, record };
     }
 
     const schedule = await this.prisma.schedule.findFirst({
@@ -1327,6 +1344,8 @@ export class SyncService {
         userId,
         scheduleId: change.scheduleId,
         date,
+        status,
+        reason,
         clientId: change.clientId ?? null,
         updatedAt: new Date(change.updatedAt),
       },

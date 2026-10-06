@@ -7,7 +7,11 @@ export type PomodoroEvent =
   | { type: 'FOCUS_COMPLETE' }
   | { type: 'BREAK_COMPLETE' }
   | { type: 'CANCEL' }
-  | { type: 'RESET' };
+  | { type: 'RESET' }
+  // "Salir": stop counting (`at`: ISO, when the exit happened elsewhere and is applied late).
+  | { type: 'PAUSE'; at?: string }
+  // "Volver al bloque": count again from where it stopped; past the block's end, the block ends.
+  | { type: 'RESUME' };
 
 export const DEFAULT_POMODORO_CONFIG: PomodoroConfig = {
   focusDurationMin: 25,
@@ -88,6 +92,10 @@ export function transitionPomodoro(
       return cancelSession(session);
     case 'RESET':
       return resetSession(session);
+    case 'PAUSE':
+      return pauseSession(session, event.at);
+    case 'RESUME':
+      return resumeSession(session);
     default:
       return session;
   }
@@ -116,7 +124,32 @@ function startFocus(
   };
 }
 
+function pauseSession(session: PomodoroSession, at?: string): PomodoroSession {
+  if (!session.active || session.state === 'IDLE' || session.pausedAt) return session;
+  const now = new Date().toISOString();
+  // An exit reported late never lands before the phase began or in the future.
+  const pausedAt = at && session.startedAt && at > session.startedAt && at < now ? at : now;
+  return { ...session, pausedAt, exitCount: (session.exitCount ?? 0) + 1 };
+}
+
+function resumeSession(session: PomodoroSession): PomodoroSession {
+  if (!session.pausedAt || !session.startedAt) return session;
+  const left = minutesToBlockEnd(session);
+  if (left !== null && left < MIN_TRIMMED_FOCUS_MIN) return endBlock({ ...session, pausedAt: null });
+  const pausedMs = Date.now() - new Date(session.pausedAt).getTime();
+  const startedAt = new Date(new Date(session.startedAt).getTime() + Math.max(0, pausedMs)).toISOString();
+  return { ...session, startedAt, pausedAt: null };
+}
+
+/** The moment time is measured at: now, or when the session was paused. */
+export function sessionClock(session: Pick<PomodoroSession, 'pausedAt'>, now: number = Date.now()): number {
+  if (!session.pausedAt) return now;
+  const paused = new Date(session.pausedAt).getTime();
+  return Number.isNaN(paused) ? now : Math.min(now, paused);
+}
+
 function completeFocus(session: PomodoroSession): PomodoroSession {
+  if (session.pausedAt) return session;
   if (session.state !== 'FOCUS') {
     return session;
   }
@@ -143,6 +176,7 @@ function completeFocus(session: PomodoroSession): PomodoroSession {
 }
 
 function completeBreak(session: PomodoroSession): PomodoroSession {
+  if (session.pausedAt) return session;
   if (session.state !== 'SHORT_BREAK' && session.state !== 'LONG_BREAK') {
     return session;
   }
@@ -173,6 +207,7 @@ function cancelSession(session: PomodoroSession): PomodoroSession {
     state: 'IDLE',
     active: false,
     interrupted: true,
+    pausedAt: null,
     endedAt: new Date().toISOString(),
   };
 }
@@ -191,7 +226,7 @@ function resetSession(session: PomodoroSession): PomodoroSession {
 }
 
 export function isBlockingPhase(session: PomodoroSession): boolean {
-  return session.active && session.state === 'FOCUS';
+  return session.active && session.state === 'FOCUS' && !session.pausedAt;
 }
 
 // FOCUS_COMPLETE/BREAK_COMPLETE never clear `active` -- by design, a pomodoro auto-cycles
@@ -207,7 +242,8 @@ export function isBlockingPhase(session: PomodoroSession): boolean {
 export const ABANDONED_PHASE_GRACE_MS = 15 * 60 * 1000;
 
 export function isPhaseAbandoned(session: PomodoroSession, now: number): boolean {
-  if (!session.active || !session.startedAt) {
+  // A paused session isn't running late, it's stopped on purpose.
+  if (!session.active || !session.startedAt || session.pausedAt) {
     return false;
   }
 

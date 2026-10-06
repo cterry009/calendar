@@ -272,6 +272,7 @@ export default function HomeScreen() {
                         block={block}
                         busy={agenda.busyId === block.id}
                         onToggle={(item) => void agenda.toggleDone(item)}
+                        onSkip={(item) => void agenda.toggleSkip(item)}
                       />
                     ))}
                   </YStack>

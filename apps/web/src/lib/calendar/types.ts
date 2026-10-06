@@ -210,6 +210,9 @@ export interface SyncScheduleCompletion {
   id: string;
   scheduleId: string;
   date: string;
+  /** DONE, or SKIPPED: "no puedo hacer este bloque" that day. Absent on older servers = DONE. */
+  status?: 'DONE' | 'SKIPPED';
+  reason?: string | null;
   clientId: string | null;
   updatedAt: string;
 }
@@ -265,6 +268,8 @@ export interface CalendarEvent {
     scheduleId?: string;
     /** Marked done for this day: a ScheduleCompletion for blocks, a DONE HabitRecord for habits. */
     done?: boolean;
+    /** Work blocks: marked "no puedo hacer este bloque" that day. */
+    skipped?: boolean;
     /** The day's HabitRecord id, so un-marking can delete it. */
     habitRecordId?: string;
   };

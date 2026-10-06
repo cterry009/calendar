@@ -19,6 +19,37 @@ describe('pomodoro sessions', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ id: session.id, state: 'IDLE', attentionProfile: 'DEEP' });
   });
+
+  it('stores the block, the pause and the exit count from the very first change', async () => {
+    // Found on the device 2026-10-06: only updates stored these, so a block session created on the
+    // PC reached the phone without its block.
+    const session = { id: 'block-s1-2026-10-06', updatedAt: at(0), state: 'FOCUS', active: true, scheduleId: 'sched-1' };
+    await h.batch({ pomodoroSessions: [session] });
+    let row = await h.prisma.pomodoroSession.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(row).toMatchObject({ scheduleId: 'sched-1', pausedAt: null, exitCount: 0 });
+
+    await h.batch({ pomodoroSessions: [{ ...session, updatedAt: at(1), pausedAt: at(1), exitCount: 1 }] });
+    row = await h.prisma.pomodoroSession.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(row).toMatchObject({ scheduleId: 'sched-1', exitCount: 1 });
+    expect(row.pausedAt?.toISOString()).toBe(at(1));
+  });
+});
+
+describe('schedule completions: done and "no puedo"', () => {
+  it('marks a block skipped, and the same day marked done later becomes done', async () => {
+    const schedule = await h.prisma.schedule.create({
+      data: { userId: h.userId, kind: 'WORK', daysOfWeek: [2], startMinute: 540, endMinute: 630 },
+    });
+    await h.batch({ scheduleCompletions: [{ clientId: 'c1', updatedAt: at(0), scheduleId: schedule.id, date: '2026-10-06', status: 'SKIPPED', reason: 'cita médica' }] });
+    let rows = await h.prisma.scheduleCompletion.findMany({ where: { userId: h.userId } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ status: 'SKIPPED', reason: 'cita médica' });
+
+    await h.batch({ scheduleCompletions: [{ clientId: 'c2', updatedAt: at(1), scheduleId: schedule.id, date: '2026-10-06' }] });
+    rows = await h.prisma.scheduleCompletion.findMany({ where: { userId: h.userId } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ status: 'DONE', reason: null });
+  });
 });
 
 describe('attention rating on tasks', () => {

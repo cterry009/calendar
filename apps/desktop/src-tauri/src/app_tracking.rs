@@ -178,7 +178,7 @@ fn prettify_exe_name(exe_lower: &str) -> String {
 /// Milliseconds since the last keyboard/mouse input, system-wide. `GetTickCount` wraps every ~49
 /// days of uptime, and `wrapping_sub` is what makes the difference still come out right across
 /// that wrap.
-fn idle_duration() -> Duration {
+pub fn idle_duration() -> Duration {
     let mut info = LASTINPUTINFO {
         cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32,
         dwTime: 0,

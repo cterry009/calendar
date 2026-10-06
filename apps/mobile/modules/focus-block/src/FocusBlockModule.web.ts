@@ -26,6 +26,14 @@ class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModul
     // No-op off Android.
   }
 
+  setFocusOverlayState(): void {}
+
+  drainOverlayExits(): { key: string; at: string }[] {
+    return [];
+  }
+
+  clearOverlayExit(): void {}
+
   setBlockedDomains(): void {
     // No-op off Android: the desktop blocks sites through the hosts file.
   }

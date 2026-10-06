@@ -60,6 +60,30 @@ interface DayViewProps {
   isStartingFocus: boolean;
   /** Marks a work/rest block or a habit block done (or undoes it) for this day. */
   onToggleDone: (event: CalendarEvent) => Promise<void>;
+  /** Work blocks: "no puedo hacer este bloque" that day. */
+  onToggleSkipped?: (event: CalendarEvent) => Promise<void>;
+}
+
+function SkipToggle({ event, onToggle }: { event: CalendarEvent; onToggle: (event: CalendarEvent) => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const skipped = Boolean(event.meta?.skipped);
+  return (
+    <AppButton
+      type="button"
+      variant={skipped ? 'primary' : 'ghost'}
+      disabled={busy}
+      onPress={async () => {
+        setBusy(true);
+        try {
+          await onToggle(event);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {skipped ? 'Deshacer "no puedo"' : 'No puedo'}
+    </AppButton>
+  );
 }
 
 function DoneToggle({ event, onToggle }: { event: CalendarEvent; onToggle: (event: CalendarEvent) => Promise<void> }) {
@@ -215,6 +239,7 @@ export function DayView({
   onStartFocusSegment,
   isStartingFocus,
   onToggleDone,
+  onToggleSkipped,
 }: DayViewProps) {
   const [openFitnessFormBlockId, setOpenFitnessFormBlockId] = useState<string | null>(null);
   const habitEvents = events.filter((event) => event.type === 'habit');
@@ -333,8 +358,12 @@ export function DayView({
               data-tutorial={isWork ? 'day-work-block' : 'day-rest-block'}
             >
               <XStack justifyContent="space-between" alignItems="center" gap="$3" flexWrap="wrap">
-                <YStack flex={1} opacity={block.meta?.done ? 0.6 : 1}>
-                  <Text fontWeight="700" color={EVENT_TYPE_COLOR[block.type]}>
+                <YStack flex={1} opacity={block.meta?.done || block.meta?.skipped ? 0.6 : 1}>
+                  <Text
+                    fontWeight="700"
+                    color={EVENT_TYPE_COLOR[block.type]}
+                    textDecorationLine={block.meta?.skipped ? 'line-through' : 'none'}
+                  >
                     {block.meta?.done ? '✓ ' : ''}
                     {EVENT_TYPE_LABEL[block.type]}: {block.title}
                   </Text>
@@ -342,7 +371,10 @@ export function DayView({
                     {formatTimeRange(block.start, block.end)}
                   </Text>
                 </YStack>
-                {isCompletable(block) ? <DoneToggle event={block} onToggle={onToggleDone} /> : null}
+                {isWork && onToggleSkipped && !block.meta?.done ? (
+                  <SkipToggle event={block} onToggle={onToggleSkipped} />
+                ) : null}
+                {isCompletable(block) && !block.meta?.skipped ? <DoneToggle event={block} onToggle={onToggleDone} /> : null}
               </XStack>
 
               {isWork ? (

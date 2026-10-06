@@ -25,6 +25,12 @@ export const PomodoroSessionSchema = z.object({
   // last phase to it, and records the block's attention profile.
   blockEndAt: z.string().datetime().optional().nullable(),
   attentionProfile: AttentionProfileSchema.optional().nullable(),
+  // The WORK block it belongs to (block mode).
+  scheduleId: z.string().optional().nullable(),
+  // "Salir" (2026-10-06): while paused nothing counts; resuming moves startedAt forward by the
+  // paused time. exitCount is how many times the user left the block.
+  pausedAt: z.string().datetime().optional().nullable(),
+  exitCount: z.number().int().min(0).optional(),
 });
 
 export type PomodoroConfig = z.infer<typeof PomodoroConfigSchema>;

@@ -25,6 +25,8 @@ export interface AgendaBlock {
   when: string;
   color: string;
   done: boolean;
+  /** Marked "no puedo hacer este bloque" that day. */
+  skipped?: boolean;
   /** What marking it done writes; null for things that can't be marked (tasks are completed in their own screen). */
   target: AgendaTarget | null;
   /** Work blocks only: the pomodoro plan segments, for the grid. */
@@ -51,9 +53,9 @@ export function buildDayAgenda(
 ): AgendaBlock[] {
   const day = date.getDay();
   const key = dateKey(date);
-  const doneSchedules = new Set(
-    data.scheduleCompletions.filter((c) => dateKey(c.date) === key).map((c) => c.scheduleId),
-  );
+  const dayMarks = data.scheduleCompletions.filter((c) => dateKey(c.date) === key);
+  const doneSchedules = new Set(dayMarks.filter((c) => (c.status ?? 'DONE') === 'DONE').map((c) => c.scheduleId));
+  const skippedSchedules = new Set(dayMarks.filter((c) => c.status === 'SKIPPED').map((c) => c.scheduleId));
 
   const blocks: AgendaBlock[] = [];
 
@@ -69,6 +71,7 @@ export function buildDayAgenda(
       when: rangeLabel(schedule.startMinute, schedule.endMinute),
       color: isWork ? '#4caf82' : '#e0b64c',
       done: doneSchedules.has(schedule.id),
+      skipped: skippedSchedules.has(schedule.id),
       target: { kind: 'schedule', scheduleId: schedule.id },
       segments: isWork
         ? generateFocusPlan(

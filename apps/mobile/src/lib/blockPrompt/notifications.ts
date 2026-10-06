@@ -1,4 +1,4 @@
-import { ATTENTION_PROFILE_SPECS } from '@calendar/shared';
+import { ATTENTION_PROFILE_SPECS, blockOccurrenceKey } from '@calendar/shared';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import type { SyncScheduleRecord, SyncTaskRecord } from '../calendar/types';
@@ -67,7 +67,7 @@ export async function ensureBlockPromptCategory(): Promise<void> {
     await Notifications.setNotificationCategoryAsync(BLOCK_PROMPT_CATEGORY, [
       { identifier: BLOCK_PROMPT_START, buttonTitle: 'Iniciar' },
       { identifier: BLOCK_PROMPT_SNOOZE, buttonTitle: `En ${SNOOZE_MINUTES} min` },
-      { identifier: BLOCK_PROMPT_DECLINE, buttonTitle: 'Hoy no' },
+      { identifier: BLOCK_PROMPT_DECLINE, buttonTitle: 'No puedo' },
     ]);
     categoryRegistered = true;
   } catch {
@@ -105,7 +105,12 @@ export function promptBody(schedule: SyncScheduleRecord, tasks: SyncTaskRecord[]
 }
 
 /** Replaces every scheduled block prompt with one per WORK block over the next DAYS_AHEAD days. */
-export async function scheduleBlockPrompts(schedules: SyncScheduleRecord[], tasks: SyncTaskRecord[]): Promise<void> {
+export async function scheduleBlockPrompts(
+  schedules: SyncScheduleRecord[],
+  tasks: SyncTaskRecord[],
+  /** Blocks marked "no puedo" for a day (blockOccurrenceKey): no prompt that day. */
+  skipped: ReadonlySet<string> = new Set(),
+): Promise<void> {
   if (Platform.OS !== 'android') return;
   // A notification posted to a channel that doesn't exist yet is silently dropped.
   await ensureBlockPromptCategory();
@@ -125,6 +130,7 @@ export async function scheduleBlockPrompts(schedules: SyncScheduleRecord[], task
     const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
     for (const s of work) {
       if (!s.daysOfWeek.includes(day.getDay())) continue;
+      if (skipped.has(blockOccurrenceKey(s.id, day))) continue;
       const at = localDateAt(s.startMinute, day);
       if (at.getTime() <= now.getTime()) continue;
       const data: BlockPromptData = { kind: 'block-prompt', scheduleId: s.id, startMinute: s.startMinute, endMinute: s.endMinute, label: s.label, snoozes: 0 };

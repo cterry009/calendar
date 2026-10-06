@@ -13,6 +13,7 @@ import { OnboardingProvider } from '../context/OnboardingContext';
 import { PomodoroProvider } from '../context/PomodoroContext';
 import { SyncProvider } from '../context/SyncContext';
 import { useBlockEvents } from '../hooks/useBlockEvents';
+import { useBlockFocus } from '../hooks/useBlockFocus';
 import { useBlockPrompts } from '../hooks/useBlockPrompts';
 import { useFocusStatusNotification } from '../hooks/useFocusStatusNotification';
 import { useFocusBlocking } from '../hooks/useFocusBlocking';
@@ -54,6 +55,12 @@ function BlockPromptsBridge() {
 
 // On opening the app, the WORK blocks that weren't started; can start one still running, so it
 // needs usePomodoro() like BlockPromptsBridge.
+// Every WORK block runs its pomodoro, shown over the screen with a "Salir" (useBlockFocus).
+function BlockFocusBridge() {
+  useBlockFocus();
+  return null;
+}
+
 function MissedBlocksBridge() {
   useMissedBlocks();
   return null;
@@ -169,6 +176,7 @@ function RootNavigator() {
         <FocusBlockingBridge />
         <BlockPromptsBridge />
         <MissedBlocksBridge />
+        <BlockFocusBridge />
         <FocusStatusBridge />
         <JogDetectionBridge />
         <NightBlockingBridge />

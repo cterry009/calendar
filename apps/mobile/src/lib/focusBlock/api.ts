@@ -100,7 +100,7 @@ export function drainPendingBlockEvents(): NativePendingBlockEvent[] {
 // Work-hours social limit, evaluated natively (WorkSocialLimit.kt) so it works while this app is
 // closed. `windows` are the enabled WORK schedules.
 export function setWorkSocialLimit(
-  windows: Array<{ days: number[]; start: number; end: number; label?: string }>,
+  windows: Array<{ days: number[]; start: number; end: number; label?: string; id?: string; skip?: string[] }>,
   socialPackages: string[],
 ): void {
   if (Platform.OS !== 'android') return;
@@ -170,5 +170,44 @@ export function getWebsiteUsage(startMillis: number, endMillis: number): Website
     return FocusBlockModule.getWebsiteUsage(startMillis, endMillis);
   } catch {
     return [];
+  }
+}
+
+// The pomodoro over the screen during a WORK block (FocusOverlay.kt). `state` is what it shows;
+// exits made on it are drained and applied by useBlockFocus; clearing an exit lets it pop up again.
+export interface FocusOverlayState {
+  scheduleId?: string;
+  title?: string;
+  text?: string;
+  endsAtMs?: number;
+  running?: boolean;
+  paused?: boolean;
+  exits?: number;
+}
+
+export function setFocusOverlayState(state: FocusOverlayState): void {
+  if (Platform.OS !== 'android') return;
+  try {
+    FocusBlockModule.setFocusOverlayState(JSON.stringify(state));
+  } catch {
+    // Older native build: no overlay until a rebuild.
+  }
+}
+
+export function drainOverlayExits(): { key: string; at: string }[] {
+  if (Platform.OS !== 'android') return [];
+  try {
+    return FocusBlockModule.drainOverlayExits();
+  } catch {
+    return [];
+  }
+}
+
+export function clearOverlayExit(key: string): void {
+  if (Platform.OS !== 'android') return;
+  try {
+    FocusBlockModule.clearOverlayExit(key);
+  } catch {
+    // Older native build.
   }
 }

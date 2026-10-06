@@ -1,4 +1,4 @@
-import { getPhaseDurationMinutes, type PomodoroSession } from '@calendar/shared';
+import { getPhaseDurationMinutes, sessionClock, type PomodoroSession } from '@calendar/shared';
 
 export function getRemainingSeconds(
   session: Pick<
@@ -14,6 +14,7 @@ export function getRemainingSeconds(
     | 'interrupted'
     | 'taskId'
     | 'endedAt'
+    | 'pausedAt'
   >,
   now = Date.now(),
 ): number {
@@ -31,7 +32,8 @@ export function getRemainingSeconds(
     return 0;
   }
 
-  const elapsedSeconds = Math.max(0, Math.floor((now - startedAtMs) / 1000));
+  // Paused ("Salir"): the clock stopped when the user left.
+  const elapsedSeconds = Math.max(0, Math.floor((sessionClock(session, now) - startedAtMs) / 1000));
   return Math.max(0, phaseDurationMinutes * 60 - elapsedSeconds);
 }
 

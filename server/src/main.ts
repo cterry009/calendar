@@ -15,6 +15,17 @@ const JSON_BODY_LIMIT = '10mb';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Development only: one line per request with its status, to see what a device gets back when
+  // its sync silently stops (found 2026-10-06: the phone's queue retried for days unnoticed).
+  if (process.env.NODE_ENV !== 'production') {
+    app.use((req: { method: string; originalUrl: string; ip?: string }, res: { statusCode: number; on: (e: string, cb: () => void) => void }, next: () => void) => {
+      const started = Date.now();
+      res.on('finish', () => {
+        console.log(`[http] ${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - started}ms ${req.ip ?? ''}`);
+      });
+      next();
+    });
+  }
   app.useBodyParser('json', { limit: JSON_BODY_LIMIT });
   app.enableCors({ origin: true });
   app.useWebSocketAdapter(new IoAdapter(app));

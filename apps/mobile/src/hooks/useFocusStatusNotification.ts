@@ -17,7 +17,7 @@ const CHECK_INTERVAL_MS = 30_000;
  */
 export function useFocusStatusNotification(): void {
   const { session } = usePomodoro();
-  const { schedules, tasks, refetch } = useCalendarData();
+  const { schedules, tasks, skipped, refetch } = useCalendarData();
   const [now, setNow] = useState(() => new Date());
   const shown = useRef<string | null>(null);
 
@@ -38,12 +38,12 @@ export function useFocusStatusNotification(): void {
   }, [refetch]);
 
   useEffect(() => {
-    const status = currentFocusStatus({ session, schedules, tasks, now });
+    const status = currentFocusStatus({ session, schedules, tasks, now, skipped });
     // Only touch the notification when its content changes; the countdown runs natively.
     const signature = status ? `${status.title}|${status.text}|${status.endsAt.getTime()}` : null;
     if (signature === shown.current) return;
     shown.current = signature;
     if (status) setFocusStatus(status.title, status.text, status.endsAt);
     else clearFocusStatus();
-  }, [session, schedules, tasks, now]);
+  }, [session, schedules, tasks, now, skipped]);
 }

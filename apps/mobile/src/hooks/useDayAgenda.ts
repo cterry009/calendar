@@ -4,6 +4,7 @@ import { buildDayAgenda, type AgendaBlock } from '../lib/calendar/dayAgenda';
 import type { SyncScheduleCompletion, SyncSnapshot } from '../lib/calendar/types';
 import { dateKey } from '../lib/habits/today';
 import type { SyncHabitRecord } from '../lib/habits/types';
+import { clearBlockMark, markBlockSkipped } from '../lib/calendar/skips';
 import { pullSnapshot, syncBatch } from '../lib/sync/api';
 
 type AgendaData = Pick<SyncSnapshot, 'schedules' | 'habits' | 'habitRecords' | 'tasks'> & {
@@ -140,5 +141,36 @@ export function useDayAgenda(date: Date) {
     [date],
   );
 
-  return { blocks, isLoading, busyId, toggleDone, refetch };
+  // "No puedo hacer este bloque" for that day, or undo it. Same optimistic shape as toggleDone.
+  const toggleSkip = useCallback(
+    async (block: AgendaBlock) => {
+      const target = block.target;
+      if (target?.kind !== 'schedule') return;
+      const key = dateKey(date);
+      const now = new Date().toISOString();
+      const others = (list: SyncScheduleCompletion[]) =>
+        list.filter((c) => !(c.scheduleId === target.scheduleId && dateKey(c.date) === key));
+      setBusyId(block.id);
+      try {
+        if (block.skipped) {
+          setData((current) => ({ ...current, scheduleCompletions: others(current.scheduleCompletions) }));
+          await clearBlockMark(target.scheduleId, date);
+        } else {
+          setData((current) => ({
+            ...current,
+            scheduleCompletions: [
+              ...others(current.scheduleCompletions),
+              { id: `pending-${randomId()}`, scheduleId: target.scheduleId, date: `${key}T00:00:00.000Z`, status: 'SKIPPED', clientId: null, updatedAt: now },
+            ],
+          }));
+          await markBlockSkipped(target.scheduleId, date);
+        }
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [date],
+  );
+
+  return { blocks, isLoading, busyId, toggleDone, toggleSkip, refetch };
 }

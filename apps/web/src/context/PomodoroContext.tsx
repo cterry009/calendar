@@ -1,5 +1,6 @@
 import {
   DEFAULT_POMODORO_CONFIG,
+  blockSessionId,
   createBlockPomodoroSession,
   createPomodoroSession,
   getPhaseDurationMinutes,
@@ -37,6 +38,10 @@ interface PomodoroContextValue {
   startBlock: (block: StartBlockOptions) => Promise<string | null>;
   cancel: () => Promise<void>;
   reset: () => Promise<void>;
+  /** "Salir": stop counting the block's time (the exit is counted). */
+  pause: () => Promise<void>;
+  /** "Volver al bloque". */
+  resume: () => Promise<void>;
   toggleNotifications: (enabled: boolean) => Promise<void>;
 }
 
@@ -103,7 +108,12 @@ function pickCurrentSession(sessions: SyncPomodoroRecord[]): SyncPomodoroRecord 
     return null;
   }
 
-  const active = sessions.find((entry) => entry.active);
+  // The most recently touched active one: sessions abandoned months ago (test runs, a closed app)
+  // can still be flagged active, and taking whichever came first sometimes showed one of those
+  // instead of the block running now -- a block that seemed to never end (2026-10-06).
+  const active = sessions
+    .filter((entry) => entry.active)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
   if (active) {
     return active;
   }
@@ -130,6 +140,9 @@ function withRecordMetadata(base: ReturnType<typeof createPomodoroSession>, fall
     endedAt: base.endedAt ?? null,
     blockEndAt: base.blockEndAt ?? null,
     attentionProfile: base.attentionProfile ?? null,
+    scheduleId: base.scheduleId ?? null,
+    pausedAt: base.pausedAt ?? null,
+    exitCount: base.exitCount ?? 0,
     createdAt: fallback?.createdAt ?? nowIso,
     updatedAt: nowIso,
   };
@@ -250,23 +263,34 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
 
   const startBlock = useCallback(
     async ({ scheduleId, blockStartAt, blockEndAt, profile, taskId }: StartBlockOptions) => {
+      const id = blockSessionId(scheduleId, blockStartAt);
+      // Already in this block but left it ("Salir"): starting it again is coming back.
+      if (session?.active && session.id === id && session.pausedAt) {
+        const resumed = withRecordMetadata(transitionPomodoro(session, { type: 'RESUME' }), session);
+        await persistSession(resumed, false);
+        logTransition(session, resumed);
+        return resumed.id;
+      }
       if (session?.active) return null;
       primePomodoroChime();
-      const base = createBlockPomodoroSession(crypto.randomUUID(), profile, blockEndAt.toISOString());
+      // One session per block occurrence, the same id on the phone and here, so both starting the
+      // same block land on one row (and one exit count).
+      const base = { ...createBlockPomodoroSession(id, profile, blockEndAt.toISOString()), scheduleId };
       const started = transitionPomodoro(base, { type: 'START', taskId: taskId ?? undefined });
       if (started === base) return null;
-      const record = withRecordMetadata(started, null);
+      const existing = session?.id === id ? session : null;
+      const record = withRecordMetadata(started, existing);
       blockContextRef.current = { sessionId: record.id, scheduleId, blockStartAt: blockStartAt.toISOString() };
       try {
         window.localStorage.setItem(BLOCK_CONTEXT_KEY, JSON.stringify(blockContextRef.current));
       } catch {
         // Private mode or storage full: the events just lose their block if the page reloads.
       }
-      await persistSession(record, true);
+      await persistSession(record, !existing);
       logTransition(null, record);
       return record.id;
     },
-    [logTransition, persistSession, session?.active],
+    [logTransition, persistSession, session],
   );
 
   const start = useCallback(
@@ -292,6 +316,14 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
 
   const reset = useCallback(async () => {
     await transitionSession({ type: 'RESET' }, false);
+  }, [transitionSession]);
+
+  const pause = useCallback(async () => {
+    await transitionSession({ type: 'PAUSE' }, false);
+  }, [transitionSession]);
+
+  const resume = useCallback(async () => {
+    await transitionSession({ type: 'RESUME' }, false);
   }, [transitionSession]);
 
   const toggleNotifications = useCallback(async (enabled: boolean) => {
@@ -334,6 +366,18 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!session?.active) {
       transitionInFlightRef.current = false;
+      return;
+    }
+
+    if (session.pausedAt) {
+      // Out of the block when it ended: close it (resuming past the end ends the block).
+      const blockEnd = session.blockEndAt ? new Date(session.blockEndAt).getTime() : null;
+      if (blockEnd !== null && now >= blockEnd && !transitionInFlightRef.current) {
+        transitionInFlightRef.current = true;
+        void transitionSession({ type: 'RESUME' }, false).finally(() => {
+          transitionInFlightRef.current = false;
+        });
+      }
       return;
     }
 
@@ -425,6 +469,8 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       startBlock,
       cancel,
       reset,
+      pause,
+      resume,
       toggleNotifications,
     }),
     [
@@ -441,6 +487,8 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       startBlock,
       syncedAt,
       cancel,
+      pause,
+      resume,
       toggleNotifications,
     ],
   );

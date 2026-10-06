@@ -14,6 +14,9 @@ export const FocusEventKindSchema = z.enum([
   'SESSION_CANCELLED',
   'BLOCK_ENDED',
   'CHECK_IN',
+  'BLOCK_EXITED',
+  'BLOCK_RESUMED',
+  'BLOCK_SKIPPED',
 ]);
 
 export const FocusEventSchema = z.object({

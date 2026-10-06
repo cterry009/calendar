@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
-import { ATTENTION_PROFILE_SPECS, blockOnDay, type FocusEventKind } from '@calendar/shared';
+import { ATTENTION_PROFILE_SPECS, blockOnDay, localDayKey, type FocusEventKind } from '@calendar/shared';
 import { usePomodoro } from '../../context/PomodoroContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
 import { isDesktop } from '../../lib/desktop';
 import { notifySystem } from '../../lib/desktop/notify';
 import { logFocusEvent } from '../../lib/focusEvents/log';
+import { syncBatch } from '../../lib/offline/sync-client';
 import type { SyncSchedule } from '../../lib/calendar/types';
 
 // The phone's block-start prompt, on desktop and web (user-requested, 2026-10-01): when a WORK
@@ -65,7 +66,7 @@ async function raiseWindow(): Promise<void> {
 
 export function BlockStartPrompt() {
   const { schedules, tasks } = useCalendarData();
-  const { session, startBlock } = usePomodoro();
+  const { session, startBlock, cancel } = usePomodoro();
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const snoozed = useRef<{ prompt: Prompt; until: number } | null>(null);
   const latest = useRef({ schedules, active: !!session?.active, prompt });
@@ -137,8 +138,18 @@ export function BlockStartPrompt() {
       }
       if (kind === 'BLOCK_PROMPT_SNOOZED') snoozed.current = { prompt, until: now.getTime() + SNOOZE_MIN * 60_000 };
       logFocusEvent({ kind, ...base });
+      if (kind === 'BLOCK_PROMPT_DECLINED') {
+        // "No puedo": the block is skipped today everywhere (no overlay, no blocking), and the
+        // pomodoro it may have started by itself stops.
+        await syncBatch({
+          scheduleCompletions: [
+            { clientId: crypto.randomUUID(), updatedAt: now.toISOString(), scheduleId: prompt.schedule.id, date: localDayKey(now), status: 'SKIPPED' },
+          ],
+        }).catch(() => undefined);
+        if (session?.active && session.scheduleId === prompt.schedule.id) await cancel();
+      }
     },
-    [prompt, startBlock, tasks],
+    [prompt, startBlock, tasks, session, cancel],
   );
 
   if (!prompt || typeof document === 'undefined') return null;
@@ -179,7 +190,7 @@ export function BlockStartPrompt() {
         </YStack>
         <XStack gap="$3" justifyContent="flex-end" flexWrap="wrap">
           <AppButton variant="ghost" onPress={() => void answer('BLOCK_PROMPT_DECLINED')}>
-            Hoy no
+            No puedo
           </AppButton>
           <AppButton variant="ghost" onPress={() => void answer('BLOCK_PROMPT_SNOOZED')}>
             En {SNOOZE_MIN} min

@@ -1,5 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { SessionExpiredError, fetchProfile, login as apiLogin, logout as apiLogout, register as apiRegister } from '../lib/auth/api';
+import {
+  SessionExpiredError,
+  fetchProfile,
+  login as apiLogin,
+  logout as apiLogout,
+  onSessionExpired,
+  register as apiRegister,
+} from '../lib/auth/api';
 import { loadSession, saveSession } from '../lib/auth/storage';
 import { loadServerUrl } from '../lib/server/connection';
 import type { AuthUser, LoginInput, RegisterInput } from '../lib/auth/types';
@@ -21,6 +28,9 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // The session ending from any request (not just the startup profile fetch below): back to login.
+  useEffect(() => onSessionExpired(() => setUser(null)), []);
 
   useEffect(() => {
     let isMounted = true;

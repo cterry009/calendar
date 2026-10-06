@@ -45,7 +45,16 @@ internal object WorkSocialLimit {
   private const val CHANNEL_ID = "work_social_limit"
   private const val NOTIFICATION_ID = 8241
 
-  data class WorkWindow(val days: Set<Int>, val startMinute: Int, val endMinute: Int, val label: String? = null)
+  data class WorkWindow(
+    val days: Set<Int>,
+    val startMinute: Int,
+    val endMinute: Int,
+    val label: String? = null,
+    // The schedule id, and the local days (YYYY-MM-DD) it was marked "no puedo" (2026-10-06): a
+    // skipped block doesn't count as work hours that day.
+    val id: String? = null,
+    val skipDays: Set<String> = emptySet(),
+  )
 
   sealed class Decision {
     object None : Decision()
@@ -76,11 +85,14 @@ internal object WorkSocialLimit {
       (0 until array.length()).map { i ->
         val item = array.getJSONObject(i)
         val days = item.getJSONArray("days")
+        val skip = item.optJSONArray("skip")
         WorkWindow(
           (0 until days.length()).map { days.getInt(it) }.toSet(),
           item.getInt("start"),
           item.getInt("end"),
           item.optString("label").takeIf { it.isNotBlank() },
+          item.optString("id").takeIf { it.isNotBlank() },
+          if (skip == null) emptySet() else (0 until skip.length()).map { skip.getString(it) }.toSet(),
         )
       }
     }.getOrDefault(emptyList())
@@ -88,10 +100,20 @@ internal object WorkSocialLimit {
 
   // ---- Pure rules (mirrors usageWarnings.ts) ----
 
-  fun isInWorkWindow(now: Calendar, windows: List<WorkWindow>): Boolean {
+  fun isInWorkWindow(now: Calendar, windows: List<WorkWindow>): Boolean = windowAt(now, windows) != null
+
+  /** Local YYYY-MM-DD, the same day key JS uses for a block occurrence. */
+  fun localDay(now: Calendar): String =
+    "%04d-%02d-%02d".format(now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH))
+
+  /** The WORK window covering `now` that isn't marked "no puedo" today. */
+  fun windowAt(now: Calendar, windows: List<WorkWindow>): WorkWindow? {
     val day = now.get(Calendar.DAY_OF_WEEK) - 1 // Calendar: 1 = Sunday -> JS: 0 = Sunday
     val minute = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
-    return windows.any { day in it.days && minute >= it.startMinute && minute < it.endMinute }
+    val today = localDay(now)
+    return windows.firstOrNull {
+      day in it.days && minute >= it.startMinute && minute < it.endMinute && today !in it.skipDays
+    }
   }
 
   fun warningInterval(minutes: Int): Int = when {
@@ -106,12 +128,7 @@ internal object WorkSocialLimit {
   fun isWorkHours(context: Context): Boolean = isInWorkWindow(Calendar.getInstance(), windows(context))
 
   /** The WORK window covering now, if any -- for the block popup's "why". */
-  fun currentWorkWindow(context: Context): WorkWindow? {
-    val now = Calendar.getInstance()
-    val day = now.get(Calendar.DAY_OF_WEEK) - 1
-    val minute = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
-    return windows(context).firstOrNull { day in it.days && minute >= it.startMinute && minute < it.endMinute }
-  }
+  fun currentWorkWindow(context: Context): WorkWindow? = windowAt(Calendar.getInstance(), windows(context))
 
   fun clock(minute: Int): String = "%02d:%02d".format(minute / 60, minute % 60)
 

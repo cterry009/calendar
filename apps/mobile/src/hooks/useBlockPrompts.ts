@@ -14,6 +14,7 @@ import {
   scheduleBlockPrompts,
   snoozeBlockPrompt,
 } from '../lib/blockPrompt/notifications';
+import { markBlockSkipped } from '../lib/calendar/skips';
 import { logFocusEvent } from '../lib/focusEvents/log';
 import { useCalendarData } from './useCalendarData';
 
@@ -27,7 +28,7 @@ import { useCalendarData } from './useCalendarData';
 const RESCHEDULE_DELAY_MS = 2_000;
 
 export function useBlockPrompts(): void {
-  const { schedules, tasks, isLoading: calendarLoading, refetch } = useCalendarData();
+  const { schedules, tasks, skipped, isLoading: calendarLoading, refetch } = useCalendarData();
   const { startBlock, isLoading: pomodoroLoading } = usePomodoro();
   const pending = useRef<Notifications.NotificationResponse[]>([]);
   const handled = useRef(new Set<string>());
@@ -44,9 +45,9 @@ export function useBlockPrompts(): void {
 
   useEffect(() => {
     if (Platform.OS !== 'android' || calendarLoading) return;
-    const timer = setTimeout(() => void scheduleBlockPrompts(schedules, tasks), RESCHEDULE_DELAY_MS);
+    const timer = setTimeout(() => void scheduleBlockPrompts(schedules, tasks, skipped), RESCHEDULE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [schedules, tasks, calendarLoading]);
+  }, [schedules, tasks, skipped, calendarLoading]);
 
   // The phone gets no live updates from the server, so a block or task changed on another device
   // would keep its old prompt until the app restarted. Re-pull whenever the app comes to the front.
@@ -141,6 +142,8 @@ async function handle(
       break;
     case BLOCK_PROMPT_DECLINE:
       logFocusEvent({ kind: 'BLOCK_PROMPT_DECLINED', ...base });
+      // "Hoy no" is "no puedo hacer este bloque": no overlay, no blocking, not counted as missed.
+      await markBlockSkipped(data.scheduleId, blockStartAt).catch(() => undefined);
       break;
     default:
       logFocusEvent({ kind: 'BLOCK_PROMPT_OPENED', ...base });

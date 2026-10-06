@@ -16,6 +16,10 @@ export interface SyncPomodoroRecord {
   // Block mode: ends at the WORK block's fixed end (see createBlockPomodoroSession).
   blockEndAt?: string | null;
   attentionProfile?: AttentionProfile | null;
+  // The WORK block it belongs to; paused with "Salir" and how many times (2026-10-06).
+  scheduleId?: string | null;
+  pausedAt?: string | null;
+  exitCount?: number;
   createdAt: string;
   updatedAt: string;
 }
