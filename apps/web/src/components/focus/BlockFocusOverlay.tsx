@@ -32,6 +32,8 @@ import { formatTimer } from '../../lib/pomodoro/timer';
 //   pomodoro of the study session or of the block -- whether the session got done. Logged as a
 //   CHECK_IN event.
 
+const REVIEW_POLL_MS = 10_000;
+
 async function setOnTop(show: boolean) {
   if (!isDesktop) return;
   try {
@@ -107,6 +109,7 @@ export function BlockFocusOverlay() {
     previous.current = session;
     if (!before?.active || !before.scheduleId || !session || session.id !== before.id) return;
     if (before.state !== 'FOCUS' || session.interrupted || session.completedCycles <= before.completedCycles) return;
+    if ((session.reviewedCycles ?? 0) >= session.completedCycles) return;
     const task = before.taskId ? tasks.find((t) => t.id === before.taskId) : undefined;
     setEnded({
       scheduleId: before.scheduleId,
@@ -124,6 +127,17 @@ export function BlockFocusOverlay() {
   useEffect(() => {
     void setOnTop(!!ended);
   }, [ended]);
+
+  // Answered or dismissed on the phone (the session's reviewedCycles caught up): close. While the
+  // card is up the session is re-pulled every few seconds to notice it.
+  useEffect(() => {
+    if (!ended) return;
+    const timer = window.setInterval(() => void pomodoro.refetch(), REVIEW_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [ended, pomodoro.refetch]);
+  useEffect(() => {
+    if (ended && session?.id === ended.sessionId && (session.reviewedCycles ?? 0) >= ended.cycle) setEnded(null);
+  }, [ended, session]);
 
   if (typeof document === 'undefined') return null;
 
@@ -153,6 +167,8 @@ export function BlockFocusOverlay() {
         });
         if (studyTask && sessionDone) void completeTask(studyTask, studyTask.estimatedMinutes);
       }
+      // Recorded on the session too, so the phone closes its card.
+      void pomodoro.markPomodoroReviewed(ended.sessionId, ended.cycle).catch(() => undefined);
       setEnded(null);
     };
     return createPortal(

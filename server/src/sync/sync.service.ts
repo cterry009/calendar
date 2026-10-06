@@ -575,6 +575,8 @@ export class SyncService {
       scheduleId: change.scheduleId ?? null,
       pausedAt: change.pausedAt ? new Date(change.pausedAt) : null,
       exitCount: change.exitCount ?? 0,
+      // Never goes down: a device that hasn't heard of a review yet mustn't undo it.
+      reviewedCycles: Math.max(existing?.reviewedCycles ?? 0, change.reviewedCycles ?? 0),
       updatedAt: new Date(change.updatedAt),
     };
 
@@ -605,6 +607,7 @@ export class SyncService {
             scheduleId: change.scheduleId ?? null,
             pausedAt: change.pausedAt ? new Date(change.pausedAt) : null,
             exitCount: change.exitCount ?? 0,
+            reviewedCycles: change.reviewedCycles ?? 0,
             updatedAt: new Date(change.updatedAt),
           },
         });

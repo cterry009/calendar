@@ -196,6 +196,8 @@ export interface FocusOverlayState {
   sessionId?: string;
   /** Focus pomodoros completed: when it goes up, one just finished (the phone's card asks). */
   cycles?: number;
+  /** Pomodoros already rated or dismissed on any device. */
+  reviewedCycles?: number;
   blockLabel?: string;
   /** The next finished pomodoro is the session's last: ask whether it got done. */
   askSession?: boolean;

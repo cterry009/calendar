@@ -3,6 +3,7 @@ import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView } from 'react-native';
 import { Input } from 'tamagui';
+import { usePomodoro } from '../context/PomodoroContext';
 import { useCalendarData } from '../hooks/useCalendarData';
 import { closeReviewSheet, markReviewed, subscribeReviewSheet, type ReviewRequest } from '../lib/blockPrompt/reviewSheet';
 import { logFocusEvent } from '../lib/focusEvents/log';
@@ -11,6 +12,8 @@ import { logFocusEvent } from '../lib/focusEvents/log';
 // what applied (productive, concentrated, distracted...), a comment on what could have gone better,
 // and -- for a study block -- whether the session got done (done completes it; otherwise it stays
 // pending and is the session of the line's next block). Logged as a CHECK_IN focus event.
+
+const REVIEW_POLL_MS = 10_000;
 
 function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   return (
@@ -36,6 +39,21 @@ export function BlockReviewSheet() {
   const [comment, setComment] = useState('');
   const [sessionDone, setSessionDone] = useState<boolean | null>(null);
   const { schedules, tasks, completeTask } = useCalendarData();
+  const { session, markPomodoroReviewed, refetch } = usePomodoro();
+
+  // Answered or dismissed on the other device (the session's reviewedCycles caught up): close.
+  // While open, the session is re-pulled every few seconds to notice it.
+  useEffect(() => {
+    if (!request) return;
+    const timer = setInterval(() => void refetch(), REVIEW_POLL_MS);
+    return () => clearInterval(timer);
+  }, [request, refetch]);
+  useEffect(() => {
+    if (request && session?.id === request.sessionId && (session.reviewedCycles ?? 0) >= request.cycle) {
+      void markReviewed(request.key);
+      closeReviewSheet();
+    }
+  }, [request, session]);
 
   useEffect(() => subscribeReviewSheet(setRequest), []);
   useEffect(() => {
@@ -66,6 +84,8 @@ export function BlockReviewSheet() {
       if (studyTask && sessionDone) await completeTask(studyTask).catch(() => undefined);
     }
     await markReviewed(request.key);
+    // Recorded on the session too, so the other device closes its card.
+    await markPomodoroReviewed(request.sessionId, request.cycle).catch(() => undefined);
     closeReviewSheet();
   }
 

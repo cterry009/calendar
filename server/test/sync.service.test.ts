@@ -35,6 +35,17 @@ describe('pomodoro sessions', () => {
   });
 });
 
+describe('pomodoro reviews across devices', () => {
+  it('keeps the highest reviewed cycle, so a device that missed a review cannot undo it', async () => {
+    const session = { id: 'block-s2-2026-10-07', updatedAt: at(0), state: 'FOCUS', active: true, scheduleId: 's2' };
+    await h.batch({ pomodoroSessions: [{ ...session, completedCycles: 1, reviewedCycles: 1 }] });
+    // The other device moves the session on with its stale copy (reviewedCycles 0).
+    await h.batch({ pomodoroSessions: [{ ...session, updatedAt: at(1), state: 'SHORT_BREAK', completedCycles: 1, reviewedCycles: 0 }] });
+    const row = await h.prisma.pomodoroSession.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(row).toMatchObject({ state: 'SHORT_BREAK', reviewedCycles: 1 });
+  });
+});
+
 describe('schedule completions: done and "no puedo"', () => {
   it('marks a block skipped, and the same day marked done later becomes done', async () => {
     const schedule = await h.prisma.schedule.create({

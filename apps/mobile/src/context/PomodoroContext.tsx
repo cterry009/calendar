@@ -47,6 +47,11 @@ interface PomodoroContextValue {
   pause: (at?: string) => Promise<void>;
   /** "Volver al bloque". */
   resume: () => Promise<void>;
+  /**
+   * Pomodoro `cycle` of `sessionId` was rated or dismissed here: recorded on the session so the
+   * other device closes its card (2026-10-07).
+   */
+  markPomodoroReviewed: (sessionId: string, cycle: number) => Promise<void>;
 }
 
 export interface StartBlockOptions {
@@ -158,6 +163,7 @@ function withRecordMetadata(
     scheduleId: base.scheduleId ?? null,
     pausedAt: base.pausedAt ?? null,
     exitCount: base.exitCount ?? 0,
+    reviewedCycles: base.reviewedCycles ?? 0,
     createdAt: fallback?.createdAt ?? nowIso,
     updatedAt: nowIso,
   };
@@ -334,6 +340,15 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     await transitionSession({ type: 'RESUME' }, false);
   }, [transitionSession]);
 
+  const markPomodoroReviewed = useCallback(
+    async (sessionId: string, cycle: number) => {
+      if (!session || session.id !== sessionId || (session.reviewedCycles ?? 0) >= cycle) return;
+      const next = { ...session, reviewedCycles: cycle, updatedAt: new Date().toISOString() };
+      await persistSession(next);
+    },
+    [session, persistSession],
+  );
+
   // Wall-clock diffing (getRemainingSeconds computes phaseDuration - (now - startedAt)), not an
   // accumulated countdown -- the interval just forces a re-render, so a throttled/backgrounded
   // timer never desyncs the displayed value. The AppState listener just makes resuming from
@@ -457,6 +472,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       reset,
       pause,
       resume,
+      markPomodoroReviewed,
     }),
     [
       config,
@@ -474,6 +490,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       cancel,
       pause,
       resume,
+      markPomodoroReviewed,
     ],
   );
 

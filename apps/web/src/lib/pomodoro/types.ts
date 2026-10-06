@@ -20,6 +20,8 @@ export interface SyncPomodoroRecord {
   scheduleId?: string | null;
   pausedAt?: string | null;
   exitCount?: number;
+  /** Focus pomodoros already rated or dismissed on any device (the other closes its card). */
+  reviewedCycles?: number;
   createdAt: string;
   updatedAt: string;
 }

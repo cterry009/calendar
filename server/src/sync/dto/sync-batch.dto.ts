@@ -290,6 +290,12 @@ export class PomodoroSyncChangeDto {
   @IsInt()
   @Min(0)
   exitCount?: number;
+
+  // Focus pomodoros already rated or dismissed (any device); the server keeps the max.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  reviewedCycles?: number;
 }
 
 export class BlockListSyncChangeDto {

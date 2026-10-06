@@ -27,12 +27,27 @@ import { useCalendarData } from './useCalendarData';
 // Mounted once at the root, inside PomodoroProvider.
 
 const CHECK_INTERVAL_MS = 30_000;
+const UNREVIEWED_POLL_MS = 15_000;
 
 export function useBlockFocus(): void {
   const { session, startBlock, pause, isLoading, remainingSeconds } = usePomodoro();
   const { schedules, tasks, skipped, pomodoroSessions, isLoading: calendarLoading } = useCalendarData();
   const [now, setNow] = useState(() => new Date());
   const busy = useRef(false);
+
+  // A pomodoro waiting for its review (here or on the PC): re-pull the session now and then, so a
+  // review made on the other device closes the phone's card.
+  const { refetch: refetchPomodoro } = usePomodoro();
+  const unreviewed = !!session?.scheduleId && session.completedCycles > (session.reviewedCycles ?? 0);
+  useEffect(() => {
+    if (!unreviewed) return;
+    const timer = setInterval(() => void refetchPomodoro(), UNREVIEWED_POLL_MS);
+    const stop = setTimeout(() => clearInterval(timer), 60 * 60_000);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(stop);
+    };
+  }, [unreviewed, refetchPomodoro]);
 
   // A focus pomodoro of the block just finished: the one card it shows, asking how that pomodoro
   // went (BlockReviewSheet) -- per pomodoro, not per block, for a finer measure (2026-10-07). With the
@@ -44,6 +59,7 @@ export function useBlockFocus(): void {
     previous.current = session;
     if (!before?.active || !before.scheduleId || !session || session.id !== before.id) return;
     if (before.state !== 'FOCUS' || session.interrupted || session.completedCycles <= before.completedCycles) return;
+    if ((session.reviewedCycles ?? 0) >= session.completedCycles) return;
     if (AppState.currentState !== 'active') return;
     const task = before.taskId ? tasks.find((t) => t.id === before.taskId) : undefined;
     void openReviewSheet(
@@ -83,6 +99,8 @@ export function useBlockFocus(): void {
             // For the phone's per-pomodoro card: which pomodoro just finished, and the block's name.
             sessionId: session.id,
             cycles: session.completedCycles,
+            // Rated or dismissed on any device: the native card for it goes away.
+            reviewedCycles: session.reviewedCycles ?? 0,
             blockLabel: schedules.find((s) => s.id === session.scheduleId)?.label ?? undefined,
             askSession: (() => {
               const t = session.taskId ? tasks.find((x) => x.id === session.taskId) : undefined;

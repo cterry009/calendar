@@ -164,7 +164,10 @@ internal object FocusOverlay {
     val pending = runCatching { JSONObject(p.getString(KEY_PENDING_REVIEW, null) ?: return) }.getOrNull() ?: return
     val key = pending.optString("key")
     val reviewed = p.getStringSet(KEY_REVIEWED, emptySet())!!
-    if (key in reviewed || System.currentTimeMillis() - pending.optLong("at") > REVIEW_WINDOW_MS) {
+    // Rated or dismissed on the other device: the session's reviewedCycles caught up.
+    val reviewedElsewhere = state.optString("sessionId") == pending.optString("sessionId") &&
+      state.optInt("reviewedCycles", 0) >= pending.optInt("cycle")
+    if (key in reviewed || reviewedElsewhere || System.currentTimeMillis() - pending.optLong("at") > REVIEW_WINDOW_MS) {
       hide(service)
       p.edit().remove(KEY_PENDING_REVIEW).apply()
       return

@@ -31,6 +31,8 @@ export const PomodoroSessionSchema = z.object({
   // paused time. exitCount is how many times the user left the block.
   pausedAt: z.string().datetime().optional().nullable(),
   exitCount: z.number().int().min(0).optional(),
+  // Focus pomodoros already rated or dismissed on any device (2026-10-07).
+  reviewedCycles: z.number().int().min(0).optional(),
 });
 
 export type PomodoroConfig = z.infer<typeof PomodoroConfigSchema>;

@@ -318,6 +318,9 @@ model PomodoroSession {
   pausedAt              DateTime?
   // Times the user left this block with "Salir".
   exitCount             Int           @default(0)
+  // Focus pomodoros of this session already rated (or dismissed) on any device: the other device
+  // closes its card (2026-10-07). Only ever goes up (sync keeps the max).
+  reviewedCycles        Int           @default(0)
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 

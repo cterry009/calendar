@@ -21,6 +21,7 @@ export interface PomodoroSyncChangeDto {
   scheduleId?: string | null;
   pausedAt?: string | null;
   exitCount?: number;
+  reviewedCycles?: number;
 }
 
 function buildPayloadFromSession(
@@ -42,6 +43,7 @@ function buildPayloadFromSession(
     | 'scheduleId'
     | 'pausedAt'
     | 'exitCount'
+    | 'reviewedCycles'
   >,
 ): Omit<PomodoroSyncChangeDto, 'id' | 'updatedAt'> {
   return {
@@ -61,6 +63,7 @@ function buildPayloadFromSession(
     scheduleId: session.scheduleId ?? null,
     pausedAt: session.pausedAt ?? null,
     exitCount: session.exitCount ?? 0,
+    reviewedCycles: session.reviewedCycles ?? 0,
   };
 }
 

@@ -42,6 +42,11 @@ interface PomodoroContextValue {
   pause: () => Promise<void>;
   /** "Volver al bloque". */
   resume: () => Promise<void>;
+  /**
+   * Pomodoro `cycle` of `sessionId` was rated or dismissed here: recorded on the session so the
+   * other device closes its card (2026-10-07).
+   */
+  markPomodoroReviewed: (sessionId: string, cycle: number) => Promise<void>;
   toggleNotifications: (enabled: boolean) => Promise<void>;
 }
 
@@ -154,6 +159,7 @@ function withRecordMetadata(base: ReturnType<typeof createPomodoroSession>, fall
     scheduleId: base.scheduleId ?? null,
     pausedAt: base.pausedAt ?? null,
     exitCount: base.exitCount ?? 0,
+    reviewedCycles: base.reviewedCycles ?? 0,
     createdAt: fallback?.createdAt ?? nowIso,
     updatedAt: nowIso,
   };
@@ -337,6 +343,15 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     await transitionSession({ type: 'RESUME' }, false);
   }, [transitionSession]);
 
+  const markPomodoroReviewed = useCallback(
+    async (sessionId: string, cycle: number) => {
+      if (!session || session.id !== sessionId || (session.reviewedCycles ?? 0) >= cycle) return;
+      const next = { ...session, reviewedCycles: cycle, updatedAt: new Date().toISOString() };
+      await persistSession(next, false);
+    },
+    [session, persistSession],
+  );
+
   const toggleNotifications = useCallback(async (enabled: boolean) => {
     if (!enabled) {
       setNotificationsEnabled(false);
@@ -482,6 +497,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       reset,
       pause,
       resume,
+      markPomodoroReviewed,
       toggleNotifications,
     }),
     [
@@ -500,6 +516,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       cancel,
       pause,
       resume,
+      markPomodoroReviewed,
       toggleNotifications,
     ],
   );
