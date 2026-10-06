@@ -33,6 +33,9 @@ tauri-plugin-notification = "2"
 # calendar date for the daily-rollup reset without hand-rolling timezone math.
 winreg = "0.55"
 chrono = "0.4"
+# Website time (website_tracking.rs): reads the Chromium browsers' History databases to turn the
+# foreground tab's title into its domain. Bundled SQLite, so nothing has to be installed.
+rusqlite = { version = "0.32", features = ["bundled"] }
 # Task: per-app foreground time tracking (app_tracking.rs). Raw FFI bindings only -- the three
 # calls needed (GetForegroundWindow/GetWindowThreadProcessId for "which app is in front",
 # GetLastInputInfo+GetTickCount for "is the user still here") don't justify the heavier `windows`

@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePomodoro } from '../context/PomodoroContext';
 import { useSync } from '../context/SyncContext';
-import { isNowWithinWorkSchedule } from '../lib/calendar/utils';
+import { localDateAt } from '../lib/blockPrompt/block';
+import { findActiveWorkSchedule } from '../lib/calendar/utils';
 import type { SyncScheduleRecord } from '../lib/calendar/types';
-import { setBlockPopupContent, setBlockingState, setWorkSocialLimit } from '../lib/focusBlock/api';
-import { activitySuggestionsByCategory, knownDistractingPackages, motivationalPhrases } from '@calendar/shared';
+import { setBlockPopupContent, setBlockedDomains, setBlockingState, setWorkSocialLimit } from '../lib/focusBlock/api';
+import {
+  activitySuggestionsByCategory,
+  getPhaseDurationMinutes,
+  knownDistractingPackages,
+  motivationalPhrases,
+  normalizeWebsiteDomain,
+} from '@calendar/shared';
 import { pullSnapshot } from '../lib/sync/api';
 import { useBlockList } from './useBlockList';
 import { useFocusLockdownEnabled } from './useFocusLockdownEnabled';
@@ -37,7 +44,7 @@ export interface FocusBlockingState {
  * limitation once the app is fully killed (the service can keep running on stale state).
  */
 export function useFocusBlocking(): FocusBlockingState {
-  const { isBlocking: isPomodoroBlocking } = usePomodoro();
+  const { isBlocking: isPomodoroBlocking, session } = usePomodoro();
   const { entries, refetch: refetchBlockList } = useBlockList();
   const { registerRefetch } = useSync();
   const [lockdownEnabled] = useFocusLockdownEnabled();
@@ -77,8 +84,19 @@ export function useFocusBlocking(): FocusBlockingState {
     return () => clearInterval(timerId);
   }, [refetchBlockList]);
 
-  const isWorkHoursActive = isNowWithinWorkSchedule(schedules, now);
+  const activeWork = findActiveWorkSchedule(schedules, now);
+  const isWorkHoursActive = activeWork !== null;
   const isActive = isPomodoroBlocking || isWorkHoursActive;
+
+  // When the blocking should lift if nobody says so again: the later of the focus phase's end and
+  // the WORK block's end. Handed to the native side so a reclaimed app process can't leave apps
+  // blocked forever (FocusBlockPrefs.isActive).
+  const phaseEndMs =
+    isPomodoroBlocking && session?.startedAt
+      ? new Date(session.startedAt).getTime() + (getPhaseDurationMinutes(session) ?? 0) * 60_000
+      : 0;
+  const workEndMs = activeWork ? localDateAt(activeWork.endMinute, now).getTime() : 0;
+  const activeUntilMs = Math.max(phaseEndMs, workEndMs);
 
   const blockedPackageNames = useMemo(
     () =>
@@ -95,8 +113,24 @@ export function useFocusBlocking(): FocusBlockingState {
   );
 
   useEffect(() => {
-    setBlockingState(isActive, blockedPackageNames, lockdownEnabled);
-  }, [isActive, blockedPackageNames, lockdownEnabled]);
+    setBlockingState(isActive, activeUntilMs ? new Date(activeUntilMs) : null, blockedPackageNames, lockdownEnabled);
+  }, [isActive, activeUntilMs, blockedPackageNames, lockdownEnabled]);
+
+  // Websites on the block list are kicked in the phone's browsers too (2026-10-06), each list under
+  // its own conditions, evaluated natively like the apps.
+  const domainsKey = JSON.stringify(
+    (['FOCUS', 'NIGHT'] as const).map((scope) =>
+      entries
+        .filter((entry) => entry.enabled && entry.kind === 'WEBSITE' && entry.scope === scope)
+        .map((entry) => normalizeWebsiteDomain(entry.identifier))
+        .filter((domain): domain is string => domain !== null)
+        .sort(),
+    ),
+  );
+  useEffect(() => {
+    const [focus, night] = JSON.parse(domainsKey) as [string[], string[]];
+    setBlockedDomains(focus, night);
+  }, [domainsKey]);
 
   // The strict social limit during work hours runs natively (WorkSocialLimit.kt); it only needs the
   // WORK windows and the social list, pushed whenever the schedules change.

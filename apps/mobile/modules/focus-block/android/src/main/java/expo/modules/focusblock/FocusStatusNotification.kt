@@ -10,6 +10,7 @@ import androidx.core.app.NotificationManagerCompat
 
 private const val STATUS_CHANNEL_ID = "focus_status"
 private const val STATUS_NOTIFICATION_ID = 8240
+private const val TIMEOUT_SLACK_MS = 5_000L
 
 /**
  * The persistent "you're working" notification (user-requested, 2026-10-02): while a pomodoro or a
@@ -32,6 +33,12 @@ internal object FocusStatusNotification {
 
   fun show(context: Context, title: String, text: String, endsAtMs: Long) {
     if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
+    // Already over: nothing is running any more.
+    val leftMs = endsAtMs - System.currentTimeMillis()
+    if (leftMs <= 0) {
+      clear(context)
+      return
+    }
     ensureChannel(context)
 
     val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
@@ -53,6 +60,10 @@ internal object FocusStatusNotification {
       .setWhen(endsAtMs)
       .setUsesChronometer(true)
       .setChronometerCountDown(true)
+      // Gone by itself when the phase or block ends. JS replaces it with the next one while it's
+      // alive; if Android reclaimed the app, it used to stay forever counting into negative time
+      // (the "block that never ends", 2026-10-05). A little slack so JS's own update wins the race.
+      .setTimeoutAfter(leftMs + TIMEOUT_SLACK_MS)
       .apply { contentIntent?.let { setContentIntent(it) } }
       .build()
 

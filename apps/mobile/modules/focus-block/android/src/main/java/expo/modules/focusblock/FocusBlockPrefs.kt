@@ -24,6 +24,12 @@ internal object FocusBlockPrefs {
   private const val KEY_ACTIVE = "active"
   private const val KEY_BLOCKED_PACKAGES = "blocked_packages"
 
+  // When the active state stops holding on its own (epoch ms, 0 = no end): the end of the focus
+  // phase or WORK block JS saw running. The flag used to be a bare boolean, so if Android reclaimed
+  // the app process mid-block nothing ever turned it off and apps stayed blocked indefinitely,
+  // until the app was opened again (found 2026-10-05). JS re-pushes it on every change.
+  private const val KEY_ACTIVE_UNTIL = "active_until"
+
   // Task 7.28 ("bloqueo total"): when active AND this flag is on, FocusBlockAccessibilityService
   // kicks *any* foreground app that isn't on its safety allowlist back to the home screen, not
   // just the ones in KEY_BLOCKED_PACKAGES -- the mobile equivalent of apps/web's mandatory
@@ -50,15 +56,21 @@ internal object FocusBlockPrefs {
   private fun prefs(context: Context): SharedPreferences =
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-  fun write(context: Context, active: Boolean, blockedPackages: Set<String>, lockdown: Boolean) {
+  fun write(context: Context, active: Boolean, activeUntilMs: Long, blockedPackages: Set<String>, lockdown: Boolean) {
     prefs(context).edit()
       .putBoolean(KEY_ACTIVE, active)
+      .putLong(KEY_ACTIVE_UNTIL, activeUntilMs)
       .putStringSet(KEY_BLOCKED_PACKAGES, blockedPackages)
       .putBoolean(KEY_LOCKDOWN, lockdown)
       .apply()
   }
 
-  fun isActive(context: Context): Boolean = prefs(context).getBoolean(KEY_ACTIVE, false)
+  fun isActive(context: Context): Boolean {
+    val p = prefs(context)
+    if (!p.getBoolean(KEY_ACTIVE, false)) return false
+    val until = p.getLong(KEY_ACTIVE_UNTIL, 0L)
+    return until <= 0L || System.currentTimeMillis() < until
+  }
 
   fun isLockdown(context: Context): Boolean = prefs(context).getBoolean(KEY_LOCKDOWN, false)
 
@@ -76,6 +88,24 @@ internal object FocusBlockPrefs {
 
   fun nightBlockedPackages(context: Context): Set<String> =
     prefs(context).getStringSet(KEY_NIGHT_BLOCKED_PACKAGES, emptySet()) ?: emptySet()
+
+  // WEBSITE block-list entries (2026-10-06): the domains kicked in the phone's browsers, per list.
+  // Enforced under the same conditions as that list's apps (isActive / the night rule).
+  private const val KEY_BLOCKED_DOMAINS = "blocked_domains"
+  private const val KEY_NIGHT_BLOCKED_DOMAINS = "night_blocked_domains"
+
+  fun writeBlockedDomains(context: Context, focus: Set<String>, night: Set<String>) {
+    prefs(context).edit()
+      .putStringSet(KEY_BLOCKED_DOMAINS, focus)
+      .putStringSet(KEY_NIGHT_BLOCKED_DOMAINS, night)
+      .apply()
+  }
+
+  fun blockedDomains(context: Context): Set<String> =
+    prefs(context).getStringSet(KEY_BLOCKED_DOMAINS, emptySet()) ?: emptySet()
+
+  fun nightBlockedDomains(context: Context): Set<String> =
+    prefs(context).getStringSet(KEY_NIGHT_BLOCKED_DOMAINS, emptySet()) ?: emptySet()
 
   fun setNightWindow(context: Context, startMinutes: Int, endMinutes: Int) {
     prefs(context).edit()

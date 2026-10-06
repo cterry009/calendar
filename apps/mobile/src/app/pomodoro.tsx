@@ -3,6 +3,9 @@ import { Link, Stack } from 'expo-router';
 import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useOnboarding } from '../context/OnboardingContext';
 import { usePomodoro } from '../context/PomodoroContext';
+import { useCalendarData } from '../hooks/useCalendarData';
+import { blockToday } from '../lib/blockPrompt/block';
+import { findActiveWorkSchedule } from '../lib/calendar/utils';
 import { formatTimer } from '../lib/pomodoro/timer';
 
 const PHASE_LABELS: Record<string, string> = {
@@ -30,9 +33,31 @@ export default function PomodoroScreen() {
     notificationsEnabled,
     toggleNotifications,
     start,
+    startBlock,
     cancel,
     reset,
   } = usePomodoro();
+  const { schedules, tasks } = useCalendarData();
+
+  // Started inside a WORK block, the pomodoro runs in block mode and ends with the block; a plain
+  // one cycles focus/break until cancelled, which on the phone looked like a block that never ended.
+  const startFocus = async () => {
+    const now = new Date();
+    const work = findActiveWorkSchedule(schedules, now);
+    const block = work ? blockToday({ scheduleId: work.id, startMinute: work.startMinute, endMinute: work.endMinute }, tasks, now) : null;
+    if (work && block && now < block.endAt) {
+      const id = await startBlock({
+        scheduleId: work.id,
+        blockStartAt: block.startAt,
+        blockEndAt: block.endAt,
+        profile: block.profile,
+        taskId: block.tasks[0]?.id ?? null,
+      });
+      // Too little of the block left for a pomodoro: a plain one instead.
+      if (id) return;
+    }
+    await start();
+  };
 
   const phase = session?.state ?? 'IDLE';
   const isActive = Boolean(session?.active);
@@ -91,7 +116,7 @@ export default function PomodoroScreen() {
                     </AppButton>
                   </>
                 ) : (
-                  <AppButton variant="primary" onPress={() => void start()} disabled={isLoading || isMutating}>
+                  <AppButton variant="primary" onPress={() => void startFocus()} disabled={isLoading || isMutating}>
                     {isLoading ? 'Cargando...' : 'Iniciar enfoque'}
                   </AppButton>
                 )}

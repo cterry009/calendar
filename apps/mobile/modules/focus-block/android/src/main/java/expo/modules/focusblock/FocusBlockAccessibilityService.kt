@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.provider.Settings
 import android.telecom.TelecomManager
 import android.view.accessibility.AccessibilityEvent
@@ -35,10 +36,20 @@ private const val WORK_LIMIT_TICK_MS = 60_000L
 private const val POPUP_DELAY_MS = 350L
 private const val NIGHT_WARNING_LEAD_MIN = 30
 private const val NIGHT_WARNING_EVERY_MS = 15 * 60_000L
+private const val SITE_TICK_MS = 30_000L
+private const val SITE_READ_THROTTLE_MS = 1_000L
+/** No single gap counts for more than this (a missed screen-off, a long gap between events). */
+private const val SITE_MAX_CREDIT_MS = 60_000L
 
 class FocusBlockAccessibilityService : AccessibilityService() {
 
   override fun onAccessibilityEvent(event: AccessibilityEvent) {
+    // Content changes only matter inside a browser: the address bar changing site.
+    if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+      val pkg = event.packageName?.toString() ?: return
+      if (WebsiteUsage.isBrowser(pkg)) onBrowserContent(pkg, throttled = true)
+      return
+    }
     if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
 
     // Task 8.2: checked on every qualifying event regardless of which app is foregrounded --
@@ -227,6 +238,84 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     currentForeground = pkg
     handler.removeCallbacks(tick)
     if (isSocialOrGame(pkg)) handler.postDelayed(tick, WORK_LIMIT_TICK_MS)
+    handler.removeCallbacks(siteTick)
+    if (WebsiteUsage.isBrowser(pkg)) {
+      onBrowserContent(pkg, throttled = false)
+      handler.postDelayed(siteTick, SITE_TICK_MS)
+    } else {
+      leaveSite()
+    }
+  }
+
+  // ---- Websites (WebsiteUsage.kt) ----
+  //
+  // While a browser is in front, the site in its address bar gets the time (screen on only), and a
+  // site on the block list is kicked like a blocked app. Re-read on content changes (throttled) and
+  // on a tick, since a video page changes nothing for minutes at a time.
+  private var site: String? = null
+  private var siteCreditedAt = 0L
+  private var lastSiteRead = 0L
+  private val siteTick = object : Runnable {
+    override fun run() {
+      val pkg = currentForeground ?: return
+      if (!WebsiteUsage.isBrowser(pkg)) return
+      onBrowserContent(pkg, throttled = false)
+      handler.postDelayed(this, SITE_TICK_MS)
+    }
+  }
+
+  private fun onBrowserContent(pkg: String, throttled: Boolean) {
+    val now = System.currentTimeMillis()
+    if (throttled && now - lastSiteRead < SITE_READ_THROTTLE_MS) return
+    lastSiteRead = now
+    // Content events also fire for a browser drawn under another app; only the one in front counts.
+    if (pkg != currentForeground) return
+    val domain = WebsiteUsage.currentDomain(rootInActiveWindow, pkg) ?: return
+    creditSite(now)
+    site = domain
+    val scope = blockedSiteScope(domain) ?: return
+    leaveSite()
+    blockAndExplain(
+      pkg,
+      scope,
+      if (scope == "NIGHT") "es horario de bloqueo nocturno" else focusReason(),
+      label = domain,
+      identifier = domain,
+    )
+  }
+
+  /** Gives the current site the time since it was last credited (capped, screen on only). */
+  private fun creditSite(now: Long) {
+    val current = site
+    val since = siteCreditedAt
+    siteCreditedAt = now
+    if (current == null || since == 0L) return
+    val power = getSystemService(Context.POWER_SERVICE) as? PowerManager
+    if (power?.isInteractive == false) return
+    WebsiteUsage.add(this, current, (now - since).coerceAtMost(SITE_MAX_CREDIT_MS))
+  }
+
+  private fun leaveSite() {
+    creditSite(System.currentTimeMillis())
+    site = null
+    siteCreditedAt = 0L
+  }
+
+  /** "FOCUS"/"NIGHT" when a block-list site applies right now, same rules as apps. */
+  private fun blockedSiteScope(domain: String): String? {
+    if (FocusBlockPrefs.isActive(this) && FocusBlockPrefs.blockedDomains(this).any { WebsiteUsage.matches(domain, it) }) {
+      return "FOCUS"
+    }
+    if (!FocusBlockPrefs.isNightEnabled(this)) return null
+    if (FocusBlockPrefs.nightBlockedDomains(this).none { WebsiteUsage.matches(domain, it) }) return null
+    val blocking = NightBlockRules.isNightListBlocking(
+      Calendar.getInstance(),
+      FocusBlockPrefs.nightStartMinutes(this),
+      FocusBlockPrefs.nightEndMinutes(this),
+      JogStatusReader.hasJoggedToday(this),
+      StepCountReader.dailySteps(this),
+    )
+    return if (blocking) "NIGHT" else null
   }
 
   private fun currentKeyboardPackage(): String? = runCatching {
@@ -255,16 +344,22 @@ class FocusBlockAccessibilityService : AccessibilityService() {
    * Every block goes through here: back to home, logged as a BlockEvent, a notification (kept for
    * the lock screen and the notification history) and the full-screen popup explaining it.
    */
-  private fun blockAndExplain(pkg: String, scope: String, reason: String) {
+  private fun blockAndExplain(
+    pkg: String,
+    scope: String,
+    reason: String,
+    // A blocked website: its domain names it and is what the BlockEvent records.
+    label: String = appLabel(pkg),
+    identifier: String = pkg,
+  ) {
     performGlobalAction(GLOBAL_ACTION_HOME)
-    val label = appLabel(pkg)
     val category = when {
       pkg in WorkSocialLimit.socialPackages(this) -> BlockPopup.Category.SOCIAL
       isSocialOrGame(pkg) -> BlockPopup.Category.GAME
       else -> BlockPopup.Category.GENERIC
     }
-    FocusBlockNotifications.showBlockedAlert(this, pkg, label, reason)
-    FocusBlockPrefs.addPendingBlockEvent(this, pkg, scope, "BLOCKED_OPEN_ATTEMPT")
+    FocusBlockNotifications.showBlockedAlert(this, identifier, label, reason)
+    FocusBlockPrefs.addPendingBlockEvent(this, identifier, scope, "BLOCKED_OPEN_ATTEMPT")
     // After the home action settles, so the popup lands on the launcher, not the closing app.
     handler.postDelayed({ BlockPopup.show(this, label, reason, category) }, POPUP_DELAY_MS)
   }
@@ -344,6 +439,8 @@ class FocusBlockAccessibilityService : AccessibilityService() {
 
   override fun onDestroy() {
     handler.removeCallbacks(tick)
+    handler.removeCallbacks(siteTick)
+    leaveSite()
     super.onDestroy()
   }
 

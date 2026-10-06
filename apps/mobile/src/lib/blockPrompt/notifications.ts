@@ -46,9 +46,24 @@ export function isWeeklyPlanData(data: unknown): data is WeeklyPlanData {
 
 let categoryRegistered = false;
 
+/**
+ * Its own channel at high importance, so the prompt pops up over whatever is on screen with sound
+ * (expo's fallback channel is default importance: it only lands silently in the shade, easy to
+ * miss -- one reason the prompts went unseen, 2026-10-05).
+ */
+export const BLOCK_PROMPT_CHANNEL = 'block-prompts';
+
 export async function ensureBlockPromptCategory(): Promise<void> {
   if (categoryRegistered) return;
   try {
+    await Notifications.setNotificationChannelAsync(BLOCK_PROMPT_CHANNEL, {
+      name: 'Inicio de bloques',
+      description: 'Avisa al empezar cada bloque de trabajo para iniciarlo.',
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: 'default',
+      vibrationPattern: [0, 250, 250, 250],
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    });
     await Notifications.setNotificationCategoryAsync(BLOCK_PROMPT_CATEGORY, [
       { identifier: BLOCK_PROMPT_START, buttonTitle: 'Iniciar' },
       { identifier: BLOCK_PROMPT_SNOOZE, buttonTitle: `En ${SNOOZE_MINUTES} min` },
@@ -92,8 +107,10 @@ export function promptBody(schedule: SyncScheduleRecord, tasks: SyncTaskRecord[]
 /** Replaces every scheduled block prompt with one per WORK block over the next DAYS_AHEAD days. */
 export async function scheduleBlockPrompts(schedules: SyncScheduleRecord[], tasks: SyncTaskRecord[]): Promise<void> {
   if (Platform.OS !== 'android') return;
+  // A notification posted to a channel that doesn't exist yet is silently dropped.
+  await ensureBlockPromptCategory();
 
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  const scheduled =await Notifications.getAllScheduledNotificationsAsync();
   await Promise.all(
     scheduled
       // A pending snooze stays: it's today's answer, not part of the schedule.
@@ -115,7 +132,7 @@ export async function scheduleBlockPrompts(schedules: SyncScheduleRecord[], task
         Notifications.scheduleNotificationAsync({
           identifier: `${PREFIX}${s.id}-${dateKey(day)}`,
           content: content(data, promptBody(s, tasks, day)),
-          trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at, channelId: BLOCK_PROMPT_CHANNEL },
         }),
       );
       // The week gets planned in the block the user's own rules reserve for it.
@@ -124,7 +141,7 @@ export async function scheduleBlockPrompts(schedules: SyncScheduleRecord[], task
           Notifications.scheduleNotificationAsync({
             identifier: `${PLAN_PREFIX}${dateKey(day)}`,
             content: { title: 'Plan de la semana', body: 'Toca para que la IA arme tu próxima semana y la revises.', data: { kind: 'weekly-plan' } },
-            trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at, channelId: BLOCK_PROMPT_CHANNEL },
           }),
         );
       }
@@ -138,6 +155,6 @@ export async function snoozeBlockPrompt(data: BlockPromptData, body: string): Pr
   await Notifications.scheduleNotificationAsync({
     identifier: `${SNOOZE_PREFIX}${data.scheduleId}`,
     content: content({ ...data, snoozes: data.snoozes + 1 }, body),
-    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: SNOOZE_MINUTES * 60 },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: SNOOZE_MINUTES * 60, channelId: BLOCK_PROMPT_CHANNEL },
   });
 }

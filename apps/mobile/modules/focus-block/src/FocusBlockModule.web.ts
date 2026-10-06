@@ -1,5 +1,5 @@
 import { registerWebModule, NativeModule } from 'expo';
-import type { FocusBlockNativeModule, NativePendingBlockEvent } from './FocusBlock.types';
+import type { FocusBlockNativeModule, NativePendingBlockEvent, WebsiteUsageRecord } from './FocusBlock.types';
 
 // A browser can't watch which "app" is in the foreground outside its own tab -- there is no web
 // equivalent of an Android AccessibilityService. lib/focusBlock/api.ts guards every call behind
@@ -24,6 +24,14 @@ class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModul
 
   clearFocusStatus(): void {
     // No-op off Android.
+  }
+
+  setBlockedDomains(): void {
+    // No-op off Android: the desktop blocks sites through the hosts file.
+  }
+
+  getWebsiteUsage(): WebsiteUsageRecord[] {
+    return [];
   }
 
   isWorkHours(): boolean {

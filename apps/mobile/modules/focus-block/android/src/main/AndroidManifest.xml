@@ -13,6 +13,11 @@
        permission for a setAlarmClock() caller, not a runtime dangerous one: no PermissionsAndroid
        prompt needed on the JS side. -->
   <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+  <!-- The block-start prompts (expo-notifications DATE triggers) only fire on time with an exact
+       alarm; SCHEDULE_EXACT_ALARM is denied by default from Android 14 on, so without this they
+       fell back to inexact alarms that Doze can hold back for a long while. USE_EXACT_ALARM is
+       granted at install to calendar and alarm apps, which this is. -->
+  <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
   <application>
     <service
       android:name=".FocusBlockAccessibilityService"

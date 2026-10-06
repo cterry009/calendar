@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Platform } from 'react-native';
 import { getNotificationPermissionGranted, requestNotificationPermission } from '../lib/notifications/api';
 
 interface NotificationsContextValue {
@@ -13,8 +14,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Picks up a permission already granted in a previous session -- don't make the user
-    // re-toggle every time they open the app.
-    void getNotificationPermissionGranted().then(setNotificationsEnabled);
+    // re-toggle every time they open the app. Without it nothing shows at all, block prompts
+    // included (found 2026-10-05: on a fresh install it was only ever asked from the pomodoro
+    // screen's toggle), so ask on the first launch; Android stops showing the dialog by itself
+    // once the user has said no twice.
+    void (async () => {
+      const granted = Platform.OS === 'android' ? await requestNotificationPermission() : await getNotificationPermissionGranted();
+      setNotificationsEnabled(granted);
+    })().catch(() => undefined);
   }, []);
 
   const toggleNotifications = useCallback(async (enabled: boolean) => {

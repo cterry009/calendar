@@ -43,6 +43,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 use tauri::{AppHandle, Manager, State};
+
+use crate::website_tracking::{self, WebsiteTracker};
 use windows_sys::Win32::System::SystemInformation::GetTickCount;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
 use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
@@ -261,6 +263,9 @@ pub fn start_monitor(app: &AppHandle) {
                 *state.lock().unwrap() = loaded;
             }
 
+            website_tracking::load_persisted_state(&app);
+            let mut websites = WebsiteTracker::new();
+
             let mut sys = System::new();
             let mut last_tick = Instant::now();
 
@@ -290,7 +295,7 @@ pub fn start_monitor(app: &AppHandle) {
                     state.entries.clear();
                 }
 
-                if let Some(exe_lower) = active {
+                if let Some(exe_lower) = active.clone() {
                     let label = friendly_label(&exe_lower);
                     let entry = state
                         .entries
@@ -304,6 +309,12 @@ pub fn start_monitor(app: &AppHandle) {
                 }
 
                 persist_state(&app, &state);
+                drop(state);
+
+                // Same tick, same idle rule: a browser in front credits the site in its tab.
+                if let Some(exe_lower) = active {
+                    websites.tick(&app, &exe_lower, elapsed);
+                }
             }
         })
         .expect("spawn app-tracker thread");

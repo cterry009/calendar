@@ -11,10 +11,9 @@ import { useNightWindow } from '../hooks/useNightWindow';
 import { useScreenTime } from '../hooks/useScreenTime';
 import { formatNightWindowMinutes } from '../lib/nightBlock/state';
 import type { AppUsageRecord } from '../lib/screenTime/api';
-import { isKnownDistractingApp } from '../lib/screenTime/distractingApps';
+import { MostUsedSuggestions } from '../components/blocklist/MostUsedSuggestions';
 
 const MAX_ROWS = 10;
-const MAX_SUGGESTIONS = 5;
 
 function formatDuration(totalTimeMs: number): string {
   const totalMinutes = Math.round(totalTimeMs / 60_000);
@@ -94,44 +93,6 @@ export default function ScreenTimeScreen() {
   // visible flash confirmed on-device. Folding installedApps' own loading state into this
   // screen's "Cargando..." keeps the list from ever showing an unresolved package name.
   const isLoading = screenTime.isLoading || (installedApps.isSupported && !installedApps.isLoaded);
-
-  // Scoped to whichever list is currently selected above -- an app already blocked in that same
-  // scope shouldn't be suggested again, but being blocked in the *other* scope doesn't disqualify
-  // it (FOCUS and NIGHT are independent lists, same as blocklist.tsx's own two tabs).
-  const blockedPackagesInScope = useMemo(
-    () =>
-      new Set(
-        blockList.entries
-          .filter((entry) => entry.kind === 'MOBILE_APP' && entry.platform === 'ANDROID' && entry.scope === blockScope)
-          .map((entry) => entry.identifier),
-      ),
-    [blockList.entries, blockScope],
-  );
-
-  // weekUsage is already sorted descending (useScreenTime.ts), so this stays "most used first"
-  // without re-sorting. isKnownDistractingApp checks a curated known-package list
-  // (distractingApps.ts) -- not Android's own app-category field, which real-device testing showed
-  // is too unreliable for this (see that file's comment for what went wrong).
-  const suggestions = useMemo(
-    () =>
-      screenTime.weekUsage
-        .filter((record) => isKnownDistractingApp(record.packageName) && !blockedPackagesInScope.has(record.packageName))
-        .slice(0, MAX_SUGGESTIONS),
-    [screenTime.weekUsage, blockedPackagesInScope],
-  );
-
-  function blockSuggestion(record: AppUsageRecord) {
-    void blockList.createEntry({
-      kind: 'MOBILE_APP',
-      identifier: record.packageName,
-      label: labels.get(record.packageName) ?? record.packageName,
-      platform: 'ANDROID',
-      highDopamine: true,
-      enabled: true,
-      hardMode: false,
-      scope: blockScope,
-    });
-  }
 
   return (
     <YStack flex={1} backgroundColor="$background">
@@ -246,36 +207,12 @@ export default function ScreenTimeScreen() {
                         ))}
                       </XStack>
                     </YStack>
-                    {isLoading || blockList.isLoading ? (
-                      <Paragraph margin={0} color="$muted">
-                        Cargando...
-                      </Paragraph>
-                    ) : suggestions.length === 0 ? (
-                      <Paragraph margin={0} color="$muted">
-                        No detectamos apps de alto consumo sin bloquear (en esta lista) entre tus
-                        apps mas usadas de los ultimos 7 dias.
-                      </Paragraph>
-                    ) : (
-                      <YStack gap="$3">
-                        <Paragraph margin={0} color="$muted" fontSize="$2">
-                          Redes sociales y apps de video entre tus apps mas usadas -- agregalas con
-                          un toque a la lista elegida arriba.
-                        </Paragraph>
-                        {suggestions.map((record) => (
-                          <XStack key={record.packageName} justifyContent="space-between" alignItems="center" gap="$3">
-                            <YStack flex={1}>
-                              <Text numberOfLines={1}>{labels.get(record.packageName) ?? record.packageName}</Text>
-                              <Text color="$muted" fontSize="$2">
-                                {formatDuration(record.totalTimeMs)} esta semana
-                              </Text>
-                            </YStack>
-                            <AppButton variant="primary" disabled={blockList.isMutating} onPress={() => blockSuggestion(record)}>
-                              Bloquear
-                            </AppButton>
-                          </XStack>
-                        ))}
-                      </YStack>
-                    )}
+                    <MostUsedSuggestions
+                      scope={blockScope}
+                      entries={blockList.entries}
+                      isMutating={blockList.isMutating}
+                      createEntry={blockList.createEntry}
+                    />
                   </YStack>
                 </AppCard>
               </TutorialTarget>

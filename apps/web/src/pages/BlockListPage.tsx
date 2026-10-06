@@ -6,6 +6,7 @@ import { BlockListList } from '../components/blocklist/BlockListList';
 import { DesktopBlockingCard } from '../components/blocklist/DesktopBlockingCard';
 import { DesktopNightSettingsCard } from '../components/blocklist/DesktopNightSettingsCard';
 import { GameTimeBlockSuggestions } from '../components/blocklist/GameTimeBlockSuggestions';
+import { MostUsedBlockSuggestions } from '../components/blocklist/MostUsedBlockSuggestions';
 import { FocusTriggerForm } from '../components/focusTriggers/FocusTriggerForm';
 import { FocusTriggerList } from '../components/focusTriggers/FocusTriggerList';
 import { PageHeader } from '../components/PageHeader';
@@ -80,6 +81,8 @@ export function BlockListPage() {
       {error ? <StatusCard tone="error" message={error} /> : null}
 
       <DesktopBlockingCard />
+
+      <MostUsedBlockSuggestions />
 
       <GameTimeBlockSuggestions />
 

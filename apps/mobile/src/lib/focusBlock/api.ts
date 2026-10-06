@@ -12,9 +12,12 @@ import type { NativePendingBlockEvent } from '../../../modules/focus-block/src/F
 // app, not only the ones in `blockedPackages` -- the mobile equivalent of apps/web's mandatory
 // full-screen focus overlay. The allowlist (own app, launcher, system UI, phone/dialer, Settings,
 // keyboard) is resolved natively; see FocusBlockAccessibilityService.isFocusAllowlisted.
-export function setBlockingState(active: boolean, blockedPackages: string[], lockdown: boolean): void {
+//
+// `activeUntil`: when `active` lapses natively if the app process dies before saying otherwise -- the
+// end of the focus phase or WORK block that made it active (null = no known end).
+export function setBlockingState(active: boolean, activeUntil: Date | null, blockedPackages: string[], lockdown: boolean): void {
   if (Platform.OS !== 'android') return;
-  FocusBlockModule.setBlockingState(active, blockedPackages, lockdown);
+  FocusBlockModule.setBlockingState(active, active && activeUntil ? activeUntil.getTime() : 0, blockedPackages, lockdown);
 }
 
 // Task 11.9: the NIGHT-scope list's push, kept fully separate from setBlockingState above --
@@ -142,4 +145,30 @@ export function setFocusStatus(title: string, text: string, endsAt: Date): void 
 export function clearFocusStatus(): void {
   if (Platform.OS !== 'android') return;
   FocusBlockModule.clearFocusStatus();
+}
+
+// WEBSITE block-list entries, per list: the accessibility service kicks these domains (and their
+// subdomains) in the phone's browsers, under the same conditions as that list's apps.
+export function setBlockedDomains(focus: string[], night: string[]): void {
+  if (Platform.OS !== 'android') return;
+  try {
+    FocusBlockModule.setBlockedDomains(focus, night);
+  } catch {
+    // Older native build without it: sites just aren't blocked on the phone until a rebuild.
+  }
+}
+
+export interface WebsiteUsageRecord {
+  domain: string;
+  totalTimeMs: number;
+}
+
+/** Time per website measured from the browsers' address bar, most used first; [] off Android. */
+export function getWebsiteUsage(startMillis: number, endMillis: number): WebsiteUsageRecord[] {
+  if (Platform.OS !== 'android') return [];
+  try {
+    return FocusBlockModule.getWebsiteUsage(startMillis, endMillis);
+  } catch {
+    return [];
+  }
 }

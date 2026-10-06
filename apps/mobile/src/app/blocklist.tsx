@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import { Input } from 'tamagui';
 import { BlockListEntryRow } from '../components/blocklist/BlockListEntryRow';
 import { InstalledAppRow } from '../components/blocklist/InstalledAppRow';
+import { MostUsedSuggestions } from '../components/blocklist/MostUsedSuggestions';
 import { TutorialScrollView } from '../components/onboarding/TutorialScrollView';
 import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useOnboarding } from '../context/OnboardingContext';
@@ -475,6 +476,16 @@ export default function BlockListScreen() {
               </YStack>
             </AppCard>
           </TutorialTarget>
+
+          <AppCard>
+            <MostUsedSuggestions
+              scope={activeScope}
+              entries={entries}
+              isMutating={isMutating}
+              createEntry={createEntry}
+              onMessage={flash}
+            />
+          </AppCard>
 
           <TutorialTarget id="blocklist-apps">
             <AppCard>

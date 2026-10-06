@@ -11,10 +11,16 @@ export interface NativePendingBlockEvent {
   occurredAt: string;
 }
 
+/** Time on one website, measured by the accessibility service from the browser's address bar. */
+export interface WebsiteUsageRecord {
+  domain: string;
+  totalTimeMs: number;
+}
+
 export interface FocusBlockNativeModule {
   // `lockdown` (task 7.28): when true and `active`, the AccessibilityService blocks every
   // non-allowlisted foreground app, not just the ones in `blockedPackages`.
-  setBlockingState(active: boolean, blockedPackages: string[], lockdown: boolean): void;
+  setBlockingState(active: boolean, activeUntilMs: number, blockedPackages: string[], lockdown: boolean): void;
   setNightBlockingState(enabled: boolean, blockedPackages: string[]): void;
   setNightWindow(startMinutes: number, endMinutes: number): void;
   setWorkSocialLimit(windowsJson: string, socialPackages: string[]): void;
@@ -22,6 +28,8 @@ export interface FocusBlockNativeModule {
   setBlockPopupContent(json: string): void;
   setFocusStatus(title: string, text: string, endsAtMs: number): void;
   clearFocusStatus(): void;
+  setBlockedDomains(focus: string[], night: string[]): void;
+  getWebsiteUsage(startMillis: number, endMillis: number): WebsiteUsageRecord[];
   getNightWindowStartMinutes(): number;
   getNightWindowEndMinutes(): number;
   isAccessibilityServiceEnabled(): boolean;

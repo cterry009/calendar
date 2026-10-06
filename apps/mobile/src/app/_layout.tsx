@@ -18,6 +18,7 @@ import { useFocusStatusNotification } from '../hooks/useFocusStatusNotification'
 import { useFocusBlocking } from '../hooks/useFocusBlocking';
 import { useHabitReminders } from '../hooks/useHabitReminders';
 import { useJogDetection } from '../hooks/useJogDetection';
+import { useMissedBlocks } from '../hooks/useMissedBlocks';
 import { useNightBlocking } from '../hooks/useNightBlocking';
 import { useScreenTimeSync } from '../hooks/useScreenTimeSync';
 import { useUsageWarnings } from '../hooks/useUsageWarnings';
@@ -48,6 +49,13 @@ function FocusBlockingBridge() {
 // the block, so like FocusBlockingBridge this has to run inside PomodoroProvider.
 function BlockPromptsBridge() {
   useBlockPrompts();
+  return null;
+}
+
+// On opening the app, the WORK blocks that weren't started; can start one still running, so it
+// needs usePomodoro() like BlockPromptsBridge.
+function MissedBlocksBridge() {
+  useMissedBlocks();
   return null;
 }
 
@@ -160,6 +168,7 @@ function RootNavigator() {
       <PomodoroProvider>
         <FocusBlockingBridge />
         <BlockPromptsBridge />
+        <MissedBlocksBridge />
         <FocusStatusBridge />
         <JogDetectionBridge />
         <NightBlockingBridge />

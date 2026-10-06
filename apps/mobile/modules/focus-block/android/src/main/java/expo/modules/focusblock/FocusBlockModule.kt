@@ -22,9 +22,9 @@ class FocusBlockModule : Module() {
     // "Return type mismatch: expected 'Any?', actual 'Unit'" from the Expo Modules Kotlin DSL's
     // generic Function() overload; found by an actual `gradlew assembleDebug` run, not by
     // inspection). `?.let` sidesteps it entirely.
-    Function("setBlockingState") { active: Boolean, blockedPackages: List<String>, lockdown: Boolean ->
+    Function("setBlockingState") { active: Boolean, activeUntilMs: Double, blockedPackages: List<String>, lockdown: Boolean ->
       appContext.reactContext?.let { context ->
-        FocusBlockPrefs.write(context, active, blockedPackages.toSet(), lockdown)
+        FocusBlockPrefs.write(context, active, activeUntilMs.toLong(), blockedPackages.toSet(), lockdown)
       }
     }
 
@@ -74,6 +74,21 @@ class FocusBlockModule : Module() {
       appContext.reactContext?.let { context ->
         FocusStatusNotification.clear(context)
       }
+    }
+
+    // WEBSITE block-list entries, per list (WebsiteUsage.kt / FocusBlockAccessibilityService).
+    Function("setBlockedDomains") { focus: List<String>, night: List<String> ->
+      appContext.reactContext?.let { context ->
+        FocusBlockPrefs.writeBlockedDomains(context, focus.toSet(), night.toSet())
+      }
+    }
+
+    // Time per website the accessibility service measured, most used first.
+    Function("getWebsiteUsage") { startMillis: Double, endMillis: Double ->
+      val context = appContext.reactContext
+      val usage: List<Map<String, Any>> =
+        if (context == null) emptyList() else WebsiteUsage.usage(context, startMillis.toLong(), endMillis.toLong())
+      usage
     }
 
     Function("setBlockPopupContent") { json: String ->

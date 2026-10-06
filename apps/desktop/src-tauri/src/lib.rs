@@ -9,6 +9,7 @@ mod blocking;
 mod game_tracking;
 mod hosts;
 mod tray;
+mod website_tracking;
 
 use std::sync::Mutex;
 
@@ -25,6 +26,7 @@ pub fn run() {
         .manage(Mutex::new(blocking::ProcessBlockingState::default()))
         .manage(Mutex::new(game_tracking::GameTrackingState::default()))
         .manage(Mutex::new(app_tracking::AppTrackingState::default()))
+        .manage(Mutex::new(website_tracking::WebsiteTrackingState::default()))
         // Task 9.8: user-configurable "start on boot". Registers HKCU\...\Run on Windows; the
         // `--minimized` arg lets an autostarted launch come up hidden to the tray (handled in
         // setup() below).
@@ -72,6 +74,7 @@ pub fn run() {
             blocking::set_process_blocking,
             game_tracking::get_game_time_today,
             app_tracking::get_app_time_today,
+            website_tracking::get_website_time,
             hosts::set_website_blocking,
             hosts::request_hosts_access
         ])
