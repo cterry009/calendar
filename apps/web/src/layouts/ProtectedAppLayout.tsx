@@ -6,7 +6,6 @@ import { DesktopGameTimeBridge } from '../components/desktop/DesktopGameTimeBrid
 import { DesktopUsageWarnings } from '../components/desktop/DesktopUsageWarnings';
 import { DesktopNightWarnings } from '../components/desktop/DesktopNightWarnings';
 import { DesktopTrayBridge } from '../components/desktop/DesktopTrayBridge';
-import { BlockStartPrompt } from '../components/focus/BlockStartPrompt';
 import { BlockFocusOverlay } from '../components/focus/BlockFocusOverlay';
 import { SoftFocusOverlay } from '../components/focus/SoftFocusOverlay';
 import { PanelHost } from '../components/panels/PanelHost';
@@ -43,7 +42,6 @@ export function ProtectedAppLayout() {
                   <PanelHost />
                   <SoftFocusOverlay />
                   <BlockFocusOverlay />
-                  <BlockStartPrompt />
                   <GlobalQuickAdd />
                 </QuickAddProvider>
               </PanelProvider>

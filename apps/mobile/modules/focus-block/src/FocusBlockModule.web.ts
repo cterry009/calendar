@@ -34,6 +34,8 @@ class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModul
 
   clearOverlayExit(): void {}
 
+  markBlockReviewed(): void {}
+
   setBlockedDomains(): void {
     // No-op off Android: the desktop blocks sites through the hosts file.
   }

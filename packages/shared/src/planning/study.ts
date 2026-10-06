@@ -137,3 +137,31 @@ export function studySessionLine(
   const total = task.estimatedPomodoros ?? null;
   return total ? `${task.title} · pomodoro ${Math.min(current, total)} de ${total}` : `${task.title} · pomodoro ${current}`;
 }
+
+// The one card a block shows, at its end (user-requested, 2026-10-07): how it went, on a scale,
+// what applied, and a comment. Logged as a CHECK_IN focus event (meta.review) for calibrating the
+// attention profiles and following the study lines.
+export const BLOCK_RATINGS = [
+  { value: 1, label: 'Muy mal' },
+  { value: 2, label: 'Mal' },
+  { value: 3, label: 'Regular' },
+  { value: 4, label: 'Bien' },
+  { value: 5, label: 'Excelente' },
+] as const;
+
+export const BLOCK_REVIEW_TAGS = [
+  'Fue productiva',
+  'Me pude concentrar',
+  'Me distraje',
+  'Me faltó energía',
+  'El tema era difícil',
+  'Avancé menos de lo planeado',
+] as const;
+
+export interface BlockReview {
+  rating: number;
+  tags: string[];
+  comment?: string;
+  /** For a study block: whether its session got done (done ones are completed). */
+  sessionDone?: boolean;
+}

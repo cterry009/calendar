@@ -191,6 +191,8 @@ export interface FocusOverlayState {
   phrase?: string;
   /** The study session it's on (studySessionLine). */
   session?: string;
+  /** Its task, for the end-of-block review. */
+  taskId?: string;
 }
 
 export function setFocusOverlayState(state: FocusOverlayState): void {
@@ -215,6 +217,16 @@ export function clearOverlayExit(key: string): void {
   if (Platform.OS !== 'android') return;
   try {
     FocusBlockModule.clearOverlayExit(key);
+  } catch {
+    // Older native build.
+  }
+}
+
+/** This block occurrence was reviewed in the app: the phone's end-of-block card doesn't ask again. */
+export function markBlockReviewed(key: string): void {
+  if (Platform.OS !== 'android') return;
+  try {
+    FocusBlockModule.markBlockReviewed(key);
   } catch {
     // Older native build.
   }

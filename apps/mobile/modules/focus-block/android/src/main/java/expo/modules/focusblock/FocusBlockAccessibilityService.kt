@@ -446,7 +446,7 @@ class FocusBlockAccessibilityService : AccessibilityService() {
   // Checked every 30 s (a block starting needs no event to happen) and on every unlock.
   private val overlayTick = object : Runnable {
     override fun run() {
-      runCatching { FocusOverlay.check(this@FocusBlockAccessibilityService, unlocked = false) }
+      runCatching { FocusOverlay.check(this@FocusBlockAccessibilityService, appInFront = currentForeground == packageName) }
         .onFailure { android.util.Log.e("FocusOverlay", "check failed", it) }
       handler.postDelayed(this, OVERLAY_TICK_MS)
     }
@@ -455,7 +455,7 @@ class FocusBlockAccessibilityService : AccessibilityService() {
   private val unlockReceiver = object : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
       if (intent.action == Intent.ACTION_USER_PRESENT) {
-        runCatching { FocusOverlay.check(this@FocusBlockAccessibilityService, unlocked = true) }
+        runCatching { FocusOverlay.check(this@FocusBlockAccessibilityService, appInFront = currentForeground == packageName) }
           .onFailure { android.util.Log.e("FocusOverlay", "unlock check failed", it) }
       }
     }

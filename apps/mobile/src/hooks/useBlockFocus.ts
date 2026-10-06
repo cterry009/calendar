@@ -8,11 +8,12 @@ import {
   MIN_TRIMMED_FOCUS_MIN,
 } from '@calendar/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, AppState } from 'react-native';
+import { AppState } from 'react-native';
 import { usePomodoro } from '../context/PomodoroContext';
 import { blockTaskId, blockToday } from '../lib/blockPrompt/block';
 import { clearBlockExited, isBlockExited, markBlockExited } from '../lib/blockPrompt/exits';
 import { openExitSheet } from '../lib/blockPrompt/exitSheet';
+import { openReviewSheet } from '../lib/blockPrompt/reviewSheet';
 import { drainOverlayExits, setFocusOverlayState } from '../lib/focusBlock/api';
 import { logFocusEvent } from '../lib/focusEvents/log';
 import { useCalendarData } from './useCalendarData';
@@ -29,35 +30,24 @@ const CHECK_INTERVAL_MS = 30_000;
 
 export function useBlockFocus(): void {
   const { session, startBlock, pause, isLoading, remainingSeconds } = usePomodoro();
-  const { schedules, tasks, skipped, pomodoroSessions, isLoading: calendarLoading, completeTask } = useCalendarData();
+  const { schedules, tasks, skipped, pomodoroSessions, isLoading: calendarLoading } = useCalendarData();
   const [now, setNow] = useState(() => new Date());
   const busy = useRef(false);
 
-  // The block reached its end with a study session in it: did the session get done? Yes marks it
-  // completed (the line moves on); no leaves it pending, so it's the next block's session.
+  // The block reached its end: the one card it shows, asking how it went (BlockReviewSheet).
   const previous = useRef(session);
   useEffect(() => {
     const before = previous.current;
     previous.current = session;
-    if (!before?.active || !before.scheduleId || !before.taskId || !session) return;
+    if (!before?.active || !before.scheduleId || !session) return;
     if (session.id !== before.id || session.active || session.interrupted) return;
-    const task = tasks.find((t) => t.id === before.taskId);
-    if (!task || task.status === 'COMPLETED') return;
-    Alert.alert('Terminó el bloque', `¿Completaste la sesión «${task.title}»?`, [
-      {
-        text: 'No, pasa al próximo bloque',
-        onPress: () =>
-          logFocusEvent({ kind: 'CHECK_IN', scheduleId: before.scheduleId ?? undefined, taskId: task.id, meta: { sessionDone: false } }),
-      },
-      {
-        text: 'Sí, completada',
-        onPress: () => {
-          void completeTask(task);
-          logFocusEvent({ kind: 'CHECK_IN', scheduleId: before.scheduleId ?? undefined, taskId: task.id, meta: { sessionDone: true } });
-        },
-      },
-    ]);
-  }, [session, tasks, completeTask]);
+    if (AppState.currentState !== 'active') return;
+    void openReviewSheet({
+      scheduleId: before.scheduleId,
+      key: blockOccurrenceKey(before.scheduleId, new Date()),
+      taskId: before.taskId ?? null,
+    });
+  }, [session]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), CHECK_INTERVAL_MS);
@@ -85,6 +75,7 @@ export function useBlockFocus(): void {
             paused: !!session.pausedAt,
             exits: session.exitCount ?? 0,
             phase: session.state,
+            taskId: session.taskId ?? undefined,
             session: studyTask ? studySessionLine(studyTask, session) : undefined,
             // What's left of the pomodoro; frozen while out of the block.
             remainingMs: remainingSeconds * 1000,

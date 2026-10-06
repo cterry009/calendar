@@ -8,14 +8,12 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
-import android.os.SystemClock
 import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
-import android.widget.Chronometer
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -28,33 +26,29 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * The pomodoro on top of the screen during a WORK block (user-requested, 2026-10-06): when a block
- * starts and every time the phone is unlocked during one, a card over whatever is on screen shows
- * the block, the phase, a live countdown to the end of the pomodoro and a line to finish it. It
- * doesn't lock anything, same as the desktop's card:
- * - "Seguir trabajando" hides it; the time keeps counting.
- * - "Abrir pomodoro" opens the app.
- * - "Salir" lets the user go do something else: from that moment the block's time stops counting
- *   (the session pauses) and the exit is counted. While out, a small bar at the top of the screen
- *   shows how much of the pomodoro is left, with "Volver" -- the desktop's "Volver al bloque" bar.
+ * What a WORK block puts on the phone's screen, by the accessibility service (TYPE_ACCESSIBILITY_OVERLAY
+ * windows, which show with the app in the background):
+ * - Nothing while it runs: popping up during the block broke the concentration it's for
+ *   (user-requested, 2026-10-07). The persistent notification keeps the countdown.
+ * - While out of the block ("Salir" in the app), a small bar on top with what's left of the pomodoro
+ *   and "Volver".
+ * - Once, at its end, a card asking how it went (1-5); a rating opens the app to finish the review
+ *   (what applied, a comment, whether the study session got done). Not when the app is already in
+ *   front -- it asks there itself -- and not for a block given up ("no puedo") or already reviewed.
  *
- * Drawn by the accessibility service as TYPE_ACCESSIBILITY_OVERLAY windows, like BlockPopup, so they
- * show with the app in the background. Which block is on comes from WorkSocialLimit's windows (pushed
- * by JS, "no puedo" days excluded); what the pomodoro is doing comes from JS (writeState). An exit
- * made here is queued and applied by JS (drainExits), back-dated to when it happened.
+ * Which block is on comes from WorkSocialLimit's windows (pushed by JS, "no puedo" days excluded);
+ * what the pomodoro is doing comes from JS (writeState).
  */
 internal object FocusOverlay {
   private const val TAG = "FocusOverlay"
   private const val PREFS_NAME = "focus_overlay"
   private const val KEY_STATE = "state"
   private const val KEY_EXITED = "exited"
-  private const val KEY_SHOWN = "shown"
   private const val KEY_PENDING_EXITS = "pending_exits"
-  private const val KEY_COUNT_PREFIX = "shown_count:"
-
-  // At most this many times per block (its start + returns): more than that breaks the focus the
-  // pomodoro is for (user-requested, 2026-10-07). Same limit as the desktop (MAX_BLOCK_REMINDERS).
-  private const val MAX_SHOWS = 3
+  private const val KEY_LAST_BLOCK = "last_block"
+  private const val KEY_REVIEWED = "reviewed"
+  /** A block that ended longer ago than this isn't asked about any more. */
+  private const val REVIEW_WINDOW_MS = 3 * 60 * 60_000L
 
   private var card: View? = null
   private var bar: View? = null
@@ -64,18 +58,18 @@ internal object FocusOverlay {
   private val WARNING = Color.parseColor("#E0B64C")
   private val MUTED = Color.parseColor("#A9B8B0")
   private val BODY = Color.parseColor("#F2F7F4")
+  private val RATINGS = listOf(1 to "Muy mal", 2 to "Mal", 3 to "Regular", 4 to "Bien", 5 to "Excelente")
 
   private fun prefs(context: Context): SharedPreferences =
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
   /**
    * From JS, whenever the pomodoro changes: {"scheduleId","title","text","phase","endsAtMs",
-   * "running","paused","remainingMs","exits","phrase"}; "{}" when nothing runs.
+   * "running","paused","remainingMs","exits","phrase","session","taskId"}; "{}" when nothing runs.
    */
   fun writeState(context: Context, json: String) {
     prefs(context).edit().putString(KEY_STATE, json).apply()
     val state = runCatching { JSONObject(json) }.getOrNull()
-    // Left the block from another device or from the app: the card doesn't pop up for it again.
     if (state?.optBoolean("paused") == true) state.optString("scheduleId").takeIf { it.isNotBlank() }?.let {
       markExited(context, "$it@${WorkSocialLimit.localDay(Calendar.getInstance())}", record = false)
     }
@@ -84,14 +78,22 @@ internal object FocusOverlay {
   private fun state(context: Context): JSONObject =
     runCatching { JSONObject(prefs(context).getString(KEY_STATE, "{}")!!) }.getOrDefault(JSONObject())
 
-  /** "Volver al bloque" in the app: this block may pop up again. */
+  /** "Volver al bloque" in the app. */
   fun clearExited(context: Context, key: String) {
     val set = prefs(context).getStringSet(KEY_EXITED, emptySet())!!.toMutableSet()
     set.remove(key)
     prefs(context).edit().putStringSet(KEY_EXITED, set).apply()
   }
 
-  /** Exits made on the overlay since the last call, oldest first: [{"key","at"}]. Clears them. */
+  /** The block was reviewed (or given up) in the app: no end-of-block card for it. */
+  fun markReviewed(context: Context, key: String) {
+    val today = WorkSocialLimit.localDay(Calendar.getInstance())
+    val set = prefs(context).getStringSet(KEY_REVIEWED, emptySet())!!.filter { it.endsWith("@$today") }.toMutableSet()
+    set.add(key)
+    prefs(context).edit().putStringSet(KEY_REVIEWED, set).apply()
+  }
+
+  /** Exits queued natively, oldest first: [{"key","at"}]. Clears them. Kept for older app versions. */
   @Synchronized
   fun drainExits(context: Context): List<Map<String, String>> {
     val raw = prefs(context).getString(KEY_PENDING_EXITS, "[]")
@@ -107,7 +109,6 @@ internal object FocusOverlay {
   private fun markExited(context: Context, key: String, record: Boolean) {
     val p = prefs(context)
     val set = p.getStringSet(KEY_EXITED, emptySet())!!.toMutableSet()
-    // Only today's keys are worth keeping.
     val today = WorkSocialLimit.localDay(Calendar.getInstance())
     set.retainAll { it.endsWith("@$today") }
     set.add(key)
@@ -123,47 +124,59 @@ internal object FocusOverlay {
   private fun isoNow(): String =
     SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
 
+  private fun blockEndMs(window: WorkSocialLimit.WorkWindow): Long = Calendar.getInstance().apply {
+    set(Calendar.HOUR_OF_DAY, window.endMinute / 60)
+    set(Calendar.MINUTE, window.endMinute % 60)
+    set(Calendar.SECOND, 0)
+    set(Calendar.MILLISECOND, 0)
+  }.timeInMillis
+
   /**
-   * Called on a timer, on unlock and when JS pushes a new state. Shows the card at the start of a
-   * block (once) and, when `unlocked`, every time the phone is unlocked during it -- unless the user
-   * left the block, in which case the "fuera del bloque" bar shows instead. Hides both when the block
-   * is over.
+   * Called on a timer, on unlock and when JS pushes a new state. Keeps the "fuera del bloque" bar in
+   * line with the session, remembers the block running now, and once a block is over asks how it
+   * went. `appInFront`: our own app is the foreground app (it asks there instead).
    */
-  fun check(service: AccessibilityService, unlocked: Boolean) {
+  fun check(service: AccessibilityService, appInFront: Boolean) {
     val window = WorkSocialLimit.currentWorkWindow(service)
-    Log.d(TAG, "check unlocked=$unlocked window=${window?.label} id=${window?.id}")
-    if (window?.id == null) {
-      hide(service)
-      hideBar(service)
-      return
-    }
-    val today = WorkSocialLimit.localDay(Calendar.getInstance())
-    val key = "${window.id}@$today"
     val p = prefs(service)
     val state = state(service)
-    val pausedHere = state.optBoolean("paused") && state.optString("scheduleId") == window.id
-    if (pausedHere) showBar(service, state) else hideBar(service)
+    val today = WorkSocialLimit.localDay(Calendar.getInstance())
 
-    if (key in p.getStringSet(KEY_EXITED, emptySet())!!) {
+    if (window?.id != null) {
+      val pausedHere = state.optBoolean("paused") && state.optString("scheduleId") == window.id
+      if (pausedHere) showBar(service, state) else hideBar(service)
+      // Remember it, so its end can be noticed even if nothing runs on the phone right then.
+      val sameBlock = state.optString("scheduleId") == window.id
+      val last = JSONObject()
+        .put("key", "${window.id}@$today")
+        .put("scheduleId", window.id)
+        .put("label", window.label ?: "Bloque de trabajo")
+        .put("day", today)
+        .put("endMs", blockEndMs(window))
+        .put("taskId", if (sameBlock) state.optString("taskId") else "")
+      p.edit().putString(KEY_LAST_BLOCK, last.toString()).apply()
       hide(service)
       return
     }
-    val shown = p.getStringSet(KEY_SHOWN, emptySet())!!
-    val firstTime = key !in shown
-    if (firstTime) {
-      p.edit().putStringSet(KEY_SHOWN, (shown.filter { it.endsWith("@$today") } + key).toSet()).apply()
+    hideBar(service)
+
+    val last = runCatching { JSONObject(p.getString(KEY_LAST_BLOCK, null) ?: return) }.getOrNull() ?: return
+    val key = last.optString("key")
+    val endMs = last.optLong("endMs")
+    val now = System.currentTimeMillis()
+    val reviewed = p.getStringSet(KEY_REVIEWED, emptySet())!!
+    if (key in reviewed || now < endMs || now - endMs > REVIEW_WINDOW_MS) {
+      if (key in reviewed) hide(service)
+      return
     }
-    val count = p.getInt(KEY_COUNT_PREFIX + key, 0)
-    when {
-      card != null -> show(service, window, key, state, countIt = false)
-      (firstTime || unlocked) && count < MAX_SHOWS -> show(service, window, key, state, countIt = true)
-    }
+    if (appInFront || card != null) return
+    showReview(service, last)
   }
 
   /** JS pushed a new phase or a pause: refresh what's on screen. */
   fun refresh(service: AccessibilityService?) {
     service ?: return
-    check(service, unlocked = false)
+    check(service, appInFront = false)
   }
 
   private fun dp(context: Context, value: Int) = TypedValue.applyDimension(
@@ -200,35 +213,10 @@ internal object FocusOverlay {
     runCatching { service.startActivity(intent) }.onFailure { Log.e(TAG, "open app failed", it) }
   }
 
-  private fun blockEndMs(window: WorkSocialLimit.WorkWindow): Long = Calendar.getInstance().apply {
-    set(Calendar.HOUR_OF_DAY, window.endMinute / 60)
-    set(Calendar.MINUTE, window.endMinute % 60)
-    set(Calendar.SECOND, 0)
-    set(Calendar.MILLISECOND, 0)
-  }.timeInMillis
-
-  private fun show(
-    service: AccessibilityService,
-    window: WorkSocialLimit.WorkWindow,
-    key: String,
-    state: JSONObject,
-    countIt: Boolean,
-  ) {
-    if (countIt) {
-      val p = prefs(service)
-      val edit = p.edit().putInt(KEY_COUNT_PREFIX + key, p.getInt(KEY_COUNT_PREFIX + key, 0) + 1)
-      // Yesterday's counters go.
-      val today = WorkSocialLimit.localDay(Calendar.getInstance())
-      p.all.keys.filter { it.startsWith(KEY_COUNT_PREFIX) && !it.endsWith("@$today") }.forEach { edit.remove(it) }
-      edit.apply()
-    }
+  /** The one card a block shows: at its end, how did it go? */
+  private fun showReview(service: AccessibilityService, last: JSONObject) {
     val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-    val now = System.currentTimeMillis()
-    val sameBlock = state.optString("scheduleId") == window.id
-    val running = sameBlock && state.optBoolean("running") && state.optLong("endsAtMs") > now
-    val focus = running && state.optString("phase") == "FOCUS"
-    val endsAt = if (running) state.optLong("endsAtMs") else blockEndMs(window)
-    val exits = if (sameBlock) state.optInt("exits", 0) else 0
+    val key = last.optString("key")
     fun d(v: Int) = dp(service, v)
 
     val content = LinearLayout(service).apply {
@@ -239,62 +227,33 @@ internal object FocusOverlay {
         setColor(Color.parseColor("#FA212836"))
         setStroke(d(2), ACCENT)
       }
-      addView(text(service, "Bloque de trabajo", 14f, ACCENT, bold = true, center = true))
-      addView(text(service, window.label ?: "Horario de trabajo", 20f, BODY, bold = true, center = true))
-      if (running) addView(text(service, state.optString("title"), 15f, MUTED, center = true))
-      // The study session the block is on ("AN1 · Compacidad (2/3) · pomodoro 1 de 2").
-      val sessionLine = state.optString("session")
-      if (sameBlock && sessionLine.isNotBlank()) addView(text(service, sessionLine, 15f, BODY, center = true))
-      addView(
-        Chronometer(service).apply {
-          isCountDown = true
-          base = SystemClock.elapsedRealtime() + (endsAt - now)
-          setTextSize(TypedValue.COMPLEX_UNIT_SP, 56f)
-          setTextColor(BODY)
-          gravity = Gravity.CENTER_HORIZONTAL
-          start()
-        },
-        LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
-      )
-      addView(
-        text(
-          service,
-          when {
-            focus -> "para terminar este pomodoro"
-            running -> "de descanso"
-            else -> "hasta el final del bloque (${WorkSocialLimit.clock(window.endMinute)})"
+      addView(text(service, "Terminó el bloque", 14f, ACCENT, bold = true, center = true))
+      addView(text(service, last.optString("label"), 20f, BODY, bold = true, center = true))
+      addView(text(service, "¿Cómo te fue?", 18f, BODY, center = true))
+      for ((value, label) in RATINGS) {
+        addView(
+          button(service, "$value · $label", primary = value >= 4) {
+            markReviewed(service, key)
+            hide(service)
+            val uri = Uri.Builder()
+              .scheme("calendarproductivity").authority("pomodoro")
+              .appendQueryParameter("review", "1")
+              .appendQueryParameter("scheduleId", last.optString("scheduleId"))
+              .appendQueryParameter("day", last.optString("day"))
+              .appendQueryParameter("rating", value.toString())
+              .appendQueryParameter("taskId", last.optString("taskId"))
+              .build()
+            openApp(service, uri.toString())
           },
-          14f, MUTED, center = true,
-        ),
-      )
-      val phrase = state.optString("phrase")
-      if (focus && phrase.isNotBlank()) addView(text(service, phrase, 16f, ACCENT, bold = true, center = true))
+          LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, d(46)).apply { topMargin = d(8) },
+        )
+      }
       addView(
-        text(
-          service,
-          if (exits == 0) "Sin salidas en este bloque" else "Saliste $exits ${if (exits == 1) "vez" else "veces"} de este bloque",
-          14f, if (exits > 0) WARNING else MUTED, center = true,
-        ),
-      )
-      addView(
-        button(service, "Seguir trabajando", primary = true) { hide(service) },
-        LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, d(48)).apply { topMargin = d(8) },
-      )
-      addView(
-        button(service, "Abrir pomodoro", primary = false) {
+        button(service, "Ahora no", primary = false) {
+          markReviewed(service, key)
           hide(service)
-          openApp(service, "calendarproductivity://pomodoro")
         },
-        LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, d(48)).apply { topMargin = d(10) },
-      )
-      addView(
-        button(service, "Salir (deja de contar el tiempo)", primary = false) {
-          markExited(service, key, record = true)
-          hide(service)
-          // The app asks why, and whether to come back or give the block up.
-          openApp(service, "calendarproductivity://pomodoro?salir=1")
-        },
-        LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, d(48)).apply { topMargin = d(10) },
+        LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, d(46)).apply { topMargin = d(14) },
       )
     }
 
@@ -320,7 +279,7 @@ internal object FocusOverlay {
     runCatching {
       windowManager.addView(root, params)
       card = root
-      Log.d(TAG, "shown $key")
+      Log.d(TAG, "review shown $key")
     }.onFailure { Log.e(TAG, "addView failed", it) }
   }
 
@@ -363,7 +322,6 @@ internal object FocusOverlay {
       addView(
         button(service, "Volver", primary = true) {
           hideBar(service)
-          // The app resumes the session (it owns it); the pomodoro screen reads "volver".
           openApp(service, "calendarproductivity://pomodoro?volver=1")
         },
         LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, d(40)).apply { leftMargin = d(8) },

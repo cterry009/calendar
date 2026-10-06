@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import {
-  ATTENTION_PROFILE_SPECS,
   BLOCK_EXIT_REASONS,
-  MAX_BLOCK_REMINDERS,
+  BLOCK_RATINGS,
+  BLOCK_REVIEW_TAGS,
   describeOccurrence,
   finishPomodoroPhrase,
   localDayKey,
   nextBlockOccurrence,
-  studyProgress,
+  studyLineOf,
   studySessionLine,
 } from '@calendar/shared';
 import { usePomodoro } from '../../context/PomodoroContext';
@@ -20,25 +20,15 @@ import { logFocusEvent } from '../../lib/focusEvents/log';
 import { syncBatch } from '../../lib/offline/sync-client';
 import { formatTimer } from '../../lib/pomodoro/timer';
 
-// The WORK block's pomodoro over everything (user-requested, 2026-10-06/07). It comes up when the
-// block's session starts and, on the desktop, when the user comes back to the PC after a while
-// away -- at most MAX_BLOCK_REMINDERS times per block, since more breaks the focus it's for. The
-// window is brought to the front above other apps until it's answered:
-// - "Seguir trabajando": hides it, the time keeps counting.
-// - "Salir": asks why, then either "vuelvo en un rato" (the session pauses: time stops, the exit
-//   counts; a small bar offers "Volver al bloque") or "no hago este bloque" (the session ends, the
-//   block is marked "no puedo" today with the reason, and its study session moves to the line's
-//   next block by staying pending).
-// It also says which study session the block is on, and asks at the block's end whether it got done.
-
-const RETURN_IDLE_SECONDS = 90;
-const IDLE_POLL_MS = 5_000;
-
-const PHASES: Record<string, string> = {
-  FOCUS: 'Enfoque',
-  SHORT_BREAK: 'Pausa',
-  LONG_BREAK: 'Pausa larga',
-};
+// A WORK block's pomodoro on the PC (user-requested, 2026-10-06/07):
+// - While it runs, nothing comes up over other apps -- that broke the concentration it's for. Inside
+//   the app's own window a small pill shows the block, the time left and "Salir".
+// - "Salir" asks why, then either "vuelvo en un rato" (the session pauses: time stops, the exit
+//   counts; a bar offers "Volver al bloque") or "no hago este bloque" (the session ends, the block
+//   is marked "no puedo" today with the reason, and its study session moves to the line's next
+//   block by staying pending).
+// - Once, at its end, the window comes to the front asking how it went: a 1-5 rating, what applied,
+//   a comment, and for a study block whether the session got done. Logged as a CHECK_IN event.
 
 async function setOnTop(show: boolean) {
   if (!isDesktop) return;
@@ -65,7 +55,7 @@ const overlayStyle = {
 
 const cardStyle = {
   width: '100%',
-  maxWidth: 580,
+  maxWidth: 600,
   borderWidth: 2,
   borderColor: '$accent',
   borderRadius: '$8',
@@ -74,6 +64,21 @@ const cardStyle = {
   gap: '$3',
 } as const;
 
+const inputStyle = {
+  padding: 10,
+  borderRadius: 8,
+  border: '1px solid rgba(255,255,255,0.2)',
+  background: 'transparent',
+  color: 'inherit',
+  fontSize: 15,
+  fontFamily: 'inherit',
+} as const;
+
+interface EndedBlock {
+  scheduleId: string;
+  taskId: string | null;
+}
+
 export function BlockFocusOverlay() {
   const pomodoro = usePomodoro();
   const { schedules } = useSchedules();
@@ -81,96 +86,100 @@ export function BlockFocusOverlay() {
   const session = pomodoro.session;
   const inBlock = !!session?.active && !!session.scheduleId;
   const isOut = inBlock && !!session?.pausedAt;
-  const [visible, setVisible] = useState(false);
   const [askingWhy, setAskingWhy] = useState(false);
   const [reason, setReason] = useState('');
-  const [endedSession, setEndedSession] = useState<{ taskId: string; scheduleId: string } | null>(null);
-  const shownFor = useRef<string | null>(null);
-  const shows = useRef<Record<string, number>>({});
+  const [ended, setEnded] = useState<EndedBlock | null>(null);
+  const [rating, setRating] = useState<number | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
+  const [comment, setComment] = useState('');
+  const [sessionDone, setSessionDone] = useState<boolean | null>(null);
 
-  const show = (sessionId: string) => {
-    const count = shows.current[sessionId] ?? 0;
-    if (count >= MAX_BLOCK_REMINDERS) return;
-    shows.current[sessionId] = count + 1;
-    setVisible(true);
-  };
-
-  // Comes up once per block session (its start, or the first time this window sees it).
-  useEffect(() => {
-    if (!inBlock || isOut || !session) return;
-    if (shownFor.current === session.id) return;
-    shownFor.current = session.id;
-    show(session.id);
-  }, [inBlock, isOut, session]);
-
-  // Back at the PC after a while away: show it again (within the limit).
-  useEffect(() => {
-    if (!isDesktop || !inBlock || isOut || !session) return;
-    const sessionId = session.id;
-    let away = false;
-    let cancelled = false;
-    const timer = window.setInterval(() => {
-      void import('@tauri-apps/api/core')
-        .then(({ invoke }) => invoke<number>('idle_seconds'))
-        .then((idle) => {
-          if (cancelled) return;
-          if (idle >= RETURN_IDLE_SECONDS) away = true;
-          else if (away && idle < IDLE_POLL_MS / 1000) {
-            away = false;
-            show(sessionId);
-          }
-        })
-        .catch(() => undefined);
-    }, IDLE_POLL_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [inBlock, isOut, session?.id]);
-
-  // The block reached its end with a study session in it: ask whether it got done.
+  // The block reached its end (not given up): ask how it went, once.
   const previous = useRef(session);
   useEffect(() => {
     const before = previous.current;
     previous.current = session;
-    if (!before?.active || !before.scheduleId || !before.taskId || !session) return;
+    if (!before?.active || !before.scheduleId || !session) return;
     if (session.id !== before.id || session.active || session.interrupted) return;
-    const task = tasks.find((t) => t.id === before.taskId);
-    if (task && task.status !== 'COMPLETED') setEndedSession({ taskId: task.id, scheduleId: before.scheduleId });
-  }, [session, tasks]);
+    setEnded({ scheduleId: before.scheduleId, taskId: before.taskId ?? null });
+    setRating(null);
+    setTags([]);
+    setComment('');
+    setSessionDone(null);
+  }, [session]);
 
-  const showCard = (visible && inBlock && !isOut) || !!endedSession;
   useEffect(() => {
-    void setOnTop(showCard);
-  }, [showCard]);
+    void setOnTop(!!ended);
+  }, [ended]);
 
   if (typeof document === 'undefined') return null;
 
-  if (endedSession) {
-    const task = tasks.find((t) => t.id === endedSession.taskId);
-    const answer = (done: boolean) => {
-      if (done && task) void completeTask(task, task.estimatedMinutes);
-      logFocusEvent({ kind: 'CHECK_IN', scheduleId: endedSession.scheduleId, taskId: endedSession.taskId, meta: { sessionDone: done } });
-      setEndedSession(null);
+  if (ended) {
+    const schedule = schedules.find((s) => s.id === ended.scheduleId);
+    const task = ended.taskId ? tasks.find((t) => t.id === ended.taskId) : null;
+    const studyTask = task && studyLineOf(task) && task.status !== 'COMPLETED' ? task : null;
+    const toggleTag = (tag: string) => setTags((current) => (current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]));
+    const finish = (save: boolean) => {
+      if (save && rating) {
+        logFocusEvent({
+          kind: 'CHECK_IN',
+          scheduleId: ended.scheduleId,
+          taskId: ended.taskId ?? undefined,
+          value: rating,
+          meta: { review: true, rating, tags, comment: comment.trim() || undefined, sessionDone: sessionDone ?? undefined, device: 'desktop' },
+        });
+        if (studyTask && sessionDone) void completeTask(studyTask, studyTask.estimatedMinutes);
+      }
+      setEnded(null);
     };
     return createPortal(
       <YStack {...overlayStyle}>
-        <YStack {...cardStyle} alignItems="center">
+        <YStack {...cardStyle}>
           <Text color="$accent" fontWeight="700" textTransform="uppercase" letterSpacing={1}>
             Terminó el bloque
           </Text>
-          <Text fontSize="$6" fontWeight="800" textAlign="center">
-            ¿Completaste la sesión?
+          <Text fontSize="$7" fontWeight="800">
+            ¿Cómo te fue?
           </Text>
-          <Paragraph margin={0} textAlign="center">
-            {task?.title}
+          <Paragraph margin={0} color="$muted">
+            {schedule?.label ?? 'Bloque de trabajo'}
           </Paragraph>
-          <XStack gap="$3" marginTop="$3" flexWrap="wrap" justifyContent="center">
-            <AppButton variant="primary" onPress={() => answer(true)}>
-              Sí, completada
+          <XStack gap="$2" flexWrap="wrap">
+            {BLOCK_RATINGS.map((option) => (
+              <AppButton key={option.value} variant={rating === option.value ? 'primary' : 'ghost'} onPress={() => setRating(option.value)}>
+                {`${option.value} · ${option.label}`}
+              </AppButton>
+            ))}
+          </XStack>
+          <Text fontWeight="700">¿Qué pasó?</Text>
+          <XStack gap="$2" flexWrap="wrap">
+            {BLOCK_REVIEW_TAGS.map((tag) => (
+              <AppButton key={tag} variant={tags.includes(tag) ? 'primary' : 'ghost'} onPress={() => toggleTag(tag)}>
+                {tag}
+              </AppButton>
+            ))}
+          </XStack>
+          {studyTask ? (
+            <>
+              <Text fontWeight="700">¿Completaste la sesión «{studyTask.title}»?</Text>
+              <XStack gap="$2" flexWrap="wrap">
+                <AppButton variant={sessionDone === true ? 'primary' : 'ghost'} onPress={() => setSessionDone(true)}>
+                  Sí, completada
+                </AppButton>
+                <AppButton variant={sessionDone === false ? 'primary' : 'ghost'} onPress={() => setSessionDone(false)}>
+                  No, pasa al próximo bloque
+                </AppButton>
+              </XStack>
+            </>
+          ) : null}
+          <Text fontWeight="700">¿Qué pudo haber sido mejor?</Text>
+          <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Comentario (opcional)" rows={3} style={inputStyle} />
+          <XStack gap="$3" marginTop="$2" justifyContent="flex-end">
+            <AppButton variant="ghost" onPress={() => finish(false)}>
+              Ahora no
             </AppButton>
-            <AppButton variant="ghost" onPress={() => answer(false)}>
-              No, pasa al próximo bloque
+            <AppButton variant="primary" disabled={!rating} onPress={() => finish(true)}>
+              Guardar
             </AppButton>
           </XStack>
         </YStack>
@@ -183,9 +192,7 @@ export function BlockFocusOverlay() {
 
   const schedule = schedules.find((s) => s.id === session.scheduleId);
   const task = session.taskId ? tasks.find((t) => t.id === session.taskId) : null;
-  const profile = session.attentionProfile ? ATTENTION_PROFILE_SPECS[session.attentionProfile].name : null;
   const exits = session.exitCount ?? 0;
-  // The pomodoro's own countdown (frozen while out): total minus what already passed.
   const remaining = pomodoro.remainingSeconds;
   const phraseSeed = `${session.id}:${session.completedCycles}:${session.state}`;
   const exitsLabel = exits === 0 ? 'Sin salidas en este bloque' : `Saliste ${exits} ${exits === 1 ? 'vez' : 'veces'} de este bloque`;
@@ -196,7 +203,6 @@ export function BlockFocusOverlay() {
     const trimmed = reason.trim() || undefined;
     const scheduleId = session.scheduleId;
     setAskingWhy(false);
-    setVisible(false);
     setReason('');
     if (reschedule) {
       await pomodoro.cancel();
@@ -253,8 +259,6 @@ export function BlockFocusOverlay() {
     );
   }
 
-  if (!showCard) return null;
-
   if (askingWhy) {
     return createPortal(
       <YStack {...overlayStyle}>
@@ -274,12 +278,7 @@ export function BlockFocusOverlay() {
               </AppButton>
             ))}
           </XStack>
-          <input
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="O escribe el motivo (opcional)"
-            style={{ padding: 10, borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'inherit', fontSize: 15 }}
-          />
+          <input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="O escribe el motivo (opcional)" style={inputStyle} />
           <XStack gap="$3" flexWrap="wrap" marginTop="$2">
             <AppButton variant="primary" disabled={pomodoro.isMutating} onPress={() => void leave(false)}>
               Vuelvo en un rato (pausa el tiempo)
@@ -302,61 +301,36 @@ export function BlockFocusOverlay() {
     );
   }
 
-  const progress = studyProgress(tasks).filter((line) => line.total > 0);
-
+  // Running: a quiet pill inside the app's window only -- never over other apps.
   return createPortal(
-    <YStack {...overlayStyle}>
-      <YStack {...cardStyle} alignItems="center">
-        <Text color="$accent" fontWeight="700" textTransform="uppercase" letterSpacing={1}>
-          Bloque de trabajo
+    <XStack
+      position="fixed"
+      bottom={16}
+      right={16}
+      zIndex={9998}
+      gap="$3"
+      alignItems="center"
+      paddingVertical="$2"
+      paddingHorizontal="$3"
+      borderRadius="$6"
+      backgroundColor="rgba(33, 40, 54, 0.92)"
+      borderWidth={1}
+      borderColor="rgba(78,224,160,0.5)"
+    >
+      <YStack>
+        <Text fontWeight="700" style={{ fontVariantNumeric: 'tabular-nums' }}>
+          {formatTimer(remaining)} · {schedule?.label ?? 'Bloque de trabajo'}
         </Text>
-        <Text fontSize="$7" fontWeight="800" textAlign="center">
-          {schedule?.label ?? 'Horario de trabajo'}
-        </Text>
-        <Paragraph margin={0} color="$muted">
-          {[PHASES[session.state] ?? session.state, profile, `ciclo ${session.completedCycles + (session.state === 'FOCUS' ? 1 : 0)}`]
-            .filter(Boolean)
-            .join(' · ')}
-        </Paragraph>
         {task ? (
-          <Text textAlign="center" color={task.status === 'COMPLETED' ? '$accent' : '$color'}>
+          <Text fontSize="$2" color="$muted">
             {studySessionLine(task, session)}
           </Text>
         ) : null}
-        <Text fontSize={72} fontWeight="800" lineHeight={80} style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {formatTimer(remaining)}
-        </Text>
-        <Paragraph margin={0} color="$muted" marginTop={-8}>
-          {session.state === 'FOCUS' ? 'para terminar este pomodoro' : 'de descanso'}
-        </Paragraph>
-        {session.state === 'FOCUS' ? (
-          <Text color="$accent" fontWeight="700" textAlign="center">
-            {finishPomodoroPhrase(remaining / 60, phraseSeed)}
-          </Text>
-        ) : null}
-        <Text color={exits > 0 ? '$warning' : '$muted'} fontWeight="600">
-          {exitsLabel}
-        </Text>
-        {progress.length > 0 && task ? (
-          <Text fontSize="$2" color="$muted" textAlign="center">
-            {progress.map((line) => `${line.name} ${line.done}/${line.total}`).join(' · ')}
-          </Text>
-        ) : null}
-        <XStack gap="$3" marginTop="$3" flexWrap="wrap" justifyContent="center">
-          <AppButton variant="primary" onPress={() => setVisible(false)}>
-            Seguir trabajando
-          </AppButton>
-          {task && task.status !== 'COMPLETED' ? (
-            <AppButton variant="ghost" onPress={() => void completeTask(task, task.estimatedMinutes)}>
-              Sesión completada
-            </AppButton>
-          ) : null}
-          <AppButton variant="ghost" disabled={pomodoro.isMutating} onPress={() => setAskingWhy(true)}>
-            Salir
-          </AppButton>
-        </XStack>
       </YStack>
-    </YStack>,
+      <AppButton variant="ghost" disabled={pomodoro.isMutating} onPress={() => setAskingWhy(true)}>
+        Salir
+      </AppButton>
+    </XStack>,
     document.body,
   );
 }

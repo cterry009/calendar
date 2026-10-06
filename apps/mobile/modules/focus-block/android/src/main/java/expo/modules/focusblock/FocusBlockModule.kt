@@ -97,6 +97,11 @@ class FocusBlockModule : Module() {
       appContext.reactContext?.let { context -> FocusOverlay.clearExited(context, key) }
     }
 
+    // Reviewed (or given up) in the app: no end-of-block card for this block occurrence.
+    Function("markBlockReviewed") { key: String ->
+      appContext.reactContext?.let { context -> FocusOverlay.markReviewed(context, key) }
+    }
+
     // WEBSITE block-list entries, per list (WebsiteUsage.kt / FocusBlockAccessibilityService).
     Function("setBlockedDomains") { focus: List<String>, night: List<String> ->
       appContext.reactContext?.let { context ->

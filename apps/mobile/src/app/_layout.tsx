@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { ServerConnectionBanner } from '../components/ServerConnectionBanner';
 import { BlockExitSheet } from '../components/BlockExitSheet';
+import { BlockReviewSheet } from '../components/BlockReviewSheet';
 import { FocusBar } from '../components/FocusBar';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { NotificationsProvider } from '../context/NotificationsContext';
@@ -191,6 +192,7 @@ function RootNavigator() {
             <ServerConnectionBanner />
             <FocusBar />
             <BlockExitSheet />
+            <BlockReviewSheet />
             {navigator}
           </YStack>
         </OnboardingProvider>

@@ -32,6 +32,7 @@ export interface FocusBlockNativeModule {
   setFocusOverlayState(json: string): void;
   drainOverlayExits(): { key: string; at: string }[];
   clearOverlayExit(key: string): void;
+  markBlockReviewed(key: string): void;
   getWebsiteUsage(startMillis: number, endMillis: number): WebsiteUsageRecord[];
   getNightWindowStartMinutes(): number;
   getNightWindowEndMinutes(): number;
