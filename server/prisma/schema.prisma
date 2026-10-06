@@ -108,6 +108,7 @@ enum FocusEventKind {
   BLOCK_EXITED // "Salir" during a WORK block: the session pauses
   BLOCK_RESUMED // "Volver al bloque"
   BLOCK_SKIPPED // "No puedo hacer este bloque" for that day
+  BLOCK_EXIT_REASON // why the user left a block, and whether it was rescheduled (meta.reason, meta.rescheduled)
 }
 
 enum FitnessIntensity {

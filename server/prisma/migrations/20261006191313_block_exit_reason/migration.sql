@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "FocusEventKind" ADD VALUE 'BLOCK_EXIT_REASON';

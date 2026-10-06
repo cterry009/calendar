@@ -1,4 +1,4 @@
-import { blockOnDay, type AttentionProfile } from '@calendar/shared';
+import { blockOnDay, currentStudySession, type AttentionProfile } from '@calendar/shared';
 import type { SyncTaskRecord } from '../calendar/types';
 
 /** Today (or `base`'s day) at a minute of the day, local time. */
@@ -30,4 +30,13 @@ export function blockToday(
   day: Date = new Date(),
 ): BlockToday {
   return { scheduleId: block.scheduleId, ...blockOnDay(block, tasks, day) };
+}
+
+/**
+ * The task a block's pomodoro works on: one the weekly plan placed in the block, else -- for a study
+ * block -- the next pending session of its lines (a session not finished stays next, so it moves to
+ * the following block of that line by itself).
+ */
+export function blockTaskId(block: Pick<BlockToday, 'tasks'>, label: string | null | undefined, tasks: SyncTaskRecord[]): string | null {
+  return block.tasks[0]?.id ?? currentStudySession(label, tasks)?.id ?? null;
 }

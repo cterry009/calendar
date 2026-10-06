@@ -50,6 +50,11 @@ internal object FocusOverlay {
   private const val KEY_EXITED = "exited"
   private const val KEY_SHOWN = "shown"
   private const val KEY_PENDING_EXITS = "pending_exits"
+  private const val KEY_COUNT_PREFIX = "shown_count:"
+
+  // At most this many times per block (its start + returns): more than that breaks the focus the
+  // pomodoro is for (user-requested, 2026-10-07). Same limit as the desktop (MAX_BLOCK_REMINDERS).
+  private const val MAX_SHOWS = 3
 
   private var card: View? = null
   private var bar: View? = null
@@ -148,7 +153,11 @@ internal object FocusOverlay {
     if (firstTime) {
       p.edit().putStringSet(KEY_SHOWN, (shown.filter { it.endsWith("@$today") } + key).toSet()).apply()
     }
-    if (firstTime || unlocked || card != null) show(service, window, key, state)
+    val count = p.getInt(KEY_COUNT_PREFIX + key, 0)
+    when {
+      card != null -> show(service, window, key, state, countIt = false)
+      (firstTime || unlocked) && count < MAX_SHOWS -> show(service, window, key, state, countIt = true)
+    }
   }
 
   /** JS pushed a new phase or a pause: refresh what's on screen. */
@@ -198,7 +207,21 @@ internal object FocusOverlay {
     set(Calendar.MILLISECOND, 0)
   }.timeInMillis
 
-  private fun show(service: AccessibilityService, window: WorkSocialLimit.WorkWindow, key: String, state: JSONObject) {
+  private fun show(
+    service: AccessibilityService,
+    window: WorkSocialLimit.WorkWindow,
+    key: String,
+    state: JSONObject,
+    countIt: Boolean,
+  ) {
+    if (countIt) {
+      val p = prefs(service)
+      val edit = p.edit().putInt(KEY_COUNT_PREFIX + key, p.getInt(KEY_COUNT_PREFIX + key, 0) + 1)
+      // Yesterday's counters go.
+      val today = WorkSocialLimit.localDay(Calendar.getInstance())
+      p.all.keys.filter { it.startsWith(KEY_COUNT_PREFIX) && !it.endsWith("@$today") }.forEach { edit.remove(it) }
+      edit.apply()
+    }
     val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     val now = System.currentTimeMillis()
     val sameBlock = state.optString("scheduleId") == window.id
@@ -219,6 +242,9 @@ internal object FocusOverlay {
       addView(text(service, "Bloque de trabajo", 14f, ACCENT, bold = true, center = true))
       addView(text(service, window.label ?: "Horario de trabajo", 20f, BODY, bold = true, center = true))
       if (running) addView(text(service, state.optString("title"), 15f, MUTED, center = true))
+      // The study session the block is on ("AN1 · Compacidad (2/3) · pomodoro 1 de 2").
+      val sessionLine = state.optString("session")
+      if (sameBlock && sessionLine.isNotBlank()) addView(text(service, sessionLine, 15f, BODY, center = true))
       addView(
         Chronometer(service).apply {
           isCountDown = true
@@ -265,6 +291,8 @@ internal object FocusOverlay {
         button(service, "Salir (deja de contar el tiempo)", primary = false) {
           markExited(service, key, record = true)
           hide(service)
+          // The app asks why, and whether to come back or give the block up.
+          openApp(service, "calendarproductivity://pomodoro?salir=1")
         },
         LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, d(48)).apply { topMargin = d(10) },
       )

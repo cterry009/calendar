@@ -189,6 +189,8 @@ export interface FocusOverlayState {
   remainingMs?: number;
   /** A line to finish it (finishPomodoroPhrase). */
   phrase?: string;
+  /** The study session it's on (studySessionLine). */
+  session?: string;
 }
 
 export function setFocusOverlayState(state: FocusOverlayState): void {

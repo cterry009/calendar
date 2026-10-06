@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { AppState, Platform } from 'react-native';
 import { usePomodoro } from '../context/PomodoroContext';
-import { blockToday, localDateAt } from '../lib/blockPrompt/block';
+import { blockTaskId, blockToday, localDateAt } from '../lib/blockPrompt/block';
 import {
   BLOCK_PROMPT_DECLINE,
   BLOCK_PROMPT_SNOOZE,
@@ -126,7 +126,7 @@ async function handle(
         blockStartAt,
         blockEndAt: block.endAt,
         profile: block.profile,
-        taskId: block.tasks[0]?.id ?? null,
+        taskId: blockTaskId(block, data.label, tasks),
         timing: { focusMin: block.focusMin, breakMin: block.breakMin },
       });
       logFocusEvent({

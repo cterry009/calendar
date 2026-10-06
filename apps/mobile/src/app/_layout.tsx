@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { ServerConnectionBanner } from '../components/ServerConnectionBanner';
+import { BlockExitSheet } from '../components/BlockExitSheet';
 import { FocusBar } from '../components/FocusBar';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { NotificationsProvider } from '../context/NotificationsContext';
@@ -189,6 +190,7 @@ function RootNavigator() {
           <YStack flex={1}>
             <ServerConnectionBanner />
             <FocusBar />
+            <BlockExitSheet />
             {navigator}
           </YStack>
         </OnboardingProvider>

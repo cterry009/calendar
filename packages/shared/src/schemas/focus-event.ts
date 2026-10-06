@@ -17,6 +17,7 @@ export const FocusEventKindSchema = z.enum([
   'BLOCK_EXITED',
   'BLOCK_RESUMED',
   'BLOCK_SKIPPED',
+  'BLOCK_EXIT_REASON',
 ]);
 
 export const FocusEventSchema = z.object({

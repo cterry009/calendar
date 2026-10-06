@@ -3,6 +3,7 @@ import {
   activeWorkSchedule,
   blockOnDay,
   blockSessionId,
+  currentStudySession,
   isWithinRadius,
   MIN_TRIMMED_FOCUS_MIN,
 } from '@calendar/shared';
@@ -204,7 +205,7 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
       blockStartAt: block.startAt,
       blockEndAt: block.endAt,
       profile: block.profile,
-      taskId: block.tasks[0]?.id ?? null,
+      taskId: block.tasks[0]?.id ?? currentStudySession(activeSchedule.label, tasks)?.id ?? null,
       timing: { focusMin: block.focusMin, breakMin: block.breakMin },
     });
   }, [now, pomodoro, activeSchedule, tasks]);

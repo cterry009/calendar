@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
-import { ATTENTION_PROFILE_SPECS, blockOnDay, localDayKey, type FocusEventKind } from '@calendar/shared';
+import { ATTENTION_PROFILE_SPECS, blockOnDay, currentStudySession, localDayKey, type FocusEventKind } from '@calendar/shared';
 import { usePomodoro } from '../../context/PomodoroContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
 import { isDesktop } from '../../lib/desktop';
@@ -131,7 +131,7 @@ export function BlockStartPrompt() {
           blockStartAt: prompt.startAt,
           blockEndAt: block.endAt,
           profile: block.profile,
-          taskId: block.tasks[0]?.id ?? null,
+          taskId: block.tasks[0]?.id ?? currentStudySession(prompt.schedule.label, tasks)?.id ?? null,
           timing: { focusMin: block.focusMin, breakMin: block.breakMin },
         });
         logFocusEvent({ kind, ...base, pomodoroSessionId: sessionId ?? undefined, meta: { ...base.meta, started: sessionId !== null } });

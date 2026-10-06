@@ -4,13 +4,15 @@ import {
   blockSessionId,
   currentFocusStatus,
   finishPomodoroPhrase,
+  studySessionLine,
   MIN_TRIMMED_FOCUS_MIN,
 } from '@calendar/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import { usePomodoro } from '../context/PomodoroContext';
-import { blockToday } from '../lib/blockPrompt/block';
+import { blockTaskId, blockToday } from '../lib/blockPrompt/block';
 import { clearBlockExited, isBlockExited, markBlockExited } from '../lib/blockPrompt/exits';
+import { openExitSheet } from '../lib/blockPrompt/exitSheet';
 import { drainOverlayExits, setFocusOverlayState } from '../lib/focusBlock/api';
 import { logFocusEvent } from '../lib/focusEvents/log';
 import { useCalendarData } from './useCalendarData';
@@ -27,9 +29,35 @@ const CHECK_INTERVAL_MS = 30_000;
 
 export function useBlockFocus(): void {
   const { session, startBlock, pause, isLoading, remainingSeconds } = usePomodoro();
-  const { schedules, tasks, skipped, pomodoroSessions, isLoading: calendarLoading } = useCalendarData();
+  const { schedules, tasks, skipped, pomodoroSessions, isLoading: calendarLoading, completeTask } = useCalendarData();
   const [now, setNow] = useState(() => new Date());
   const busy = useRef(false);
+
+  // The block reached its end with a study session in it: did the session get done? Yes marks it
+  // completed (the line moves on); no leaves it pending, so it's the next block's session.
+  const previous = useRef(session);
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = session;
+    if (!before?.active || !before.scheduleId || !before.taskId || !session) return;
+    if (session.id !== before.id || session.active || session.interrupted) return;
+    const task = tasks.find((t) => t.id === before.taskId);
+    if (!task || task.status === 'COMPLETED') return;
+    Alert.alert('Terminó el bloque', `¿Completaste la sesión «${task.title}»?`, [
+      {
+        text: 'No, pasa al próximo bloque',
+        onPress: () =>
+          logFocusEvent({ kind: 'CHECK_IN', scheduleId: before.scheduleId ?? undefined, taskId: task.id, meta: { sessionDone: false } }),
+      },
+      {
+        text: 'Sí, completada',
+        onPress: () => {
+          void completeTask(task);
+          logFocusEvent({ kind: 'CHECK_IN', scheduleId: before.scheduleId ?? undefined, taskId: task.id, meta: { sessionDone: true } });
+        },
+      },
+    ]);
+  }, [session, tasks, completeTask]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), CHECK_INTERVAL_MS);
@@ -45,6 +73,7 @@ export function useBlockFocus(): void {
   // What the overlay shows: the same status as the persistent notification.
   useEffect(() => {
     const status = currentFocusStatus({ session, schedules, tasks, now, skipped });
+    const studyTask = session?.taskId ? tasks.find((t) => t.id === session.taskId) : undefined;
     setFocusOverlayState(
       session?.active && session.scheduleId
         ? {
@@ -56,6 +85,7 @@ export function useBlockFocus(): void {
             paused: !!session.pausedAt,
             exits: session.exitCount ?? 0,
             phase: session.state,
+            session: studyTask ? studySessionLine(studyTask, session) : undefined,
             // What's left of the pomodoro; frozen while out of the block.
             remainingMs: remainingSeconds * 1000,
             phrase: finishPomodoroPhrase(
@@ -101,7 +131,7 @@ export function useBlockFocus(): void {
           blockStartAt: block.startAt,
           blockEndAt: block.endAt,
           profile: block.profile,
-          taskId: block.tasks[0]?.id ?? null,
+          taskId: blockTaskId(block, work.label, tasks),
           timing: { focusMin: block.focusMin, breakMin: block.breakMin },
         });
       } catch {
@@ -115,14 +145,14 @@ export function useBlockFocus(): void {
 
 /** "Salir" and "Volver al bloque" from inside the app. */
 export function useBlockExit() {
-  const { session, pause, resume, startBlock } = usePomodoro();
+  const { session, resume, startBlock } = usePomodoro();
   const { schedules, tasks, skipped } = useCalendarData();
 
+  // Asks why and whether to come back or give the block up (BlockExitSheet).
   const leave = useCallback(async () => {
     if (!session?.active || !session.scheduleId || session.pausedAt) return;
-    await markBlockExited(blockOccurrenceKey(session.scheduleId, new Date()));
-    await pause();
-  }, [session, pause]);
+    openExitSheet({ alreadyPaused: false });
+  }, [session]);
 
   const comeBack = useCallback(async () => {
     const now = new Date();
@@ -141,7 +171,7 @@ export function useBlockExit() {
       blockStartAt: block.startAt,
       blockEndAt: block.endAt,
       profile: block.profile,
-      taskId: block.tasks[0]?.id ?? null,
+      taskId: blockTaskId(block, work.label, tasks),
       timing: { focusMin: block.focusMin, breakMin: block.breakMin },
     });
   }, [session, resume, startBlock, schedules, skipped, tasks]);

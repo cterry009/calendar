@@ -23,3 +23,4 @@ export * from './analytics/dashboard.js';
 export * from './analytics/build-suggestion-input.js';
 export * from './detox/index.js';
 export * from './habits/score.js';
+export * from './planning/study.js';

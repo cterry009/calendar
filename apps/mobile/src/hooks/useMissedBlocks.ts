@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
 import { usePomodoro } from '../context/PomodoroContext';
-import { blockToday } from '../lib/blockPrompt/block';
+import { blockTaskId, blockToday } from '../lib/blockPrompt/block';
 import { MISSED_LOOKBACK_DAYS, missedBlocks, type MissedBlock } from '../lib/blockPrompt/missed';
 import { hhmm } from '../lib/blockPrompt/notifications';
 import { DAY_ABBREVIATIONS_ES, isSameDay } from '../lib/calendar/utils';
@@ -134,7 +134,7 @@ function show(
           blockStartAt: running.startAt,
           blockEndAt: block.endAt,
           profile: block.profile,
-          taskId: block.tasks[0]?.id ?? null,
+          taskId: blockTaskId(block, running.label, tasks),
           timing: { focusMin: block.focusMin, breakMin: block.breakMin },
         }),
     });

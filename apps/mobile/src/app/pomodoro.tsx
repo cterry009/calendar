@@ -1,13 +1,14 @@
 import { AppButton, AppCard, Eyebrow, H1, Paragraph, Text, YStack } from '@calendar/ui';
-import { finishPomodoroPhrase } from '@calendar/shared';
+import { finishPomodoroPhrase, studyProgress, studySessionLine } from '@calendar/shared';
 import { Link, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useOnboarding } from '../context/OnboardingContext';
 import { usePomodoro } from '../context/PomodoroContext';
 import { useBlockExit } from '../hooks/useBlockFocus';
+import { openExitSheet } from '../lib/blockPrompt/exitSheet';
 import { useCalendarData } from '../hooks/useCalendarData';
-import { blockToday } from '../lib/blockPrompt/block';
+import { blockTaskId, blockToday } from '../lib/blockPrompt/block';
 import { activeWorkSchedule } from '@calendar/shared';
 import { formatTimer } from '../lib/pomodoro/timer';
 
@@ -40,19 +41,30 @@ export default function PomodoroScreen() {
     cancel,
     reset,
   } = usePomodoro();
-  const { schedules, tasks, skipped } = useCalendarData();
+  const { schedules, tasks, skipped, completeTask } = useCalendarData();
   const { leave, comeBack, isOut, exits } = useBlockExit();
   const inBlock = Boolean(session?.active && session.scheduleId);
   const blockLabel = inBlock ? schedules.find((s) => s.id === session?.scheduleId)?.label : null;
+  // The study session this pomodoro is on, and how every line is going (2026-10-07).
+  const studyTask = session?.taskId ? tasks.find((t) => t.id === session.taskId) ?? null : null;
+  const progress = studyProgress(tasks).filter((line) => line.total > 0);
 
   // "Volver" on the phone's out-of-the-block bar opens this screen with ?volver=1.
-  const { volver } = useLocalSearchParams<{ volver?: string }>();
+  const { volver, salir } = useLocalSearchParams<{ volver?: string; salir?: string }>();
   const handledVolver = useRef(false);
   useEffect(() => {
     if (volver !== '1' || handledVolver.current || isLoading) return;
     handledVolver.current = true;
     if (isOut) void comeBack();
   }, [volver, isOut, isLoading, comeBack]);
+
+  // "Salir" on the overlay (already paused there) opens this screen with ?salir=1: ask why.
+  const handledSalir = useRef(false);
+  useEffect(() => {
+    if (salir !== '1' || handledSalir.current || isLoading || !inBlock) return;
+    handledSalir.current = true;
+    openExitSheet({ alreadyPaused: true });
+  }, [salir, isLoading, inBlock]);
   const phrase =
     inBlock && session && (isOut || session.state === 'FOCUS')
       ? finishPomodoroPhrase(remainingSeconds / 60, session.id + ':' + session.completedCycles + ':' + session.state, isOut)
@@ -70,7 +82,7 @@ export default function PomodoroScreen() {
         blockStartAt: block.startAt,
         blockEndAt: block.endAt,
         profile: block.profile,
-        taskId: block.tasks[0]?.id ?? null,
+        taskId: blockTaskId(block, work.label, tasks),
         timing: { focusMin: block.focusMin, breakMin: block.breakMin },
       });
       // Too little of the block left for a pomodoro: a plain one instead.
@@ -122,6 +134,11 @@ export default function PomodoroScreen() {
               {inBlock ? (
                 <Text fontSize="$4" fontWeight="700" textAlign="center">
                   {blockLabel ?? 'Bloque de trabajo'}
+                </Text>
+              ) : null}
+              {studyTask && session ? (
+                <Text fontSize="$3" textAlign="center" color={studyTask.status === 'COMPLETED' ? '$accent' : '$color'}>
+                  {studySessionLine(studyTask, session)}
                 </Text>
               ) : null}
 
@@ -184,6 +201,32 @@ export default function PomodoroScreen() {
           <Paragraph color="$muted" textAlign="center" margin={0}>
             Ciclos completados: {session.completedCycles}
           </Paragraph>
+        ) : null}
+
+        {studyTask && studyTask.status !== 'COMPLETED' ? (
+          <AppButton variant="ghost" disabled={isMutating} onPress={() => void completeTask(studyTask)}>
+            Marcar la sesión como completada
+          </AppButton>
+        ) : null}
+
+        {progress.length > 0 ? (
+          <AppCard>
+            <YStack gap="$2">
+              <Text fontWeight="700">Avance de estudio</Text>
+              {progress.map((line) => (
+                <YStack key={line.line} gap="$1">
+                  <Text fontSize="$3">
+                    {line.name}: {line.done} de {line.total} sesiones
+                  </Text>
+                  {line.next ? (
+                    <Text fontSize="$2" color="$muted" numberOfLines={1}>
+                      Sigue: {line.next}
+                    </Text>
+                  ) : null}
+                </YStack>
+              ))}
+            </YStack>
+          </AppCard>
         ) : null}
 
         <TutorialTarget id="pomodoro-notifications">
