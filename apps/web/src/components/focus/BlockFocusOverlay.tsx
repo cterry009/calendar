@@ -27,8 +27,10 @@ import { formatTimer } from '../../lib/pomodoro/timer';
 //   counts; a bar offers "Volver al bloque") or "no hago este bloque" (the session ends, the block
 //   is marked "no puedo" today with the reason, and its study session moves to the line's next
 //   block by staying pending).
-// - Once, at its end, the window comes to the front asking how it went: a 1-5 rating, what applied,
-//   a comment, and for a study block whether the session got done. Logged as a CHECK_IN event.
+// - After each focus pomodoro (a finer measure than per block, 2026-10-07), the window comes to the
+//   front asking how that pomodoro went: a 1-5 rating, what applied, a comment, and -- with the last
+//   pomodoro of the study session or of the block -- whether the session got done. Logged as a
+//   CHECK_IN event.
 
 async function setOnTop(show: boolean) {
   if (!isDesktop) return;
@@ -74,9 +76,13 @@ const inputStyle = {
   fontFamily: 'inherit',
 } as const;
 
-interface EndedBlock {
+interface FinishedPomodoro {
   scheduleId: string;
   taskId: string | null;
+  sessionId: string;
+  cycle: number;
+  /** Ask whether the study session got done (its last pomodoro, or the block's). */
+  askSession: boolean;
 }
 
 export function BlockFocusOverlay() {
@@ -88,25 +94,32 @@ export function BlockFocusOverlay() {
   const isOut = inBlock && !!session?.pausedAt;
   const [askingWhy, setAskingWhy] = useState(false);
   const [reason, setReason] = useState('');
-  const [ended, setEnded] = useState<EndedBlock | null>(null);
+  const [ended, setEnded] = useState<FinishedPomodoro | null>(null);
   const [rating, setRating] = useState<number | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [comment, setComment] = useState('');
   const [sessionDone, setSessionDone] = useState<boolean | null>(null);
 
-  // The block reached its end (not given up): ask how it went, once.
+  // A focus pomodoro of the block just finished: ask how it went, once per pomodoro.
   const previous = useRef(session);
   useEffect(() => {
     const before = previous.current;
     previous.current = session;
-    if (!before?.active || !before.scheduleId || !session) return;
-    if (session.id !== before.id || session.active || session.interrupted) return;
-    setEnded({ scheduleId: before.scheduleId, taskId: before.taskId ?? null });
+    if (!before?.active || !before.scheduleId || !session || session.id !== before.id) return;
+    if (before.state !== 'FOCUS' || session.interrupted || session.completedCycles <= before.completedCycles) return;
+    const task = before.taskId ? tasks.find((t) => t.id === before.taskId) : undefined;
+    setEnded({
+      scheduleId: before.scheduleId,
+      taskId: before.taskId ?? null,
+      sessionId: session.id,
+      cycle: session.completedCycles,
+      askSession: !session.active || (!!task?.estimatedPomodoros && session.completedCycles >= task.estimatedPomodoros),
+    });
     setRating(null);
     setTags([]);
     setComment('');
     setSessionDone(null);
-  }, [session]);
+  }, [session, tasks]);
 
   useEffect(() => {
     void setOnTop(!!ended);
@@ -117,7 +130,7 @@ export function BlockFocusOverlay() {
   if (ended) {
     const schedule = schedules.find((s) => s.id === ended.scheduleId);
     const task = ended.taskId ? tasks.find((t) => t.id === ended.taskId) : null;
-    const studyTask = task && studyLineOf(task) && task.status !== 'COMPLETED' ? task : null;
+    const studyTask = ended.askSession && task && studyLineOf(task) && task.status !== 'COMPLETED' ? task : null;
     const toggleTag = (tag: string) => setTags((current) => (current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]));
     const finish = (save: boolean) => {
       if (save && rating) {
@@ -125,8 +138,18 @@ export function BlockFocusOverlay() {
           kind: 'CHECK_IN',
           scheduleId: ended.scheduleId,
           taskId: ended.taskId ?? undefined,
+          pomodoroSessionId: ended.sessionId,
           value: rating,
-          meta: { review: true, rating, tags, comment: comment.trim() || undefined, sessionDone: sessionDone ?? undefined, device: 'desktop' },
+          meta: {
+            review: true,
+            scope: 'pomodoro',
+            cycle: ended.cycle,
+            rating,
+            tags,
+            comment: comment.trim() || undefined,
+            sessionDone: sessionDone ?? undefined,
+            device: 'desktop',
+          },
         });
         if (studyTask && sessionDone) void completeTask(studyTask, studyTask.estimatedMinutes);
       }
@@ -136,10 +159,10 @@ export function BlockFocusOverlay() {
       <YStack {...overlayStyle}>
         <YStack {...cardStyle}>
           <Text color="$accent" fontWeight="700" textTransform="uppercase" letterSpacing={1}>
-            Terminó el bloque
+            Terminó el pomodoro {ended.cycle}
           </Text>
           <Text fontSize="$7" fontWeight="800">
-            ¿Cómo te fue?
+            ¿Cómo te fue en este pomodoro?
           </Text>
           <Paragraph margin={0} color="$muted">
             {schedule?.label ?? 'Bloque de trabajo'}

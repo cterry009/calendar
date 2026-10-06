@@ -191,8 +191,14 @@ export interface FocusOverlayState {
   phrase?: string;
   /** The study session it's on (studySessionLine). */
   session?: string;
-  /** Its task, for the end-of-block review. */
+  /** Its task, for the per-pomodoro review. */
   taskId?: string;
+  sessionId?: string;
+  /** Focus pomodoros completed: when it goes up, one just finished (the phone's card asks). */
+  cycles?: number;
+  blockLabel?: string;
+  /** The next finished pomodoro is the session's last: ask whether it got done. */
+  askSession?: boolean;
 }
 
 export function setFocusOverlayState(state: FocusOverlayState): void {

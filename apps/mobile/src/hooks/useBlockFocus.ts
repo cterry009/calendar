@@ -13,7 +13,7 @@ import { usePomodoro } from '../context/PomodoroContext';
 import { blockTaskId, blockToday } from '../lib/blockPrompt/block';
 import { clearBlockExited, isBlockExited, markBlockExited } from '../lib/blockPrompt/exits';
 import { openExitSheet } from '../lib/blockPrompt/exitSheet';
-import { openReviewSheet } from '../lib/blockPrompt/reviewSheet';
+import { openReviewSheet, pomodoroReviewRequest } from '../lib/blockPrompt/reviewSheet';
 import { drainOverlayExits, setFocusOverlayState } from '../lib/focusBlock/api';
 import { logFocusEvent } from '../lib/focusEvents/log';
 import { useCalendarData } from './useCalendarData';
@@ -34,20 +34,24 @@ export function useBlockFocus(): void {
   const [now, setNow] = useState(() => new Date());
   const busy = useRef(false);
 
-  // The block reached its end: the one card it shows, asking how it went (BlockReviewSheet).
+  // A focus pomodoro of the block just finished: the one card it shows, asking how that pomodoro
+  // went (BlockReviewSheet) -- per pomodoro, not per block, for a finer measure (2026-10-07). With the
+  // app in the background the phone's own card asks (FocusOverlay.kt). The session question comes
+  // with the last pomodoro of the session or of the block.
   const previous = useRef(session);
   useEffect(() => {
     const before = previous.current;
     previous.current = session;
-    if (!before?.active || !before.scheduleId || !session) return;
-    if (session.id !== before.id || session.active || session.interrupted) return;
+    if (!before?.active || !before.scheduleId || !session || session.id !== before.id) return;
+    if (before.state !== 'FOCUS' || session.interrupted || session.completedCycles <= before.completedCycles) return;
     if (AppState.currentState !== 'active') return;
-    void openReviewSheet({
-      scheduleId: before.scheduleId,
-      key: blockOccurrenceKey(before.scheduleId, new Date()),
-      taskId: before.taskId ?? null,
-    });
-  }, [session]);
+    const task = before.taskId ? tasks.find((t) => t.id === before.taskId) : undefined;
+    void openReviewSheet(
+      pomodoroReviewRequest(session.id, session.completedCycles, before.scheduleId, before.taskId ?? null, {
+        askSession: !session.active || (!!task?.estimatedPomodoros && session.completedCycles >= task.estimatedPomodoros),
+      }),
+    );
+  }, [session, tasks]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), CHECK_INTERVAL_MS);
@@ -76,6 +80,14 @@ export function useBlockFocus(): void {
             exits: session.exitCount ?? 0,
             phase: session.state,
             taskId: session.taskId ?? undefined,
+            // For the phone's per-pomodoro card: which pomodoro just finished, and the block's name.
+            sessionId: session.id,
+            cycles: session.completedCycles,
+            blockLabel: schedules.find((s) => s.id === session.scheduleId)?.label ?? undefined,
+            askSession: (() => {
+              const t = session.taskId ? tasks.find((x) => x.id === session.taskId) : undefined;
+              return !!t?.estimatedPomodoros && session.completedCycles + 1 >= t.estimatedPomodoros;
+            })(),
             session: studyTask ? studySessionLine(studyTask, session) : undefined,
             // What's left of the pomodoro; frozen while out of the block.
             remainingMs: remainingSeconds * 1000,

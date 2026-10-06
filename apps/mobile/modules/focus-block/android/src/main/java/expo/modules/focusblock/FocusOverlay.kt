@@ -32,9 +32,10 @@ import org.json.JSONObject
  *   (user-requested, 2026-10-07). The persistent notification keeps the countdown.
  * - While out of the block ("Salir" in the app), a small bar on top with what's left of the pomodoro
  *   and "Volver".
- * - Once, at its end, a card asking how it went (1-5); a rating opens the app to finish the review
+ * - After each focus pomodoro, a card asking how that pomodoro went (1-5) -- per pomodoro rather
+ *   than per block, for a finer measure (2026-10-07). A rating opens the app to finish the review
  *   (what applied, a comment, whether the study session got done). Not when the app is already in
- *   front -- it asks there itself -- and not for a block given up ("no puedo") or already reviewed.
+ *   front -- it asks there itself -- and never twice for the same pomodoro.
  *
  * Which block is on comes from WorkSocialLimit's windows (pushed by JS, "no puedo" days excluded);
  * what the pomodoro is doing comes from JS (writeState).
@@ -45,10 +46,10 @@ internal object FocusOverlay {
   private const val KEY_STATE = "state"
   private const val KEY_EXITED = "exited"
   private const val KEY_PENDING_EXITS = "pending_exits"
-  private const val KEY_LAST_BLOCK = "last_block"
+  private const val KEY_PENDING_REVIEW = "pending_review"
   private const val KEY_REVIEWED = "reviewed"
-  /** A block that ended longer ago than this isn't asked about any more. */
-  private const val REVIEW_WINDOW_MS = 3 * 60 * 60_000L
+  /** A pomodoro that ended longer ago than this isn't asked about any more. */
+  private const val REVIEW_WINDOW_MS = 60 * 60_000L
 
   private var card: View? = null
   private var bar: View? = null
@@ -68,8 +69,30 @@ internal object FocusOverlay {
    * "running","paused","remainingMs","exits","phrase","session","taskId"}; "{}" when nothing runs.
    */
   fun writeState(context: Context, json: String) {
+    val before = state(context)
     prefs(context).edit().putString(KEY_STATE, json).apply()
     val state = runCatching { JSONObject(json) }.getOrNull()
+    // A focus pomodoro just finished (same session, its cycle count went up after a focus phase):
+    // queue the card asking how it went.
+    if (state != null) {
+      val sessionId = state.optString("sessionId")
+      val cycles = state.optInt("cycles", -1)
+      val prevCycles = before.optInt("cycles", -1)
+      if (sessionId.isNotBlank() && sessionId == before.optString("sessionId") &&
+        before.optString("phase") == "FOCUS" && prevCycles >= 0 && cycles > prevCycles
+      ) {
+        val review = JSONObject()
+          .put("key", "$sessionId#$cycles")
+          .put("sessionId", sessionId)
+          .put("cycle", cycles)
+          .put("scheduleId", before.optString("scheduleId"))
+          .put("taskId", before.optString("taskId"))
+          .put("label", before.optString("blockLabel").ifBlank { "Bloque de trabajo" })
+          .put("askSession", before.optBoolean("askSession") || !state.optBoolean("running"))
+          .put("at", System.currentTimeMillis())
+        prefs(context).edit().putString(KEY_PENDING_REVIEW, review.toString()).apply()
+      }
+    }
     if (state?.optBoolean("paused") == true) state.optString("scheduleId").takeIf { it.isNotBlank() }?.let {
       markExited(context, "$it@${WorkSocialLimit.localDay(Calendar.getInstance())}", record = false)
     }
@@ -85,10 +108,11 @@ internal object FocusOverlay {
     prefs(context).edit().putStringSet(KEY_EXITED, set).apply()
   }
 
-  /** The block was reviewed (or given up) in the app: no end-of-block card for it. */
+  /** That pomodoro was reviewed in the app: no card for it here. */
   fun markReviewed(context: Context, key: String) {
-    val today = WorkSocialLimit.localDay(Calendar.getInstance())
-    val set = prefs(context).getStringSet(KEY_REVIEWED, emptySet())!!.filter { it.endsWith("@$today") }.toMutableSet()
+    // A StringSet has no order; a pomodoro's card only matters for an hour, so a handful is plenty.
+    val set = prefs(context).getStringSet(KEY_REVIEWED, emptySet())!!.toMutableSet()
+    if (set.size > 50) set.clear()
     set.add(key)
     prefs(context).edit().putStringSet(KEY_REVIEWED, set).apply()
   }
@@ -124,13 +148,6 @@ internal object FocusOverlay {
   private fun isoNow(): String =
     SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
 
-  private fun blockEndMs(window: WorkSocialLimit.WorkWindow): Long = Calendar.getInstance().apply {
-    set(Calendar.HOUR_OF_DAY, window.endMinute / 60)
-    set(Calendar.MINUTE, window.endMinute % 60)
-    set(Calendar.SECOND, 0)
-    set(Calendar.MILLISECOND, 0)
-  }.timeInMillis
-
   /**
    * Called on a timer, on unlock and when JS pushes a new state. Keeps the "fuera del bloque" bar in
    * line with the session, remembers the block running now, and once a block is over asks how it
@@ -140,43 +157,26 @@ internal object FocusOverlay {
     val window = WorkSocialLimit.currentWorkWindow(service)
     val p = prefs(service)
     val state = state(service)
-    val today = WorkSocialLimit.localDay(Calendar.getInstance())
 
-    if (window?.id != null) {
-      val pausedHere = state.optBoolean("paused") && state.optString("scheduleId") == window.id
-      if (pausedHere) showBar(service, state) else hideBar(service)
-      // Remember it, so its end can be noticed even if nothing runs on the phone right then.
-      val sameBlock = state.optString("scheduleId") == window.id
-      val last = JSONObject()
-        .put("key", "${window.id}@$today")
-        .put("scheduleId", window.id)
-        .put("label", window.label ?: "Bloque de trabajo")
-        .put("day", today)
-        .put("endMs", blockEndMs(window))
-        .put("taskId", if (sameBlock) state.optString("taskId") else "")
-      p.edit().putString(KEY_LAST_BLOCK, last.toString()).apply()
-      hide(service)
-      return
-    }
-    hideBar(service)
+    val pausedHere = window?.id != null && state.optBoolean("paused") && state.optString("scheduleId") == window.id
+    if (pausedHere) showBar(service, state) else hideBar(service)
 
-    val last = runCatching { JSONObject(p.getString(KEY_LAST_BLOCK, null) ?: return) }.getOrNull() ?: return
-    val key = last.optString("key")
-    val endMs = last.optLong("endMs")
-    val now = System.currentTimeMillis()
+    val pending = runCatching { JSONObject(p.getString(KEY_PENDING_REVIEW, null) ?: return) }.getOrNull() ?: return
+    val key = pending.optString("key")
     val reviewed = p.getStringSet(KEY_REVIEWED, emptySet())!!
-    if (key in reviewed || now < endMs || now - endMs > REVIEW_WINDOW_MS) {
-      if (key in reviewed) hide(service)
+    if (key in reviewed || System.currentTimeMillis() - pending.optLong("at") > REVIEW_WINDOW_MS) {
+      hide(service)
+      p.edit().remove(KEY_PENDING_REVIEW).apply()
       return
     }
     if (appInFront || card != null) return
-    showReview(service, last)
+    showReview(service, pending)
   }
 
   /** JS pushed a new phase or a pause: refresh what's on screen. */
-  fun refresh(service: AccessibilityService?) {
+  fun refresh(service: FocusBlockAccessibilityService?) {
     service ?: return
-    check(service, appInFront = false)
+    check(service, appInFront = service.isOwnAppInFront())
   }
 
   private fun dp(context: Context, value: Int) = TypedValue.applyDimension(
@@ -213,10 +213,11 @@ internal object FocusOverlay {
     runCatching { service.startActivity(intent) }.onFailure { Log.e(TAG, "open app failed", it) }
   }
 
-  /** The one card a block shows: at its end, how did it go? */
+  /** The card after a focus pomodoro: how did it go? */
   private fun showReview(service: AccessibilityService, last: JSONObject) {
     val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     val key = last.optString("key")
+    val cycle = last.optInt("cycle")
     fun d(v: Int) = dp(service, v)
 
     val content = LinearLayout(service).apply {
@@ -227,9 +228,9 @@ internal object FocusOverlay {
         setColor(Color.parseColor("#FA212836"))
         setStroke(d(2), ACCENT)
       }
-      addView(text(service, "Terminó el bloque", 14f, ACCENT, bold = true, center = true))
+      addView(text(service, "Terminó el pomodoro $cycle", 14f, ACCENT, bold = true, center = true))
       addView(text(service, last.optString("label"), 20f, BODY, bold = true, center = true))
-      addView(text(service, "¿Cómo te fue?", 18f, BODY, center = true))
+      addView(text(service, "¿Cómo te fue en este pomodoro?", 18f, BODY, center = true))
       for ((value, label) in RATINGS) {
         addView(
           button(service, "$value · $label", primary = value >= 4) {
@@ -239,9 +240,11 @@ internal object FocusOverlay {
               .scheme("calendarproductivity").authority("pomodoro")
               .appendQueryParameter("review", "1")
               .appendQueryParameter("scheduleId", last.optString("scheduleId"))
-              .appendQueryParameter("day", last.optString("day"))
+              .appendQueryParameter("sessionId", last.optString("sessionId"))
+              .appendQueryParameter("cycle", cycle.toString())
               .appendQueryParameter("rating", value.toString())
               .appendQueryParameter("taskId", last.optString("taskId"))
+              .appendQueryParameter("askSession", if (last.optBoolean("askSession")) "1" else "0")
               .build()
             openApp(service, uri.toString())
           },

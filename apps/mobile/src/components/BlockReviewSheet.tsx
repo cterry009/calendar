@@ -48,7 +48,7 @@ export function BlockReviewSheet() {
   if (!request) return null;
   const schedule = schedules.find((s) => s.id === request.scheduleId);
   const task = request.taskId ? tasks.find((t) => t.id === request.taskId) : null;
-  const studyTask = task && studyLineOf(task) && task.status !== 'COMPLETED' ? task : null;
+  const studyTask = request.askSession && task && studyLineOf(task) && task.status !== 'COMPLETED' ? task : null;
 
   const toggleTag = (tag: string) => setTags((current) => (current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]));
 
@@ -59,8 +59,9 @@ export function BlockReviewSheet() {
         kind: 'CHECK_IN',
         scheduleId: request.scheduleId,
         taskId: request.taskId ?? undefined,
+        pomodoroSessionId: request.sessionId,
         value: rating,
-        meta: { review: true, rating, tags, comment: comment.trim() || undefined, sessionDone: sessionDone ?? undefined },
+        meta: { review: true, scope: 'pomodoro', cycle: request.cycle, rating, tags, comment: comment.trim() || undefined, sessionDone: sessionDone ?? undefined },
       });
       if (studyTask && sessionDone) await completeTask(studyTask).catch(() => undefined);
     }
@@ -74,10 +75,10 @@ export function BlockReviewSheet() {
         <YStack backgroundColor="$background" padding="$5" borderTopLeftRadius="$6" borderTopRightRadius="$6" maxHeight="90%">
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 12 }}>
             <Text fontSize="$6" fontWeight="700">
-              ¿Cómo te fue?
+              ¿Cómo te fue en este pomodoro?
             </Text>
             <Paragraph margin={0} color="$muted">
-              {schedule?.label ?? 'Bloque de trabajo'}
+              Pomodoro {request.cycle} · {schedule?.label ?? 'Bloque de trabajo'}
             </Paragraph>
 
             <XStack gap="$2" flexWrap="wrap">

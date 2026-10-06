@@ -1,17 +1,32 @@
 import { markBlockReviewed } from '../focusBlock/api';
 import { platformStorage } from '../platformStorage';
 
-// The end-of-block review (BlockReviewSheet), mounted once at the root: opened by useBlockFocus when
-// a block's session ends with the app in front, or by the phone's end-of-block card (which opens
-// the app with the rating already picked). Each block occurrence is reviewed once.
+// The per-pomodoro review (BlockReviewSheet), mounted once at the root: opened by useBlockFocus when
+// a block's focus pomodoro ends with the app in front, or by the phone's own card (which opens the
+// app with the rating already picked). Each pomodoro is reviewed once.
 
 export interface ReviewRequest {
   scheduleId: string;
-  /** blockOccurrenceKey of the block being reviewed. */
+  /** "<pomodoro session id>#<cycle>": one review per focus pomodoro. */
   key: string;
   taskId: string | null;
+  sessionId: string;
+  /** Which pomodoro of the block (1-based). */
+  cycle: number;
+  /** Ask whether the study session got done (its last pomodoro, or the block's). */
+  askSession: boolean;
   /** Picked on the phone's card already. */
   rating?: number;
+}
+
+export function pomodoroReviewRequest(
+  sessionId: string,
+  cycle: number,
+  scheduleId: string,
+  taskId: string | null,
+  extra: { askSession: boolean; rating?: number },
+): ReviewRequest {
+  return { key: `${sessionId}#${cycle}`, sessionId, cycle, scheduleId, taskId, ...extra };
 }
 
 type Listener = (request: ReviewRequest | null) => void;

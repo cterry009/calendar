@@ -476,6 +476,9 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     }
   }
 
+  /** Our own app is the one in front (it asks things itself instead of an overlay). */
+  fun isOwnAppInFront(): Boolean = currentForeground == packageName
+
   companion object {
     /** The running service, for JS-driven overlay refreshes (null when it isn't bound). */
     @Volatile

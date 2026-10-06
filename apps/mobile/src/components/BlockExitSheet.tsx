@@ -8,7 +8,6 @@ import { useBlockExit } from '../hooks/useBlockFocus';
 import { useCalendarData } from '../hooks/useCalendarData';
 import { closeExitSheet, subscribeExitSheet, type ExitSheetRequest } from '../lib/blockPrompt/exitSheet';
 import { markBlockExited } from '../lib/blockPrompt/exits';
-import { markReviewed } from '../lib/blockPrompt/reviewSheet';
 import { markBlockSkipped } from '../lib/calendar/skips';
 import { logFocusEvent } from '../lib/focusEvents/log';
 
@@ -48,8 +47,6 @@ export function BlockExitSheet() {
       if (reschedule) {
         await cancel();
         await markBlockSkipped(scheduleId, now, trimmed);
-        // Given up: nothing to review at its end.
-        await markReviewed(blockOccurrenceKey(scheduleId, now));
       } else if (!request.alreadyPaused && !session?.pausedAt) {
         await pause();
       }

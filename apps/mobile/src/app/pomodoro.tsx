@@ -7,7 +7,7 @@ import { useOnboarding } from '../context/OnboardingContext';
 import { usePomodoro } from '../context/PomodoroContext';
 import { useBlockExit } from '../hooks/useBlockFocus';
 import { openExitSheet } from '../lib/blockPrompt/exitSheet';
-import { openReviewSheet } from '../lib/blockPrompt/reviewSheet';
+import { openReviewSheet, pomodoroReviewRequest } from '../lib/blockPrompt/reviewSheet';
 import { useCalendarData } from '../hooks/useCalendarData';
 import { blockTaskId, blockToday } from '../lib/blockPrompt/block';
 import { activeWorkSchedule } from '@calendar/shared';
@@ -51,21 +51,40 @@ export default function PomodoroScreen() {
   const progress = studyProgress(tasks).filter((line) => line.total > 0);
 
   // "Volver" on the phone's out-of-the-block bar opens this screen with ?volver=1.
-  const { volver, salir, review, scheduleId: reviewScheduleId, day: reviewDay, rating: reviewRating, taskId: reviewTaskId } =
-    useLocalSearchParams<{ volver?: string; salir?: string; review?: string; scheduleId?: string; day?: string; rating?: string; taskId?: string }>();
+  const {
+    volver,
+    salir,
+    review,
+    scheduleId: reviewScheduleId,
+    sessionId: reviewSessionId,
+    cycle: reviewCycle,
+    rating: reviewRating,
+    taskId: reviewTaskId,
+    askSession: reviewAskSession,
+  } = useLocalSearchParams<{
+    volver?: string;
+    salir?: string;
+    review?: string;
+    scheduleId?: string;
+    sessionId?: string;
+    cycle?: string;
+    rating?: string;
+    taskId?: string;
+    askSession?: string;
+  }>();
 
-  // The phone's end-of-block card opens this screen with the rating picked: finish the review here.
+  // The phone's per-pomodoro card opens this screen with the rating picked: finish the review here.
   const handledReview = useRef(false);
   useEffect(() => {
-    if (review !== '1' || handledReview.current || !reviewScheduleId || !reviewDay) return;
+    if (review !== '1' || handledReview.current || !reviewScheduleId || !reviewSessionId || !reviewCycle) return;
     handledReview.current = true;
-    void openReviewSheet({
-      scheduleId: reviewScheduleId,
-      key: `${reviewScheduleId}@${reviewDay}`,
-      taskId: reviewTaskId || null,
-      rating: reviewRating ? Number(reviewRating) : undefined,
-    });
-  }, [review, reviewScheduleId, reviewDay, reviewRating, reviewTaskId]);
+    void openReviewSheet(
+      pomodoroReviewRequest(reviewSessionId, Number(reviewCycle), reviewScheduleId, reviewTaskId || null, {
+        askSession: reviewAskSession === '1',
+        rating: reviewRating ? Number(reviewRating) : undefined,
+      }),
+    );
+  }, [review, reviewScheduleId, reviewSessionId, reviewCycle, reviewRating, reviewTaskId, reviewAskSession]);
   const handledVolver = useRef(false);
   useEffect(() => {
     if (volver !== '1' || handledVolver.current || isLoading) return;
