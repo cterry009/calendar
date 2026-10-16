@@ -10,6 +10,14 @@ import { at, useSyncHarness } from './harness';
 
 const h = useSyncHarness();
 
+/** A real WORK block: a block session for one that doesn't exist is stored already ended. */
+async function workBlock(): Promise<string> {
+  const schedule = await h.prisma.schedule.create({
+    data: { userId: h.userId, kind: 'WORK', daysOfWeek: [1], startMinute: 540, endMinute: 630 },
+  });
+  return schedule.id;
+}
+
 function task(overrides: Record<string, unknown> = {}) {
   return { clientId: 'task-1', updatedAt: at(0), title: 'Leer AN1', estimatedMinutes: 40, ...overrides };
 }
@@ -27,21 +35,41 @@ describe('pomodoro sessions', () => {
   it('stores the block, the pause and the exit count from the very first change', async () => {
     // Found on the device 2026-10-06: only updates stored these, so a block session created on the
     // PC reached the phone without its block.
-    const session = { id: 'block-s1-2026-10-06', updatedAt: at(0), state: 'FOCUS', active: true, scheduleId: 'sched-1' };
+    const scheduleId = await workBlock();
+    const session = { id: 'block-s1-2026-10-06', updatedAt: at(0), state: 'FOCUS', active: true, scheduleId };
     await h.batch({ pomodoroSessions: [session] });
     let row = await h.prisma.pomodoroSession.findFirstOrThrow({ where: { userId: h.userId } });
-    expect(row).toMatchObject({ scheduleId: 'sched-1', pausedAt: null, exitCount: 0 });
+    expect(row).toMatchObject({ scheduleId, pausedAt: null, exitCount: 0 });
 
     await h.batch({ pomodoroSessions: [{ ...session, updatedAt: at(1), pausedAt: at(1), exitCount: 1 }] });
     row = await h.prisma.pomodoroSession.findFirstOrThrow({ where: { userId: h.userId } });
-    expect(row).toMatchObject({ scheduleId: 'sched-1', exitCount: 1 });
+    expect(row).toMatchObject({ scheduleId, exitCount: 1 });
     expect(row.pausedAt?.toISOString()).toBe(at(1));
+  });
+});
+
+describe('block sessions of blocks that no longer exist (2026-10-16)', () => {
+  it('stores a session started for a deleted block as already ended', async () => {
+    // The desktop, still on its cached old blocks, started one the timetable had replaced.
+    await h.batch({ pomodoroSessions: [{ id: 'block-gone-2026-10-16', updatedAt: at(0), state: 'FOCUS', active: true, scheduleId: 'gone' }] });
+    const row = await h.prisma.pomodoroSession.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(row).toMatchObject({ active: false, state: 'IDLE', interrupted: true });
+    expect(row.endedAt).not.toBeNull();
+  });
+
+  it('ends the running session of a block when the block is deleted', async () => {
+    const scheduleId = await workBlock();
+    await h.batch({ pomodoroSessions: [{ id: 'block-x-2026-10-16', updatedAt: at(0), state: 'FOCUS', active: true, scheduleId }] });
+    // Newer than the block's own (real-clock) updatedAt, or the delete is a conflict.
+    await h.batch({ schedules: [{ id: scheduleId, deleted: true, updatedAt: new Date(Date.now() + 60_000).toISOString() }] });
+    const row = await h.prisma.pomodoroSession.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(row).toMatchObject({ active: false, state: 'IDLE' });
   });
 });
 
 describe('pomodoro reviews across devices', () => {
   it('keeps the highest reviewed cycle, so a device that missed a review cannot undo it', async () => {
-    const session = { id: 'block-s2-2026-10-07', updatedAt: at(0), state: 'FOCUS', active: true, scheduleId: 's2' };
+    const session = { id: 'block-s2-2026-10-07', updatedAt: at(0), state: 'FOCUS', active: true, scheduleId: await workBlock() };
     await h.batch({ pomodoroSessions: [{ ...session, completedCycles: 1, reviewedCycles: 1 }] });
     // The other device moves the session on with its stale copy (reviewedCycles 0).
     await h.batch({ pomodoroSessions: [{ ...session, updatedAt: at(1), state: 'SHORT_BREAK', completedCycles: 1, reviewedCycles: 0 }] });

@@ -534,6 +534,12 @@ export class SyncService {
         return { status: 'conflict', clientKey: key, server: existing };
       }
       await this.prisma.schedule.delete({ where: { id: existing.id } });
+      // Its running block session ends with it (2026-10-16: an old block kept "running" after the
+      // timetable replaced it, and held the new block's pomodoro back).
+      await this.prisma.pomodoroSession.updateMany({
+        where: { userId, scheduleId: existing.id, active: true },
+        data: { active: false, state: 'IDLE', interrupted: true, pausedAt: null, endedAt: new Date() },
+      });
       return { status: 'applied', clientKey: key, record: { id: existing.id } };
     }
 
@@ -601,6 +607,26 @@ export class SyncService {
 
     if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
       return { status: 'conflict', clientKey: key, server: existing };
+    }
+
+    // A block session for a block that no longer exists is stored already ended. Found 2026-10-16:
+    // the desktop, still showing its cached pre-timetable blocks, started a deleted 09:00 block,
+    // which then blocked apps and kept the real 09:30 block from starting on every device.
+    if (change.scheduleId && change.active) {
+      const schedule = await this.prisma.schedule.findFirst({
+        where: { id: change.scheduleId, userId },
+        select: { id: true },
+      });
+      if (!schedule) {
+        change = {
+          ...change,
+          active: false,
+          state: 'IDLE',
+          interrupted: true,
+          pausedAt: null,
+          endedAt: change.endedAt ?? new Date().toISOString(),
+        };
+      }
     }
 
     const data = {
