@@ -40,7 +40,7 @@ const TYPICAL_MAX_POMODOROS_PER_CHUNK = 6;
 
 /** Fixed daily window during which no work/pomodoro block may be scheduled (e.g. lunch). */
 export const EXCLUDED_WORK_WINDOWS: Array<{ startMinute: number; endMinute: number }> = [
-  { startMinute: 12 * 60 + 30, endMinute: 13 * 60 + 30 },
+  { startMinute: 12 * 60 + 30, endMinute: 14 * 60 },
 ];
 
 function windowOverlapMinutes(

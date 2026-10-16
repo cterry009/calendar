@@ -12,6 +12,7 @@ export {
   AppButton,
   AppCard,
   BarChart3,
+  CalendarDays,
   Eyebrow,
   Flame,
   Heart,

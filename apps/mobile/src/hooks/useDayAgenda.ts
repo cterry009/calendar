@@ -6,12 +6,24 @@ import { dateKey } from '../lib/habits/today';
 import type { SyncHabitRecord } from '../lib/habits/types';
 import { clearBlockMark, markBlockSkipped } from '../lib/calendar/skips';
 import { pullSnapshot, syncBatch } from '../lib/sync/api';
+import { clearScheduleException, planOf, saveScheduleException, toExceptionLikes } from '../lib/plan/api';
+import { swapExceptions, type ScheduleExceptionLike, type StudyPlanData } from '@calendar/shared';
 
 type AgendaData = Pick<SyncSnapshot, 'schedules' | 'habits' | 'habitRecords' | 'tasks'> & {
   scheduleCompletions: SyncScheduleCompletion[];
+  exceptions: ScheduleExceptionLike[];
+  plan: StudyPlanData | null;
 };
 
-const EMPTY: AgendaData = { schedules: [], habits: [], habitRecords: [], tasks: [], scheduleCompletions: [] };
+const EMPTY: AgendaData = {
+  schedules: [],
+  habits: [],
+  habitRecords: [],
+  tasks: [],
+  scheduleCompletions: [],
+  exceptions: [],
+  plan: null,
+};
 
 function randomId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -37,6 +49,8 @@ export function useDayAgenda(date: Date) {
         habitRecords: snapshot.habitRecords ?? [],
         tasks: snapshot.tasks,
         scheduleCompletions: snapshot.scheduleCompletions ?? [],
+        exceptions: toExceptionLikes(snapshot.scheduleExceptions),
+        plan: planOf(snapshot),
       });
     } catch {
       // No server and no cache: keep what's on screen.
@@ -52,6 +66,86 @@ export function useDayAgenda(date: Date) {
   useEffect(() => registerRefetch(refetch), [registerRefetch, refetch]);
 
   const blocks = useMemo(() => buildDayAgenda(date, data), [date, data]);
+
+  /**
+   * "Mover a carrera / datos" (reglas de ajuste) for this day only, or back to the template: one
+   * ScheduleException, shown at once (local state first, same as toggleDone).
+   */
+  const applyExceptions = useCallback(
+    async (blockId: string, change: { set: ScheduleExceptionLike[] } | { clear: string }) => {
+      const key = dateKey(date);
+      setBusyId(blockId);
+      try {
+        if ('clear' in change) {
+          const scheduleId = change.clear;
+          setData((current) => ({
+            ...current,
+            exceptions: current.exceptions.filter((e) => !(e.scheduleId === scheduleId && e.date === key)),
+          }));
+          await clearScheduleException(scheduleId, key);
+          return;
+        }
+        const touched = new Set(change.set.map((e) => e.scheduleId));
+        setData((current) => ({
+          ...current,
+          exceptions: [...current.exceptions.filter((e) => !(touched.has(e.scheduleId) && e.date === key)), ...change.set],
+        }));
+        for (const exception of change.set) await saveScheduleException(exception, randomId());
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [date],
+  );
+
+  /** "Mover a carrera / datos" for this day only, or (null) back to the template. */
+  const setBlockCategory = useCallback(
+    async (block: AgendaBlock, category: string | null) => {
+      if (block.target?.kind !== 'schedule') return;
+      const scheduleId = block.target.scheduleId;
+      await applyExceptions(
+        block.id,
+        category === null ? { clear: scheduleId } : { set: [{ scheduleId, date: dateKey(date), category, label: block.title }] },
+      );
+    },
+    [applyExceptions, date],
+  );
+
+  /** Another start time for this day; the block keeps its length. */
+  const moveBlock = useCallback(
+    async (block: AgendaBlock, startMinute: number) => {
+      if (block.target?.kind !== 'schedule') return;
+      const length = block.endMinute - block.startMinute;
+      await applyExceptions(block.id, {
+        set: [
+          {
+            scheduleId: block.target.scheduleId,
+            date: dateKey(date),
+            category: block.category ?? null,
+            label: block.title,
+            startMinute,
+            endMinute: startMinute + length,
+          },
+        ],
+      });
+    },
+    [applyExceptions, date],
+  );
+
+  /** Swaps what two blocks of the day are about; each keeps its time (shared swapExceptions). */
+  const swapBlocks = useCallback(
+    async (a: AgendaBlock, b: AgendaBlock) => {
+      if (a.target?.kind !== 'schedule' || b.target?.kind !== 'schedule') return;
+      const key = dateKey(date);
+      await applyExceptions(a.id, {
+        set: swapExceptions(
+          { scheduleId: a.target.scheduleId, date: key, category: a.category ?? null, title: a.title },
+          { scheduleId: b.target.scheduleId, date: key, category: b.category ?? null, title: b.title },
+        ),
+      });
+    },
+    [applyExceptions, date],
+  );
 
   const toggleDone = useCallback(
     async (block: AgendaBlock) => {
@@ -172,5 +266,5 @@ export function useDayAgenda(date: Date) {
     [date],
   );
 
-  return { blocks, isLoading, busyId, toggleDone, toggleSkip, refetch };
+  return { blocks, isLoading, busyId, toggleDone, toggleSkip, setBlockCategory, moveBlock, swapBlocks, refetch };
 }

@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import 'reflect-metadata';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { SyncBatchDto } from '../src/sync/dto/sync-batch.dto';
 import { at, useSyncHarness } from './harness';
 
 // SyncService owns every conflict rule in the project, and a bug there doesn't crash -- it
@@ -365,5 +369,85 @@ describe('realtime notification to other devices', () => {
     await h.batch({ tasks: [task({ id, updatedAt: at(0) })] });
 
     expect(h.notifications).toEqual([]);
+  });
+});
+
+describe('horario 2026-10-19: sequences, exceptions and the study plan', () => {
+  const morning = [
+    { tipo: 'foco', minutos: 30, etiqueta: 'P1' },
+    { tipo: 'pausa', minutos: 5, etiqueta: 'Pausa' },
+    { tipo: 'cierre', minutos: 15, etiqueta: 'Cierre' },
+  ];
+
+  it('stores a block category and sequence, and a client that does not send them keeps them', async () => {
+    const block = { id: undefined as string | undefined, updatedAt: at(0), kind: 'WORK', daysOfWeek: [1], startMinute: 570, endMinute: 750, label: 'Estudio B1', category: 'estudio_b1', sequence: morning };
+    await h.batch({ schedules: [block] });
+    const created = await h.prisma.schedule.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(created).toMatchObject({ category: 'estudio_b1', sequence: morning });
+
+    // An app from before the change edits the block without the new fields.
+    const { category: _c, sequence: _s, ...old } = block;
+    await h.batch({ schedules: [{ ...old, id: created.id, updatedAt: at(1), label: 'Estudio B1 (editado)' }] });
+    const edited = await h.prisma.schedule.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(edited).toMatchObject({ label: 'Estudio B1 (editado)', category: 'estudio_b1', sequence: morning });
+
+    // Explicit null clears it.
+    await h.batch({ schedules: [{ ...block, id: created.id, updatedAt: at(2), sequence: null }] });
+    expect((await h.prisma.schedule.findFirstOrThrow({ where: { userId: h.userId } })).sequence).toBeNull();
+  });
+
+  it('rejects a sequence segment of an unknown type (the global ValidationPipe)', async () => {
+    const block = { updatedAt: at(0), kind: 'WORK', daysOfWeek: [1], startMinute: 570, endMinute: 750, sequence: [{ tipo: 'siesta', minutos: 30, etiqueta: 'x' }] };
+    const errors = await validate(plainToInstance(SyncBatchDto, { schedules: [block] }), { whitelist: true, forbidNonWhitelisted: true });
+    expect(JSON.stringify(errors)).toContain('tipo');
+    const ok = await validate(plainToInstance(SyncBatchDto, { schedules: [{ ...block, sequence: morning }] }), { whitelist: true, forbidNonWhitelisted: true });
+    expect(ok).toEqual([]);
+  });
+
+  it('keeps the session sequence when a device that does not know it pauses, and never lowers the cut count', async () => {
+    const session = {
+      id: 'block-sq-2026-10-19',
+      updatedAt: at(0),
+      state: 'FOCUS',
+      active: true,
+      scheduleId: 'sq',
+      blockStartAt: '2026-10-19T14:30:00.000Z',
+      blockEndAt: '2026-10-19T17:30:00.000Z',
+      sequence: morning,
+      segmentIndex: 0,
+      cutCount: 1,
+    };
+    await h.batch({ pomodoroSessions: [session] });
+    const { sequence: _s, segmentIndex: _i, blockStartAt: _b, cutCount: _c, ...old } = session;
+    await h.batch({ pomodoroSessions: [{ ...old, updatedAt: at(1), pausedAt: at(1), exitCount: 1 }] });
+    const row = await h.prisma.pomodoroSession.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(row).toMatchObject({ sequence: morning, segmentIndex: 0, cutCount: 1, exitCount: 1 });
+    expect(row.blockStartAt?.toISOString()).toBe('2026-10-19T14:30:00.000Z');
+  });
+
+  it('keeps one exception per block and day, updates it, and deletes it', async () => {
+    const schedule = await h.prisma.schedule.create({
+      data: { userId: h.userId, kind: 'WORK', daysOfWeek: [1], startMinute: 840, endMinute: 925, category: 'codigo_academico' },
+    });
+    await h.batch({ scheduleExceptions: [{ clientId: 'e1', updatedAt: at(0), scheduleId: schedule.id, date: '2026-11-02', category: 'carrera' }] });
+    // The other device moves the same block that day.
+    await h.batch({ scheduleExceptions: [{ clientId: 'e2', updatedAt: at(1), scheduleId: schedule.id, date: '2026-11-02', category: 'carrera', startMinute: 1020, endMinute: 1105 }] });
+    let rows = await h.prisma.scheduleException.findMany({ where: { userId: h.userId } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ category: 'carrera', startMinute: 1020, endMinute: 1105 });
+
+    const snapshot = await h.pull();
+    expect(snapshot.scheduleExceptions).toHaveLength(1);
+
+    await h.batch({ scheduleExceptions: [{ clientId: 'e1', updatedAt: at(2), scheduleId: schedule.id, date: '2026-11-02', deleted: true }] });
+    rows = await h.prisma.scheduleException.findMany({ where: { userId: h.userId } });
+    expect(rows).toHaveLength(0);
+  });
+
+  it('keeps one study plan per user, newest wins', async () => {
+    await h.batch({ studyPlan: [{ updatedAt: at(1), planData: { startDate: '2026-10-19', weeks: 14 } }] });
+    await h.batch({ studyPlan: [{ updatedAt: at(0), planData: { startDate: '2026-10-26', weeks: 14 } }] });
+    const snapshot = await h.pull();
+    expect(snapshot.studyPlan?.planData).toEqual({ startDate: '2026-10-19', weeks: 14 });
   });
 });

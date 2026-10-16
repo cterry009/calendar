@@ -1,4 +1,14 @@
-import type { AttentionProfile, AttentionSource, HabitRecordStatus, HabitType, TaskDifficulty, TaskPriority, TaskStatus } from '@calendar/shared';
+import type {
+  AttentionProfile,
+  AttentionSource,
+  HabitRecordStatus,
+  HabitType,
+  SequenceSegment,
+  StudyPlanData,
+  TaskDifficulty,
+  TaskPriority,
+  TaskStatus,
+} from '@calendar/shared';
 import type { SyncBlockEventRecord } from '../blockEvents/types';
 import type { SyncBlockListRecord } from '../blocklist/types';
 import type { SyncFitnessRecord } from '../fitness/types';
@@ -47,6 +57,9 @@ export interface SyncScheduleRecord {
   longBreakMin: number | null;
   pomodorosPerChunk: number | null;
   chunks: number | null;
+  /** Horario 2026-10-19: plan category and pomodoro sequence; absent on older servers. */
+  category?: string | null;
+  sequence?: SequenceSegment[] | null;
 }
 
 // Mirrors apps/web/src/lib/calendar/types.ts's SyncHabit/SyncHabitRecord (task 11.4's mobile
@@ -112,5 +125,21 @@ export interface SyncSnapshot {
   habitRecords: SyncHabitRecord[];
   // Optional: snapshots cached before this existed don't have it.
   scheduleCompletions?: SyncScheduleCompletion[];
+  /** Horario 2026-10-19; absent on older servers / cached snapshots. */
+  scheduleExceptions?: SyncScheduleException[];
+  studyPlan?: { id: string; planData: StudyPlanData; updatedAt: string } | null;
   syncedAt: string;
+}
+
+/** A one-off change to one block on one day (server ScheduleException); `date` is that day's UTC midnight. */
+export interface SyncScheduleException {
+  id: string;
+  scheduleId: string;
+  date: string;
+  category: string | null;
+  label: string | null;
+  startMinute: number | null;
+  endMinute: number | null;
+  clientId: string | null;
+  updatedAt: string;
 }

@@ -127,7 +127,7 @@ class FocusBlockModule : Module() {
     }
 
     Function("getNightWindowStartMinutes") {
-      appContext.reactContext?.let { context -> FocusBlockPrefs.nightStartMinutes(context) } ?: (22 * 60 + 30)
+      appContext.reactContext?.let { context -> FocusBlockPrefs.nightStartMinutes(context) } ?: (22 * 60)
     }
 
     Function("getNightWindowEndMinutes") {

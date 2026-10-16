@@ -109,6 +109,7 @@ enum FocusEventKind {
   BLOCK_RESUMED // "Volver al bloque"
   BLOCK_SKIPPED // "No puedo hacer este bloque" for that day
   BLOCK_EXIT_REASON // why the user left a block, and whether it was rescheduled (meta.reason, meta.rescheduled)
+  SEGMENT_CUT // "Cortar tramo": a sequence's focus segment ended early, straight into the next pause
 }
 
 enum FitnessIntensity {
@@ -174,6 +175,8 @@ model User {
   journalEntries      JournalEntry[]
   blockEvents         BlockEvent[]
   focusEvents         FocusEvent[]
+  studyPlan           StudyPlan?
+  scheduleExceptions  ScheduleException[]
 
   @@map("users")
 }
@@ -198,7 +201,7 @@ model Device {
 // ─── Calendar & tasks ────────────────────────────────────────────────────────
 
 model Task {
-  id                 String         @id @default(cuid())
+  id                 String            @id @default(cuid())
   userId             String
   title              String
   description        String?
@@ -209,8 +212,8 @@ model Task {
   // pomodoro length was used to convert it. Null for tasks created before this field existed.
   estimatedPomodoros Int?
   actualMinutes      Int?
-  difficulty         TaskDifficulty @default(MEDIUM)
-  complexity         Int            @default(5) // 1–10
+  difficulty         TaskDifficulty    @default(MEDIUM)
+  complexity         Int               @default(5) // 1–10
   // Attention rating (docs/planning/normas-de-atencion.md): reentry cost and mental load, 0-3 each,
   // and the profile the fixed table gives them. Null until rated.
   attentionReentry   Int?
@@ -218,14 +221,14 @@ model Task {
   attentionProfile   AttentionProfile?
   attentionSource    AttentionSource?
   attentionReason    String?
-  priority           TaskPriority   @default(MEDIUM)
+  priority           TaskPriority      @default(MEDIUM)
   category           String?
-  status             TaskStatus     @default(PENDING)
+  status             TaskStatus        @default(PENDING)
   completedAt        DateTime?
   clientId           String? // offline sync id from client
   deletedAt          DateTime?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   pomodoroSessions PomodoroSession[]
@@ -255,8 +258,14 @@ model Schedule {
   pomodorosPerChunk Int?
   chunks            Int? // number of pomodoro blocks (separated by long breaks); must fit within startMinute..endMinute
 
+  // Horario 2026-10-19: the plan category (estudio_b1, carrera, ...) and the block's pomodoro
+  // sequence, [{tipo: foco|pausa|cierre, minutos, etiqueta}], which wins over pomodoroMin & co.
+  category String?
+  sequence Json?
+
   user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   completions ScheduleCompletion[]
+  exceptions  ScheduleException[]
 
   @@index([userId, kind])
   @@map("schedules")
@@ -272,7 +281,7 @@ enum ScheduleCompletionStatus {
 }
 
 model ScheduleCompletion {
-  id         String   @id @default(cuid())
+  id         String                   @id @default(cuid())
   userId     String
   scheduleId String
   date       DateTime
@@ -281,8 +290,8 @@ model ScheduleCompletion {
   status     ScheduleCompletionStatus @default(DONE)
   reason     String?
   clientId   String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime                 @default(now())
+  updatedAt  DateTime                 @updatedAt
 
   schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -293,20 +302,59 @@ model ScheduleCompletion {
   @@map("schedule_completions")
 }
 
+// One-off change to a recurring block on one day (horario 2026-10-19): moved, or switched to
+// another category ("mover a carrera"). Null fields keep the block's own value. Same keying as
+// ScheduleCompletion: one row per block per day, `date` stored as that day's UTC midnight.
+model ScheduleException {
+  id          String   @id @default(cuid())
+  userId      String
+  scheduleId  String
+  date        DateTime
+  category    String?
+  label       String?
+  startMinute Int?
+  endMinute   Int?
+  clientId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, date])
+  @@unique([userId, clientId])
+  @@index([userId, date])
+  @@map("schedule_exceptions")
+}
+
+// The phased study plan (horario 2026-10-19): start Monday, phases, suggested pomodoros,
+// milestones and adjustment rules, as one JSON document per user -- the same shape as DetoxPlan.
+model StudyPlan {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  planData  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("study_plans")
+}
+
 // ─── Pomodoro ────────────────────────────────────────────────────────────────
 
 model PomodoroSession {
-  id                    String        @id @default(cuid())
+  id                    String            @id @default(cuid())
   userId                String
   taskId                String?
-  state                 PomodoroState @default(IDLE)
-  focusDurationMin      Int           @default(25)
-  shortBreakMin         Int           @default(5)
-  longBreakMin          Int           @default(15)
-  cyclesBeforeLongBreak Int           @default(4)
-  completedCycles       Int           @default(0)
-  active                Boolean       @default(false)
-  interrupted           Boolean       @default(false)
+  state                 PomodoroState     @default(IDLE)
+  focusDurationMin      Int               @default(25)
+  shortBreakMin         Int               @default(5)
+  longBreakMin          Int               @default(15)
+  cyclesBeforeLongBreak Int               @default(4)
+  completedCycles       Int               @default(0)
+  active                Boolean           @default(false)
+  interrupted           Boolean           @default(false)
   startedAt             DateTime?
   endedAt               DateTime?
   // Block mode: the session ends at the WORK block's fixed end, trimming its last phase.
@@ -317,12 +365,18 @@ model PomodoroSession {
   // "Salir" (2026-10-06): a paused session stops counting; resuming shifts startedAt forward.
   pausedAt              DateTime?
   // Times the user left this block with "Salir".
-  exitCount             Int           @default(0)
+  exitCount             Int               @default(0)
   // Focus pomodoros of this session already rated (or dismissed) on any device: the other device
   // closes its card (2026-10-07). Only ever goes up (sync keeps the max).
-  reviewedCycles        Int           @default(0)
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  reviewedCycles        Int               @default(0)
+  // Sequence mode (2026-10-15): the block's segments, anchored to blockStartAt; the running one;
+  // and how many times "cortar tramo" was used (only ever goes up, like reviewedCycles).
+  blockStartAt          DateTime?
+  sequence              Json?
+  segmentIndex          Int?
+  cutCount              Int               @default(0)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 
   user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)

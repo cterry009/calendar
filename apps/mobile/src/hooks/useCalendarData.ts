@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSync } from '../context/SyncContext';
 import { ApiError } from '../lib/auth/api';
 import { buildCompleteTaskPayload, pullSnapshot, syncTaskBatch } from '../lib/calendar/api';
+import type { ScheduleExceptionLike, StudyPlanData } from '@calendar/shared';
 import { skippedBlockKeys } from '../lib/calendar/skips';
+import { planOf, toExceptionLikes } from '../lib/plan/api';
 import type { SyncScheduleCompletion, SyncScheduleRecord, SyncTaskRecord } from '../lib/calendar/types';
 import type { SyncPomodoroRecord } from '../lib/pomodoro/types';
 
@@ -13,6 +15,9 @@ interface UseCalendarDataResult {
   scheduleCompletions: SyncScheduleCompletion[];
   /** Blocks marked "no puedo" (blockOccurrenceKey). */
   skipped: Set<string>;
+  /** Horario 2026-10-19: one-day changes to blocks, and the study plan (null until loaded). */
+  exceptions: ScheduleExceptionLike[];
+  plan: StudyPlanData | null;
   isLoading: boolean;
   isMutating: boolean;
   error: string | null;
@@ -37,6 +42,8 @@ export function useCalendarData(): UseCalendarDataResult {
   const [schedules, setSchedules] = useState<SyncScheduleRecord[]>([]);
   const [pomodoroSessions, setPomodoroSessions] = useState<SyncPomodoroRecord[]>([]);
   const [scheduleCompletions, setScheduleCompletions] = useState<SyncScheduleCompletion[]>([]);
+  const [exceptions, setExceptions] = useState<ScheduleExceptionLike[]>([]);
+  const [plan, setPlan] = useState<StudyPlanData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +58,8 @@ export function useCalendarData(): UseCalendarDataResult {
       setSchedules(snapshot.schedules);
       setPomodoroSessions(snapshot.pomodoroSessions);
       setScheduleCompletions(snapshot.scheduleCompletions ?? []);
+      setExceptions(toExceptionLikes(snapshot.scheduleExceptions));
+      setPlan(planOf(snapshot));
     } catch (errorValue) {
       setError(errorValue instanceof ApiError ? errorValue.message : 'No se pudo cargar el calendario.');
     } finally {
@@ -110,5 +119,18 @@ export function useCalendarData(): UseCalendarDataResult {
 
   const skipped = useMemo(() => skippedBlockKeys(scheduleCompletions), [scheduleCompletions]);
 
-  return { tasks, schedules, pomodoroSessions, scheduleCompletions, skipped, isLoading, isMutating, error, refetch, completeTask };
+  return {
+    tasks,
+    schedules,
+    pomodoroSessions,
+    scheduleCompletions,
+    skipped,
+    exceptions,
+    plan,
+    isLoading,
+    isMutating,
+    error,
+    refetch,
+    completeTask,
+  };
 }

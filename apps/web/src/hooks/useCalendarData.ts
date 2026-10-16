@@ -13,6 +13,8 @@ interface UseCalendarDataResult {
   fitnessEntries: SyncSnapshot['fitnessEntries'];
   habits: SyncSnapshot['habits'];
   scheduleCompletions: SyncSnapshot['scheduleCompletions'];
+  scheduleExceptions: NonNullable<SyncSnapshot['scheduleExceptions']>;
+  studyPlan?: SyncSnapshot['studyPlan'];
   habitRecords: SyncSnapshot['habitRecords'];
   syncedAt: string | null;
   isLoading: boolean;
@@ -20,7 +22,11 @@ interface UseCalendarDataResult {
   refetch: () => Promise<void>;
 }
 
-const EMPTY_SNAPSHOT: Omit<SyncSnapshot, 'syncedAt'> = {
+type CalendarSnapshot = Omit<SyncSnapshot, 'syncedAt' | 'scheduleExceptions'> & {
+  scheduleExceptions: NonNullable<SyncSnapshot['scheduleExceptions']>;
+};
+
+const EMPTY_SNAPSHOT: CalendarSnapshot = {
   tasks: [],
   schedules: [],
   pomodoroSessions: [],
@@ -39,11 +45,13 @@ const EMPTY_SNAPSHOT: Omit<SyncSnapshot, 'syncedAt'> = {
   habitRecords: [],
   journalEntries: [],
   scheduleCompletions: [],
+  scheduleExceptions: [],
+  studyPlan: null,
 };
 
 export function useCalendarData(): UseCalendarDataResult {
   const { pullSnapshot } = useSync();
-  const [snapshot, setSnapshot] = useState<Omit<SyncSnapshot, 'syncedAt'>>(EMPTY_SNAPSHOT);
+  const [snapshot, setSnapshot] = useState<CalendarSnapshot>(EMPTY_SNAPSHOT);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +83,8 @@ export function useCalendarData(): UseCalendarDataResult {
         habitRecords: data.habitRecords,
         journalEntries: data.journalEntries,
         scheduleCompletions: data.scheduleCompletions ?? [],
+        scheduleExceptions: data.scheduleExceptions ?? [],
+        studyPlan: data.studyPlan ?? null,
       });
       setSyncedAt(data.syncedAt);
     } catch (errorValue) {
@@ -95,6 +105,8 @@ export function useCalendarData(): UseCalendarDataResult {
   useSyncRefetch('pomodoroSessions', refetch);
   useSyncRefetch('fitnessEntries', refetch);
   useSyncRefetch('detoxPlan', refetch);
+  useSyncRefetch('scheduleExceptions', refetch);
+  useSyncRefetch('studyPlan', refetch);
 
   useEffect(() => {
     void refetch();

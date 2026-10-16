@@ -1,5 +1,7 @@
 import type { PomodoroSession } from '../schemas/pomodoro.js';
-import { getPhaseDurationMinutes } from '../pomodoro/state-machine.js';
+import { currentSegment, getPhaseDurationMinutes } from '../pomodoro/state-machine.js';
+import { scheduleOnDate, type ScheduleExceptionLike } from '../plan/plan.js';
+import type { SequenceSegment } from '../plan/sequence.js';
 import { ATTENTION_PROFILE_SPECS, blockOnDay, type BlockTaskLike } from './profiles.js';
 
 // What the persistent "you're working" indicator says -- the phone's ongoing notification and the
@@ -14,6 +16,8 @@ export interface FocusStatusSchedule {
   startMinute: number;
   endMinute: number;
   label: string | null;
+  category?: string | null;
+  sequence?: SequenceSegment[] | null;
 }
 
 export type FocusStatusTask = BlockTaskLike & { id: string; title: string };
@@ -64,10 +68,17 @@ export function blockSessionId(scheduleId: string, day: Date): string {
  * The enabled WORK schedule whose window contains `now` (device-local time), if any. Blocks marked
  * "no puedo" for today (`skipped`, blockOccurrenceKey) don't count: no prompt, overlay or blocking.
  */
-export function activeWorkSchedule<S extends FocusStatusSchedule>(schedules: S[], now: Date, skipped?: ReadonlySet<string>): S | null {
+export function activeWorkSchedule<S extends FocusStatusSchedule>(
+  schedules: S[],
+  now: Date,
+  skipped?: ReadonlySet<string>,
+  /** Today's one-off changes (horario 2026-10-19): a moved block runs at its new time. */
+  exceptions?: ScheduleExceptionLike[],
+): S | null {
   const minute = now.getHours() * 60 + now.getMinutes();
+  const today = exceptions?.length ? schedules.map((s) => scheduleOnDate(s, exceptions, now)) : schedules;
   return (
-    schedules.find(
+    today.find(
       (s) =>
         s.kind === 'WORK' &&
         s.enabled &&
@@ -85,9 +96,10 @@ export function currentFocusStatus(input: {
   tasks: FocusStatusTask[];
   now?: Date;
   skipped?: ReadonlySet<string>;
+  exceptions?: ScheduleExceptionLike[];
 }): FocusStatus | null {
   const now = input.now ?? new Date();
-  const schedule = activeWorkSchedule(input.schedules, now, input.skipped);
+  const schedule = activeWorkSchedule(input.schedules, now, input.skipped, input.exceptions);
   const block = schedule ? blockOnDay(schedule, input.tasks, now) : null;
   // A mechanical block ends 60 minutes in, even if its schedule window runs longer.
   const inBlock = block && now < block.endAt ? block : null;
@@ -121,6 +133,18 @@ export function currentFocusStatus(input: {
     const profile = session.attentionProfile ? ATTENTION_PROFILE_SPECS[session.attentionProfile].name : null;
     const task = session.taskId ? input.tasks.find((t) => t.id === session.taskId) : null;
     const focus = session.state === 'FOCUS';
+    // Sequence mode: the segment's own label ("P2 · profundo: ...") says what this stretch is for.
+    const segment = currentSegment(session);
+    if (segment) {
+      return {
+        kind: 'pomodoro',
+        title: segment.etiqueta,
+        text: [label, task?.title, `tramo ${segment.index + 1} de ${session.sequence!.length}`].filter(Boolean).join(' · '),
+        endsAt,
+        blockLabel: label,
+        key: `pomodoro:${session.id ?? ''}:segment:${segment.index}`,
+      };
+    }
     const parts = [label, task?.title, `ciclo ${session.completedCycles + (focus ? 1 : 0)}`].filter(Boolean);
     return {
       kind: 'pomodoro',

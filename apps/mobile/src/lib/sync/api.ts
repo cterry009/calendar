@@ -21,6 +21,8 @@ export interface SyncBatchPayload {
   blockEvents?: unknown[];
   dailyScreenTime?: unknown[];
   scheduleCompletions?: unknown[];
+  scheduleExceptions?: unknown[];
+  studyPlan?: unknown[];
 }
 
 export interface SyncBatchResponse {

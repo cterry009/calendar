@@ -25,13 +25,21 @@ export function pomodoroTransitionEvents(
   const wasFocus = same && prev!.state === 'FOCUS';
   const wasBreak = same && (prev!.state === 'SHORT_BREAK' || prev!.state === 'LONG_BREAK');
 
-  if (wasFocus && next.state !== 'FOCUS' && !next.interrupted) {
+  // Sequence mode: a focus segment can be followed straight by another work segment (the closing
+  // one), which is still a new phase.
+  const nextSegment = same && prev!.segmentIndex != null && next.segmentIndex != null && prev!.segmentIndex !== next.segmentIndex;
+  const focusEnded = wasFocus && (next.state !== 'FOCUS' || nextSegment);
+
+  if (focusEnded && !next.interrupted) {
     events.push({ kind: 'FOCUS_COMPLETED', value: secondsSince(prev!.startedAt, now) });
+  }
+  if (same && (next.cutCount ?? 0) > (prev!.cutCount ?? 0)) {
+    events.push({ kind: 'SEGMENT_CUT', value: secondsSince(prev!.startedAt, now), meta: { segment: prev!.segmentIndex ?? null } });
   }
   if (wasBreak && next.state === 'FOCUS') {
     events.push({ kind: 'BREAK_COMPLETED', value: secondsSince(prev!.startedAt, now) });
   }
-  if (next.state === 'FOCUS' && !wasFocus) {
+  if (next.state === 'FOCUS' && (!wasFocus || focusEnded)) {
     events.push({ kind: 'FOCUS_STARTED', meta: { cycle: next.completedCycles + 1 } });
   }
   if (same && !prev!.pausedAt && next.pausedAt) {

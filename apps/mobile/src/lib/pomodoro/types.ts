@@ -1,4 +1,4 @@
-import type { AttentionProfile, PomodoroState } from '@calendar/shared';
+import type { AttentionProfile, PomodoroState, SequenceSegment } from '@calendar/shared';
 
 export interface SyncPomodoroRecord {
   id: string;
@@ -22,6 +22,11 @@ export interface SyncPomodoroRecord {
   exitCount?: number;
   /** Focus pomodoros already rated or dismissed on any device (the other closes its card). */
   reviewedCycles?: number;
+  /** Sequence mode (horario 2026-10-19): segments anchored to blockStartAt, the running one, cuts. */
+  blockStartAt?: string | null;
+  sequence?: SequenceSegment[] | null;
+  segmentIndex?: number | null;
+  cutCount?: number;
   createdAt: string;
   updatedAt: string;
 }

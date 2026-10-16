@@ -12,8 +12,10 @@ import {
   knownDistractingPackages,
   motivationalPhrases,
   normalizeWebsiteDomain,
+  type ScheduleExceptionLike,
 } from '@calendar/shared';
 import { pullSnapshot } from '../lib/sync/api';
+import { toExceptionLikes } from '../lib/plan/api';
 import { useBlockList } from './useBlockList';
 import { useFocusLockdownEnabled } from './useFocusLockdownEnabled';
 
@@ -51,6 +53,7 @@ export function useFocusBlocking(): FocusBlockingState {
   const [lockdownEnabled] = useFocusLockdownEnabled();
   const [schedules, setSchedules] = useState<SyncScheduleRecord[]>([]);
   const [completions, setCompletions] = useState<SyncScheduleCompletion[]>([]);
+  const [exceptions, setExceptions] = useState<ScheduleExceptionLike[]>([]);
   const [now, setNow] = useState(() => new Date());
 
   const refetchSchedules = useCallback(async () => {
@@ -58,6 +61,7 @@ export function useFocusBlocking(): FocusBlockingState {
       const snapshot = await pullSnapshot();
       setSchedules(snapshot.schedules);
       setCompletions(snapshot.scheduleCompletions ?? []);
+      setExceptions(toExceptionLikes(snapshot.scheduleExceptions));
     } catch {
       // Best-effort: a stale schedule list just means a slightly stale work-hours trigger, not a
       // crash -- the other two inputs (pomodoro, block list) still update independently.
@@ -89,7 +93,8 @@ export function useFocusBlocking(): FocusBlockingState {
 
   // A block marked "no puedo" today isn't work hours: nothing is blocked during it.
   const skipped = useMemo(() => skippedBlockKeys(completions), [completions]);
-  const activeWork = activeWorkSchedule(schedules, now, skipped);
+  // A block moved for today (horario 2026-10-19) is work hours at its new time.
+  const activeWork = activeWorkSchedule(schedules, now, skipped, exceptions);
   const isWorkHoursActive = activeWork !== null;
   // Left this block with "Salir": the list and the total lock lift so the phone can be used for
   // something else; social media and games stay blocked natively (WorkSocialLimit) until it ends.
@@ -152,8 +157,15 @@ export function useFocusBlocking(): FocusBlockingState {
         // Shown in the block popup: "estas en tu bloque de trabajo «Estudio B2»".
         label: schedule.label ?? undefined,
         id: schedule.id,
-        // Days it was marked "no puedo": not work hours natively either.
-        skip: [...skipped].filter((key) => key.startsWith(`${schedule.id}@`)).map((key) => key.split('@')[1]),
+        // Days it was marked "no puedo": not work hours natively either. Nor the days it was moved
+        // to another time: the native side only knows weekly windows, so the moved block is
+        // blocked from JS (activeWork above) while the app runs, not natively.
+        skip: [
+          ...[...skipped].filter((key) => key.startsWith(`${schedule.id}@`)).map((key) => key.split('@')[1]),
+          ...exceptions
+            .filter((e) => e.scheduleId === schedule.id && (e.startMinute != null || e.endMinute != null))
+            .map((e) => e.date),
+        ],
       })),
   );
   useEffect(() => {

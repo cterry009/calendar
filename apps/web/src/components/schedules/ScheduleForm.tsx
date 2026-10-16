@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AppButton, AppCard, H2, Label, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Checkbox, Input } from 'tamagui';
+import type { SequenceSegment } from '@calendar/shared';
 import { DAY_NAMES_ES, SCHEDULE_KIND_LABELS } from '../../lib/schedules/labels';
+import { SequenceEditor } from './SequenceEditor';
 import {
   SCHEDULE_KINDS,
   minuteToTimeValue,
@@ -45,6 +47,8 @@ interface ScheduleFormDraft {
   pomodoroMin: number;
   pomodorosPerChunk: number;
   chunks: number;
+  /** A sequence block (horario 2026-10-19): fixed start and end, segments edited one by one. */
+  sequence: SequenceSegment[] | null;
 }
 
 function defaultDraft(schedule?: SyncScheduleRecord): ScheduleFormDraft {
@@ -82,6 +86,7 @@ function defaultDraft(schedule?: SyncScheduleRecord): ScheduleFormDraft {
     pomodoroMin,
     pomodorosPerChunk,
     chunks,
+    sequence: schedule?.sequence ?? null,
   };
 }
 
@@ -135,6 +140,13 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
     };
   }, [draft.kind, draft.startTime, draft.pomodoroMin, shortBreakMin, longBreakMin, draft.pomodorosPerChunk, draft.chunks]);
 
+  const usesSequence = draft.kind === 'WORK' && !!draft.sequence;
+  const sequenceBlockMinutes = (() => {
+    const start = timeValueToMinute(draft.startTime);
+    const end = timeValueToMinute(draft.endTime);
+    return start !== null && end !== null && end > start ? end - start : null;
+  })();
+
   function setField<Key extends keyof ScheduleFormDraft>(field: Key, value: ScheduleFormDraft[Key]) {
     setDraft((current) => ({ ...current, [field]: value }));
   }
@@ -171,7 +183,20 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
       'pomodoroMin' | 'shortBreakMin' | 'longBreakMin' | 'pomodorosPerChunk' | 'chunks'
     >;
 
-    if (draft.kind === 'WORK') {
+    if (usesSequence) {
+      // The block keeps its fixed hours; the sequence fits inside them (trimmed at the end).
+      const parsedEnd = timeValueToMinute(draft.endTime);
+      if (parsedEnd === null || parsedEnd <= startMinute) {
+        setError('La hora de fin debe ser mayor que la hora de inicio.');
+        return;
+      }
+      if (!draft.sequence!.some((s) => s.tipo === 'foco')) {
+        setError('La secuencia necesita al menos un tramo de foco.');
+        return;
+      }
+      endMinute = parsedEnd;
+      planFields = { pomodoroMin: null, shortBreakMin: null, longBreakMin: null, pomodorosPerChunk: null, chunks: null };
+    } else if (draft.kind === 'WORK') {
       const planValues = [draft.pomodoroMin, shortBreakMin, longBreakMin, draft.pomodorosPerChunk, draft.chunks];
       if (planValues.some((value) => !Number.isInteger(value) || value < 1)) {
         setError('Los valores del plan de enfoque deben ser numeros enteros mayores o iguales a 1.');
@@ -229,6 +254,8 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
       label: draft.label.trim() || null,
       enabled: draft.enabled,
       ...planFields,
+      // Sent only when the block has (or had) one, so other blocks are left as they are.
+      ...(usesSequence ? { sequence: draft.sequence } : initialSchedule?.sequence ? { sequence: null } : {}),
     });
   }
 
@@ -286,7 +313,7 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
             />
           </YStack>
 
-          {draft.kind === 'WORK' ? (
+          {draft.kind === 'WORK' && !usesSequence ? (
             <YStack flex={1} minWidth={180} gap="$2">
               <Label htmlFor="schedule-end-time-computed">Hora fin (calculada)</Label>
               <XStack
@@ -318,7 +345,39 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
           )}
         </XStack>
 
-        {draft.kind === 'WORK' ? (
+        {usesSequence ? (
+          <AppCard backgroundColor="rgba(255,255,255,0.04)">
+            <YStack gap="$3">
+              <SequenceEditor
+                sequence={draft.sequence!}
+                blockMinutes={sequenceBlockMinutes}
+                onChange={(next) => setField('sequence', next)}
+              />
+              <AppButton type="button" variant="small" alignSelf="flex-start" onPress={() => setField('sequence', null)}>
+                Usar pomodoros iguales en vez de la secuencia
+              </AppButton>
+            </YStack>
+          </AppCard>
+        ) : null}
+
+        {draft.kind === 'WORK' && !usesSequence ? (
+          <AppButton
+            type="button"
+            variant="small"
+            alignSelf="flex-start"
+            onPress={() =>
+              setField('sequence', [
+                { tipo: 'foco', minutos: draft.pomodoroMin, etiqueta: 'Pomodoro 1' },
+                { tipo: 'pausa', minutos: 5, etiqueta: 'Pausa' },
+                { tipo: 'foco', minutos: draft.pomodoroMin, etiqueta: 'Pomodoro 2' },
+              ])
+            }
+          >
+            Usar una secuencia de tramos (horas fijas)
+          </AppButton>
+        ) : null}
+
+        {draft.kind === 'WORK' && !usesSequence ? (
           <AppCard backgroundColor="rgba(255,255,255,0.04)">
             <YStack gap="$3">
               <YStack gap="$1">
@@ -400,7 +459,7 @@ export function ScheduleForm({ mode, initialSchedule, isSubmitting, onSubmit, on
               </XStack>
 
               <Paragraph margin={0} size="$2" color="$muted">
-                Si el plan cruza el almuerzo (12:30 - 13:30), esa hora se salta automaticamente: no se asignan
+                Si el plan cruza el almuerzo (12:30 - 14:00), ese rato se salta automaticamente: no se asignan
                 pomodoros ni descansos ahi, y la hora de fin se estira lo necesario.
               </Paragraph>
 

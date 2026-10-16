@@ -29,6 +29,8 @@ export async function pullSnapshot(): Promise<PullSnapshotResult> {
         habitRecords: snapshot.habitRecords ?? [],
         // Older servers / cached snapshots predate it.
         scheduleCompletions: snapshot.scheduleCompletions ?? [],
+        scheduleExceptions: snapshot.scheduleExceptions ?? [],
+        studyPlan: snapshot.studyPlan ?? null,
         journalEntries: snapshot.journalEntries ?? [],
       };
       await saveCachedSnapshot(normalized);

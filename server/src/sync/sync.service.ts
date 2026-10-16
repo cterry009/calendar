@@ -16,6 +16,8 @@ import {
   HabitRecordSyncChangeDto,
   HabitSyncChangeDto,
   ScheduleCompletionSyncChangeDto,
+  ScheduleExceptionSyncChangeDto,
+  StudyPlanSyncChangeDto,
   JournalEntrySyncChangeDto,
   PomodoroSyncChangeDto,
   ScheduleSyncChangeDto,
@@ -53,6 +55,8 @@ export class SyncService {
       habitRecords,
       journalEntries,
       scheduleCompletions,
+      scheduleExceptions,
+      studyPlan,
     ] = await Promise.all([
       this.prisma.task.findMany({
         where: { userId, deletedAt: null },
@@ -85,6 +89,11 @@ export class SyncService {
       this.prisma.scheduleCompletion.findMany({
         where: { userId, date: { gte: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) } },
       }),
+      // From 60 days back too, plus every future one: exceptions are planned ahead.
+      this.prisma.scheduleException.findMany({
+        where: { userId, date: { gte: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) } },
+      }),
+      this.prisma.studyPlan.findUnique({ where: { userId } }),
     ]);
 
     return {
@@ -104,6 +113,15 @@ export class SyncService {
       habitRecords,
       journalEntries,
       scheduleCompletions,
+      scheduleExceptions,
+      studyPlan: studyPlan
+        ? {
+            id: studyPlan.id,
+            planData: studyPlan.planData,
+            updatedAt: studyPlan.updatedAt.toISOString(),
+            createdAt: studyPlan.createdAt.toISOString(),
+          }
+        : null,
       detoxPlan: detoxPlan
         ? {
             id: detoxPlan.id,
@@ -351,6 +369,30 @@ export class SyncService {
       }
     }
 
+    if (dto.scheduleExceptions?.length) {
+      result.applied.scheduleExceptions = [];
+      result.conflicts.scheduleExceptions = [];
+      for (const change of dto.scheduleExceptions) {
+        const outcome = await this.applyScheduleExceptionChange(userId, change);
+        this.bucketResult(result, 'scheduleExceptions', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('scheduleExceptions');
+        }
+      }
+    }
+
+    if (dto.studyPlan?.length) {
+      result.applied.studyPlan = [];
+      result.conflicts.studyPlan = [];
+      for (const change of dto.studyPlan) {
+        const outcome = await this.applyStudyPlanChange(userId, change);
+        this.bucketResult(result, 'studyPlan', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('studyPlan');
+        }
+      }
+    }
+
     if (dto.journalEntries?.length) {
       result.applied.journalEntries = [];
       result.conflicts.journalEntries = [];
@@ -522,6 +564,9 @@ export class SyncService {
       longBreakMin: change.longBreakMin ?? null,
       pomodorosPerChunk: change.pomodorosPerChunk ?? null,
       chunks: change.chunks ?? null,
+      // Not sent (a client from before 2026-10-15) keeps what the block has; null clears it.
+      category: change.category === undefined ? (existing?.category ?? null) : change.category,
+      sequence: jsonOrNull(change.sequence === undefined ? existing?.sequence : change.sequence),
       updatedAt: new Date(change.updatedAt),
     };
 
@@ -577,6 +622,8 @@ export class SyncService {
       exitCount: change.exitCount ?? 0,
       // Never goes down: a device that hasn't heard of a review yet mustn't undo it.
       reviewedCycles: Math.max(existing?.reviewedCycles ?? 0, change.reviewedCycles ?? 0),
+      // Sequence mode: a client that doesn't know these fields keeps them as they are.
+      ...sequenceSessionFields(change, existing),
       updatedAt: new Date(change.updatedAt),
     };
 
@@ -608,6 +655,7 @@ export class SyncService {
             pausedAt: change.pausedAt ? new Date(change.pausedAt) : null,
             exitCount: change.exitCount ?? 0,
             reviewedCycles: change.reviewedCycles ?? 0,
+            ...sequenceSessionFields(change, null),
             updatedAt: new Date(change.updatedAt),
           },
         });
@@ -1356,6 +1404,114 @@ export class SyncService {
     return { status: 'applied', clientKey: key, record };
   }
 
+  // Same keying as completions: idempotent by (scheduleId, date), so the phone and the PC moving
+  // the same block that day land on one row. Unlike a completion its content can change (moved
+  // again, another category), so a newer server row wins.
+  private async applyScheduleExceptionChange(
+    userId: string,
+    change: ScheduleExceptionSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const key = this.clientKey(change);
+    const date = change.date ? new Date(change.date) : null;
+
+    let existing = change.id
+      ? await this.prisma.scheduleException.findFirst({ where: { id: change.id, userId } })
+      : null;
+    if (!existing && change.clientId) {
+      existing = await this.prisma.scheduleException.findFirst({
+        where: { userId, clientId: change.clientId },
+      });
+    }
+    if (!existing && change.scheduleId && date) {
+      existing = await this.prisma.scheduleException.findFirst({
+        where: { userId, scheduleId: change.scheduleId, date },
+      });
+    }
+
+    if (change.deleted) {
+      if (!existing) {
+        return { status: 'skipped', clientKey: key };
+      }
+      if (this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+        return { status: 'conflict', clientKey: key, server: existing };
+      }
+      await this.prisma.scheduleException.delete({ where: { id: existing.id } });
+      return { status: 'applied', clientKey: key, record: { id: existing.id } };
+    }
+
+    if (!change.scheduleId || !date) {
+      throw new BadRequestException('Schedule exception changes require scheduleId and date');
+    }
+    if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+      return { status: 'conflict', clientKey: key, server: existing };
+    }
+    const data = {
+      category: change.category ?? null,
+      label: change.label ?? null,
+      startMinute: change.startMinute ?? null,
+      endMinute: change.endMinute ?? null,
+      updatedAt: new Date(change.updatedAt),
+    };
+    if (existing) {
+      const record = await this.prisma.scheduleException.update({
+        where: { id: existing.id },
+        data,
+      });
+      return { status: 'applied', clientKey: key, record };
+    }
+
+    const schedule = await this.prisma.schedule.findFirst({
+      where: { id: change.scheduleId, userId },
+    });
+    if (!schedule) {
+      return { status: 'skipped', clientKey: key };
+    }
+    const record = await this.prisma.scheduleException.create({
+      data: {
+        ...data,
+        userId,
+        scheduleId: change.scheduleId,
+        date,
+        clientId: change.clientId ?? null,
+      },
+    });
+    return { status: 'applied', clientKey: key, record };
+  }
+
+  // One per user, updatedAt-wins: the same handling as the detox plan.
+  private async applyStudyPlanChange(
+    userId: string,
+    change: StudyPlanSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const existing = await this.prisma.studyPlan.findUnique({ where: { userId } });
+    const key = change.id ?? existing?.id;
+
+    if (change.deleted) {
+      if (!existing) {
+        return { status: 'skipped', clientKey: key };
+      }
+      if (this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+        return { status: 'conflict', clientKey: key, server: existing };
+      }
+      await this.prisma.studyPlan.delete({ where: { id: existing.id } });
+      return { status: 'applied', clientKey: key, record: { id: existing.id } };
+    }
+
+    if (!change.planData || typeof change.planData !== 'object') {
+      throw new BadRequestException('Study plan changes require planData');
+    }
+    if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+      return { status: 'conflict', clientKey: key, server: existing };
+    }
+
+    const planData = change.planData as Prisma.InputJsonValue;
+    const updatedAt = new Date(change.updatedAt);
+    const record = existing
+      ? await this.prisma.studyPlan.update({ where: { id: existing.id }, data: { planData, updatedAt } })
+      : await this.prisma.studyPlan.create({ data: { userId, planData, updatedAt } });
+    return { status: 'applied', clientKey: key, record };
+  }
+
   private async findHabitRecord(userId: string, change: HabitRecordSyncChangeDto) {
     if (change.id) {
       const byId = await this.prisma.habitRecord.findFirst({ where: { id: change.id, userId } });
@@ -1443,6 +1599,35 @@ export class SyncService {
  * passes the "already stored?" check twice; the second insert then hits the primary key. It's a
  * duplicate, not a failure.
  */
+/** A JSON column's value for Prisma: null has to be spelled DbNull. */
+function jsonOrNull(value: unknown): Prisma.InputJsonValue | typeof Prisma.DbNull {
+  return value === null || value === undefined ? Prisma.DbNull : (value as Prisma.InputJsonValue);
+}
+
+/**
+ * A session's sequence-mode fields from a change. Fields the client didn't send (an app from before
+ * 2026-10-15 pausing a block the PC started) keep the stored value; cutCount never goes down.
+ */
+function sequenceSessionFields(
+  change: PomodoroSyncChangeDto,
+  existing: {
+    blockStartAt: Date | null;
+    sequence: Prisma.JsonValue | null;
+    segmentIndex: number | null;
+    cutCount: number;
+  } | null,
+) {
+  const blockStartAt =
+    change.blockStartAt === undefined ? existing?.blockStartAt : change.blockStartAt;
+  return {
+    blockStartAt: blockStartAt ? new Date(blockStartAt) : null,
+    sequence: jsonOrNull(change.sequence === undefined ? existing?.sequence : change.sequence),
+    segmentIndex:
+      change.segmentIndex === undefined ? (existing?.segmentIndex ?? null) : change.segmentIndex,
+    cutCount: Math.max(existing?.cutCount ?? 0, change.cutCount ?? 0),
+  };
+}
+
 function isDuplicateId(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 }

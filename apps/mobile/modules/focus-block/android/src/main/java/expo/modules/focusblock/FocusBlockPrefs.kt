@@ -50,8 +50,20 @@ internal object FocusBlockPrefs {
   // upgrade with no configured window yet behaves identically to before this task.
   private const val KEY_NIGHT_START_MINUTES = "night_start_minutes"
   private const val KEY_NIGHT_END_MINUTES = "night_end_minutes"
-  private const val DEFAULT_NIGHT_START_MINUTES = 22 * 60 + 30
+  // 22:00-08:00 since 2026-10-15 (was 22:30-08:00).
+  private const val DEFAULT_NIGHT_START_MINUTES = 22 * 60
   private const val DEFAULT_NIGHT_END_MINUTES = 8 * 60
+
+  // Exercise on waking (2026-10-15): after the night window ends, the night list stays blocked
+  // until a jog or WAKE_STEP_THRESHOLD steps taken since waking, at the latest until this time --
+  // when the 09:30 study block starts and focus blocking takes over. A deadline at or before the
+  // window's end turns the rule off (the old jog / 1000-steps-today morning unlock).
+  private const val KEY_WAKE_EXERCISE_END_MINUTES = "wake_exercise_end_minutes"
+  private const val DEFAULT_WAKE_EXERCISE_END_MINUTES = 9 * 60 + 30
+  // The day's step count as of the last check before the window ended: steps after it are "since
+  // waking". Updated on every check during the night, so steps walked at 3 a.m. don't count.
+  private const val KEY_WAKE_STEPS_DAY = "wake_steps_day"
+  private const val KEY_WAKE_STEPS_BASELINE = "wake_steps_baseline"
 
   private fun prefs(context: Context): SharedPreferences =
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -119,6 +131,33 @@ internal object FocusBlockPrefs {
 
   fun nightEndMinutes(context: Context): Int =
     prefs(context).getInt(KEY_NIGHT_END_MINUTES, DEFAULT_NIGHT_END_MINUTES)
+
+  fun wakeExerciseEndMinutes(context: Context): Int =
+    prefs(context).getInt(KEY_WAKE_EXERCISE_END_MINUTES, DEFAULT_WAKE_EXERCISE_END_MINUTES)
+
+  /**
+   * Steps since the night window ended today. Before it ends, records the day's count as the
+   * baseline (and returns 0); after, the count minus that baseline. With no check before the end
+   * (the phone untouched all night) the baseline is 0: every step today counts, which are
+   * the morning's anyway.
+   */
+  fun stepsSinceWake(context: Context, now: java.util.Calendar, nightEndMinutes: Int, stepsToday: Int): Int {
+    val today = String.format(
+      java.util.Locale.US,
+      "%04d-%02d-%02d",
+      now.get(java.util.Calendar.YEAR),
+      now.get(java.util.Calendar.MONTH) + 1,
+      now.get(java.util.Calendar.DAY_OF_MONTH),
+    )
+    val minute = now.get(java.util.Calendar.HOUR_OF_DAY) * 60 + now.get(java.util.Calendar.MINUTE)
+    val p = prefs(context)
+    if (minute < nightEndMinutes) {
+      p.edit().putString(KEY_WAKE_STEPS_DAY, today).putInt(KEY_WAKE_STEPS_BASELINE, stepsToday).apply()
+      return 0
+    }
+    val baseline = if (p.getString(KEY_WAKE_STEPS_DAY, null) == today) p.getInt(KEY_WAKE_STEPS_BASELINE, 0) else 0
+    return (stepsToday - baseline).coerceAtLeast(0)
+  }
 
   // Task 8.2: remembers whether the morning portion's jog/step unlock was still blocking as of
   // the last accessibility event, purely so FocusBlockAccessibilityService can detect the

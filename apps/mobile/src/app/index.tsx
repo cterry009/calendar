@@ -4,6 +4,7 @@ import { Link } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AgendaRow } from '../components/calendar/AgendaRow';
+import { UsageCategoriesCard } from '../components/screenTime/UsageCategoriesCard';
 import { useDayAgenda } from '../hooks/useDayAgenda';
 import { TaskRow } from '../components/calendar/TaskRow';
 import { HabitChecklistRow } from '../components/habits/HabitChecklistRow';
@@ -102,6 +103,8 @@ export default function HomeScreen() {
             </Paragraph>
           </YStack>
 
+          <UsageCategoriesCard />
+
           {/* flexBasis 140 forces a 2-per-row wrap on any screen narrower than ~600dp (4 * 140
               plus gaps never fits one line below that) -- a plain flex={1} 4-across row squeezed
               each label into ~50dp on a real phone, truncating "Dashboard"/"Pomodoro" to a single
@@ -116,6 +119,11 @@ export default function HomeScreen() {
               <Link href="/fitness" asChild>
                 <AppButton variant="ghost" flexGrow={1} flexBasis={140}>
                   Fitness
+                </AppButton>
+              </Link>
+              <Link href="/horario" asChild>
+                <AppButton variant="ghost" flexGrow={1} flexBasis={140}>
+                  Horario
                 </AppButton>
               </Link>
               <Link href="/calendar" asChild>

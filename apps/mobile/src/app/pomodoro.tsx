@@ -12,6 +12,7 @@ import { useCalendarData } from '../hooks/useCalendarData';
 import { blockTaskId, blockToday } from '../lib/blockPrompt/block';
 import { activeWorkSchedule } from '@calendar/shared';
 import { formatTimer } from '../lib/pomodoro/timer';
+import { SequenceTimeline } from '../components/pomodoro/SequenceTimeline';
 
 const PHASE_LABELS: Record<string, string> = {
   IDLE: 'En espera',
@@ -42,7 +43,7 @@ export default function PomodoroScreen() {
     cancel,
     reset,
   } = usePomodoro();
-  const { schedules, tasks, skipped, completeTask } = useCalendarData();
+  const { schedules, tasks, skipped, exceptions, completeTask } = useCalendarData();
   const { leave, comeBack, isOut, exits } = useBlockExit();
   const inBlock = Boolean(session?.active && session.scheduleId);
   const blockLabel = inBlock ? schedules.find((s) => s.id === session?.scheduleId)?.label : null;
@@ -108,7 +109,7 @@ export default function PomodoroScreen() {
   // one cycles focus/break until cancelled, which on the phone looked like a block that never ended.
   const startFocus = async () => {
     const now = new Date();
-    const work = activeWorkSchedule(schedules, now, skipped);
+    const work = activeWorkSchedule(schedules, now, skipped, exceptions);
     const block = work ? blockToday({ ...work, scheduleId: work.id }, tasks, now) : null;
     if (work && block && now < block.endAt) {
       const id = await startBlock({
@@ -192,6 +193,7 @@ export default function PomodoroScreen() {
                   {phrase}
                 </Text>
               ) : null}
+              <SequenceTimeline />
               {inBlock ? (
                 <Text color={exits > 0 ? '$warning' : '$muted'} fontSize="$3" fontWeight="600">
                   {exits === 0 ? 'Sin salidas en este bloque' : `Saliste ${exits} ${exits === 1 ? 'vez' : 'veces'} de este bloque`}

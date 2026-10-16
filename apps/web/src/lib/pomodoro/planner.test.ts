@@ -115,12 +115,13 @@ describe('generateFocusPlan', () => {
   });
 
   it('falls back to greedily packed pomodoros when no full chunk fits, and still skips the lunch window', () => {
-    // 12:15-14:10: too little available time (after lunch) for one full default chunk.
-    const plan = generateFocusPlan(12 * 60 + 15, 14 * 60 + 10, DEFAULT_FOCUS_PLAN_CONFIG);
+    // 12:15-14:40: too little available time (after lunch, 12:30-14:00 since 2026-10-15) for one
+    // full default chunk.
+    const plan = generateFocusPlan(12 * 60 + 15, 14 * 60 + 40, DEFAULT_FOCUS_PLAN_CONFIG);
 
     expect(plan).toEqual([
-      { type: 'excluded', startMinute: 12 * 60 + 30, endMinute: 13 * 60 + 30 },
-      { type: 'pomodoro', startMinute: 13 * 60 + 30, endMinute: 14 * 60 },
+      { type: 'excluded', startMinute: 12 * 60 + 30, endMinute: 14 * 60 },
+      { type: 'pomodoro', startMinute: 14 * 60, endMinute: 14 * 60 + 30 },
     ]);
   });
 

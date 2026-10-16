@@ -1,8 +1,9 @@
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Stack } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView } from 'react-native';
+import { Alert, Pressable, ScrollView, useWindowDimensions } from 'react-native';
 import { useDayAgenda } from '../hooks/useDayAgenda';
+import { ChangeTodaySheet } from '../components/calendar/ChangeTodaySheet';
 import { minuteLabel, type AgendaBlock } from '../lib/calendar/dayAgenda';
 import { DAY_ABBREVIATIONS_ES, isSameDay } from '../lib/calendar/utils';
 
@@ -50,10 +51,42 @@ function tint(color: string): string {
   return /^#[0-9a-fA-F]{6}$/.test(color) ? `${color}2e` : 'rgba(255,255,255,0.06)';
 }
 
+/**
+ * Columns for overlapping blocks (2026-10-15: "Ejercicio al despertar" and "Arreglarse" both 8-9
+ * printed on top of each other): each group of blocks that overlap shares the width, one column each.
+ */
+function overlapLanes(items: AgendaBlock[]): Map<string, { column: number; columns: number }> {
+  const sorted = [...items].sort((a, b) => a.startMinute - b.startMinute || a.endMinute - b.endMinute);
+  const result = new Map<string, { column: number; columns: number }>();
+  let group: AgendaBlock[] = [];
+  let groupEnd = -1;
+  let columnEnds: number[] = [];
+  const close = () => {
+    for (const item of group) result.set(item.id, { column: result.get(item.id)!.column, columns: columnEnds.length });
+    group = [];
+    columnEnds = [];
+  };
+  for (const item of sorted) {
+    if (item.startMinute >= groupEnd) close();
+    let column = columnEnds.findIndex((end) => end <= item.startMinute);
+    if (column === -1) column = columnEnds.push(0) - 1;
+    columnEnds[column] = item.endMinute;
+    result.set(item.id, { column, columns: 1 });
+    group.push(item);
+    groupEnd = Math.max(groupEnd, item.endMinute);
+  }
+  close();
+  return result;
+}
+
 export default function CalendarScreen() {
   const today = useMemo(() => new Date(), []);
   const [selectedDate, setSelectedDate] = useState(today);
-  const { blocks, isLoading, busyId, toggleDone, toggleSkip } = useDayAgenda(selectedDate);
+  const { blocks, isLoading, busyId, toggleDone, toggleSkip, setBlockCategory, moveBlock, swapBlocks } =
+    useDayAgenda(selectedDate);
+  // Timetable blocks (horario 2026-10-19): the "Cambiar hoy…" sheet, a change for this day only.
+  const [changing, setChanging] = useState<AgendaBlock | null>(null);
+  const changeToday = (block: AgendaBlock) => setChanging(block);
 
   // A work block: "hecho" or "no puedo hacer este bloque" (no prompt, overlay or blocking that
   // day). Anything already marked: undo it. Habits and rest blocks keep the one-tap toggle.
@@ -61,10 +94,13 @@ export default function CalendarScreen() {
     if (block.kind !== 'work') return void toggleDone(block);
     if (block.done) return void toggleDone(block);
     if (block.skipped) return void toggleSkip(block);
-    Alert.alert(block.title, block.when, [
+    const detail = [block.when, block.description, block.isException ? 'Cambiado solo este día' : null].filter(Boolean).join('\n');
+    Alert.alert(block.title, detail, [
       { text: 'No puedo hacer este bloque', onPress: () => void toggleSkip(block) },
       { text: 'Hecho', onPress: () => void toggleDone(block) },
-      { text: 'Cancelar', style: 'cancel' },
+      block.category
+        ? { text: 'Cambiar hoy…', onPress: () => changeToday(block) }
+        : { text: 'Cancelar', style: 'cancel' },
     ]);
   };
   const scrollRef = useRef<ScrollView>(null);
@@ -97,6 +133,8 @@ export default function CalendarScreen() {
 
   const background = blocks.filter((b) => b.kind === 'work' || b.kind === 'rest');
   const foreground = blocks.filter((b) => b.kind === 'habit' || b.kind === 'task');
+  const { width } = useWindowDimensions();
+  const lanes = useMemo(() => overlapLanes(foreground), [foreground]);
   const doneCount = blocks.filter((b) => b.target && b.done).length;
   const markable = blocks.filter((b) => b.target).length;
 
@@ -216,7 +254,7 @@ export default function CalendarScreen() {
                         renderLabel(block, style.color)
                       ) : (
                         <Text fontSize="$1" color={style.color} numberOfLines={1}>
-                          {style.label} · {minuteLabel(segment.startMinute)}
+                          {segment.label ?? style.label} · {minuteLabel(segment.startMinute)}
                         </Text>
                       )}
                     </YStack>
@@ -248,12 +286,21 @@ export default function CalendarScreen() {
 
           {foreground.map((block) => {
             const isHabit = block.kind === 'habit';
+            // Habits/tasks at the same time sit side by side instead of on top of each other.
+            const lane = lanes.get(block.id) ?? { column: 0, columns: 1 };
+            const laneWidth = (width - (GRID_LEFT + 24) - 12) / lane.columns;
             return (
               <Pressable
                 key={block.id}
                 disabled={!block.target || busyId === block.id}
                 onPress={() => mark(block)}
-                style={{ position: 'absolute', top: top(block.startMinute), left: GRID_LEFT + 24, right: 12, zIndex: 2 }}
+                style={{
+                  position: 'absolute',
+                  top: top(block.startMinute),
+                  left: GRID_LEFT + 24 + lane.column * laneWidth,
+                  width: laneWidth - (lane.columns > 1 ? 4 : 0),
+                  zIndex: 2,
+                }}
               >
                 <YStack
                   height={height(block.startMinute, block.endMinute)}
@@ -285,6 +332,14 @@ export default function CalendarScreen() {
           ) : null}
         </YStack>
       </ScrollView>
+      <ChangeTodaySheet
+        block={changing}
+        dayBlocks={blocks.filter((b) => b.kind === 'work')}
+        onClose={() => setChanging(null)}
+        onCategory={setBlockCategory}
+        onMove={moveBlock}
+        onSwap={swapBlocks}
+      />
     </YStack>
   );
 }

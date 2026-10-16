@@ -32,7 +32,13 @@ export function AgendaRow({
         <Text fontSize="$2" color="$muted">
           {KIND_LABEL[block.kind]} · {block.when}
           {block.skipped ? ' · no puedo hoy' : ''}
+          {block.isException ? ' · cambiado hoy' : ''}
         </Text>
+        {block.description ? (
+          <Text fontSize="$2" numberOfLines={2}>
+            {block.description}
+          </Text>
+        ) : null}
       </YStack>
       {onSkip && block.kind === 'work' && !block.done ? (
         <AppButton variant={block.skipped ? 'primary' : 'ghost'} disabled={busy} onPress={() => onSkip(block)}>

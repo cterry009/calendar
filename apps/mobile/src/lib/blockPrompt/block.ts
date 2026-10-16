@@ -1,4 +1,4 @@
-import { blockOnDay, currentStudySession, type AttentionProfile } from '@calendar/shared';
+import { blockOnDay, currentStudySession, type AttentionProfile, type SequenceSegment } from '@calendar/shared';
 import type { SyncTaskRecord } from '../calendar/types';
 
 /** Today (or `base`'s day) at a minute of the day, local time. */
@@ -20,12 +20,20 @@ export interface BlockToday {
   /** Its pomodoro and break: the rated tasks' profile, else the block's own configuration. */
   focusMin: number;
   breakMin: number;
-  timingSource: 'tasks' | 'schedule' | 'default';
+  timingSource: 'tasks' | 'schedule' | 'default' | 'sequence';
 }
 
 /** A WORK block on `day` (default today); same rules as the desktop (packages/shared blockOnDay). */
 export function blockToday(
-  block: { scheduleId: string; startMinute: number; endMinute: number; pomodoroMin?: number | null; shortBreakMin?: number | null },
+  block: {
+    scheduleId: string;
+    startMinute: number;
+    endMinute: number;
+    pomodoroMin?: number | null;
+    shortBreakMin?: number | null;
+    // A sequence block ends at its fixed time whatever its tasks (startBlock then runs the sequence).
+    sequence?: SequenceSegment[] | null;
+  },
   tasks: SyncTaskRecord[],
   day: Date = new Date(),
 ): BlockToday {

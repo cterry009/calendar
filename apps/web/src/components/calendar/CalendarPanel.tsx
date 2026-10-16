@@ -3,11 +3,14 @@ import { AppButton, AppCard, H2, Paragraph, YStack } from '@calendar/ui';
 import { useLanguage } from '../../context/LanguageContext';
 import { usePanel } from '../../context/PanelContext';
 import { usePomodoro } from '../../context/PomodoroContext';
+import { useSync } from '../../context/SyncContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
 import { useFitness } from '../../hooks/useFitness';
 import { useTasks } from '../../hooks/useTasks';
 import type { CalendarEvent, CalendarViewMode } from '../../lib/calendar/types';
 import { toggleEventDone, toggleEventSkipped } from '../../lib/calendar/completions';
+import { clearScheduleException, saveScheduleException } from '../../lib/plan/sync';
+import type { ExceptionChange } from './PlanBlockDetails';
 import {
   addDays,
   buildEventsForRange,
@@ -52,6 +55,7 @@ interface CalendarPanelProps {
 export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }: CalendarPanelProps) {
   const { t, locale } = useLanguage();
   const data = useCalendarData();
+  const { notifyEntityChanged } = useSync();
   const tasksData = useTasks();
   const fitnessData = useFitness();
   const pomodoro = usePomodoro();
@@ -82,6 +86,16 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
     await data.refetch();
   }
 
+  async function handleChangeException(change: ExceptionChange) {
+    if (change.kind === 'set') {
+      for (const exception of change.exceptions) await saveScheduleException(exception);
+    } else {
+      await clearScheduleException(change.scheduleId, change.date);
+    }
+    notifyEntityChanged('scheduleExceptions');
+    await data.refetch();
+  }
+
   async function handleStartFocusSegment(focusDurationMin: number, taskId?: string) {
     await pomodoro.start(taskId, { focusDurationMin });
     openPanel('pomodoro');
@@ -100,6 +114,8 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
           habits: data.habits,
           habitRecords: data.habitRecords,
           scheduleCompletions: data.scheduleCompletions,
+          scheduleExceptions: data.scheduleExceptions,
+          studyPlan: data.studyPlan,
         },
         range.start,
         range.end,
@@ -110,6 +126,8 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
       data.habits,
       data.pomodoroSessions,
       data.scheduleCompletions,
+      data.scheduleExceptions,
+      data.studyPlan,
       data.schedules,
       data.tasks,
       range.end,
@@ -189,6 +207,7 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
               isStartingFocus={pomodoro.isMutating}
               onToggleDone={handleToggleDone}
               onToggleSkipped={handleToggleSkipped}
+              onChangeException={handleChangeException}
             />
             <WeekView days={weekSummary} onSelectDay={selectDay} />
           </YStack>

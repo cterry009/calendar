@@ -31,7 +31,7 @@ const UNREVIEWED_POLL_MS = 15_000;
 
 export function useBlockFocus(): void {
   const { session, startBlock, pause, isLoading, remainingSeconds } = usePomodoro();
-  const { schedules, tasks, skipped, pomodoroSessions, isLoading: calendarLoading } = useCalendarData();
+  const { schedules, tasks, skipped, exceptions, pomodoroSessions, isLoading: calendarLoading } = useCalendarData();
   const [now, setNow] = useState(() => new Date());
   const busy = useRef(false);
 
@@ -82,7 +82,7 @@ export function useBlockFocus(): void {
 
   // What the overlay shows: the same status as the persistent notification.
   useEffect(() => {
-    const status = currentFocusStatus({ session, schedules, tasks, now, skipped });
+    const status = currentFocusStatus({ session, schedules, tasks, now, skipped, exceptions });
     const studyTask = session?.taskId ? tasks.find((t) => t.id === session.taskId) : undefined;
     setFocusOverlayState(
       session?.active && session.scheduleId
@@ -118,7 +118,7 @@ export function useBlockFocus(): void {
         : {},
     );
     // Pushed on phase changes and pauses, plus the 30 s tick for the phrase's minutes.
-  }, [session, schedules, tasks, now, skipped]);
+  }, [session, schedules, tasks, now, skipped, exceptions]);
 
   useEffect(() => {
     if (isLoading || calendarLoading || busy.current) return;
@@ -138,7 +138,7 @@ export function useBlockFocus(): void {
         }
 
         // 2. Start the block's pomodoro if it should be running and isn't.
-        const work = activeWorkSchedule(schedules, now, skipped);
+        const work = activeWorkSchedule(schedules, now, skipped, exceptions);
         if (!work || session?.active) return;
         const key = blockOccurrenceKey(work.id, now);
         if (await isBlockExited(key)) return;
@@ -161,13 +161,13 @@ export function useBlockFocus(): void {
         busy.current = false;
       }
     })();
-  }, [now, isLoading, calendarLoading, schedules, skipped, tasks, session, pomodoroSessions, pause, startBlock]);
+  }, [now, isLoading, calendarLoading, schedules, skipped, exceptions, tasks, session, pomodoroSessions, pause, startBlock]);
 }
 
 /** "Salir" and "Volver al bloque" from inside the app. */
 export function useBlockExit() {
   const { session, resume, startBlock } = usePomodoro();
-  const { schedules, tasks, skipped } = useCalendarData();
+  const { schedules, tasks, skipped, exceptions } = useCalendarData();
 
   // Asks why and whether to come back or give the block up (BlockExitSheet).
   const leave = useCallback(async () => {
@@ -183,7 +183,7 @@ export function useBlockExit() {
       return;
     }
     // Left before it started: start it now.
-    const work = activeWorkSchedule(schedules, now, skipped);
+    const work = activeWorkSchedule(schedules, now, skipped, exceptions);
     if (!work) return;
     await clearBlockExited(blockOccurrenceKey(work.id, now));
     const block = blockToday({ ...work, scheduleId: work.id }, tasks, now);
@@ -195,7 +195,7 @@ export function useBlockExit() {
       taskId: blockTaskId(block, work.label, tasks),
       timing: { focusMin: block.focusMin, breakMin: block.breakMin },
     });
-  }, [session, resume, startBlock, schedules, skipped, tasks]);
+  }, [session, resume, startBlock, schedules, skipped, exceptions, tasks]);
 
   return { leave, comeBack, isOut: !!session?.active && !!session.pausedAt, exits: session?.exitCount ?? 0 };
 }

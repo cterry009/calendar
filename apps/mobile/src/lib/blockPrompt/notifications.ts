@@ -1,4 +1,4 @@
-import { ATTENTION_PROFILE_SPECS, blockOccurrenceKey } from '@calendar/shared';
+import { ATTENTION_PROFILE_SPECS, blockOccurrenceKey, scheduleOnDate, type ScheduleExceptionLike } from '@calendar/shared';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import type { SyncScheduleRecord, SyncTaskRecord } from '../calendar/types';
@@ -113,6 +113,8 @@ export async function scheduleBlockPrompts(
   tasks: SyncTaskRecord[],
   /** Blocks marked "no puedo" for a day (blockOccurrenceKey): no prompt that day. */
   skipped: ReadonlySet<string> = new Set(),
+  /** One-day changes (horario 2026-10-19): a moved block is prompted at its new time. */
+  exceptions: ScheduleExceptionLike[] = [],
 ): Promise<void> {
   if (Platform.OS !== 'android') return;
   // A notification posted to a channel that doesn't exist yet is silently dropped.
@@ -131,8 +133,9 @@ export async function scheduleBlockPrompts(
   const jobs: Promise<unknown>[] = [];
   for (let offset = 0; offset < DAYS_AHEAD; offset++) {
     const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
-    for (const s of work) {
-      if (!s.daysOfWeek.includes(day.getDay())) continue;
+    for (const template of work) {
+      if (!template.daysOfWeek.includes(day.getDay())) continue;
+      const s = scheduleOnDate(template, exceptions, day);
       if (skipped.has(blockOccurrenceKey(s.id, day))) continue;
       const at = localDateAt(s.startMinute, day);
       if (at.getTime() <= now.getTime()) continue;

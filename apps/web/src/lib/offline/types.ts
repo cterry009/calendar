@@ -12,6 +12,8 @@ export type SyncEntityType =
   | 'habits'
   | 'habitRecords'
   | 'scheduleCompletions'
+  | 'scheduleExceptions'
+  | 'studyPlan'
   | 'journalEntries'
   | 'dailyGameTime'
   | 'dailyDesktopAppTime'
@@ -41,6 +43,8 @@ export interface SyncBatchBody {
   habits?: unknown[];
   habitRecords?: unknown[];
   scheduleCompletions?: unknown[];
+  scheduleExceptions?: unknown[];
+  studyPlan?: unknown[];
   journalEntries?: unknown[];
   dailyGameTime?: unknown[];
   dailyDesktopAppTime?: unknown[];

@@ -3,6 +3,7 @@ import {
   Activity,
   AppButton,
   BarChart3,
+  CalendarDays,
   Eyebrow,
   Heart,
   HelpCircle,
@@ -46,6 +47,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'nav.group.plan',
     links: [
+      { panel: 'horario', labelKey: 'nav.link.horario', Icon: CalendarDays },
       { panel: 'ritual', labelKey: 'nav.link.ritual', Icon: Sunrise },
       { panel: 'wellness', labelKey: 'nav.link.wellness', Icon: Heart },
       { panel: 'dashboard', labelKey: 'nav.link.dashboard', Icon: BarChart3 },

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AttentionProfileSchema, PomodoroStateSchema } from './enums.js';
+import { SequenceSegmentSchema } from './study-plan.js';
 
 export const PomodoroConfigSchema = z.object({
   focusDurationMin: z.number().int().min(1).default(25),
@@ -33,6 +34,12 @@ export const PomodoroSessionSchema = z.object({
   exitCount: z.number().int().min(0).optional(),
   // Focus pomodoros already rated or dismissed on any device (2026-10-07).
   reviewedCycles: z.number().int().min(0).optional(),
+  // Sequence mode (horario 2026-10-19): the block's segments, anchored to blockStartAt, and the
+  // one running. cutCount: times "cortar tramo" was used in this block.
+  blockStartAt: z.string().datetime().optional().nullable(),
+  sequence: z.array(SequenceSegmentSchema).optional().nullable(),
+  segmentIndex: z.number().int().min(0).optional().nullable(),
+  cutCount: z.number().int().min(0).optional(),
 });
 
 export type PomodoroConfig = z.infer<typeof PomodoroConfigSchema>;

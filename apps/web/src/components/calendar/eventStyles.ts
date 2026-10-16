@@ -1,4 +1,10 @@
+import { isPlanCategory, PLAN_CATEGORY_INFO } from '@calendar/shared';
 import type { CalendarEvent } from '../../lib/calendar/types';
+
+/** A plan category's color (horario 2026-10-19); null for blocks without one. */
+export function categoryColor(category: string | null | undefined): string | null {
+  return isPlanCategory(category) ? PLAN_CATEGORY_INFO[category].color : null;
+}
 import type { FocusPlanSegment } from '../../lib/pomodoro/planner';
 
 export const EVENT_TYPE_LABEL: Record<CalendarEvent['type'], string> = {

@@ -8,6 +8,7 @@ import {
   describeOccurrence,
   finishPomodoroPhrase,
   localDayKey,
+  currentSegment,
   nextBlockOccurrence,
   studyLineOf,
   studySessionLine,
@@ -236,6 +237,8 @@ export function BlockFocusOverlay() {
   const phraseSeed = `${session.id}:${session.completedCycles}:${session.state}`;
   const exitsLabel = exits === 0 ? 'Sin salidas en este bloque' : `Saliste ${exits} ${exits === 1 ? 'vez' : 'veces'} de este bloque`;
   const next = schedule ? nextBlockOccurrence(schedule, new Date()) : null;
+  // Sequence blocks (horario 2026-10-19): the running segment's own label says what it's for.
+  const segment = currentSegment(session);
 
   async function leave(reschedule: boolean) {
     if (!session?.scheduleId) return;
@@ -360,12 +363,22 @@ export function BlockFocusOverlay() {
         <Text fontWeight="700" style={{ fontVariantNumeric: 'tabular-nums' }}>
           {formatTimer(remaining)} · {schedule?.label ?? 'Bloque de trabajo'}
         </Text>
+        {segment ? (
+          <Text fontSize="$2" color="$accent" maxWidth={360}>
+            {segment.etiqueta}
+          </Text>
+        ) : null}
         {task ? (
           <Text fontSize="$2" color="$muted">
             {studySessionLine(task, session)}
           </Text>
         ) : null}
       </YStack>
+      {pomodoro.canCutSegment ? (
+        <AppButton variant="ghost" disabled={pomodoro.isMutating} onPress={() => void pomodoro.cutSegment()}>
+          Cortar tramo
+        </AppButton>
+      ) : null}
       <AppButton variant="ghost" disabled={pomodoro.isMutating} onPress={() => setAskingWhy(true)}>
         Salir
       </AppButton>

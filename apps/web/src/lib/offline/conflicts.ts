@@ -12,6 +12,8 @@ const ENTITY_LABELS: Record<SyncEntityType, string> = {
   habits: 'habitos',
   habitRecords: 'registros de habitos',
   scheduleCompletions: 'bloques hechos',
+  scheduleExceptions: 'cambios de un día en el horario',
+  studyPlan: 'plan de estudio',
   journalEntries: 'notas de habitos',
   dailyGameTime: 'tiempo de juego',
   dailyDesktopAppTime: 'tiempo por aplicacion',

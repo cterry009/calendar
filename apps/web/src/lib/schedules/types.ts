@@ -1,4 +1,6 @@
-﻿export type ScheduleKind = 'WORK' | 'REST';
+﻿import type { SequenceSegment } from '@calendar/shared';
+
+export type ScheduleKind = 'WORK' | 'REST';
 
 export interface SyncScheduleRecord {
   id: string;
@@ -13,6 +15,10 @@ export interface SyncScheduleRecord {
   longBreakMin: number | null;
   pomodorosPerChunk: number | null;
   chunks: number | null;
+  /** Plan category (horario 2026-10-19); absent on snapshots from older servers. */
+  category?: string | null;
+  /** The block's pomodoro sequence; wins over pomodoroMin & co. */
+  sequence?: SequenceSegment[] | null;
 }
 
 export interface ScheduleFormValues {
@@ -27,6 +33,9 @@ export interface ScheduleFormValues {
   longBreakMin: number | null;
   pomodorosPerChunk: number | null;
   chunks: number | null;
+  /** Left undefined, the block keeps its category / sequence (the server only writes sent fields). */
+  category?: string | null;
+  sequence?: SequenceSegment[] | null;
 }
 
 export const SCHEDULE_KINDS: ScheduleKind[] = ['WORK', 'REST'];

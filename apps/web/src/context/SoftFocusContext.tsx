@@ -5,8 +5,10 @@ import {
   blockSessionId,
   currentStudySession,
   isWithinRadius,
+  labelledSequenceFor,
   MIN_TRIMMED_FOCUS_MIN,
 } from '@calendar/shared';
+import { usePlan } from '../hooks/usePlan';
 import { useFocusTriggers } from '../hooks/useFocusTriggers';
 import { useSchedules } from '../hooks/useSchedules';
 import { useSkippedBlocks } from '../hooks/useSkippedBlocks';
@@ -65,6 +67,8 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
   const { tasks } = useTasks();
   // Blocks marked "no puedo hacer este bloque" today: not work hours at all.
   const skipped = useSkippedBlocks();
+  // A block moved for one day starts at its new time; its category picks the pomodoro labels.
+  const { plan, exceptions } = usePlan();
   const { enabledTriggers } = useFocusTriggers();
   const [manualSoftFocus, setManualSoftFocus] = useState<ManualSoftFocusState>({
     active: false,
@@ -173,7 +177,10 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
     }
   }, [manualRemainingSeconds, manualSoftFocus.active, stopManualFocus]);
 
-  const activeSchedule = useMemo(() => activeWorkSchedule(schedules, new Date(now), skipped), [schedules, now, skipped]);
+  const activeSchedule = useMemo(
+    () => activeWorkSchedule(schedules, new Date(now), skipped, exceptions),
+    [schedules, now, skipped, exceptions],
+  );
   const rawIsWorkHoursActive = activeSchedule !== null;
 
   // A dismissal only lasts for the remainder of the current work block: once we're no longer
@@ -207,8 +214,9 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
       profile: block.profile,
       taskId: block.tasks[0]?.id ?? currentStudySession(activeSchedule.label, tasks)?.id ?? null,
       timing: { focusMin: block.focusMin, breakMin: block.breakMin },
+      sequence: block.sequence ? labelledSequenceFor(block.sequence, activeSchedule.category, plan) : null,
     });
-  }, [now, pomodoro, activeSchedule, tasks]);
+  }, [now, pomodoro, activeSchedule, tasks, plan]);
 
   // Left this block with "Salir": the block list lifts until "Volver al bloque".
   const exitedThisBlock =

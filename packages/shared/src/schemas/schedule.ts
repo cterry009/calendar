@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ScheduleKindSchema } from './enums.js';
+import { SequenceSegmentSchema } from './study-plan.js';
 
 export const ScheduleSchema = z.object({
   id: z.string().optional(),
@@ -14,6 +15,10 @@ export const ScheduleSchema = z.object({
   longBreakMin: z.number().int().min(1).optional().nullable(),
   pomodorosPerChunk: z.number().int().min(1).max(12).optional().nullable(),
   chunks: z.number().int().min(1).max(5).optional().nullable(),
+  // Horario 2026-10-19: the plan category (estudio_b1, carrera, ...) and the block's pomodoro
+  // sequence; without a sequence the block runs pomodoroMin/shortBreakMin as before.
+  category: z.string().max(40).optional().nullable(),
+  sequence: z.array(SequenceSegmentSchema).max(40).optional().nullable(),
 });
 
 export const CreateScheduleSchema = ScheduleSchema.omit({ id: true });

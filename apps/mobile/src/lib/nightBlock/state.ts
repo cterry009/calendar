@@ -7,7 +7,8 @@ const NIGHT_BLOCK_WINDOW_KEY = 'calendar_night_block_window_v1';
 // floor so it can't be shrunk into something that no longer resembles "block overnight" (e.g. a
 // 20-minute window). 10 hours matches the original window's own ~9.5h with room either side.
 export const MIN_NIGHT_WINDOW_MINUTES = 10 * 60;
-export const DEFAULT_NIGHT_START_MINUTES = 22 * 60 + 30;
+// 22:00-08:00 since 2026-10-15 (was 22:30-08:00).
+export const DEFAULT_NIGHT_START_MINUTES = 22 * 60;
 export const DEFAULT_NIGHT_END_MINUTES = 8 * 60;
 
 export interface NightWindow {

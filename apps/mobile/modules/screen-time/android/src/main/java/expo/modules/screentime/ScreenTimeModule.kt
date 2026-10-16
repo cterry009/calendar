@@ -4,6 +4,7 @@ import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
@@ -66,7 +67,16 @@ private fun queryAppUsage(context: Context, startMillis: Long, endMillis: Long):
       (totalsByPackage[usageStats.packageName] ?: 0L) + usageStats.totalTimeInForeground
   }
 
+  // The app's name and whether Android files it as a game (2026-10-15, for the home screen's
+  // "juegos / redes / streaming" totals): the same game rule FocusBlockAccessibilityService uses to
+  // block games at night and during work, so what's counted as a game is what gets blocked as one.
+  val packageManager = context.packageManager
   return totalsByPackage.map { (packageName, totalTimeMs) ->
-    mapOf("packageName" to packageName, "totalTimeMs" to totalTimeMs)
+    val info = runCatching { packageManager.getApplicationInfo(packageName, 0) }.getOrNull()
+    @Suppress("DEPRECATION")
+    val isGame = info != null &&
+      (info.category == ApplicationInfo.CATEGORY_GAME || (info.flags and ApplicationInfo.FLAG_IS_GAME) != 0)
+    val label = info?.let { runCatching { packageManager.getApplicationLabel(it).toString() }.getOrNull() } ?: packageName
+    mapOf("packageName" to packageName, "totalTimeMs" to totalTimeMs, "label" to label, "isGame" to isGame)
   }
 }

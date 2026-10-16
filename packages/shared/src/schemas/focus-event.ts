@@ -18,6 +18,8 @@ export const FocusEventKindSchema = z.enum([
   'BLOCK_RESUMED',
   'BLOCK_SKIPPED',
   'BLOCK_EXIT_REASON',
+  // "Cortar tramo": a focus segment ended early, straight into the next pause.
+  'SEGMENT_CUT',
 ]);
 
 export const FocusEventSchema = z.object({

@@ -1,3 +1,5 @@
+import type { SequenceSegment } from '../plan/sequence.js';
+
 // Attention profiles (docs/planning/normas-de-atencion.md). A task is rated on two observable
 // traits, 0-3 each: R, how costly it is to get back into it after a pause, and C, how many ideas it
 // needs held at once. A fixed table turns (R, C) into one of three profiles, so a model only ever
@@ -98,6 +100,8 @@ export interface BlockTaskLike {
 }
 
 export interface BlockOnDay<T extends BlockTaskLike> {
+  /** The block's pomodoro sequence (horario 2026-10-19), unlabelled; null when it has none. */
+  sequence?: SequenceSegment[] | null;
   startAt: Date;
   /** The block's real end: 60 minutes for a mechanical one, the schedule's end otherwise. */
   endAt: Date;
@@ -111,7 +115,7 @@ export interface BlockOnDay<T extends BlockTaskLike> {
    * Where those come from: the rated tasks in it (their profile), the block's own configuration
    * (pomodoroMin / shortBreakMin, what the calendar draws), or the default profile.
    */
-  timingSource: 'tasks' | 'schedule' | 'default';
+  timingSource: 'tasks' | 'schedule' | 'default' | 'sequence';
 }
 
 /** The profile whose pomodoro is closest to a configured one, for naming it. */
@@ -128,7 +132,13 @@ function profileForFocusMinutes(focusMin: number): AttentionProfile {
  * placed in them yet.
  */
 export function blockOnDay<T extends BlockTaskLike>(
-  block: { startMinute: number; endMinute: number; pomodoroMin?: number | null; shortBreakMin?: number | null },
+  block: {
+    startMinute: number;
+    endMinute: number;
+    pomodoroMin?: number | null;
+    shortBreakMin?: number | null;
+    sequence?: SequenceSegment[] | null;
+  },
   tasks: T[],
   day: Date,
 ): BlockOnDay<T> {
@@ -147,6 +157,21 @@ export function blockOnDay<T extends BlockTaskLike>(
     })
     .sort((a, b) => a.scheduledAt!.localeCompare(b.scheduledAt!));
   const rated = inBlock.some((t) => !!t.attentionProfile);
+  // A block with its own sequence runs it, whatever its tasks are: the timetable decided the
+  // stretches, and the block always ends at its fixed time.
+  if (block.sequence?.length) {
+    const focusMin = block.sequence.find((s) => s.tipo === 'foco')?.minutos ?? ATTENTION_PROFILE_SPECS.LIGHT.focusMin;
+    return {
+      startAt,
+      endAt: at(block.endMinute),
+      tasks: inBlock,
+      profile: rated ? blockAttentionProfile(inBlock.map((t) => t.attentionProfile)) : profileForFocusMinutes(focusMin),
+      focusMin,
+      breakMin: block.sequence.find((s) => s.tipo === 'pausa')?.minutos ?? ATTENTION_PROFILE_SPECS.LIGHT.breakMin,
+      timingSource: 'sequence',
+      sequence: block.sequence,
+    };
+  }
   if (!rated && block.pomodoroMin) {
     const focusMin = block.pomodoroMin;
     return {

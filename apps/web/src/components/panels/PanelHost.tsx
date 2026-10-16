@@ -5,6 +5,7 @@ import { DashboardPage } from '../../pages/DashboardPage';
 import { DetoxPage } from '../../pages/DetoxPage';
 import { FitnessPage } from '../../pages/FitnessPage';
 import { HabitsPage } from '../../pages/HabitsPage';
+import { HorarioPage } from '../../pages/HorarioPage';
 import { PomodoroPage } from '../../pages/PomodoroPage';
 import { RitualPage } from '../../pages/RitualPage';
 import { SettingsPage } from '../../pages/SettingsPage';
@@ -13,6 +14,7 @@ import { WellnessPage } from '../../pages/WellnessPage';
 import { SlideOverPanel } from './SlideOverPanel';
 
 const PANEL_PAGES: Record<PanelId, ComponentType> = {
+  horario: HorarioPage,
   dashboard: DashboardPage,
   suggestions: SuggestionsPage,
   pomodoro: PomodoroPage,

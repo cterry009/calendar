@@ -1,4 +1,13 @@
-import { generateFocusPlan, resolveFocusPlanConfigWith, type FocusPlanSegment } from '@calendar/shared';
+import {
+  generateFocusPlan,
+  isPlanCategory,
+  occurrencesOnDate,
+  PLAN_CATEGORY_INFO,
+  resolveFocusPlanConfigWith,
+  type FocusPlanSegment,
+  type ScheduleExceptionLike,
+  type StudyPlanData,
+} from '@calendar/shared';
 import { dateKey, findRecordForDate } from '../habits/today';
 import type { SyncHabit, SyncHabitRecord } from '../habits/types';
 import type { SyncScheduleCompletion, SyncScheduleRecord, SyncTaskRecord } from './types';
@@ -29,8 +38,12 @@ export interface AgendaBlock {
   skipped?: boolean;
   /** What marking it done writes; null for things that can't be marked (tasks are completed in their own screen). */
   target: AgendaTarget | null;
-  /** Work blocks only: the pomodoro plan segments, for the grid. */
-  segments: FocusPlanSegment[];
+  /** Work blocks only: the pomodoro plan segments, for the grid; a sequence's carry their label. */
+  segments: Array<FocusPlanSegment & { label?: string }>;
+  /** Horario 2026-10-19: the block's category that day, its phase description, changed only today. */
+  category?: string | null;
+  description?: string | null;
+  isException?: boolean;
 }
 
 export function minuteLabel(minute: number): string {
@@ -49,6 +62,8 @@ export function buildDayAgenda(
     habitRecords: SyncHabitRecord[];
     scheduleCompletions: SyncScheduleCompletion[];
     tasks: SyncTaskRecord[];
+    exceptions?: ScheduleExceptionLike[];
+    plan?: StudyPlanData | null;
   },
 ): AgendaBlock[] {
   const day = date.getDay();
@@ -59,21 +74,35 @@ export function buildDayAgenda(
 
   const blocks: AgendaBlock[] = [];
 
-  for (const schedule of data.schedules) {
-    if (!schedule.enabled || !schedule.daysOfWeek.includes(day)) continue;
+  // Horario 2026-10-19: the template plus that day's exceptions (shared occurrencesOnDate, the
+  // same the desktop calendar uses), with the phase's description and the block's own sequence.
+  const byId = new Map(data.schedules.map((schedule) => [schedule.id, schedule]));
+  for (const occurrence of occurrencesOnDate(data.schedules, data.exceptions ?? [], data.plan ?? null, key)) {
+    const schedule = byId.get(occurrence.scheduleId)!;
     const isWork = schedule.kind === 'WORK';
+    const categoryColor = isPlanCategory(occurrence.category) ? PLAN_CATEGORY_INFO[occurrence.category].color : null;
     blocks.push({
       id: `schedule-${schedule.id}`,
       kind: isWork ? 'work' : 'rest',
-      title: schedule.label?.trim() || (isWork ? 'Bloque de trabajo' : 'Descanso'),
-      startMinute: schedule.startMinute,
-      endMinute: schedule.endMinute,
-      when: rangeLabel(schedule.startMinute, schedule.endMinute),
-      color: isWork ? '#4caf82' : '#e0b64c',
+      title: occurrence.title.trim() || (isWork ? 'Bloque de trabajo' : 'Descanso'),
+      startMinute: occurrence.startMinute,
+      endMinute: occurrence.endMinute,
+      when: rangeLabel(occurrence.startMinute, occurrence.endMinute),
+      color: categoryColor ?? (isWork ? '#4caf82' : '#e0b64c'),
       done: doneSchedules.has(schedule.id),
       skipped: skippedSchedules.has(schedule.id),
       target: { kind: 'schedule', scheduleId: schedule.id },
-      segments: isWork
+      category: occurrence.category,
+      description: occurrence.description,
+      isException: occurrence.isException,
+      segments: occurrence.segments
+        ? occurrence.segments.map((segment) => ({
+            type: segment.tipo !== 'pausa' ? 'pomodoro' : segment.minutos >= 15 ? 'long-break' : 'short-break',
+            startMinute: occurrence.startMinute + segment.startOffset,
+            endMinute: occurrence.startMinute + segment.endOffset,
+            label: segment.etiqueta,
+          }))
+        : isWork
         ? generateFocusPlan(
             schedule.startMinute,
             schedule.endMinute,

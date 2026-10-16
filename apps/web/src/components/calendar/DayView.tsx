@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { findFreeSlots } from '@calendar/shared';
 import { AppButton, AppCard, H2, H3, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { DayTimeGrid } from './DayTimeGrid';
-import { EVENT_TYPE_COLOR, EVENT_TYPE_LABEL } from './eventStyles';
+import { EVENT_TYPE_COLOR, EVENT_TYPE_LABEL, categoryColor } from './eventStyles';
+import { PlanBlockDetails, type ExceptionChange } from './PlanBlockDetails';
 import { FitnessForm } from '../fitness/FitnessForm';
 import { StatusCard } from '../StatusCard';
 import { QuickAddTask } from '../tasks/QuickAddTask';
@@ -62,6 +63,8 @@ interface DayViewProps {
   onToggleDone: (event: CalendarEvent) => Promise<void>;
   /** Work blocks: "no puedo hacer este bloque" that day. */
   onToggleSkipped?: (event: CalendarEvent) => Promise<void>;
+  /** Timetable blocks: a change for this day only (horario 2026-10-19). */
+  onChangeException?: (change: ExceptionChange) => Promise<void>;
 }
 
 function SkipToggle({ event, onToggle }: { event: CalendarEvent; onToggle: (event: CalendarEvent) => Promise<void> }) {
@@ -240,6 +243,7 @@ export function DayView({
   isStartingFocus,
   onToggleDone,
   onToggleSkipped,
+  onChangeException,
 }: DayViewProps) {
   const [openFitnessFormBlockId, setOpenFitnessFormBlockId] = useState<string | null>(null);
   const habitEvents = events.filter((event) => event.type === 'habit');
@@ -342,6 +346,7 @@ export function DayView({
         {blocks.map((block) => {
           const items = otherEvents.filter((event) => isWithinBlock(event, block));
           const isWork = block.type === 'work';
+          const isPlanBlock = isWork && Boolean(block.meta?.category || block.meta?.segments?.length);
           const freeSlot = isWork
             ? findBlockFreeSlot(block, items.filter((item) => item.type === 'task'), isSelectedDateToday)
             : null;
@@ -361,7 +366,7 @@ export function DayView({
                 <YStack flex={1} opacity={block.meta?.done || block.meta?.skipped ? 0.6 : 1}>
                   <Text
                     fontWeight="700"
-                    color={EVENT_TYPE_COLOR[block.type]}
+                    color={categoryColor(block.meta?.category) ?? EVENT_TYPE_COLOR[block.type]}
                     textDecorationLine={block.meta?.skipped ? 'line-through' : 'none'}
                   >
                     {block.meta?.done ? '✓ ' : ''}
@@ -377,7 +382,15 @@ export function DayView({
                 {isCompletable(block) && !block.meta?.skipped ? <DoneToggle event={block} onToggle={onToggleDone} /> : null}
               </XStack>
 
-              {isWork ? (
+              {isPlanBlock && onChangeException ? (
+                <PlanBlockDetails
+                  block={block}
+                  dayBlocks={blocks.filter((other) => other.type === 'work')}
+                  onChange={onChangeException}
+                />
+              ) : null}
+
+              {isWork && !block.meta?.segments?.length ? (
                 <FocusPlanSummary
                   block={block}
                   isToday={isSelectedDateToday}

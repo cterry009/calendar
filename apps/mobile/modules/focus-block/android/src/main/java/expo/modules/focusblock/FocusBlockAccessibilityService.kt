@@ -164,19 +164,14 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     }
 
     val now = Calendar.getInstance()
-    val morningEndMinutes = FocusBlockPrefs.nightEndMinutes(this)
+    // The morning stretch now runs until the exercise deadline (09:30), not the window's end.
+    val morningEndMinutes = maxOf(FocusBlockPrefs.nightEndMinutes(this), FocusBlockPrefs.wakeExerciseEndMinutes(this))
     if (!NightBlockRules.isInMorningPortion(now, morningEndMinutes)) {
       FocusBlockPrefs.setWasMorningBlocking(this, false)
       return
     }
 
-    val isBlockingNow = NightBlockRules.isNightListBlocking(
-      now,
-      FocusBlockPrefs.nightStartMinutes(this),
-      morningEndMinutes,
-      JogStatusReader.hasJoggedToday(this),
-      StepCountReader.dailySteps(this),
-    )
+    val isBlockingNow = nightListBlockingNow(now)
 
     if (FocusBlockPrefs.wasMorningBlocking(this) && !isBlockingNow) {
       FocusBlockPrefs.addPendingBlockEvent(this, null, "NIGHT", "NIGHT_UNLOCK")
@@ -204,16 +199,26 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     if (!FocusBlockPrefs.isNightEnabled(this)) return null
     if (pkg !in FocusBlockPrefs.nightBlockedPackages(this)) return null
 
-    val hasJoggedToday = JogStatusReader.hasJoggedToday(this)
+    return if (nightListBlockingNow()) "NIGHT" else null
+  }
+
+  /**
+   * The night list's rule right now, with exercise on waking (2026-10-15): every night check goes
+   * through here so apps, sites and the social/game rule agree, and so the steps-since-waking
+   * baseline is recorded on every check during the night.
+   */
+  private fun nightListBlockingNow(now: Calendar = Calendar.getInstance()): Boolean {
+    val nightEnd = FocusBlockPrefs.nightEndMinutes(this)
     val stepsToday = StepCountReader.dailySteps(this)
-    val blocking = NightBlockRules.isNightListBlocking(
-      Calendar.getInstance(),
+    return NightBlockRules.isNightListBlocking(
+      now,
       FocusBlockPrefs.nightStartMinutes(this),
-      FocusBlockPrefs.nightEndMinutes(this),
-      hasJoggedToday,
+      nightEnd,
+      JogStatusReader.hasJoggedToday(this),
       stepsToday,
+      FocusBlockPrefs.wakeExerciseEndMinutes(this),
+      FocusBlockPrefs.stepsSinceWake(this, now, nightEnd, stepsToday),
     )
-    return if (blocking) "NIGHT" else null
   }
 
   // ---- Work-hours social limit (WorkSocialLimit.kt) ----
@@ -312,14 +317,7 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     }
     if (!FocusBlockPrefs.isNightEnabled(this)) return null
     if (FocusBlockPrefs.nightBlockedDomains(this).none { WebsiteUsage.matches(domain, it) }) return null
-    val blocking = NightBlockRules.isNightListBlocking(
-      Calendar.getInstance(),
-      FocusBlockPrefs.nightStartMinutes(this),
-      FocusBlockPrefs.nightEndMinutes(this),
-      JogStatusReader.hasJoggedToday(this),
-      StepCountReader.dailySteps(this),
-    )
-    return if (blocking) "NIGHT" else null
+    return if (nightListBlockingNow()) "NIGHT" else null
   }
 
   private fun currentKeyboardPackage(): String? = runCatching {
@@ -393,15 +391,16 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     if (!FocusBlockPrefs.isNightEnabled(this) || !isSocialOrGame(pkg)) return false
     val now = Calendar.getInstance()
     val start = FocusBlockPrefs.nightStartMinutes(this)
-    val blocking = NightBlockRules.isNightListBlocking(
-      now,
-      start,
-      FocusBlockPrefs.nightEndMinutes(this),
-      JogStatusReader.hasJoggedToday(this),
-      StepCountReader.dailySteps(this),
-    )
-    if (blocking) {
-      blockAndExplain(pkg, "NIGHT", "es horario de bloqueo nocturno (desde las ${WorkSocialLimit.clock(start)})")
+    val nightEnd = FocusBlockPrefs.nightEndMinutes(this)
+    val exerciseEnd = FocusBlockPrefs.wakeExerciseEndMinutes(this)
+    if (nightListBlockingNow(now)) {
+      val reason =
+        if (NightBlockRules.isInWakeExercisePortion(now, nightEnd, exerciseEnd)) {
+          "primero el ejercicio: trota o camina ${NightBlockRules.WAKE_STEP_THRESHOLD} pasos y se desbloquea (o a las ${WorkSocialLimit.clock(exerciseEnd)})"
+        } else {
+          "es horario de bloqueo nocturno (desde las ${WorkSocialLimit.clock(start)})"
+        }
+      blockAndExplain(pkg, "NIGHT", reason)
       return true
     }
 

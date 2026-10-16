@@ -28,7 +28,7 @@ import { useCalendarData } from './useCalendarData';
 const RESCHEDULE_DELAY_MS = 2_000;
 
 export function useBlockPrompts(): void {
-  const { schedules, tasks, skipped, isLoading: calendarLoading, refetch } = useCalendarData();
+  const { schedules, tasks, skipped, exceptions, isLoading: calendarLoading, refetch } = useCalendarData();
   const { startBlock, isLoading: pomodoroLoading } = usePomodoro();
   const pending = useRef<Notifications.NotificationResponse[]>([]);
   const handled = useRef(new Set<string>());
@@ -45,9 +45,9 @@ export function useBlockPrompts(): void {
 
   useEffect(() => {
     if (Platform.OS !== 'android' || calendarLoading) return;
-    const timer = setTimeout(() => void scheduleBlockPrompts(schedules, tasks, skipped), RESCHEDULE_DELAY_MS);
+    const timer = setTimeout(() => void scheduleBlockPrompts(schedules, tasks, skipped, exceptions), RESCHEDULE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [schedules, tasks, skipped, calendarLoading]);
+  }, [schedules, tasks, skipped, exceptions, calendarLoading]);
 
   // The phone gets no live updates from the server, so a block or task changed on another device
   // would keep its old prompt until the app restarted. Re-pull whenever the app comes to the front.

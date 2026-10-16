@@ -37,7 +37,7 @@ export function setNightWindow(startMinutes: number, endMinutes: number): void {
 }
 
 export function getNightWindowStartMinutes(): number {
-  if (Platform.OS !== 'android') return 22 * 60 + 30;
+  if (Platform.OS !== 'android') return 22 * 60;
   return FocusBlockModule.getNightWindowStartMinutes();
 }
 

@@ -2,6 +2,7 @@ import { currentFocusStatus } from '@calendar/shared';
 import { useEffect, useMemo, useState } from 'react';
 import { usePomodoro } from '../../context/PomodoroContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
+import { usePlan } from '../../hooks/usePlan';
 import { isDesktop } from '../../lib/desktop';
 import { notifySystem } from '../../lib/desktop/notify';
 
@@ -37,6 +38,7 @@ function hhmm(d: Date): string {
 export function DesktopTrayBridge() {
   const { session, remainingSeconds, start, cancel, reset } = usePomodoro();
   const { schedules, tasks } = useCalendarData();
+  const { exceptions } = usePlan();
   const [tick, setTick] = useState(() => Date.now());
 
   // Rust tray -> pomodoro actions
@@ -71,7 +73,10 @@ export function DesktopTrayBridge() {
 
   // remainingSeconds changes every second while a pomodoro runs; tick does the same for a schedule.
   const now = useMemo(() => new Date(), [remainingSeconds, tick]);
-  const status = useMemo(() => currentFocusStatus({ session, schedules, tasks, now }), [session, schedules, tasks, now]);
+  const status = useMemo(
+    () => currentFocusStatus({ session, schedules, tasks, now, exceptions }),
+    [session, schedules, tasks, now, exceptions],
+  );
 
   // status -> tray labels and window title
   useEffect(() => {

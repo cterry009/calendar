@@ -1,8 +1,10 @@
 import {
   DEFAULT_POMODORO_CONFIG,
   blockSessionId,
+  canCutSegment,
   createBlockPomodoroSession,
   createPomodoroSession,
+  createSequenceBlockSession,
   getPhaseDurationMinutes,
   isBlockingPhase,
   isPhaseAbandoned,
@@ -10,6 +12,7 @@ import {
   transitionPomodoro,
   type AttentionProfile,
   type PomodoroEvent,
+  type SequenceSegment,
 } from '@calendar/shared';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ApiError } from '../lib/api';
@@ -42,6 +45,9 @@ interface PomodoroContextValue {
   pause: () => Promise<void>;
   /** "Volver al bloque". */
   resume: () => Promise<void>;
+  /** "Cortar tramo" (sequence blocks): end this focus segment and start the next pause now. */
+  cutSegment: () => Promise<void>;
+  canCutSegment: boolean;
   /**
    * Pomodoro `cycle` of `sessionId` was rated or dismissed here: recorded on the session so the
    * other device closes its card (2026-10-07).
@@ -58,6 +64,8 @@ export interface StartBlockOptions {
   taskId?: string | null;
   /** The block's pomodoro and break (blockOnDay); the profile's when omitted. */
   timing?: { focusMin: number; breakMin: number };
+  /** The block's sequence, labelled for its category (horario 2026-10-19); wins over timing. */
+  sequence?: SequenceSegment[] | null;
 }
 
 /** Which block a running session belongs to, for the events it logs. */
@@ -160,6 +168,10 @@ function withRecordMetadata(base: ReturnType<typeof createPomodoroSession>, fall
     pausedAt: base.pausedAt ?? null,
     exitCount: base.exitCount ?? 0,
     reviewedCycles: base.reviewedCycles ?? 0,
+    blockStartAt: base.blockStartAt ?? null,
+    sequence: base.sequence ?? null,
+    segmentIndex: base.segmentIndex ?? null,
+    cutCount: base.cutCount ?? 0,
     createdAt: fallback?.createdAt ?? nowIso,
     updatedAt: nowIso,
   };
@@ -279,7 +291,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   );
 
   const startBlock = useCallback(
-    async ({ scheduleId, blockStartAt, blockEndAt, profile, taskId, timing }: StartBlockOptions) => {
+    async ({ scheduleId, blockStartAt, blockEndAt, profile, taskId, timing, sequence }: StartBlockOptions) => {
       const id = blockSessionId(scheduleId, blockStartAt);
       // Already in this block but left it ("Salir"): starting it again is coming back.
       if (session?.active && session.id === id && session.pausedAt) {
@@ -292,7 +304,12 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       primePomodoroChime();
       // One session per block occurrence, the same id on the phone and here, so both starting the
       // same block land on one row (and one exit count).
-      const base = { ...createBlockPomodoroSession(id, profile, blockEndAt.toISOString(), timing), scheduleId };
+      const base = {
+        ...(sequence?.length
+          ? createSequenceBlockSession(id, profile, blockStartAt.toISOString(), blockEndAt.toISOString(), sequence)
+          : createBlockPomodoroSession(id, profile, blockEndAt.toISOString(), timing)),
+        scheduleId,
+      };
       const started = transitionPomodoro(base, { type: 'START', taskId: taskId ?? undefined });
       if (started === base) return null;
       const existing = session?.id === id ? session : null;
@@ -341,6 +358,10 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
 
   const resume = useCallback(async () => {
     await transitionSession({ type: 'RESUME' }, false);
+  }, [transitionSession]);
+
+  const cutSegment = useCallback(async () => {
+    await transitionSession({ type: 'CUT_SEGMENT' }, false);
   }, [transitionSession]);
 
   const markPomodoroReviewed = useCallback(
@@ -497,6 +518,9 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       reset,
       pause,
       resume,
+      cutSegment,
+      // Re-evaluated every tick (now): a segment can stop being cuttable as time passes.
+      canCutSegment: session ? canCutSegment(session) : false,
       markPomodoroReviewed,
       toggleNotifications,
     }),
@@ -516,6 +540,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       cancel,
       pause,
       resume,
+      cutSegment,
       markPomodoroReviewed,
       toggleNotifications,
     ],

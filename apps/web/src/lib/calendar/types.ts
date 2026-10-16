@@ -7,6 +7,9 @@ import type {
   SerotoninSession,
   HabitType,
   HabitRecordStatus,
+  SequenceSegment,
+  StudyPlanData,
+  TimedSegment,
 } from '@calendar/shared';
 
 export type CalendarViewMode = 'day' | 'week' | 'month';
@@ -48,6 +51,8 @@ export interface SyncSchedule {
   longBreakMin: number | null;
   pomodorosPerChunk: number | null;
   chunks: number | null;
+  category?: string | null;
+  sequence?: SequenceSegment[] | null;
 }
 
 export interface SyncPomodoroSession {
@@ -63,6 +68,10 @@ export interface SyncPomodoroSession {
   interrupted: boolean;
   completedCycles: number;
   taskId: string | null;
+  scheduleId?: string | null;
+  blockStartAt?: string | null;
+  cutCount?: number;
+  createdAt?: string;
 }
 
 export interface SyncFitnessEntry {
@@ -236,7 +245,30 @@ export interface SyncSnapshot {
   habitRecords: SyncHabitRecord[];
   journalEntries: SyncJournalEntry[];
   scheduleCompletions: SyncScheduleCompletion[];
+  /** Horario 2026-10-19; absent on older servers / cached snapshots. */
+  scheduleExceptions?: SyncScheduleException[];
+  studyPlan?: SyncStudyPlanRecord | null;
   syncedAt: string;
+}
+
+/** A one-off change to one block on one day (server ScheduleException). `date` is that day's UTC midnight. */
+export interface SyncScheduleException {
+  id: string;
+  scheduleId: string;
+  date: string;
+  category: string | null;
+  label: string | null;
+  startMinute: number | null;
+  endMinute: number | null;
+  clientId: string | null;
+  updatedAt: string;
+}
+
+export interface SyncStudyPlanRecord {
+  id: string;
+  planData: StudyPlanData;
+  updatedAt: string;
+  createdAt: string;
 }
 
 export interface CalendarEvent {
@@ -272,6 +304,12 @@ export interface CalendarEvent {
     skipped?: boolean;
     /** The day's HabitRecord id, so un-marking can delete it. */
     habitRecordId?: string;
+    /** Horario 2026-10-19: the block's category that day, its phase description, and its sequence. */
+    category?: string | null;
+    description?: string | null;
+    isException?: boolean;
+    segments?: TimedSegment[] | null;
+    sequenceWarning?: string | null;
   };
 }
 

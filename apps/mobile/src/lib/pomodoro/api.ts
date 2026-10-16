@@ -1,3 +1,4 @@
+import type { SequenceSegment } from '@calendar/shared';
 import { syncBatch, type SyncBatchResponse } from '../sync/api';
 import type { SyncPomodoroRecord } from './types';
 
@@ -22,6 +23,10 @@ export interface PomodoroSyncChangeDto {
   pausedAt?: string | null;
   exitCount?: number;
   reviewedCycles?: number;
+  blockStartAt?: string | null;
+  sequence?: SequenceSegment[] | null;
+  segmentIndex?: number | null;
+  cutCount?: number;
 }
 
 function buildPayloadFromSession(
@@ -44,6 +49,10 @@ function buildPayloadFromSession(
     | 'pausedAt'
     | 'exitCount'
     | 'reviewedCycles'
+    | 'blockStartAt'
+    | 'sequence'
+    | 'segmentIndex'
+    | 'cutCount'
   >,
 ): Omit<PomodoroSyncChangeDto, 'id' | 'updatedAt'> {
   return {
@@ -64,6 +73,10 @@ function buildPayloadFromSession(
     pausedAt: session.pausedAt ?? null,
     exitCount: session.exitCount ?? 0,
     reviewedCycles: session.reviewedCycles ?? 0,
+    blockStartAt: session.blockStartAt ?? null,
+    sequence: session.sequence ?? null,
+    segmentIndex: session.segmentIndex ?? null,
+    cutCount: session.cutCount ?? 0,
   };
 }
 

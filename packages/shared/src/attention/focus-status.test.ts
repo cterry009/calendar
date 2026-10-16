@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { currentFocusStatus, type FocusStatusSchedule } from './focus-status.js';
 import { createBlockPomodoroSession, transitionPomodoro } from '../pomodoro/state-machine.js';
 
@@ -16,7 +17,10 @@ describe('currentFocusStatus', () => {
   });
 
   it('shows the pomodoro phase, its end, the block and the task', () => {
+    // Started inside the block: a block that's already over can't be started.
+    jest.useFakeTimers({ now: at(9, 5) });
     const started = transitionPomodoro(createBlockPomodoroSession('s', 'DEEP', at(10, 30).toISOString()), { type: 'START', taskId: 't' });
+    jest.useRealTimers();
     const session = { ...started, startedAt: at(9, 5).toISOString() };
     const status = currentFocusStatus({ session, schedules: [b1], tasks, now: at(9, 20) });
     expect(status).toMatchObject({ kind: 'pomodoro', title: 'Enfoque · Profundo', text: 'Estudio B1 · 02 · Darboux · ciclo 1' });

@@ -11,7 +11,8 @@
 // **On by default here, unlike mobile.** Before this was configurable, desktop always enforced
 // NIGHT entries in the fixed 22:30-08:00 window. Defaulting to off would silently stop blocks the
 // user had already set up, so an unset value keeps the old behaviour.
-export const DEFAULT_NIGHT_START_MINUTES = 22 * 60 + 30;
+// 22:00-08:00 since 2026-10-15 (was 22:30-08:00).
+export const DEFAULT_NIGHT_START_MINUTES = 22 * 60;
 export const DEFAULT_NIGHT_END_MINUTES = 8 * 60;
 // 9.5h, not mobile's 10h: the default window itself is 22:30-08:00 = 9.5h, so a 10h floor would
 // reject re-saving the default (a quirk mobile's state.ts still has).

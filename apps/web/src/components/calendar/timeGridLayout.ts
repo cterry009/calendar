@@ -1,6 +1,6 @@
 import type { CalendarEvent } from '../../lib/calendar/types';
 import { generateFocusPlan, resolveFocusPlanConfig } from '../../lib/pomodoro/planner';
-import { EVENT_TYPE_COLOR, SEGMENT_COLOR, SEGMENT_LABEL } from './eventStyles';
+import { EVENT_TYPE_COLOR, SEGMENT_COLOR, SEGMENT_LABEL, categoryColor } from './eventStyles';
 
 export const ZOOM_MIN = 0.5;
 export const ZOOM_MAX = 2.5;
@@ -65,6 +65,28 @@ export function buildDayBars(events: CalendarEvent[]): GridBar[] {
   const consumedTaskIds = new Set<string>();
 
   for (const block of blocks) {
+    const segments = block.meta?.segments;
+    if (block.type === 'work' && segments?.length) {
+      // A block with its own sequence (horario 2026-10-19) is drawn as its segments, at their
+      // clock times, in its category's color. The block runs it on its own: no click-to-start.
+      const startMinute = minuteOfDay(block.start);
+      const color = categoryColor(block.meta?.category) ?? EVENT_TYPE_COLOR.work;
+      for (const segment of segments) {
+        const from = startMinute + segment.startOffset;
+        const to = startMinute + segment.endOffset;
+        result.push({
+          id: `${block.id}-segment-${segment.index}`,
+          label: segment.tipo === 'pausa' ? segment.etiqueta : `${segment.etiqueta}`,
+          detail: `${block.title} · ${minuteToLabel(from)} - ${minuteToLabel(to)}`,
+          startMinute: from,
+          endMinute: to,
+          color: segment.tipo === 'pausa' ? SEGMENT_COLOR['short-break'] : color,
+          lane: 'background',
+          done: block.meta?.done,
+        });
+      }
+      continue;
+    }
     if (block.type === 'work') {
       const config = resolveFocusPlanConfig({
         startMinute: minuteOfDay(block.start),

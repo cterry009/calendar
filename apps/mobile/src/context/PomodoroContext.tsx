@@ -1,7 +1,9 @@
 import {
   DEFAULT_POMODORO_CONFIG,
   blockSessionId,
+  canCutSegment,
   createBlockPomodoroSession,
+  createSequenceBlockSession,
   createPomodoroSession,
   getPhaseDurationMinutes,
   isBlockingPhase,
@@ -25,6 +27,7 @@ import { buildPomodoroPayload, syncPomodoroBatch } from '../lib/pomodoro/api';
 import { getRemainingSeconds } from '../lib/pomodoro/timer';
 import type { PomodoroConfigFormValues, SyncPomodoroRecord } from '../lib/pomodoro/types';
 import { pullSnapshot } from '../lib/sync/api';
+import { sequenceBlockFor } from '../lib/plan/api';
 
 interface PomodoroContextValue {
   session: SyncPomodoroRecord | null;
@@ -47,6 +50,9 @@ interface PomodoroContextValue {
   pause: (at?: string) => Promise<void>;
   /** "Volver al bloque". */
   resume: () => Promise<void>;
+  /** "Cortar tramo" (sequence blocks): end this focus segment and start the next pause now. */
+  cutSegment: () => Promise<void>;
+  canCutSegment: boolean;
   /**
    * Pomodoro `cycle` of `sessionId` was rated or dismissed here: recorded on the session so the
    * other device closes its card (2026-10-07).
@@ -164,6 +170,10 @@ function withRecordMetadata(
     pausedAt: base.pausedAt ?? null,
     exitCount: base.exitCount ?? 0,
     reviewedCycles: base.reviewedCycles ?? 0,
+    blockStartAt: base.blockStartAt ?? null,
+    sequence: base.sequence ?? null,
+    segmentIndex: base.segmentIndex ?? null,
+    cutCount: base.cutCount ?? 0,
     createdAt: fallback?.createdAt ?? nowIso,
     updatedAt: nowIso,
   };
@@ -299,7 +309,21 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       if (session?.active) return null;
       // One session per block occurrence, the same id on every device, so the phone and the PC
       // starting the same block at once land on one row instead of two.
-      const base = { ...createBlockPomodoroSession(id, profile, blockEndAt.toISOString(), timing), scheduleId };
+      // A block with a sequence (horario 2026-10-19) runs it, at that day's hours (an exception may
+      // have moved it); the callers don't need to know.
+      const sequenceBlock = await sequenceBlockFor(scheduleId, blockStartAt).catch(() => null);
+      const base = {
+        ...(sequenceBlock
+          ? createSequenceBlockSession(
+              id,
+              profile,
+              sequenceBlock.startAt.toISOString(),
+              sequenceBlock.endAt.toISOString(),
+              sequenceBlock.sequence,
+            )
+          : createBlockPomodoroSession(id, profile, blockEndAt.toISOString(), timing)),
+        scheduleId,
+      };
       const started = transitionPomodoro(base, { type: 'START', taskId: taskId ?? undefined });
       if (started === base) return null;
       const record = withRecordMetadata(started, session?.id === id ? session : null);
@@ -338,6 +362,10 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
 
   const resume = useCallback(async () => {
     await transitionSession({ type: 'RESUME' }, false);
+  }, [transitionSession]);
+
+  const cutSegment = useCallback(async () => {
+    await transitionSession({ type: 'CUT_SEGMENT' }, false);
   }, [transitionSession]);
 
   const markPomodoroReviewed = useCallback(
@@ -472,6 +500,8 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       reset,
       pause,
       resume,
+      cutSegment,
+      canCutSegment: session ? canCutSegment(session) : false,
       markPomodoroReviewed,
     }),
     [
@@ -490,6 +520,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       cancel,
       pause,
       resume,
+      cutSegment,
       markPomodoroReviewed,
     ],
   );

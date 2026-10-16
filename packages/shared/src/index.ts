@@ -24,3 +24,8 @@ export * from './analytics/build-suggestion-input.js';
 export * from './detox/index.js';
 export * from './habits/score.js';
 export * from './planning/study.js';
+export * from './plan/sequence.js';
+export * from './plan/horario.js';
+export * from './plan/plan.js';
+export * from './screenTime/usageCategories.js';
+export * from './plan/importBatch.js';

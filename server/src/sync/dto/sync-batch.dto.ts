@@ -6,6 +6,7 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsIn,
   IsInt,
   IsNumber,
   IsObject,
@@ -135,6 +136,21 @@ export class TaskSyncChangeDto {
   completedAt?: string;
 }
 
+// One segment of a block's pomodoro sequence (horario 2026-10-19).
+export class SequenceSegmentDto {
+  @IsIn(['foco', 'pausa', 'cierre'])
+  tipo!: 'foco' | 'pausa' | 'cierre';
+
+  @IsInt()
+  @Min(1)
+  @Max(600)
+  minutos!: number;
+
+  @IsString()
+  @MaxLength(200)
+  etiqueta!: string;
+}
+
 export class ScheduleSyncChangeDto {
   @IsOptional()
   @IsString()
@@ -205,6 +221,19 @@ export class ScheduleSyncChangeDto {
   @Min(1)
   @Max(5)
   chunks?: number;
+
+  // Plan category and pomodoro sequence (horario 2026-10-19); null clears them.
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  category?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(40)
+  @ValidateNested({ each: true })
+  @Type(() => SequenceSegmentDto)
+  sequence?: SequenceSegmentDto[] | null;
 }
 
 export class PomodoroSyncChangeDto {
@@ -296,6 +325,28 @@ export class PomodoroSyncChangeDto {
   @IsInt()
   @Min(0)
   reviewedCycles?: number;
+
+  // Sequence mode: segments anchored to blockStartAt, the running one, "cortar tramo" uses (max).
+  @IsOptional()
+  @IsDateString()
+  blockStartAt?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(40)
+  @ValidateNested({ each: true })
+  @Type(() => SequenceSegmentDto)
+  sequence?: SequenceSegmentDto[] | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  segmentIndex?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  cutCount?: number;
 }
 
 export class BlockListSyncChangeDto {
@@ -873,6 +924,74 @@ export class ScheduleCompletionSyncChangeDto {
   reason?: string | null;
 }
 
+// A one-off change to a block on one day (moved, or another category). Undo = deleted:true.
+// `date` is the local day (YYYY-MM-DD), same as ScheduleCompletion.
+export class ScheduleExceptionSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsOptional()
+  @IsString()
+  clientId?: string;
+
+  @IsDateString()
+  updatedAt!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  deleted?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  scheduleId?: string;
+
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  category?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  label?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1439)
+  startMinute?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(1440)
+  endMinute?: number | null;
+}
+
+// The phased study plan, one per user (like DetoxPlan).
+export class StudyPlanSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsDateString()
+  updatedAt!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  deleted?: boolean;
+
+  @ValidateIf((item) => !item.deleted)
+  @IsObject()
+  planData?: Record<string, unknown>;
+}
+
 export class JournalEntrySyncChangeDto {
   @IsOptional()
   @IsString()
@@ -1018,4 +1137,16 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => JournalEntrySyncChangeDto)
   journalEntries?: JournalEntrySyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ScheduleExceptionSyncChangeDto)
+  scheduleExceptions?: ScheduleExceptionSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => StudyPlanSyncChangeDto)
+  studyPlan?: StudyPlanSyncChangeDto[];
 }

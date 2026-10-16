@@ -6,6 +6,7 @@
   SyncHabit,
   SyncHabitRecord,
   SyncScheduleCompletion,
+  SyncScheduleException,
   SyncPomodoroSession,
   SyncSchedule,
   SyncSnapshot,
@@ -15,6 +16,8 @@
 import { describeTimeBlock, hasTimeBlock, timeBlockRange } from '../habits/timeBlock';
 import { DEFAULT_HABIT_COLOR } from '../habits/labels';
 import { dateKey, findRecordForDate } from '../habits/today';
+import { occurrencesOnDate, type StudyPlanData } from '@calendar/shared';
+import { toExceptionLikes } from '../plan/sync';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -149,7 +152,13 @@ function scheduleEventsForRange(
   rangeStart: Date,
   rangeEnd: Date,
   completions: SyncScheduleCompletion[] = [],
+  exceptionRows: SyncScheduleException[] = [],
+  plan: StudyPlanData | null = null,
 ): CalendarEvent[] {
+  // Horario 2026-10-19: each day's blocks are the template plus that day's exceptions, with the
+  // phase's description and the block's sequence (plan/plan.ts's occurrencesOnDate).
+  const exceptions = toExceptionLikes(exceptionRows);
+  const byId = new Map(schedules.map((schedule) => [schedule.id, schedule]));
   const doneKeys = new Set(
     completions.filter((c) => (c.status ?? 'DONE') === 'DONE').map((c) => `${c.scheduleId}:${dateKey(c.date)}`),
   );
@@ -160,20 +169,24 @@ function scheduleEventsForRange(
   for (let cursor = startOfDay(rangeStart); cursor <= rangeEnd; cursor = addDays(cursor, 1)) {
     const current = startOfDay(cursor);
 
-    for (const schedule of schedules) {
-      if (!schedule.enabled || !schedule.daysOfWeek.includes(current.getDay())) continue;
-
-      const start = minuteToDate(current, schedule.startMinute);
-      const end = minuteToDate(current, schedule.endMinute);
+    for (const occurrence of occurrencesOnDate(schedules, exceptions, plan, dateKey(current))) {
+      const schedule = byId.get(occurrence.scheduleId)!;
+      const start = minuteToDate(current, occurrence.startMinute);
+      const end = minuteToDate(current, occurrence.endMinute);
       if (!overlapsRange(start, end, rangeStart, rangeEnd)) continue;
 
       events.push({
         id: `schedule-${schedule.id}-${current.toISOString()}`,
         type: schedule.kind === 'WORK' ? 'work' : 'rest',
-        title: schedule.label ?? (schedule.kind === 'WORK' ? 'Bloque de trabajo' : 'Descanso'),
+        title: occurrence.title || (schedule.kind === 'WORK' ? 'Bloque de trabajo' : 'Descanso'),
         start,
         end,
         meta: {
+          category: occurrence.category,
+          description: occurrence.description,
+          isException: occurrence.isException,
+          segments: occurrence.segments,
+          sequenceWarning: occurrence.sequenceWarning,
           scheduleId: schedule.id,
           done: doneKeys.has(`${schedule.id}:${dateKey(current)}`),
           skipped: skippedKeys.has(`${schedule.id}:${dateKey(current)}`),
@@ -235,7 +248,7 @@ function habitEventsForRange(
 
 export function buildEventsForRange(
   snapshot: Pick<SyncSnapshot, 'tasks' | 'schedules' | 'pomodoroSessions' | 'fitnessEntries'> &
-    Partial<Pick<SyncSnapshot, 'habits' | 'habitRecords' | 'scheduleCompletions'>>,
+    Partial<Pick<SyncSnapshot, 'habits' | 'habitRecords' | 'scheduleCompletions' | 'scheduleExceptions' | 'studyPlan'>>,
   rangeStart: Date,
   rangeEnd: Date,
 ): CalendarEvent[] {
@@ -259,6 +272,8 @@ export function buildEventsForRange(
     normalizedStart,
     normalizedEnd,
     snapshot.scheduleCompletions,
+    snapshot.scheduleExceptions,
+    snapshot.studyPlan?.planData ?? null,
   );
   const fitnessEvents = snapshot.fitnessEntries
     .map(fitnessToEvent)

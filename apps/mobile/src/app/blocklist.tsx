@@ -309,9 +309,10 @@ export default function BlockListScreen() {
                 <Paragraph margin={0} color="$muted">
                   Bloquea automaticamente las apps de esta lista todas las noches, de{' '}
                   {formatNightWindowMinutes(nightWindow.startMinutes)} a {formatNightWindowMinutes(nightWindow.endMinutes)}.
-                  Si te despertas antes de que termine la ventana, siguen bloqueadas hasta que
-                  salgas a trotar, des 1000 pasos (si la deteccion de actividad/pasos esta activa),
-                  o hasta que termine la ventana -- lo que ocurra primero.
+                  Al despertar, primero el ejercicio: siguen bloqueadas hasta que salgas a trotar o
+                  camines 1500 pasos despues de las {formatNightWindowMinutes(nightWindow.endMinutes)}, y como
+                  maximo hasta las 09:30, cuando empieza el bloque de estudio (necesita la deteccion de
+                  actividad/pasos activa).
                 </Paragraph>
                 <XStack gap="$2">
                   <AppButton variant={nightEnabled ? 'primary' : 'ghost'} onPress={() => setNightEnabled(true)}>

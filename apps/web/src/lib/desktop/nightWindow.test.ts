@@ -29,9 +29,9 @@ describe('isWithinNightWindow', () => {
     expect(isWithinNightWindow(atTime(14, 0))).toBe(false);
   });
 
-  it('is active exactly at the start boundary (22:30) but not one minute before', () => {
-    expect(isWithinNightWindow(atTime(22, 30))).toBe(true);
-    expect(isWithinNightWindow(atTime(22, 29))).toBe(false);
+  it('is active exactly at the start boundary (22:00) but not one minute before', () => {
+    expect(isWithinNightWindow(atTime(22, 0))).toBe(true);
+    expect(isWithinNightWindow(atTime(21, 59))).toBe(false);
   });
 
   it('is inactive exactly at the end boundary (08:00) but active one minute before', () => {
@@ -47,7 +47,7 @@ describe('isWithinNightWindow', () => {
 
 describe('formatNightWindowMinutes', () => {
   it('formats the default window boundaries', () => {
-    expect(formatNightWindowMinutes(DEFAULT_NIGHT_START_MINUTES)).toBe('22:30');
+    expect(formatNightWindowMinutes(DEFAULT_NIGHT_START_MINUTES)).toBe('22:00');
     expect(formatNightWindowMinutes(DEFAULT_NIGHT_END_MINUTES)).toBe('08:00');
   });
 });

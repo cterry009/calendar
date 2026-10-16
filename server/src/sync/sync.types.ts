@@ -12,6 +12,8 @@ export type SyncEntityType =
   | 'habits'
   | 'habitRecords'
   | 'scheduleCompletions'
+  | 'scheduleExceptions'
+  | 'studyPlan'
   | 'journalEntries'
   | 'blockEvents'
   | 'focusEvents'

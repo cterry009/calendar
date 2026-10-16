@@ -134,7 +134,7 @@ export function BlockListForm({ mode, initialEntry, isSubmitting, onSubmit, onCa
               style={{ padding: 10, borderRadius: 14, ...fieldStyle }}
             >
               <option value="FOCUS">Bloqueo total (enfoque activo)</option>
-              <option value="NIGHT">Nocturno (22:30-08:00)</option>
+              <option value="NIGHT">Nocturno (22:00-08:00)</option>
             </select>
           </YStack>
 

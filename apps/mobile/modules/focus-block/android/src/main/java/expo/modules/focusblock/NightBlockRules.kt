@@ -27,6 +27,10 @@ internal object NightBlockRules {
   // if the RN process is dead, same as the jog check.
   const val STEP_UNLOCK_THRESHOLD = 1000
 
+  // Exercise on waking (2026-10-15): steps since the window ended that count as having moved. A
+  // brisk 15-minute walk; "1000 steps today" was reachable walking around the house.
+  const val WAKE_STEP_THRESHOLD = 1500
+
   private fun minutesSinceMidnight(now: Calendar): Int = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
 
   private fun isEveningPortion(now: Calendar, nightStartMinutes: Int): Boolean =
@@ -94,4 +98,35 @@ internal object NightBlockRules {
     } else {
       isMorningPortionBlocking(now, morningEndMinutes, hasJoggedToday, stepsToday)
     }
+
+  /**
+   * The rule with exercise on waking (2026-10-15): the evening as above; then, from midnight until
+   * [exerciseEndMinutes] (09:30), blocked until the user exercises -- a confirmed jog, or
+   * [WAKE_STEP_THRESHOLD] steps taken after the window ended (steps during the night don't count,
+   * so before the window's end only a jog unlocks). With [exerciseEndMinutes] at or before the
+   * window's end it's the plain rule above.
+   */
+  fun isNightListBlocking(
+    now: Calendar,
+    nightStartMinutes: Int,
+    morningEndMinutes: Int,
+    hasJoggedToday: Boolean,
+    stepsToday: Int,
+    exerciseEndMinutes: Int,
+    stepsSinceWake: Int,
+  ): Boolean {
+    if (exerciseEndMinutes <= morningEndMinutes) {
+      return isNightListBlocking(now, nightStartMinutes, morningEndMinutes, hasJoggedToday, stepsToday)
+    }
+    if (isEveningPortion(now, nightStartMinutes)) return true
+    val minute = minutesSinceMidnight(now)
+    if (minute >= exerciseEndMinutes || hasJoggedToday) return false
+    return !(minute >= morningEndMinutes && stepsSinceWake >= WAKE_STEP_THRESHOLD)
+  }
+
+  /** Past the night window but still inside the exercise-on-waking stretch. */
+  fun isInWakeExercisePortion(now: Calendar, morningEndMinutes: Int, exerciseEndMinutes: Int): Boolean {
+    val minute = minutesSinceMidnight(now)
+    return minute in morningEndMinutes until exerciseEndMinutes
+  }
 }

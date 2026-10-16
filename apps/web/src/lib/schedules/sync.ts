@@ -1,4 +1,5 @@
-﻿import { syncBatch } from '../offline/sync-client';
+﻿import type { SequenceSegment } from '@calendar/shared';
+import { syncBatch } from '../offline/sync-client';
 import type { ScheduleFormValues, SyncScheduleRecord } from './types';
 
 export interface ScheduleSyncChangeDto {
@@ -16,6 +17,8 @@ export interface ScheduleSyncChangeDto {
   longBreakMin?: number;
   pomodorosPerChunk?: number;
   chunks?: number;
+  category?: string | null;
+  sequence?: SequenceSegment[] | null;
 }
 
 interface SyncBatchResponse {
@@ -36,6 +39,9 @@ function buildUpsertPayload(values: ScheduleFormValues): Omit<ScheduleSyncChange
     longBreakMin: values.longBreakMin ?? undefined,
     pomodorosPerChunk: values.pomodorosPerChunk ?? undefined,
     chunks: values.chunks ?? undefined,
+    // Only when the form set them: otherwise the block keeps what it has.
+    ...(values.category !== undefined ? { category: values.category } : {}),
+    ...(values.sequence !== undefined ? { sequence: values.sequence } : {}),
   };
 }
 

@@ -3,6 +3,7 @@ import { AppButton, AppCard, Paragraph, Text, XStack, YStack } from '@calendar/u
 import { POMODORO_STATE_LABELS } from '../../lib/pomodoro/labels';
 import { formatTimer } from '../../lib/pomodoro/timer';
 import type { PomodoroConfigFormValues, SyncPomodoroRecord } from '../../lib/pomodoro/types';
+import { SequenceTimeline } from './SequenceTimeline';
 
 interface PomodoroTimerProps {
   session: SyncPomodoroRecord | null;
@@ -82,6 +83,8 @@ export function PomodoroTimer({
               ? `Duracion fase: ${phaseDurationMinutes ?? '-'} min`
               : `Se activa solo durante tu horario de trabajo (${config.focusDurationMin} min por defecto si lo inicias manualmente).`}
           </Paragraph>
+
+          <SequenceTimeline />
 
           <Paragraph margin={0} color={isBlocking ? '$warning' : '$muted'}>
             {isBlocking ? 'Bloqueo recomendado: activo en fase de enfoque.' : 'Bloqueo recomendado: inactivo.'}
