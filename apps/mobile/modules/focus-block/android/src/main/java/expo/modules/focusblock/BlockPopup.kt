@@ -92,15 +92,44 @@ internal object BlockPopup {
     )
   }
 
+  /**
+   * A question with two answers (2026-10-15: "¿Ya hiciste ejercicio?" the first time the phone is
+   * used in the morning). Either answer closes the card; [onAnswer] gets true for the first one.
+   */
+  fun showQuestion(
+    service: AccessibilityService,
+    title: String,
+    message: String,
+    yes: String,
+    no: String,
+    onAnswer: (Boolean) -> Unit,
+  ) {
+    showCard(
+      service,
+      title = title,
+      accentColor = "#4EE0A0",
+      message = message,
+      boxText = null,
+      footer = null,
+      button = yes,
+      onButton = { onAnswer(true) },
+      secondaryButton = no,
+      onSecondary = { onAnswer(false) },
+    )
+  }
+
   private fun showCard(
     service: AccessibilityService,
     title: String,
     accentColor: String,
     message: String,
-    boxText: String,
+    boxText: String?,
     footer: String?,
     button: String,
     pomodoro: Pair<Long, String>? = null,
+    onButton: (() -> Unit)? = null,
+    secondaryButton: String? = null,
+    onSecondary: (() -> Unit)? = null,
   ) {
     val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     dismiss(windowManager)
@@ -148,7 +177,7 @@ internal object BlockPopup {
         addView(text("para terminar este pomodoro", 14f, muted).apply { gravity = Gravity.CENTER_HORIZONTAL })
         if (finishLine.isNotBlank()) addView(text(finishLine, 16f, accent, bold = true).apply { gravity = Gravity.CENTER_HORIZONTAL })
       }
-      addView(
+      if (suggestion != null) addView(
         LinearLayout(service).apply {
           orientation = LinearLayout.VERTICAL
           setPadding(dp(14), dp(12), dp(14), dp(4))
@@ -172,10 +201,32 @@ internal object BlockPopup {
             cornerRadius = dp(24).toFloat()
             setColor(accent)
           }
-          setOnClickListener { dismiss(windowManager) }
+          setOnClickListener {
+            dismiss(windowManager)
+            onButton?.invoke()
+          }
         },
         LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(48)),
       )
+      secondaryButton?.let { label ->
+        addView(
+          Button(service).apply {
+            this.text = label
+            isAllCaps = false
+            setTextColor(body)
+            background = GradientDrawable().apply {
+              cornerRadius = dp(24).toFloat()
+              setColor(Color.TRANSPARENT)
+              setStroke(dp(1), muted)
+            }
+            setOnClickListener {
+              dismiss(windowManager)
+              onSecondary?.invoke()
+            }
+          },
+          LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(48)).apply { topMargin = dp(10) },
+        )
+      }
     }
 
     val root = FrameLayout(service).apply {

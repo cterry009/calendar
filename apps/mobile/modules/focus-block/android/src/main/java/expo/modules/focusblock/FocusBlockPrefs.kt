@@ -132,6 +132,16 @@ internal object FocusBlockPrefs {
   fun nightEndMinutes(context: Context): Int =
     prefs(context).getInt(KEY_NIGHT_END_MINUTES, DEFAULT_NIGHT_END_MINUTES)
 
+  // The day the morning "¿Ya hiciste ejercicio?" was asked (2026-10-15): once a day, the first
+  // time the phone is used after the night window.
+  private const val KEY_MORNING_ASKED_DAY = "morning_asked_day"
+
+  fun morningAskedDay(context: Context): String? = prefs(context).getString(KEY_MORNING_ASKED_DAY, null)
+
+  fun setMorningAskedDay(context: Context, day: String) {
+    prefs(context).edit().putString(KEY_MORNING_ASKED_DAY, day).apply()
+  }
+
   fun wakeExerciseEndMinutes(context: Context): Int =
     prefs(context).getInt(KEY_WAKE_EXERCISE_END_MINUTES, DEFAULT_WAKE_EXERCISE_END_MINUTES)
 

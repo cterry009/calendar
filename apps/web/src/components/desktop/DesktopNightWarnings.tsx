@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { pickActivitySuggestion } from '@calendar/shared';
 import { isDesktop } from '../../lib/desktop';
-import { formatNightWindowMinutes, getNightSettings, nightWarningDue } from '../../lib/desktop/nightWindow';
+import { formatNightWindowMinutes, getNightSettings, nightWarningDue, setNightWindow } from '../../lib/desktop/nightWindow';
+import { usePlan } from '../../hooks/usePlan';
 
 // "Bloqueo nocturno en 30 min": the half hour before the night window, every 15 minutes, warn that
 // social media and games are about to be blocked (the block itself is DesktopBlockingBridge adding
@@ -41,6 +42,15 @@ async function raiseWindow() {
 }
 
 export function DesktopNightWarnings() {
+  // The window lives in the synced plan, the same as the phone's (2026-10-15).
+  const { plan } = usePlan();
+  useEffect(() => {
+    const synced = plan?.nightWindow;
+    if (!synced) return;
+    const local = getNightSettings().window;
+    if (local.startMinutes !== synced.startMinutes || local.endMinutes !== synced.endMinutes) setNightWindow(synced);
+  }, [plan?.nightWindow?.startMinutes, plan?.nightWindow?.endMinutes]);
+
   const [active, setActive] = useState<{ minutesLeft: number; start: string; suggestion: string } | null>(null);
 
   useEffect(() => {

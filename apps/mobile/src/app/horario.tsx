@@ -10,11 +10,12 @@ import {
   weekProgress,
 } from '@calendar/shared';
 import { AppButton, AppCard, H1, Paragraph, Text, XStack, YStack } from '@calendar/ui';
-import { Stack } from 'expo-router';
+import { Link, Stack } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView } from 'react-native';
 import { Input } from 'tamagui';
 import { useCalendarData } from '../hooks/useCalendarData';
+import { pullSnapshot } from '../lib/sync/api';
 import { changePlanStart, importTimetable } from '../lib/plan/api';
 
 // Phone port of the desktop's Horario panel (apps/web/src/pages/HorarioPage.tsx, horario
@@ -35,6 +36,21 @@ export default function HorarioScreen() {
   useEffect(() => {
     if (plan) setStartInput(plan.startDate);
   }, [plan?.startDate]);
+
+  // This morning's log (2026-10-15): when the phone was first used after the night window and the
+  // answer to "¿Ya hiciste ejercicio?" (native BlockEvents, synced once the app opens).
+  const [morning, setMorning] = useState<{ firstUse: string | null; answer: boolean | null }>({ firstUse: null, answer: null });
+  useEffect(() => {
+    void pullSnapshot()
+      .then((snapshot) => {
+        const today = localDateKey(new Date());
+        const todays = (snapshot.blockEvents ?? []).filter((e) => localDateKey(new Date(e.occurredAt)) === today);
+        const first = todays.filter((e) => e.trigger === 'MORNING_FIRST_USE').sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))[0];
+        const answer = todays.find((e) => e.trigger === 'MORNING_EXERCISE_YES' || e.trigger === 'MORNING_EXERCISE_NO');
+        setMorning({ firstUse: first?.occurredAt ?? null, answer: answer ? answer.trigger === 'MORNING_EXERCISE_YES' : null });
+      })
+      .catch(() => undefined);
+  }, []);
 
   const week = plan ? planWeekOf(plan, localDateKey(new Date())) : 0;
   const shownWeek = plan ? Math.min(Math.max(week, 1), plan.weeks) : 1;
@@ -62,10 +78,19 @@ export default function HorarioScreen() {
     return false;
   }
 
+  // One entry for the timetable (2026-10-15: "Horario" and "Horarios" were two buttons on the
+  // home screen): the plan here, and the blocks themselves one tap away.
   const header = (
-    <Stack.Screen
-      options={{ title: 'Horario', headerShown: true, headerStyle: { backgroundColor: '#212e28' }, headerTintColor: '#f2f7f4' }}
-    />
+    <>
+      <Stack.Screen
+        options={{ title: 'Horario', headerShown: true, headerStyle: { backgroundColor: '#212e28' }, headerTintColor: '#f2f7f4' }}
+      />
+      <YStack paddingHorizontal="$6" paddingTop="$4" maxWidth={560} width="100%" alignSelf="center">
+        <Link href="/schedules" asChild>
+          <AppButton variant="ghost">Editar los bloques (horas, días, tramos)</AppButton>
+        </Link>
+      </YStack>
+    </>
   );
 
   if (!plan) {
@@ -114,6 +139,18 @@ export default function HorarioScreen() {
           <H1 margin={0}>{title}</H1>
           {phase ? <Paragraph margin={0} color="$muted">{phase.nombre}</Paragraph> : null}
         </YStack>
+
+        <AppCard>
+          <YStack gap="$1">
+            <Text fontWeight="700">Esta mañana</Text>
+            <Text color="$muted">
+              {morning.firstUse
+                ? `Primer uso del celular: ${new Date(morning.firstUse).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`
+                : 'Todavía sin registro de hoy.'}
+              {morning.answer === null ? '' : morning.answer ? ' · dijiste que ya hiciste ejercicio' : ' · dijiste que todavía no'}
+            </Text>
+          </YStack>
+        </AppCard>
 
         <AppCard>
           <YStack gap="$2">

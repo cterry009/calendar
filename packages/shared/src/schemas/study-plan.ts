@@ -35,6 +35,9 @@ export const StudyPlanDataSchema = z.object({
   pomodoros_sugeridos: z.record(z.array(z.string())),
   hitos: z.array(z.object({ semana: z.number().int().min(1), titulo: z.string(), categoria: PlanCategorySchema })),
   reglas_de_ajuste: z.array(z.string()),
+  nightWindow: z
+    .object({ startMinutes: z.number().int().min(0).max(1439), endMinutes: z.number().int().min(0).max(1439) })
+    .optional(),
 });
 
 /** A one-off change to one block on one day. */

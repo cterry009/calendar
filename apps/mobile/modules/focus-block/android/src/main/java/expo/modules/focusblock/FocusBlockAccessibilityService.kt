@@ -60,6 +60,7 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     // the jog/step unlock can happen while the user is in an allowed app (or the launcher), not
     // necessarily the exact moment they try to open a blocked one.
     checkNightUnlockTransition()
+    maybeAskMorningExercise()
 
     val foregroundPackage = event.packageName?.toString() ?: return
     trackForeground(foregroundPackage)
@@ -178,6 +179,47 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     }
 
     FocusBlockPrefs.setWasMorningBlocking(this, isBlockingNow)
+  }
+
+  /**
+   * The first time the phone is used after the night window (2026-10-15): logs that moment
+   * (MORNING_FIRST_USE, the day's "woke up and picked up the phone") and, while the exercise rule
+   * still blocks the night list, asks "¿Ya hiciste ejercicio?" with how many steps are done. The
+   * answer is logged (MORNING_EXERCISE_YES / _NO; JS ticks the "Ejercicio al despertar" habit on a
+   * yes) but doesn't unlock anything: only a jog or the steps do, as agreed.
+   */
+  private fun maybeAskMorningExercise() {
+    if (!FocusBlockPrefs.isNightEnabled(this)) return
+    val now = Calendar.getInstance()
+    val nightEnd = FocusBlockPrefs.nightEndMinutes(this)
+    val exerciseEnd = FocusBlockPrefs.wakeExerciseEndMinutes(this)
+    val minute = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+    // From the window's end until noon: a late riser is still asked, just without the block.
+    if (minute < nightEnd || minute >= 12 * 60) return
+    val today = String.format(
+      java.util.Locale.US,
+      "%04d-%02d-%02d",
+      now.get(Calendar.YEAR),
+      now.get(Calendar.MONTH) + 1,
+      now.get(Calendar.DAY_OF_MONTH),
+    )
+    if (FocusBlockPrefs.morningAskedDay(this) == today) return
+    FocusBlockPrefs.setMorningAskedDay(this, today)
+    FocusBlockPrefs.addPendingBlockEvent(this, null, "NIGHT", "MORNING_FIRST_USE")
+
+    val stepsToday = StepCountReader.dailySteps(this)
+    val stepsSinceWake = FocusBlockPrefs.stepsSinceWake(this, now, nightEnd, stepsToday)
+    val stillBlocked = nightListBlockingNow(now)
+    val message =
+      if (stillBlocked) {
+        "Llevas $stepsSinceWake de ${NightBlockRules.WAKE_STEP_THRESHOLD} pasos desde las ${WorkSocialLimit.clock(nightEnd)}. " +
+          "Redes y juegos se desbloquean al trotar o al completar los pasos (o a las ${WorkSocialLimit.clock(exerciseEnd)})."
+      } else {
+        "Llevas $stepsSinceWake pasos desde las ${WorkSocialLimit.clock(nightEnd)}."
+      }
+    BlockPopup.showQuestion(this, "¿Ya hiciste ejercicio?", message, "Sí, ya hice", "Todavía no") { yes ->
+      FocusBlockPrefs.addPendingBlockEvent(this, null, "NIGHT", if (yes) "MORNING_EXERCISE_YES" else "MORNING_EXERCISE_NO")
+    }
   }
 
   // Task 11.10/11.11/11.22: two independent trigger families, both consulted on every event.

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { AppState, Platform, type AppStateStatus } from 'react-native';
 import { drainPendingBlockEvents } from '../lib/focusBlock/api';
 import { syncBlockEventBatch } from '../lib/blockEvents/sync';
+import { recordWakeExercise } from '../lib/plan/api';
 
 // Task 8.2. Mounted once at the app root (_layout.tsx), same pattern as FocusBlockingBridge/
 // NightBlockingBridge -- drains whatever BlockEvent rows FocusBlockAccessibilityService logged
@@ -18,6 +19,10 @@ export function useBlockEvents(): void {
       const events = drainPendingBlockEvents();
       if (events.length > 0) {
         void syncBlockEventBatch(events);
+      }
+      // A yes to the morning "¿Ya hiciste ejercicio?" card ticks that day's exercise habit.
+      for (const event of events) {
+        if (event.trigger === 'MORNING_EXERCISE_YES') void recordWakeExercise(event.occurredAt).catch(() => undefined);
       }
     };
 

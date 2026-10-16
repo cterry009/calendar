@@ -75,8 +75,9 @@ describe('validateNightWindow', () => {
     expect(validateNightWindow({ startMinutes: 8 * 60, endMinutes: 20 * 60 }).ok).toBe(false);
   });
 
-  it('rejects a window shorter than 9.5 hours', () => {
-    expect(validateNightWindow({ startMinutes: 23 * 60, endMinutes: 8 * 60 }).ok).toBe(false);
+  it('rejects a window shorter than 8 hours (2026-10-15)', () => {
+    expect(validateNightWindow({ startMinutes: 23 * 60 + 30, endMinutes: 7 * 60 }).ok).toBe(false);
+    expect(validateNightWindow({ startMinutes: 23 * 60, endMinutes: 7 * 60 }).ok).toBe(true);
     expect(validateNightWindow({ startMinutes: 22 * 60, endMinutes: 8 * 60 }).ok).toBe(true);
   });
 });

@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useBlockList } from './useBlockList';
 import { useNightBlockEnabled } from './useNightBlockEnabled';
 import { useNightWindow } from './useNightWindow';
+import { useNightWindowFromPlan } from './useNightWindowFromPlan';
 import { setNightBlockingState, setNightWindow } from '../lib/focusBlock/api';
 
 // Matches useFocusBlocking.ts's WORK_HOURS_CHECK_INTERVAL_MS -- same reason, see the refetch
@@ -25,6 +26,7 @@ export function useNightBlocking(): void {
   const { entries, refetch } = useBlockList();
   const [enabled] = useNightBlockEnabled();
   const { startMinutes, endMinutes } = useNightWindow();
+  useNightWindowFromPlan();
 
   // Real bug found on-device (same class useFocusBlocking.ts already documents and works around
   // for the FOCUS list): this hook's own useBlockList() instance is separate from

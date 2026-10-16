@@ -1,3 +1,5 @@
+import { MIN_NIGHT_WINDOW_HOURS } from '@calendar/shared';
+
 // Desktop counterpart of apps/mobile/src/lib/nightBlock/state.ts. Deliberately a separate, small
 // implementation rather than sharing mobile's module: that one is entangled with native storage
 // and a native bridge this platform doesn't have. The math (is `now` inside a possibly-midnight-
@@ -14,9 +16,8 @@
 // 22:00-08:00 since 2026-10-15 (was 22:30-08:00).
 export const DEFAULT_NIGHT_START_MINUTES = 22 * 60;
 export const DEFAULT_NIGHT_END_MINUTES = 8 * 60;
-// 9.5h, not mobile's 10h: the default window itself is 22:30-08:00 = 9.5h, so a 10h floor would
-// reject re-saving the default (a quirk mobile's state.ts still has).
-export const MIN_NIGHT_WINDOW_MINUTES = 9 * 60 + 30;
+// 8 h since 2026-10-15 (user-requested; was 9.5 h here, 10 h on the phone), the same on both.
+export const MIN_NIGHT_WINDOW_MINUTES = MIN_NIGHT_WINDOW_HOURS * 60;
 
 const ENABLED_KEY = 'desktop_night_block_enabled_v1';
 const WINDOW_KEY = 'desktop_night_block_window_v1';

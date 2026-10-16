@@ -171,7 +171,7 @@ export interface SyncBlockEvent {
   id: string;
   identifier: string | null;
   scope: 'FOCUS' | 'NIGHT';
-  trigger: 'BLOCKED_OPEN_ATTEMPT' | 'NIGHT_UNLOCK';
+  trigger: 'BLOCKED_OPEN_ATTEMPT' | 'NIGHT_UNLOCK' | 'MORNING_FIRST_USE' | 'MORNING_EXERCISE_YES' | 'MORNING_EXERCISE_NO';
   occurredAt: string;
 }
 

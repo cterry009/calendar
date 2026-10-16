@@ -1,6 +1,8 @@
 import * as Crypto from 'expo-crypto';
 import {
   labelledSequenceFor,
+  localDateKey,
+  WAKE_EXERCISE_HABIT_TITLE,
   milestoneTaskChanges,
   timetableImportBatch,
   scheduleOnDate,
@@ -107,4 +109,34 @@ export async function changePlanStart(plan: StudyPlanData, startDate: string): P
   const next = { ...plan, startDate };
   const tasks = milestoneTaskChanges(next, snapshot.tasks, new Date().toISOString());
   await syncBatch({ studyPlan: [{ updatedAt: new Date().toISOString(), planData: next }], ...(tasks.length ? { tasks } : {}) });
+}
+
+/**
+ * "Sí, ya hice" on the morning "¿Ya hiciste ejercicio?" card (native, 2026-10-15): ticks the
+ * "Ejercicio al despertar" habit for that day. It doesn't unlock anything -- the jog / steps rule
+ * does that natively.
+ */
+export async function recordWakeExercise(occurredAt: string): Promise<void> {
+  const snapshot = (await getCachedSnapshot()) ?? (await pullSnapshot());
+  const habit = (snapshot.habits ?? []).find((h) => h.title === WAKE_EXERCISE_HABIT_TITLE && !h.archived);
+  if (!habit) return;
+  await syncBatch({
+    habitRecords: [
+      {
+        clientId: Crypto.randomUUID(),
+        updatedAt: new Date().toISOString(),
+        habitId: habit.id,
+        date: localDateKey(new Date(occurredAt)),
+        value: 1,
+        status: 'DONE',
+      },
+    ],
+  });
+}
+
+/** The night window edited on the phone goes into the plan, so the PC takes it too. */
+export async function saveNightWindowToPlan(window: { startMinutes: number; endMinutes: number }): Promise<void> {
+  const plan = planOf(await pullSnapshot());
+  if (!plan) return;
+  await syncBatch({ studyPlan: [{ updatedAt: new Date().toISOString(), planData: { ...plan, nightWindow: window } }] });
 }

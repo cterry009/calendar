@@ -121,7 +121,7 @@ export const TOURS: Record<TourId, TourDefinition> = {
         target: 'blocklist-scope-tabs',
         title: 'Dos listas independientes',
         description:
-          'Enfoque bloquea durante un pomodoro o un horario de trabajo activo. Nocturna bloquea automaticamente todas las noches en el horario que configures (minimo 10 horas) -- y al despertar sigue bloqueada hasta que salgas a trotar o camines 1500 pasos (como maximo hasta las 09:30). Son listas separadas: una app puede estar en una, en la otra, en las dos, o en ninguna.',
+          'Enfoque bloquea durante un pomodoro o un horario de trabajo activo. Nocturna bloquea automaticamente todas las noches en el horario que configures (minimo 8 horas, el mismo del computador) -- y al despertar sigue bloqueada hasta que salgas a trotar o camines 1500 pasos (como maximo hasta las 09:30). Son listas separadas: una app puede estar en una, en la otra, en las dos, o en ninguna.',
       },
       {
         target: 'blocklist-real',

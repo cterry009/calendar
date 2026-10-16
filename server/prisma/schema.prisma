@@ -75,6 +75,11 @@ enum FocusTriggerKind {
 enum BlockEventTrigger {
   BLOCKED_OPEN_ATTEMPT
   NIGHT_UNLOCK
+  // 2026-10-15: the first phone use after the night window, and the answer to the
+  // "¿Ya hiciste ejercicio?" card shown then (FocusBlockAccessibilityService.maybeAskMorningExercise).
+  MORNING_FIRST_USE
+  MORNING_EXERCISE_YES
+  MORNING_EXERCISE_NO
 }
 
 // Attention profile of a task or a pomodoro block (docs/planning/normas-de-atencion.md):

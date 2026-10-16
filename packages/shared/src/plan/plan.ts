@@ -28,11 +28,29 @@ export interface StudyPlanData {
   pomodoros_sugeridos: Partial<Record<PlanCategory, string[]>>;
   hitos: PlanMilestone[];
   reglas_de_ajuste: string[];
+  /**
+   * The night block window, the same on the phone and the PC (2026-10-15: each device kept its
+   * own and they drifted apart). Each device applies it when it changes and writes it back when
+   * edited there. Absent on plans saved before.
+   */
+  nightWindow?: NightWindowSetting;
 }
+
+export interface NightWindowSetting {
+  startMinutes: number;
+  endMinutes: number;
+}
+
+/** 22:00-08:00 (2026-10-15). */
+export const DEFAULT_PLAN_NIGHT_WINDOW: NightWindowSetting = { startMinutes: 22 * 60, endMinutes: 8 * 60 };
+
+/** The night block can't be shorter than this (8 h since 2026-10-15, was 10 h on the phone). */
+export const MIN_NIGHT_WINDOW_HOURS = 8;
 
 export function defaultStudyPlanData(startDate: string): StudyPlanData {
   return {
     startDate,
+    nightWindow: DEFAULT_PLAN_NIGHT_WINDOW,
     weeks: PLAN_WEEKS,
     fases: HORARIO_2026.fases,
     pomodoros_sugeridos: HORARIO_2026.pomodoros_sugeridos,

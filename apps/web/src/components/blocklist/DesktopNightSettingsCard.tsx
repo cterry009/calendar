@@ -3,6 +3,8 @@ import { Input } from 'tamagui';
 import { AppButton, AppCard, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { isDesktop } from '../../lib/desktop';
 import { useNightSettings } from '../../hooks/useNightWindowActive';
+import { usePlan } from '../../hooks/usePlan';
+import { saveStudyPlan } from '../../lib/plan/sync';
 import {
   MIN_NIGHT_WINDOW_MINUTES,
   formatNightWindowMinutes,
@@ -17,6 +19,7 @@ import {
 // browser enforces nothing, so offering the setting there would suggest otherwise.
 export function DesktopNightSettingsCard() {
   const { enabled, window: nightWindow } = useNightSettings();
+  const { plan } = usePlan();
   const [startInput, setStartInput] = useState(() => formatNightWindowMinutes(nightWindow.startMinutes));
   const [endInput, setEndInput] = useState(() => formatNightWindowMinutes(nightWindow.endMinutes));
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +48,8 @@ export function DesktopNightSettingsCard() {
     const result = setNightWindow({ startMinutes, endMinutes });
     setError(result.ok ? null : result.error);
     setJustSaved(result.ok);
+    // The phone takes the same window (it's kept in the synced plan).
+    if (result.ok && plan) void saveStudyPlan({ ...plan, nightWindow: { startMinutes, endMinutes } }).catch(() => undefined);
   }
 
   const durationHours =

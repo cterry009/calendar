@@ -59,7 +59,14 @@ export const FocusTriggerKindSchema = z.enum(['LOCATION', 'WIFI']);
 
 // Task 8.2: what kind of blocking moment a BlockEvent row records -- see BlockEvent's own doc
 // comment in schema.prisma for why NIGHT_UNLOCK has no associated app (identifier is optional).
-export const BlockEventTriggerSchema = z.enum(['BLOCKED_OPEN_ATTEMPT', 'NIGHT_UNLOCK']);
+export const BlockEventTriggerSchema = z.enum([
+  'BLOCKED_OPEN_ATTEMPT',
+  'NIGHT_UNLOCK',
+  // The first phone use after the night window, and the answer to "¿Ya hiciste ejercicio?".
+  'MORNING_FIRST_USE',
+  'MORNING_EXERCISE_YES',
+  'MORNING_EXERCISE_NO',
+]);
 
 export type DevicePlatform = z.infer<typeof DevicePlatformSchema>;
 export type TaskDifficulty = z.infer<typeof TaskDifficultySchema>;

@@ -15,6 +15,7 @@ import { useFocusLockdownEnabled } from '../hooks/useFocusLockdownEnabled';
 import { useNightBlockEnabled } from '../hooks/useNightBlockEnabled';
 import { useNightWindow } from '../hooks/useNightWindow';
 import { MIN_NIGHT_WINDOW_MINUTES, formatNightWindowMinutes, nightWindowDurationMinutes } from '../lib/nightBlock/state';
+import { saveNightWindowToPlan } from '../lib/plan/api';
 import {
   isAccessibilityServiceEnabled,
   isFullScreenIntentAllowed,
@@ -241,6 +242,8 @@ export default function BlockListScreen() {
       const result = await nightWindow.setWindow({ startMinutes, endMinutes });
       setWindowError(result.ok ? null : result.error);
       if (result.ok) {
+        // The PC takes the same window (it's kept in the synced plan).
+        void saveNightWindowToPlan({ startMinutes, endMinutes }).catch(() => undefined);
         flash('Horario guardado.');
         setWindowJustSaved(true);
         setTimeout(() => setWindowJustSaved(false), 2500);
@@ -325,7 +328,7 @@ export default function BlockListScreen() {
 
                 <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor="$borderColor">
                   <Text fontWeight="700" fontSize="$3">
-                    Horario (minimo 10 horas)
+                    Horario (minimo {MIN_NIGHT_WINDOW_MINUTES / 60} horas)
                   </Text>
                   <XStack gap="$2" alignItems="center" flexWrap="wrap">
                     <YStack gap="$1">

@@ -1,3 +1,4 @@
+import { MIN_NIGHT_WINDOW_HOURS } from '@calendar/shared';
 import { platformStorage } from '../platformStorage';
 
 const NIGHT_BLOCK_ENABLED_KEY = 'calendar_night_block_enabled_v1';
@@ -6,7 +7,8 @@ const NIGHT_BLOCK_WINDOW_KEY = 'calendar_night_block_window_v1';
 // Task 11.22: the window used to be a fixed 22:30-08:00 constant; now user-configurable, with a
 // floor so it can't be shrunk into something that no longer resembles "block overnight" (e.g. a
 // 20-minute window). 10 hours matches the original window's own ~9.5h with room either side.
-export const MIN_NIGHT_WINDOW_MINUTES = 10 * 60;
+// 8 h since 2026-10-15 (user-requested; was 10 h), the same on the PC.
+export const MIN_NIGHT_WINDOW_MINUTES = MIN_NIGHT_WINDOW_HOURS * 60;
 // 22:00-08:00 since 2026-10-15 (was 22:30-08:00).
 export const DEFAULT_NIGHT_START_MINUTES = 22 * 60;
 export const DEFAULT_NIGHT_END_MINUTES = 8 * 60;
@@ -118,7 +120,7 @@ export async function setNightWindowPersisted(next: NightWindow): Promise<{ ok: 
   const duration = nightWindowDurationMinutes(next.startMinutes, next.endMinutes);
   if (duration < MIN_NIGHT_WINDOW_MINUTES) {
     const hours = Math.round((duration / 60) * 10) / 10;
-    return { ok: false, error: `La ventana debe durar al menos 10 horas (dura ${hours}h con estos valores).` };
+    return { ok: false, error: `La ventana debe durar al menos ${MIN_NIGHT_WINDOW_HOURS} horas (dura ${hours}h con estos valores).` };
   }
 
   window = next;
