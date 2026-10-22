@@ -1,6 +1,7 @@
 import type {
   AttentionProfile,
   AttentionSource,
+  ExerciseAttempt,
   HabitRecordStatus,
   HabitType,
   SequenceSegment,
@@ -128,6 +129,11 @@ export interface SyncSnapshot {
   /** Horario 2026-10-19; absent on older servers / cached snapshots. */
   scheduleExceptions?: SyncScheduleException[];
   studyPlan?: { id: string; planData: StudyPlanData; updatedAt: string } | null;
+  /**
+   * Study game attempts, oldest first, without the generated statement and feedback (2026-10-21).
+   * Read-only on the phone for now; absent on older servers / cached snapshots (`?? []`).
+   */
+  exerciseAttempts?: ExerciseAttempt[];
   syncedAt: string;
 }
 

@@ -23,6 +23,7 @@ export interface SyncBatchPayload {
   scheduleCompletions?: unknown[];
   scheduleExceptions?: unknown[];
   studyPlan?: unknown[];
+  exerciseAttempts?: unknown[];
 }
 
 export interface SyncBatchResponse {

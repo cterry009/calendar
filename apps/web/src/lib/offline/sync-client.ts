@@ -32,6 +32,7 @@ export async function pullSnapshot(): Promise<PullSnapshotResult> {
         scheduleExceptions: snapshot.scheduleExceptions ?? [],
         studyPlan: snapshot.studyPlan ?? null,
         journalEntries: snapshot.journalEntries ?? [],
+        exerciseAttempts: snapshot.exerciseAttempts ?? [],
       };
       await saveCachedSnapshot(normalized);
       return { snapshot: normalized, fromCache: false };

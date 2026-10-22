@@ -91,9 +91,9 @@ untouched files (`notes/pensum.test.ts`, `plan/sequence.ts`); the new files are 
 
 ## 8. Phase 2: clients
 
-- [ ] 8.1 Web: `exerciseAttempts?` in `SyncSnapshot`, offline entity type and conflict label, `logExerciseAttempt` in `lib/studyGame/` (D24)
-- [ ] 8.2 Mobile: `exerciseAttempts?` in the snapshot type and the pull/batch types
-- [ ] 8.3 Web and mobile typecheck; web tests
+- [x] 8.1 Web: `exerciseAttempts?` in `SyncSnapshot`, offline entity type and conflict label, `logExerciseAttempt` in `lib/studyGame/` (D24)
+- [x] 8.2 Mobile: `exerciseAttempts?` in the snapshot type and the pull/batch types
+- [x] 8.3 Web and mobile typecheck; web tests
 
 ## 9. Phase 2: export and wrap-up
 

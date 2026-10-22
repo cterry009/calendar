@@ -1,5 +1,6 @@
 import type {
   AttentionProfile,
+  ExerciseAttempt,
   TaskDifficulty,
   TaskPriority,
   TaskStatus,
@@ -248,6 +249,11 @@ export interface SyncSnapshot {
   /** Horario 2026-10-19; absent on older servers / cached snapshots. */
   scheduleExceptions?: SyncScheduleException[];
   studyPlan?: SyncStudyPlanRecord | null;
+  /**
+   * Every graded exercise, oldest first, without the generated statement and feedback (study game,
+   * 2026-10-21). Absent on older servers / cached snapshots: read it with `exerciseAttemptsOf`.
+   */
+  exerciseAttempts?: ExerciseAttempt[];
   syncedAt: string;
 }
 
