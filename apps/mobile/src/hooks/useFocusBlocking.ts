@@ -149,7 +149,8 @@ export function useFocusBlocking(): FocusBlockingState {
   // WORK windows and the social list, pushed whenever the schedules change.
   const workWindowsKey = JSON.stringify(
     schedules
-      .filter((schedule) => schedule.enabled && schedule.kind === 'WORK')
+      // The flexible morning window (2026-10-22) isn't work hours: only its started blocks block, from JS.
+      .filter((schedule) => schedule.enabled && schedule.kind === 'WORK' && !schedule.flexibleBlocks)
       .map((schedule) => ({
         days: schedule.daysOfWeek,
         start: schedule.startMinute,

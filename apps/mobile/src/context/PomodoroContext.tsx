@@ -174,6 +174,10 @@ function withRecordMetadata(
     sequence: base.sequence ?? null,
     segmentIndex: base.segmentIndex ?? null,
     cutCount: base.cutCount ?? 0,
+    flexible: base.flexible ?? false,
+    plannedBlockMin: base.plannedBlockMin ?? null,
+    windowEndAt: base.windowEndAt ?? null,
+    focusMinutes: base.focusMinutes ?? 0,
     createdAt: fallback?.createdAt ?? nowIso,
     updatedAt: nowIso,
   };
@@ -420,7 +424,21 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // A flexible morning block's pause waits for the next focus, started on the PC (dynamic-study-
+    // blocks D5, D19): nothing to fire here until it's abandoned an hour past its end.
+    const flexiblePause = !!session.flexible && session.state !== 'FOCUS';
+    if (flexiblePause && !isPhaseAbandoned(session, now)) {
+      return;
+    }
+
     transitionInFlightRef.current = true;
+
+    if (flexiblePause) {
+      void transitionSession({ type: 'END_BLOCK' }, false, 'abandoned').finally(() => {
+        transitionInFlightRef.current = false;
+      });
+      return;
+    }
 
     if (isPhaseAbandoned(session, now)) {
       // The app was closed/backgrounded for far longer than this phase's own grace window --

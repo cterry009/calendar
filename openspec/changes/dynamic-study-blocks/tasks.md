@@ -35,8 +35,8 @@
 
 ## 5. Phone (minimal)
 
-- [ ] 5.1 Types and snapshot defaults; no auto-start for flexible schedules; blocking per D14
-- [ ] 5.2 A flexible session started on the PC shows the right timer and segment (relative sequence); typecheck
+- [x] 5.1 Types and snapshot defaults; no auto-start for flexible schedules; blocking per D14
+- [x] 5.2 A flexible session started on the PC shows the right timer and segment (relative sequence); typecheck
 
 ## 6. Checks and a real try
 

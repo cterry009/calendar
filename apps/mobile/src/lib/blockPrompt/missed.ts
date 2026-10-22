@@ -47,7 +47,8 @@ export function missedBlocks(input: {
     .map((s) => sessionSpan(s, nowMs))
     .filter((s): s is [number, number] => s !== null);
   const done = new Set(input.completions.map((c) => `${c.scheduleId}@${dateKey(c.date)}`));
-  const work = input.schedules.filter((s) => s.kind === 'WORK' && s.enabled);
+  // A flexible morning window (2026-10-22) has no start to miss: its blocks start on demand.
+  const work = input.schedules.filter((s) => s.kind === 'WORK' && s.enabled && !s.flexibleBlocks);
 
   const missed: MissedBlock[] = [];
   const first = new Date(input.since.getFullYear(), input.since.getMonth(), input.since.getDate());

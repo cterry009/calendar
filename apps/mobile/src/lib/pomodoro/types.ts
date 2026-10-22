@@ -27,6 +27,15 @@ export interface SyncPomodoroRecord {
   sequence?: SequenceSegment[] | null;
   segmentIndex?: number | null;
   cutCount?: number;
+  /**
+   * Flexible morning block (dynamic-study-blocks, 2026-10-22), started on the PC: relative sequence,
+   * the window's end, the check-in's length and the real focus done. Carried through untouched so a
+   * transition here (a pause, "Salir") keeps running it as a flexible block.
+   */
+  flexible?: boolean;
+  plannedBlockMin?: number | null;
+  windowEndAt?: string | null;
+  focusMinutes?: number;
   createdAt: string;
   updatedAt: string;
 }

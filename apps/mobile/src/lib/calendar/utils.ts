@@ -9,7 +9,7 @@ export function isSameDay(a: Date, b: Date): boolean {
 // 6.8's test scope); apps/web's own home page never had a live "is it work hours right now"
 // display, only SoftFocusContext consuming it, so this didn't exist on mobile until now.
 export function findActiveWorkSchedule<
-  T extends Pick<SyncScheduleRecord, 'kind' | 'daysOfWeek' | 'startMinute' | 'endMinute' | 'enabled'>,
+  T extends Pick<SyncScheduleRecord, 'kind' | 'daysOfWeek' | 'startMinute' | 'endMinute' | 'enabled' | 'flexibleBlocks'>,
 >(schedules: T[], now: Date): T | null {
   const nowMinute = now.getHours() * 60 + now.getMinutes();
   const day = now.getDay();
@@ -18,6 +18,8 @@ export function findActiveWorkSchedule<
       (schedule) =>
         schedule.enabled &&
         schedule.kind === 'WORK' &&
+        // The flexible morning window (2026-10-22) isn't work hours by itself.
+        !schedule.flexibleBlocks &&
         schedule.daysOfWeek.includes(day) &&
         nowMinute >= schedule.startMinute &&
         nowMinute < schedule.endMinute,

@@ -129,7 +129,8 @@ export async function scheduleBlockPrompts(
   );
 
   const now = new Date();
-  const work = schedules.filter((s) => s.kind === 'WORK' && s.enabled);
+  // No start prompt for a flexible morning window (2026-10-22): its blocks start on demand, on the PC.
+  const work = schedules.filter((s) => s.kind === 'WORK' && s.enabled && !s.flexibleBlocks);
   const jobs: Promise<unknown>[] = [];
   for (let offset = 0; offset < DAYS_AHEAD; offset++) {
     const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);

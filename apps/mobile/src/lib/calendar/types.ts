@@ -61,6 +61,8 @@ export interface SyncScheduleRecord {
   /** Horario 2026-10-19: plan category and pomodoro sequence; absent on older servers. */
   category?: string | null;
   sequence?: SequenceSegment[] | null;
+  /** The morning window (2026-10-22): blocks started on demand (on the PC); null for a fixed block. */
+  flexibleBlocks?: number | null;
 }
 
 // Mirrors apps/web/src/lib/calendar/types.ts's SyncHabit/SyncHabitRecord (task 11.4's mobile
