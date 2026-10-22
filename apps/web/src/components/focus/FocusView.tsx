@@ -2,18 +2,28 @@ import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   BLOCK_DONE_FOCUS_MIN,
+  BLOCK_MIN_MAX,
+  BLOCK_MIN_MIN,
+  BLOCK_MIN_STEP,
   FOCUS_MIN_MAX,
   FOCUS_MIN_MIN,
   FOCUS_MIN_STEP,
+  adjustPlannedBlock,
+  clampBlockMin,
   clampFocusMin,
   currentSegment,
+  diagnosisBand,
+  elapsedBlockMinutes,
   flexibleSegments,
+  focusMinFor,
+  lastFocusWasCut,
   nextFlexibleWork,
   pauseOverrunMinutes,
   studySessionLine,
 } from '@calendar/shared';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { usePomodoro } from '../../context/PomodoroContext';
+import { useDayBlocks } from '../../hooks/useMorningWindow';
 import { useSchedules } from '../../hooks/useSchedules';
 import { useTasks } from '../../hooks/useTasks';
 import { focusView, phaseKey, useFocusViewState } from '../../lib/focusView/store';
@@ -21,6 +31,8 @@ import { formatTimer } from '../../lib/pomodoro/timer';
 import { studySectionsOf } from '../../lib/studyGame/studySections';
 import type { SyncPomodoroRecord } from '../../lib/pomodoro/types';
 import { SequenceTimeline } from '../pomodoro/SequenceTimeline';
+import { DiagnosisSliders } from '../morning/Diagnosis';
+import { Stepper } from '../morning/FlexibleBlockStarter';
 import { TutorPanel } from '../tutor/TutorPanel';
 
 // The focus view (dynamic-study-blocks D17, user-requested 2026-10-22): while a block's pomodoro
@@ -54,12 +66,21 @@ export function useFocusViewVisible(
   );
 }
 
+/** The block as a budget (D25): planned, gone by and left, and the segments so far. */
 function FlexiblePlan({ session }: { session: SyncPomodoroRecord }) {
   const segments = flexibleSegments(session);
   const running = session.segmentIndex ?? -1;
   const focus = session.focusMinutes ?? 0;
+  const planned = session.plannedBlockMin ?? null;
+  const elapsed = Math.round(elapsedBlockMinutes(session));
   return (
     <YStack gap="$1" width="100%">
+      {planned ? (
+        <Text fontSize="$2" color="$muted">
+          Bloque planeado: {planned} min · llevas {elapsed} · quedan{' '}
+          {Math.max(0, planned - elapsed)}
+        </Text>
+      ) : null}
       {segments.map((segment) => (
         <XStack
           key={segment.index}
@@ -93,25 +114,66 @@ function FlexiblePlan({ session }: { session: SyncPomodoroRecord }) {
         {focus >= BLOCK_DONE_FOCUS_MIN
           ? ' · bloque cumplido'
           : ` · se cumple a los ${BLOCK_DONE_FOCUS_MIN}`}
-        {(session.cutCount ?? 0) > 0
-          ? ` · ${session.cutCount} ${session.cutCount === 1 ? 'tramo cortado' : 'tramos cortados'}`
-          : ''}
       </Text>
     </YStack>
   );
 }
 
-/** The pause screen's control: the next focus's length (20-40) and starting it, or the closing. */
+function hhmm(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * The pause screen (D22-D26): the next focus's diagnosis (0-100), the ±10 rule on the planned block
+ * with the last rating, and the proposal -- the band's focus, or less if only that fits -- which the
+ * user can move before starting it; or the closing once no focus fits or the window closed.
+ */
 function NextWork({ session }: { session: SyncPomodoroRecord }) {
   const { startFocus, endBlock, isMutating } = usePomodoro();
-  const next = nextFlexibleWork(session);
-  const [minutes, setMinutes] = useState(next?.minutes ?? 30);
+  const { lastRating, lastDiagnosis } = useFocusViewState();
+  const day = useDayBlocks();
   const key = phaseKey(session);
-  // A new pause proposes again (the plan's next focus, capped after cuts).
+  const [motivation, setMotivation] = useState<number | null>(lastDiagnosis?.motivation ?? null);
+  const [concentration, setConcentration] = useState<number | null>(
+    lastDiagnosis?.concentration ?? null,
+  );
+  const [touched, setTouched] = useState(false);
+  const [minutes, setMinutes] = useState<number | null>(null);
+  const [planned, setPlanned] = useState<number | null>(null);
+
+  // A new pause: a new diagnosis (starting from the last one) and a fresh proposal.
   useEffect(() => {
-    if (next?.tipo === 'foco') setMinutes(next.minutes);
+    setMotivation(lastDiagnosis?.motivation ?? null);
+    setConcentration(lastDiagnosis?.concentration ?? null);
+    setTouched(false);
+    setMinutes(null);
+    setPlanned(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
+
+  const answered = motivation !== null && concentration !== null;
+  const band = answered ? diagnosisBand(motivation, concentration) : null;
+  const rating =
+    lastRating?.sessionId === session.id && lastRating.cycle === session.completedCycles
+      ? lastRating.rating
+      : null;
+  const plannedBefore = session.plannedBlockMin ?? BLOCK_MIN_MAX;
+  const rule = band
+    ? adjustPlannedBlock({
+        planned: plannedBefore,
+        lastRating: rating,
+        band,
+        lastCut: lastFocusWasCut(session),
+        workedMin: elapsedBlockMinutes(session),
+      })
+    : null;
+  const plannedNow = planned ?? rule?.planned ?? plannedBefore;
+  const next = nextFlexibleWork(session, Date.now(), plannedNow);
+  const proposedFocus =
+    band && next?.tipo === 'foco' ? Math.min(focusMinFor(band), next.minutes) : null;
+  const focusNow = minutes ?? proposedFocus ?? 30;
+  const labels = day.suggestions.find((s) => s.schedule.id === session.scheduleId)?.focusLabels;
 
   if (!next) {
     return (
@@ -123,44 +185,100 @@ function NextWork({ session }: { session: SyncPomodoroRecord }) {
   if (next.tipo === 'cierre') {
     return (
       <YStack gap="$2" alignItems="center">
-        {next.closingOnly ? (
-          <Paragraph margin={0} color="$muted" textAlign="center">
-            Ya son más de las 12:00: no empieza otro foco, sigue el cierre.
-          </Paragraph>
-        ) : null}
-        <AppButton variant="primary" disabled={isMutating} onPress={() => void startFocus()}>
+        <Paragraph margin={0} color="$muted" textAlign="center">
+          {next.closingOnly && session.windowEndAt
+            ? `Ya son más de las ${hhmm(session.windowEndAt)}: no empieza otro foco, sigue el cierre.`
+            : 'Otro foco ya no cabe en el bloque planeado: sigue el cierre.'}
+        </Paragraph>
+        <AppButton
+          variant="primary"
+          disabled={isMutating}
+          onPress={() => void startFocus({ closing: true })}
+        >
           Empezar cierre ({next.minutes} min)
         </AppButton>
       </YStack>
     );
   }
+
+  async function start() {
+    if (!band || !rule) return;
+    focusView.setLastDiagnosis(motivation!, concentration!);
+    await startFocus({
+      minutes: focusNow,
+      plannedBlockMin: plannedNow,
+      label: labels?.[next!.focusesDone] ?? undefined,
+      diagnosis: {
+        motivation: motivation!,
+        concentration: concentration!,
+        band,
+        proposedFocusMin: proposedFocus ?? focusNow,
+        plannedBefore,
+        rule: rule.reason,
+      },
+    });
+  }
+
   return (
-    <YStack gap="$2" alignItems="center">
-      <XStack gap="$2" alignItems="center">
-        <AppButton
-          variant="ghost"
-          disabled={minutes <= FOCUS_MIN_MIN}
-          onPress={() => setMinutes(clampFocusMin(minutes - FOCUS_MIN_STEP))}
-        >
-          −
-        </AppButton>
-        <AppButton variant="primary" disabled={isMutating} onPress={() => void startFocus(minutes)}>
-          {`Empezar foco de ${minutes} min`}
-        </AppButton>
-        <AppButton
-          variant="ghost"
-          disabled={minutes >= FOCUS_MIN_MAX}
-          onPress={() => setMinutes(clampFocusMin(minutes + FOCUS_MIN_STEP))}
-        >
-          +
-        </AppButton>
-      </XStack>
-      {(session.cutCount ?? 0) > 0 &&
-      next.minutes < (session.sequence?.find((s) => s.tipo === 'foco')?.minutos ?? 0) ? (
-        <Text fontSize="$2" color="$muted">
-          Propuesta más corta porque cortaste un tramo.
+    <YStack gap="$3" alignItems="stretch" width="100%" maxWidth={420}>
+      <Text fontWeight="800" textAlign="center">
+        ¿Cómo llegas al foco {next.focusesDone + 1}?
+      </Text>
+      <DiagnosisSliders
+        motivation={motivation}
+        concentration={concentration}
+        onChange={(v) => {
+          setMotivation(v.motivation);
+          setConcentration(v.concentration);
+          setTouched(true);
+          setMinutes(null);
+          setPlanned(null);
+        }}
+      />
+      {band && rule ? (
+        <YStack gap="$2">
+          <Text fontSize="$2" color="$muted">
+            {rule.reason}
+            {rating === null
+              ? ' (sin calificación del pomodoro anterior)'
+              : ` · último pomodoro ${rating}/100`}
+          </Text>
+          <Stepper
+            label="Bloque"
+            value={plannedNow}
+            min={BLOCK_MIN_MIN}
+            max={BLOCK_MIN_MAX}
+            step={BLOCK_MIN_STEP}
+            unit="min"
+            onChange={(v) => setPlanned(clampBlockMin(v))}
+          />
+          <Stepper
+            label="Este foco"
+            value={focusNow}
+            min={FOCUS_MIN_MIN}
+            max={FOCUS_MIN_MAX}
+            step={FOCUS_MIN_STEP}
+            unit="min"
+            onChange={(v) => setMinutes(clampFocusMin(v))}
+          />
+          <AppButton
+            variant="primary"
+            disabled={isMutating || !touched}
+            onPress={() => void start()}
+          >
+            {`Empezar foco de ${focusNow} min`}
+          </AppButton>
+          {!touched ? (
+            <Text fontSize="$1" color="$muted" textAlign="center">
+              Mueve los deslizadores (aunque sea para confirmar) para empezar.
+            </Text>
+          ) : null}
+        </YStack>
+      ) : (
+        <Text fontSize="$2" color="$muted" textAlign="center">
+          Da tu diagnóstico para ver el siguiente foco.
         </Text>
-      ) : null}
+      )}
     </YStack>
   );
 }

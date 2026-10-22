@@ -45,8 +45,8 @@ interface PomodoroContextValue {
   startBlock: (block: StartBlockOptions) => Promise<string | null>;
   /** Starts a flexible morning block after its check-in (dynamic-study-blocks D16): its id, or null. */
   startFlexibleBlock: (block: StartFlexibleBlockOptions) => Promise<string | null>;
-  /** Flexible block: start the next focus (or the closing) by hand, with its minutes. */
-  startFocus: (minutes?: number) => Promise<void>;
+  /** Flexible block: start the next focus (or the closing) by hand, after its diagnosis. */
+  startFocus: (options?: StartFocusOptions) => Promise<void>;
   /** Flexible block: "Terminar bloque", a clean end. */
   endBlock: () => Promise<void>;
   cancel: () => Promise<void>;
@@ -85,12 +85,32 @@ export interface StartFlexibleBlockOptions {
   blockMin: number;
   focusMin: number;
   taskId?: string | null;
-  /** The check-in, logged for calibrating the energy table (D8). */
+  /** The first focus's label (the afternoon's suggested pomodoros); the study one by default. */
+  label?: string;
+  /** The first diagnosis (0-100), logged for calibrating the rule (D26). */
   checkIn: {
     motivation: number;
     concentration: number;
-    energy: number;
+    band: string;
     proposed: { blockMin: number; focusMin: number };
+  };
+}
+
+/** The next focus of a flexible block (revision 2, D24-D26). */
+export interface StartFocusOptions {
+  minutes?: number;
+  /** The planned block after the ±10 rule (or the user's choice). */
+  plannedBlockMin?: number;
+  closing?: boolean;
+  label?: string;
+  /** Its diagnosis, logged as a CHECK_IN. */
+  diagnosis?: {
+    motivation: number;
+    concentration: number;
+    band: string;
+    proposedFocusMin: number;
+    plannedBefore: number | null;
+    rule: string;
   };
 }
 
@@ -360,7 +380,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   );
 
   const startFlexibleBlock = useCallback(
-    async ({ scheduleId, windowEndAt, blockMin, focusMin, taskId, checkIn }: StartFlexibleBlockOptions) => {
+    async ({ scheduleId, windowEndAt, blockMin, focusMin, taskId, label, checkIn }: StartFlexibleBlockOptions) => {
       if (session?.active) return null;
       primePomodoroChime();
       const now = new Date();
@@ -369,7 +389,12 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       const n = nextFlexibleBlockNumber((snapshot.pomodoroSessions ?? []) as SyncPomodoroRecord[], scheduleId, now);
       const id = flexibleBlockSessionId(scheduleId, now, n);
       const base = {
-        ...createFlexibleBlockSession(id, { blockMin, focusMin, windowEndAt: windowEndAt?.toISOString() ?? null }),
+        ...createFlexibleBlockSession(id, {
+          blockMin,
+          focusMin,
+          windowEndAt: windowEndAt?.toISOString() ?? null,
+          label,
+        }),
         scheduleId,
       };
       const started = transitionPomodoro(base, { type: 'START', taskId: taskId ?? undefined });
@@ -386,14 +411,17 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
         scheduleId,
         taskId: taskId ?? undefined,
         pomodoroSessionId: record.id,
-        value: checkIn.energy,
         meta: {
           scope: 'block-start',
+          scale: '0-100',
           motivation: checkIn.motivation,
           concentration: checkIn.concentration,
-          energy: checkIn.energy,
+          band: checkIn.band,
           proposed: checkIn.proposed,
           chosen: { blockMin, focusMin },
+          plannedBefore: null,
+          plannedAfter: blockMin,
+          cycle: 1,
           blockNumber: n,
           device: 'desktop',
         },
@@ -443,11 +471,34 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   }, [transitionSession]);
 
   const startFocus = useCallback(
-    async (minutes?: number) => {
+    async (options: StartFocusOptions = {}) => {
       primePomodoroChime();
-      await transitionSession({ type: 'START_FOCUS', minutes }, false);
+      const { diagnosis, ...event } = options;
+      if (diagnosis && session) {
+        logFocusEvent({
+          kind: 'CHECK_IN',
+          scheduleId: session.scheduleId ?? undefined,
+          taskId: session.taskId ?? undefined,
+          pomodoroSessionId: session.id,
+          meta: {
+            scope: 'pomodoro-diagnosis',
+            scale: '0-100',
+            motivation: diagnosis.motivation,
+            concentration: diagnosis.concentration,
+            band: diagnosis.band,
+            proposed: { focusMin: diagnosis.proposedFocusMin },
+            chosen: { focusMin: event.minutes, blockMin: event.plannedBlockMin },
+            plannedBefore: diagnosis.plannedBefore,
+            plannedAfter: event.plannedBlockMin,
+            rule: diagnosis.rule,
+            cycle: session.completedCycles + 1,
+            device: 'desktop',
+          },
+        });
+      }
+      await transitionSession({ type: 'START_FOCUS', ...event }, false);
     },
-    [transitionSession],
+    [session, transitionSession],
   );
 
   const endBlock = useCallback(async () => {

@@ -5,7 +5,9 @@ import type { SyncScheduleException } from '../calendar/types';
 // Horario 2026-10-19: the study plan (one per user) and one-off changes to a block on one day.
 
 /** Snapshot rows as the shared plan code takes them: `date` as YYYY-MM-DD. */
-export function toExceptionLikes(rows: SyncScheduleException[] | undefined): ScheduleExceptionLike[] {
+export function toExceptionLikes(
+  rows: SyncScheduleException[] | undefined,
+): ScheduleExceptionLike[] {
   return (rows ?? []).map((row) => ({
     scheduleId: row.scheduleId,
     date: row.date.slice(0, 10),

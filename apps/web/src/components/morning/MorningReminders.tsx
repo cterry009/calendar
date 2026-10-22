@@ -1,22 +1,22 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { dueMorningReminder, localDateKey, type MorningReminder } from '@calendar/shared';
+import { dueBlockReminder, localDateKey, type BlockReminder } from '@calendar/shared';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { usePomodoro } from '../../context/PomodoroContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
-import { useMorningWindow } from '../../hooks/useMorningWindow';
+import { useDayBlocks } from '../../hooks/useMorningWindow';
 import { notifySystem } from '../../lib/desktop/notify';
 import { focusView } from '../../lib/focusView/store';
 
-// Soft reminders for the flexible morning (dynamic-study-blocks D15): no block started some time after
-// 08:00, or a long gap after the first one -- at most MAX_BLOCK_REMINDERS a morning, never after the
-// window or once it's fulfilled. A system notification plus a small card with "Empezar bloque"; the
-// ids already shown live in localStorage per day (a per-device convenience: the phone doesn't remind).
+// Soft reminders at the suggested times (dynamic-study-blocks D28): at 09:00, 11:00, 14:00 and 16:00,
+// when nothing is running and that suggestion hasn't been started, once each. A system notification
+// plus a small card with "Empezar"; the ids already shown live in localStorage per day (a per-device
+// convenience: the phone has its own).
 
 const CHECK_MS = 60_000;
 
 function sentKey(date: string): string {
-  return `calendar:morning-reminders:${date}`;
+  return `calendar:block-reminders:${date}`;
 }
 
 function loadSent(date: string): string[] {
@@ -37,10 +37,10 @@ function saveSent(date: string, sent: string[]) {
 }
 
 export function MorningReminders() {
-  const morning = useMorningWindow();
+  const day = useDayBlocks();
   const { pomodoroSessions } = useCalendarData();
   const { session } = usePomodoro();
-  const [shown, setShown] = useState<MorningReminder | null>(null);
+  const [shown, setShown] = useState<BlockReminder | null>(null);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -49,13 +49,17 @@ export function MorningReminders() {
   }, []);
 
   useEffect(() => {
-    if (!morning.schedule || !morning.inWindow || session?.active) return;
+    if (!day.suggestions.length || session?.active) return;
     const now = new Date();
     const date = localDateKey(now);
     const sent = loadSent(date);
-    const reminder = dueMorningReminder({
+    const reminder = dueBlockReminder({
       now,
-      window: { startMinute: morning.schedule.startMinute, endMinute: morning.schedule.endMinute },
+      suggestions: day.suggestions.map((s) => ({
+        scheduleId: s.schedule.id,
+        startMinute: s.schedule.startMinute,
+        label: s.schedule.label,
+      })),
       sessions: pomodoroSessions ?? [],
       sent,
     });
@@ -63,7 +67,7 @@ export function MorningReminders() {
     saveSent(date, [...sent, reminder.id]);
     setShown(reminder);
     void notifySystem(reminder.title, reminder.body);
-  }, [tick, morning.schedule, morning.inWindow, pomodoroSessions, session?.active]);
+  }, [tick, day.suggestions, pomodoroSessions, session?.active]);
 
   // A block started (here or on the phone): the card has done its job.
   useEffect(() => {
@@ -97,10 +101,10 @@ export function MorningReminders() {
           variant="primary"
           onPress={() => {
             setShown(null);
-            focusView.openStarter();
+            focusView.openStarter(shown.scheduleId);
           }}
         >
-          Empezar bloque
+          Empezar
         </AppButton>
       </XStack>
     </YStack>,

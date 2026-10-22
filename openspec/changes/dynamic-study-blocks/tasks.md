@@ -84,10 +84,10 @@
 
 ## 9. Revision 2: web and desktop
 
-- [ ] 9.1 Diagnosis sliders (0-100) at block start and before every focus; the rule's result shown (planned block before → after); the rating card feeds it (D22-D24, D26)
-- [ ] 9.2 Focus view: planned block, worked and left; the closing when it no longer fits (D25)
-- [ ] 9.3 Day view, plan and dashboard for the two windows; "Empezar" on each suggestion; "Actualizar la jornada" (D27, D30)
-- [ ] 9.4 Reminders at 09:00, 11:00, 14:00, 16:00 (D28)
+- [x] 9.1 Diagnosis sliders (0-100) at block start and before every focus; the rule's result shown (planned block before → after); the rating card feeds it (D22-D24, D26)
+- [x] 9.2 Focus view: planned block, worked and left; the closing when it no longer fits (D25)
+- [x] 9.3 Day view, plan and dashboard for the two windows; "Empezar" on each suggestion; "Actualizar la jornada" (D27, D30)
+- [x] 9.4 Reminders at 09:00, 11:00, 14:00, 16:00 (D28)
 - [ ] 9.5 Vitest, typecheck, build, installer
 
 ## 10. Revision 2: phone (per open question 3)

@@ -1,37 +1,32 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  BAND_LABELS,
   BLOCK_MIN_MAX,
   BLOCK_MIN_MIN,
   BLOCK_MIN_STEP,
-  CHECK_IN_SCALE,
   FOCUS_MIN_MAX,
   FOCUS_MIN_MIN,
   FOCUS_MIN_STEP,
-  checkInProposal,
   clampBlockMin,
   clampFocusMin,
-  planFlexibleBlock,
-  plannedFocusMinutes,
+  diagnosisProposal,
 } from '@calendar/shared';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { usePomodoro } from '../../context/PomodoroContext';
-import { useMorningWindow } from '../../hooks/useMorningWindow';
+import { useDayBlocks, type DaySuggestion } from '../../hooks/useMorningWindow';
 import { focusView, useFocusViewState } from '../../lib/focusView/store';
+import { DiagnosisSliders } from './Diagnosis';
 
-// Starting a flexible morning block (dynamic-study-blocks D7, D16): motivation and concentration in
-// one tap each propose the block's length and its focus length from the shared table; both can be
-// moved before starting. Starting runs the first focus right away.
+// Starting a flexible block (dynamic-study-blocks revision 2, D22-D23): the first diagnosis
+// (motivation and concentration, 0-100) proposes the block's length (60/90/120) and the first focus's
+// (20/30/40); both can be moved before starting. Starting runs the first focus right away.
 
-const SCALE_LABELS: Record<number, string> = {
-  1: 'Muy baja',
-  2: 'Baja',
-  3: 'Media',
-  4: 'Alta',
-  5: 'Muy alta',
-};
+function hhmm(d: Date): string {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
 
-function Stepper({
+export function Stepper({
   label,
   value,
   min,
@@ -69,102 +64,89 @@ function Stepper({
   );
 }
 
-function ScaleRow({
-  label,
-  value,
-  onChange,
+/** "Empezar" for a suggested block (or the next one due); hidden without one or while a pomodoro runs. */
+export function StartFlexibleBlockButton({
+  scheduleId,
+  compact = false,
 }: {
-  label: string;
-  value: number | null;
-  onChange: (v: number) => void;
+  scheduleId?: string;
+  compact?: boolean;
 }) {
-  return (
-    <YStack gap="$1">
-      <Text fontWeight="700">{label}</Text>
-      <XStack gap="$2" flexWrap="wrap">
-        {CHECK_IN_SCALE.map((n) => (
-          <AppButton
-            key={n}
-            variant={value === n ? 'primary' : 'ghost'}
-            onPress={() => onChange(n)}
-          >
-            {`${n} · ${SCALE_LABELS[n]}`}
-          </AppButton>
-        ))}
-      </XStack>
-    </YStack>
-  );
-}
-
-/** The "Empezar bloque N" button; opens the check-in. Hidden on days without a morning window. */
-export function StartFlexibleBlockButton({ compact = false }: { compact?: boolean }) {
-  const morning = useMorningWindow();
+  const day = useDayBlocks();
   const { session } = usePomodoro();
-  if (!morning.schedule || session?.active) return null;
-  const label = morning.afterWindow
-    ? `Empezar bloque ${morning.nextNumber} (fuera de la ventana)`
-    : `Empezar bloque ${morning.nextNumber}`;
+  const target = scheduleId ? day.suggestions.find((s) => s.schedule.id === scheduleId) : day.next;
+  if (!target || session?.active) return null;
+  const late = !!target.windowEnd && new Date() >= target.windowEnd;
   return (
-    <AppButton variant={compact ? 'ghost' : 'primary'} onPress={focusView.openStarter}>
-      {label}
+    <AppButton
+      variant={compact ? 'ghost' : 'primary'}
+      onPress={() => focusView.openStarter(target.schedule.id)}
+    >
+      {`Empezar ${target.schedule.label ?? 'bloque'} (${hhmm(target.start)})${late ? ' · fuera de la ventana' : ''}`}
     </AppButton>
   );
 }
 
-/** The check-in card, mounted once in the layout and opened from anywhere. */
+/** The diagnosis card, mounted once in the layout and opened from anywhere. */
 export function FlexibleBlockStarter() {
-  const { starterOpen } = useFocusViewState();
-  const morning = useMorningWindow();
+  const { starterOpen, starterScheduleId, lastDiagnosis } = useFocusViewState();
+  const day = useDayBlocks();
   const { startFlexibleBlock, session, isMutating } = usePomodoro();
   const [motivation, setMotivation] = useState<number | null>(null);
   const [concentration, setConcentration] = useState<number | null>(null);
-  const [blockMin, setBlockMin] = useState(120);
+  const [blockMin, setBlockMin] = useState(90);
   const [focusMin, setFocusMin] = useState(30);
   const [error, setError] = useState<string | null>(null);
+  const target: DaySuggestion | null =
+    (starterScheduleId
+      ? day.suggestions.find((s) => s.schedule.id === starterScheduleId)
+      : day.next) ?? null;
 
-  // A fresh check-in every time it opens.
+  // Each time it opens: the day's last diagnosis as the starting point (or nothing).
   useEffect(() => {
     if (!starterOpen) return;
-    setMotivation(null);
-    setConcentration(null);
+    setMotivation(lastDiagnosis?.motivation ?? null);
+    setConcentration(lastDiagnosis?.concentration ?? null);
     setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [starterOpen]);
 
-  // The table proposes; the user's − / + after that win until the values change again.
+  // The rule proposes; the user's − / + after that win until the diagnosis changes again.
   useEffect(() => {
     if (motivation === null || concentration === null) return;
-    const proposal = checkInProposal(motivation, concentration);
+    const proposal = diagnosisProposal(motivation, concentration);
     setBlockMin(proposal.blockMin);
     setFocusMin(proposal.focusMin);
   }, [motivation, concentration]);
 
-  // Nothing to start (no window today, or a pomodoro is already running): close.
-  const unavailable = !morning.schedule || !!session?.active;
+  // Nothing to start (no suggestion today, or a pomodoro is already running): close.
+  const unavailable = !target || !!session?.active;
   useEffect(() => {
     if (starterOpen && unavailable) focusView.closeStarter();
   }, [starterOpen, unavailable]);
 
-  if (!starterOpen || unavailable || typeof document === 'undefined') return null;
+  if (!starterOpen || unavailable || !target || typeof document === 'undefined') return null;
 
   const answered = motivation !== null && concentration !== null;
-  const proposal = answered ? checkInProposal(motivation, concentration) : null;
-  const plan = planFlexibleBlock(blockMin, focusMin);
-  const focusCount = plan.filter((s) => s.tipo === 'foco').length;
+  const proposal = answered ? diagnosisProposal(motivation, concentration) : null;
+  const afterWindow = !!target.windowEnd && new Date() >= target.windowEnd;
 
   async function start() {
-    if (!proposal || !morning.schedule) return;
+    if (!proposal || !target) return;
     setError(null);
     try {
+      focusView.setLastDiagnosis(motivation!, concentration!);
       const id = await startFlexibleBlock({
-        scheduleId: morning.schedule.id,
-        windowEndAt: morning.afterWindow ? null : morning.end,
+        scheduleId: target.schedule.id,
+        windowEndAt: afterWindow ? null : target.windowEnd,
         blockMin,
         focusMin,
-        taskId: morning.studyTask?.id ?? null,
+        taskId: target.studyTask?.id ?? null,
+        label: target.focusLabels?.[0],
         checkIn: {
           motivation: motivation!,
           concentration: concentration!,
-          energy: proposal.energy,
+          band: proposal.band,
           proposed: { blockMin: proposal.blockMin, focusMin: proposal.focusMin },
         },
       });
@@ -205,23 +187,29 @@ export function FlexibleBlockStarter() {
         style={{ overflowY: 'auto', overflowX: 'hidden' }}
       >
         <Text color="$accent" fontWeight="700" textTransform="uppercase" letterSpacing={1}>
-          {morning.schedule?.label ?? 'Estudio'} · bloque {morning.nextNumber}
+          {target.schedule.label ?? 'Bloque'} · sugerido a las {hhmm(target.start)}
         </Text>
         <Text fontSize="$7" fontWeight="800">
           ¿Cómo llegas a este bloque?
         </Text>
-        {morning.studyTask ? (
+        {target.studyTask ? (
           <Paragraph margin={0} color="$muted">
-            Sesión: {morning.studyTask.title}
+            Sesión: {target.studyTask.title}
           </Paragraph>
         ) : null}
-        <ScaleRow label="Motivación" value={motivation} onChange={setMotivation} />
-        <ScaleRow label="Concentración" value={concentration} onChange={setConcentration} />
+        <DiagnosisSliders
+          motivation={motivation}
+          concentration={concentration}
+          onChange={(next) => {
+            setMotivation(next.motivation);
+            setConcentration(next.concentration);
+          }}
+        />
         {proposal ? (
           <YStack gap="$2" paddingTop="$2">
             <Text fontWeight="700">
-              Energía {proposal.energy}: propuesta de {proposal.blockMin} min con focos de{' '}
-              {proposal.focusMin}
+              Energía {BAND_LABELS[proposal.band].toLowerCase()}: propuesta de {proposal.blockMin}{' '}
+              min con un primer foco de {proposal.focusMin}
             </Text>
             <Stepper
               label="Duración del bloque"
@@ -233,7 +221,7 @@ export function FlexibleBlockStarter() {
               onChange={(v) => setBlockMin(clampBlockMin(v))}
             />
             <Stepper
-              label="Focos de"
+              label="Primer foco"
               value={focusMin}
               min={FOCUS_MIN_MIN}
               max={FOCUS_MIN_MAX}
@@ -242,16 +230,18 @@ export function FlexibleBlockStarter() {
               onChange={(v) => setFocusMin(clampFocusMin(v))}
             />
             <Paragraph margin={0} color="$muted" fontSize="$2">
-              {focusCount} focos ({plannedFocusMinutes(plan)} min de foco) con sus pausas y el
-              cierre de 15 min. La pausa arranca sola; cada foco lo empiezas tú.
-              {morning.afterWindow
-                ? ' Ya pasaron las 12:00: este bloque no tiene límite de hora.'
-                : ' A las 12:00 no empieza ningún foco nuevo: el que corra termina y sigue el cierre.'}
+              Antes de cada foco vuelves a dar el diagnóstico: el foco sale de él y el bloque se
+              ajusta ±10 min con la calificación del pomodoro anterior. La pausa arranca sola; cada
+              foco lo empiezas tú. Se cumple con 45 min de foco.
+              {afterWindow
+                ? ' Ya cerró la ventana de este bloque: no tiene límite de hora.'
+                : ` A las ${hhmm(target.windowEnd!)} no empieza ningún foco nuevo: el que corra termina y sigue el cierre.`}
             </Paragraph>
           </YStack>
         ) : (
           <Paragraph margin={0} color="$muted" fontSize="$2">
-            Con las dos respuestas la app propone la duración del bloque y de los focos.
+            Mueve los dos deslizadores: con ellos la app propone la duración del bloque y del primer
+            foco.
           </Paragraph>
         )}
         {error ? <Text color="$error">{error}</Text> : null}

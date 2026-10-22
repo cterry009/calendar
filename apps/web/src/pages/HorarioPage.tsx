@@ -3,7 +3,7 @@ import {
   isMondayKey,
   isPlanCategory,
   localDateKey,
-  needsMorningWindowUpdate,
+  needsWeekdayUpdate,
   nextMondayKey,
   PLAN_CATEGORY_INFO,
   PLAN_WEEKS,
@@ -22,7 +22,7 @@ import { useSchedules } from '../hooks/useSchedules';
 import { useTasks } from '../hooks/useTasks';
 import { importTimetable, syncMilestoneTasks } from '../lib/plan/importTimetable';
 import { saveStudyPlan } from '../lib/plan/sync';
-import { applyMorningWindow } from '../lib/plan/morningWindow';
+import { applyWeekday } from '../lib/plan/morningWindow';
 
 // Horario 2026-10-19: load the timetable, pick the start Monday, and follow the plan -- the week's
 // phase, pomodoros by category, "cortar tramo" uses, and the milestones.
@@ -98,8 +98,8 @@ export function HorarioPage() {
               <input type="date" value={startInput} onChange={(e) => setStartInput(e.target.value)} />
             </XStack>
             <Paragraph margin={0} color="$muted">
-              Lunes a viernes: mañana de estudio 08:00-12:00 (dos bloques que empiezas tú, de 90 a 150 min según cómo
-              llegues), almuerzo 12:30-14:00, tarde 14:00-15:25 y 15:35-17:00. Sábado: 09:00-10:30 y 11:00-12:30.
+              Lunes a viernes: mañana 09:00-13:00 y tarde 14:00-18:00, con dos bloques sugeridos cada una que empiezas tú y
+              duran de 60 a 120 min según tu diagnóstico; almuerzo 13:00-14:00. Sábado: 09:00-10:30 y 11:00-12:30.
             </Paragraph>
             {confirming ? (
               <YStack gap="$2">
@@ -144,18 +144,18 @@ export function HorarioPage() {
         description={phase?.nombre}
       />
 
-      {needsMorningWindowUpdate(schedules) ? (
-        // dynamic-study-blocks D2: the morning blocks of an existing timetable become the window in place.
+      {needsWeekdayUpdate(schedules) ? (
+        // dynamic-study-blocks D30: an existing timetable's weekday becomes the flexible one in place.
         <AppCard>
           <YStack gap="$2">
-            <Text fontWeight="700">Nueva mañana de estudio (2026-10-22)</Text>
+            <Text fontWeight="700">Nueva jornada (2026-10-22)</Text>
             <Paragraph margin={0} color="$muted">
-              Los bloques de estudio de la mañana pasan de 09:30-12:30 fijo a una ventana de 08:00 a 12:00 con dos bloques que
-              empiezan cuando los inicias. Al empezar, motivación y concentración proponen la duración del bloque (90-150 min) y
-              de los focos (20-40). La tarde y el sábado no cambian.
+              Lunes a viernes pasan a dos ventanas, 09:00-13:00 y 14:00-18:00, con dos bloques sugeridos cada una (09:00, 11:00,
+              14:00 y 16:00) que empiezan cuando los inicias. Antes de cada pomodoro das tu motivación y concentración (0-100): el
+              bloque dura de 60 a 120 min y se ajusta ±10 con cada pomodoro. Almuerzo a las 13:00. El sábado no cambia.
             </Paragraph>
-            <AppButton variant="primary" alignSelf="flex-start" disabled={busy} onPress={() => void run(async () => void (await applyMorningWindow(schedules)))}>
-              Actualizar la mañana
+            <AppButton variant="primary" alignSelf="flex-start" disabled={busy} onPress={() => void run(async () => void (await applyWeekday(schedules)))}>
+              Actualizar la jornada
             </AppButton>
             {error ? <Text color="$error">{error}</Text> : null}
           </YStack>

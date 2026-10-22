@@ -12,13 +12,20 @@ export async function importTimetable(input: {
   tasks: SyncTaskRecord[];
   habits: Array<{ title: string; deletedAt?: string | null }>;
 }): Promise<void> {
-  const batch = timetableImportBatch({ ...input, now: new Date().toISOString(), newId: () => crypto.randomUUID() });
+  const batch = timetableImportBatch({
+    ...input,
+    now: new Date().toISOString(),
+    newId: () => crypto.randomUUID(),
+  });
   await syncBatch({ schedules: batch.schedules });
   await syncBatch({ studyPlan: batch.studyPlan, tasks: batch.tasks, habits: batch.habits });
 }
 
 /** After the start date changes: milestones move to their new Mondays. */
-export async function syncMilestoneTasks(plan: StudyPlanData, tasks: SyncTaskRecord[]): Promise<void> {
+export async function syncMilestoneTasks(
+  plan: StudyPlanData,
+  tasks: SyncTaskRecord[],
+): Promise<void> {
   const changes = milestoneTaskChanges(plan, tasks, new Date().toISOString());
   if (changes.length) await syncBatch({ tasks: changes });
 }

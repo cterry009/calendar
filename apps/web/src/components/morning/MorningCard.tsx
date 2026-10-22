@@ -1,22 +1,26 @@
 import { useMemo } from 'react';
 import { BLOCK_DONE_FOCUS_MIN, addDaysToKey, localDateKey, morningStatus } from '@calendar/shared';
-import { AppCard, Paragraph, Text, XStack, YStack } from '@calendar/ui';
+import { AppCard, Text, XStack, YStack } from '@calendar/ui';
+import { usePomodoro } from '../../context/PomodoroContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
-import { useMorningWindow } from '../../hooks/useMorningWindow';
-import { StartFlexibleBlockButton } from './FlexibleBlockStarter';
+import { useDayBlocks } from '../../hooks/useMorningWindow';
+import { focusView } from '../../lib/focusView/store';
+import { AppButton } from '@calendar/ui';
 
-// Today's flexible morning on the calendar and the dashboard (dynamic-study-blocks D13): the window,
-// each block started with its real focus, and whether the morning is fulfilled (two blocks of 60+).
+// Today's flexible blocks on the calendar, the pomodoro page and the dashboard (dynamic-study-blocks
+// D27, revision 2): the four suggestions with their state, the day's minimum (two done morning blocks,
+// 45+ min of focus each) and "Empezar" on each one not started.
 
 function hhmm(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 export function MorningCard({ withWeek = false }: { withWeek?: boolean }) {
-  const morning = useMorningWindow();
+  const day = useDayBlocks();
+  const { session } = usePomodoro();
   const { pomodoroSessions } = useCalendarData();
 
-  // This week's mornings (Monday to today), for the dashboard.
+  // This week's days with the minimum met (Monday to today), for the dashboard.
   const week = useMemo(() => {
     const today = localDateKey(new Date());
     const dow = (new Date().getDay() + 6) % 7;
@@ -28,49 +32,70 @@ export function MorningCard({ withWeek = false }: { withWeek?: boolean }) {
     };
   }, [pomodoroSessions]);
 
-  if (!morning.schedule || !morning.start || !morning.end) return null;
-  const { status } = morning;
+  if (!day.suggestions.length) return null;
+  const blocksOf = (scheduleId: string) =>
+    [...day.morning.blocks, ...day.afternoon.blocks].filter((b) => b.scheduleId === scheduleId);
 
   return (
     <AppCard>
       <YStack gap="$2">
         <XStack justifyContent="space-between" alignItems="center" gap="$3" flexWrap="wrap">
           <YStack>
-            <Text fontWeight="800">
-              Mañana de estudio · {hhmm(morning.start)}-{hhmm(morning.end)}
-            </Text>
+            <Text fontWeight="800">Bloques de hoy</Text>
             <Text color="$muted" fontSize="$2">
-              {morning.schedule.label} · {status.done} de {status.target} bloques cumplidos
+              Mínimo del día: {day.morning.done} de {day.morning.target} bloques de la mañana (cada
+              uno con {BLOCK_DONE_FOCUS_MIN} min de foco)
             </Text>
           </YStack>
-          {status.fulfilled ? (
+          {day.morning.fulfilled ? (
             <Text color="$accent" fontWeight="800">
-              Mañana cumplida
+              Mínimo cumplido
             </Text>
           ) : null}
         </XStack>
-        {status.blocks.map((block, i) => (
-          <Text key={block.id ?? i} fontSize="$3" color={block.done ? '$accent' : '$color'}>
-            Bloque {i + 1} {block.done ? '✓' : block.active ? '· en curso' : '·'}{' '}
-            {block.focusMinutes} min de foco
-            {!block.done && !block.active ? ` (se cumple con ${BLOCK_DONE_FOCUS_MIN})` : ''}
-          </Text>
-        ))}
-        {morning.studyTask ? (
-          <Paragraph margin={0} color="$muted" fontSize="$2">
-            Sesión que toca: {morning.studyTask.title}
-          </Paragraph>
-        ) : null}
+        {day.suggestions.map((s) => {
+          const blocks = blocksOf(s.schedule.id);
+          const focus = blocks.reduce((sum, b) => sum + b.focusMinutes, 0);
+          const done = blocks.some((b) => b.done);
+          const running = blocks.some((b) => b.active);
+          return (
+            <XStack
+              key={s.schedule.id}
+              alignItems="center"
+              justifyContent="space-between"
+              gap="$2"
+              flexWrap="wrap"
+            >
+              <YStack flex={1} minWidth={180}>
+                <Text fontSize="$3" fontWeight="700" color={done ? '$accent' : '$color'}>
+                  {hhmm(s.start)} · {s.schedule.label}
+                  {done ? ' ✓' : ''}
+                </Text>
+                <Text fontSize="$2" color="$muted">
+                  {running
+                    ? `En curso · ${focus} min de foco`
+                    : s.started
+                      ? `${focus} min de foco`
+                      : s.studyTask
+                        ? s.studyTask.title
+                        : 'Sin empezar'}
+                </Text>
+              </YStack>
+              {!s.started && !session?.active ? (
+                <AppButton variant="ghost" onPress={() => focusView.openStarter(s.schedule.id)}>
+                  Empezar
+                </AppButton>
+              ) : null}
+            </XStack>
+          );
+        })}
         {withWeek ? (
           <Text fontSize="$2" color="$muted">
             Esta semana: {week.fulfilled}{' '}
-            {week.fulfilled === 1 ? 'mañana cumplida' : 'mañanas cumplidas'} de {week.withBlocks}{' '}
+            {week.fulfilled === 1 ? 'día con el mínimo' : 'días con el mínimo'} de {week.withBlocks}{' '}
             con bloques.
           </Text>
         ) : null}
-        <XStack>
-          <StartFlexibleBlockButton />
-        </XStack>
       </YStack>
     </AppCard>
   );

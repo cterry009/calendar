@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import {
   BLOCK_EXIT_REASONS,
-  BLOCK_RATINGS,
   BLOCK_REVIEW_TAGS,
   describeOccurrence,
   finishPomodoroPhrase,
@@ -26,6 +25,7 @@ import { studySectionsOf } from '../../lib/studyGame/studySections';
 import { pomodoroTutorSummary, type PomodoroTutorSummary } from '../../lib/studyGame/summary';
 import { focusView, useFocusViewState } from '../../lib/focusView/store';
 import { useFocusViewVisible } from './FocusView';
+import { ScaleSlider } from '../morning/Diagnosis';
 
 // A WORK block's pomodoro on the PC (user-requested, 2026-10-06/07):
 // - While it runs, nothing comes up over other apps -- that broke the concentration it's for. Inside
@@ -35,7 +35,8 @@ import { useFocusViewVisible } from './FocusView';
 //   is marked "no puedo" today with the reason, and its study session moves to the line's next
 //   block by staying pending).
 // - After each focus pomodoro (a finer measure than per block, 2026-10-07), the window comes to the
-//   front asking how that pomodoro went: a 1-5 rating, what applied, a comment, and -- with the last
+//   front asking how that pomodoro went: a rating (0-100 since 2026-10-22, dynamic-study-blocks
+//   revision 2: it feeds the block's ±10 rule), what applied, a comment, and -- with the last
 //   pomodoro of the study session or of the block -- whether the session got done. Logged as a
 //   CHECK_IN event.
 
@@ -196,7 +197,13 @@ export function BlockFocusOverlay() {
         current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag],
       );
     const finish = (save: boolean) => {
-      if (save && rating) {
+      // The next focus's ±10 rule reads it (a dismissed card is no signal).
+      focusView.setLastRating({
+        sessionId: ended.sessionId,
+        cycle: ended.cycle,
+        rating: save ? rating : null,
+      });
+      if (save && rating !== null) {
         logFocusEvent({
           kind: 'CHECK_IN',
           scheduleId: ended.scheduleId,
@@ -208,6 +215,7 @@ export function BlockFocusOverlay() {
             scope: 'pomodoro',
             cycle: ended.cycle,
             rating,
+            scale: '0-100',
             tags,
             comment: comment.trim() || undefined,
             sessionDone: sessionDone ?? undefined,
@@ -239,17 +247,12 @@ export function BlockFocusOverlay() {
               {tutorSummary.thetaFrom.toFixed(2)} → {tutorSummary.thetaTo.toFixed(2)}
             </Text>
           ) : null}
-          <XStack gap="$2" flexWrap="wrap">
-            {BLOCK_RATINGS.map((option) => (
-              <AppButton
-                key={option.value}
-                variant={rating === option.value ? 'primary' : 'ghost'}
-                onPress={() => setRating(option.value)}
-              >
-                {`${option.value} · ${option.label}`}
-              </AppButton>
-            ))}
-          </XStack>
+          <ScaleSlider
+            label="Calificación"
+            value={rating}
+            onChange={setRating}
+            hint="0 a 100: baja bajo 45, media de 45 a 69, alta desde 70."
+          />
           <Text fontWeight="700">¿Qué pasó?</Text>
           <XStack gap="$2" flexWrap="wrap">
             {BLOCK_REVIEW_TAGS.map((tag) => (
@@ -293,7 +296,7 @@ export function BlockFocusOverlay() {
             <AppButton variant="ghost" onPress={() => finish(false)}>
               Ahora no
             </AppButton>
-            <AppButton variant="primary" disabled={!rating} onPress={() => finish(true)}>
+            <AppButton variant="primary" disabled={rating === null} onPress={() => finish(true)}>
               Guardar
             </AppButton>
           </XStack>
