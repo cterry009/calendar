@@ -88,14 +88,42 @@
 - [x] 9.2 Focus view: planned block, worked and left; the closing when it no longer fits (D25)
 - [x] 9.3 Day view, plan and dashboard for the two windows; "Empezar" on each suggestion; "Actualizar la jornada" (D27, D30)
 - [x] 9.4 Reminders at 09:00, 11:00, 14:00, 16:00 (D28)
-- [ ] 9.5 Vitest, typecheck, build, installer
+- [x] 9.5 Vitest, typecheck, build, installer
 
 ## 10. Revision 2: phone (per open question 3)
 
-- [ ] 10.1 Types; no auto-start of any weekday block; blocking per D14 (afternoon included)
-- [ ] 10.2 start a suggested block and the next focus from the phone (sliders, rating, start)
+- [x] 10.1 Types; no auto-start of any weekday block; blocking per D14 (afternoon included)
+- [x] 10.2 start a suggested block and the next focus from the phone (sliders, rating, start)
 
 ## 11. Revision 2: checks and a real try
 
-- [ ] 11.1 shared, server, web tests and typechecks; desktop installer; mobile typecheck
-- [ ] 11.2 Real try (throwaway account): a morning block with diagnoses, the ±10 rule, a cut, the closing when it no longer fits, "Terminar bloque" after 45; the dev user's "Actualizar la jornada"; record results here
+- [x] 11.1 shared, server, web tests and typechecks; desktop installer; mobile typecheck
+- [x] 11.2 Real try (throwaway account): a morning block with diagnoses, the ±10 rule, a cut, the closing when it no longer fits, "Terminar bloque" after 45; the dev user's "Actualizar la jornada"; record results here
+
+## Revision 2 results (2026-10-22)
+
+- **Checks:** shared 279 tests (the revision's rules: bands, lengths, the ±10 rule and its bounds,
+  what fits, completion by window, reminders at the suggested times, the weekday migration, the
+  budget state machine), server 95 + the skipped live one, web 97, typechecks of shared, server, web
+  and mobile, web build, desktop installer, release APK.
+- **Fixed on the way:** a study-status write scheduled after the module closed ran on a disconnected
+  database (only seen in tests); now skipped.
+- **Real try in a browser** (throwaway `rev2-*@local.test`, two afternoon suggestions at 14:00 and
+  16:00, at 14:3x): "Bloques de hoy" listed both with "Empezar"; diagnosis 60/55 → "Energía media: 90
+  min con un primer foco de 30"; the focus view showed "Bloque planeado: 90 min". "Cortar tramo", the
+  rating card at 80/100, then the next diagnosis 90/80: "Cortaste el tramo: −10 min · último pomodoro
+  80/100", "Empezar foco de 40 min" → planned 80, plan 30·5·40·10. Logged: `block-start` (60/55,
+  media, after 90), `pomodoro` (80, 0-100), `pomodoro-diagnosis` (90/80, alta, 90 → 80, the rule's
+  reason). Fixed from it: an afternoon block without a study plan took the study labels; now
+  "Pomodoro N".
+- **Dev user:** "Actualizar la jornada" applied (17 changes: the mornings' first suggestions in place
+  and their 11:00 siblings created, the afternoon at 14:00 and 16:00, lunch at 13:00, the 15:25 break
+  deleted). An afternoon block started at 14:00 by an older client as a fixed block kept running.
+- **Phone:** release APK installed over the old one (2026-10-16) with `adb install -r`; the
+  accessibility service stayed bound (no crashed services) and the app started cleanly. Its pomodoro
+  screen lists the day's suggestions with "Empezar" (0-100 bars, block and focus steppers), the next
+  focus's diagnosis with the rule, "Cortar tramo", "Terminar bloque"; the rating sheet and the
+  overlay's buttons are 0-100. Not tried by hand on the phone (it was in use).
+- **Desktop:** reinstalled with this build.
+- Not tried live: the reminders at 09:00/11:00/14:00/16:00 and the window's end (shared tests only).
+- The phone build doesn't have the plain-label fix (it only matters without a study plan).
