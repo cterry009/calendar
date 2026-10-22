@@ -222,9 +222,9 @@ export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}
   const selectedNote = notes?.find((n) => n.noteCode === choice?.noteCode) ?? null;
 
   return (
-    <AppCard>
+    <AppCard flex={fullHeight ? 1 : undefined} minHeight={fullHeight ? 0 : undefined}>
       <style>{TUTOR_ANIMATIONS}</style>
-      <YStack gap="$3">
+      <YStack gap="$3" flex={fullHeight ? 1 : undefined} minHeight={fullHeight ? 0 : undefined}>
         <XStack justifyContent="space-between" alignItems="center" gap="$2" flexWrap="wrap">
           <Text fontSize="$6" fontWeight="800">
             Tutor
@@ -322,8 +322,8 @@ export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}
             <div
               ref={scroller}
               style={{
-                maxHeight: fullHeight ? 'calc(100vh - 340px)' : 380,
-                minHeight: fullHeight ? 240 : undefined,
+                // In the focus view the chat fills the card down to the composer.
+                ...(fullHeight ? { flex: '1 1 0', minHeight: 120 } : { maxHeight: 380 }),
                 overflowY: 'auto',
                 display: 'flex',
                 flexDirection: 'column',
