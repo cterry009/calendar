@@ -23,6 +23,13 @@ describe('study status written by the server', () => {
   let otherId = '';
 
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  /** Up to 5 s for the debounced write (a busy dev database is slower than the debounce). */
+  const waitForFile = async (path: string, test: (text: string) => boolean) => {
+    for (let i = 0; i < 50; i++) {
+      if (existsSync(path) && test(readFileSync(path, 'utf8'))) return;
+      await wait(100);
+    }
+  };
   const batch = (user: string, dto: Partial<SyncBatchDto>) =>
     sync.processBatch(user, 'pc', dto as SyncBatchDto);
   const task = (id: string) => ({
@@ -63,7 +70,7 @@ describe('study status written by the server', () => {
     );
     await batch(userId, { tasks: [task('a')] });
     await batch(userId, { tasks: [task('b')] });
-    await wait(300);
+    await waitForFile(join(vault, 'Estado_estudio.md'), (text) => text.startsWith('# Estado'));
     const markdown = readFileSync(join(vault, 'Estado_estudio.md'), 'utf8');
     expect(markdown).toMatch(/^# Estado del estudio/);
     expect(markdown).toContain('<!-- notas:inicio -->\n- Mi duda\n<!-- notas:fin -->');

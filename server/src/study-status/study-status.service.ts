@@ -57,6 +57,7 @@ export class StudyStatusService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(StudyStatusService.name);
   private readonly timers = new Map<string, NodeJS.Timeout>();
   private subscription: Subscription | null = null;
+  private destroyed = false;
   private userId: string | null | undefined;
   private readonly catalog: TutorCatalog;
 
@@ -77,6 +78,7 @@ export class StudyStatusService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleDestroy() {
+    this.destroyed = true;
     this.subscription?.unsubscribe();
     for (const timer of this.timers.values()) clearTimeout(timer);
     this.timers.clear();
@@ -97,7 +99,9 @@ export class StudyStatusService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async schedule(userId: string) {
-    if ((await this.configuredUserId()) !== userId) return;
+    // The lookup is async: the module may have closed meanwhile (a test's teardown, a shutdown), and
+    // a timer set after that would write with a disconnected database.
+    if ((await this.configuredUserId()) !== userId || this.destroyed) return;
     const pending = this.timers.get(userId);
     if (pending) clearTimeout(pending);
     this.timers.set(
@@ -107,7 +111,7 @@ export class StudyStatusService implements OnModuleInit, OnModuleDestroy {
         void this.write(userId).catch((error: unknown) => {
           // Never the sync's problem: the file just stays as it was.
           this.logger.warn(
-            `No se pudo escribir el estado del estudio: ${error instanceof Error ? error.message : String(error)}`,
+            `No se pudo escribir el estado del estudio: ${error instanceof Error ? error.message || error.stack : String(error)}`,
           );
         });
       }, this.config.debounceMs),
