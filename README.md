@@ -170,6 +170,10 @@ Ver `adb devices` para confirmar que el dispositivo/emulador está conectado.
 |---------|----------|
 | `powershell -File scripts/smoke-test.ps1` | Registra usuario aleatorio y prueba login |
 | `powershell -File scripts/seed-dashboard-data.ps1` | Crea usuario demo con datos de dashboard |
+| `node scripts/import-study-notes.mjs [--apply]` | Crea una tarea por sesión de los pensums del vault (sin `--apply` solo muestra qué haría) |
+| `node scripts/export-study-status.mjs [--dry-run]` | Escribe `Estado_estudio.md` y `estado_estudio.json` en el vault: avance por pensum, tiempo por semana, calificaciones de los pomodoros, semana y fase del plan |
+
+Los dos scripts de estudio necesitan `npm run build:shared` antes y aceptan `--vault`, `--api` y `--email` (o `CALENDAR_VAULT`, `CALENDAR_API_URL`, `CALENDAR_EMAIL`; la contraseña va en `CALENDAR_PASSWORD`).
 
 ---
 
@@ -240,7 +244,7 @@ Add-MpPreference -ControlledFolderAccessAllowedApplications "C:\Program Files\no
 | `packages/shared` | Lógica compartida (Zod, pomodoro, serotonina, detox) |
 | `packages/ui` | Componentes UI compartidos |
 | `server` | API NestJS + Prisma + PostgreSQL |
-| `scripts/` | Smoke test y seed de datos |
+| `scripts/` | Smoke test, seed de datos, importador y exportador del estudio |
 | `openspec/` | Especificaciones del proyecto |
 
 ## API

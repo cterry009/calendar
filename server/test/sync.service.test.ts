@@ -257,6 +257,21 @@ describe('idempotency keys', () => {
     expect(await h.prisma.focusEvent.count({ where: { userId: h.userId } })).toBe(1);
   });
 
+  it('lists only the user\'s focus events since a date, oldest first', async () => {
+    // For the study status export (2026-10-21): the ratings live only in focus events.
+    await h.batch({
+      focusEvents: [
+        { id: 'fe-late', kind: 'CHECK_IN', occurredAt: at(60), value: 4, meta: { review: true, rating: 4 } },
+        { id: 'fe-early', kind: 'FOCUS_STARTED', occurredAt: at(30) },
+        { id: 'fe-old', kind: 'FOCUS_STARTED', occurredAt: at(0) },
+      ],
+    });
+    await h.batch({ focusEvents: [{ id: 'fe-other', kind: 'CHECK_IN', occurredAt: at(45), value: 2 }] }, h.otherUserId);
+
+    const events = await h.service.listFocusEvents(h.userId, new Date(at(10)));
+    expect(events.map((e) => e.id)).toEqual(['fe-early', 'fe-late']);
+  });
+
   it('a focus event retried with the same client UUID is stored once, with its fields', async () => {
     const event = {
       id: '9a1b2c3d-0000-4c5e-9f3a-1b2c3d4e5f60',

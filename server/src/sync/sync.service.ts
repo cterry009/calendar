@@ -959,6 +959,16 @@ export class SyncService {
     }
   }
 
+  // Focus events aren't in the pull (clients only write them), but the study status export
+  // (scripts/export-study-status.mjs, 2026-10-21) needs the pomodoro ratings and exits. Read-only,
+  // oldest first; `since` keeps it from growing with the whole history.
+  async listFocusEvents(userId: string, since: Date) {
+    return this.prisma.focusEvent.findMany({
+      where: { userId, occurredAt: { gte: since } },
+      orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
+    });
+  }
+
   // Focus-block telemetry: immutable like a block event, so an idempotent create on the client id.
   private async applyFocusEventChange(
     userId: string,
