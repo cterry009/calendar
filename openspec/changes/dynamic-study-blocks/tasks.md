@@ -1,19 +1,19 @@
 ## 1. Shared: rules (pure, with Jest)
 
-- [ ] 1.1 `plan/morning.ts`: `energyOf`, the energy table, `clampBlockMin` / `clampFocusMin`, `planFlexibleBlock` (D6, D7); tests: E = 2 → 90/20, E = 5 → 150/40, 2.5 → 3, the three plans of D6, a 135/30 plan
-- [ ] 1.2 `nextFocusProposal` after cuts (D9); tests: no cut, cut at 27 of 40 → 25, cut at 12 → 20
-- [ ] 1.3 `blockDone`, `morningStatus` (D13); tests: 60 min done, 30 min not, two done → fulfilled
-- [ ] 1.4 `dueMorningReminder` (D15); tests: 08:20 and 08:50 start reminders, between blocks, none after 12:00 or once fulfilled, cap of `MAX_BLOCK_REMINDERS`
-- [ ] 1.5 `horario.ts` (morning 08:00-12:00, `bloques_manana`, header dated 2026-10-22), `templateToSchedules` with `flexibleBlocks`, `morningWindowChanges` (D1, D2); tests: template and in-place update leave afternoon/Saturday alone
-- [ ] 1.6 Schemas: `Schedule.flexibleBlocks`, session `flexible`, `plannedBlockMin`, `windowEndAt`, `focusMinutes`
+- [x] 1.1 `plan/morning.ts`: `energyOf`, the energy table, `clampBlockMin` / `clampFocusMin`, `planFlexibleBlock` (D6, D7); tests: E = 2 → 90/20, E = 5 → 150/40, 2.5 → 3, the three plans of D6, a 135/30 plan
+- [x] 1.2 `nextFocusProposal` after cuts (D9); tests: no cut, cut at 27 of 40 → 25, cut at 12 → 20
+- [x] 1.3 `blockDone`, `morningStatus` (D13); tests: 60 min done, 30 min not, two done → fulfilled
+- [x] 1.4 `dueMorningReminder` (D15); tests: 08:20 and 08:50 start reminders, between blocks, none after 12:00 or once fulfilled, cap of `MAX_BLOCK_REMINDERS`
+- [x] 1.5 `horario.ts` (morning 08:00-12:00, `bloques_manana`, header dated 2026-10-22), `templateToSchedules` with `flexibleBlocks`, `morningWindowChanges` (D1, D2); tests: template and in-place update leave afternoon/Saturday alone
+- [x] 1.6 Schemas: `Schedule.flexibleBlocks`, session `flexible`, `plannedBlockMin`, `windowEndAt`, `focusMinutes`
 
 ## 2. Shared: the state machine
 
-- [ ] 2.1 `createFlexibleBlockSession`, `flexibleBlockSessionId` (D3, D4)
-- [ ] 2.2 Relative sequence: `FOCUS_COMPLETE` → automatic pause, no `BREAK_COMPLETE` advance, `START_FOCUS { minutes }`, `focusMinutes` accounting, end after the closing or with "Terminar bloque" (D5, D12)
-- [ ] 2.3 Cut in flexible blocks (D10) and the 12:00 rule (D11); abandoned-pause grace (Risks)
-- [ ] 2.4 Tests: starting at 10:10 loses no segment; the pause starts by itself and the focus doesn't; a manual 40 is respected; at 12:00 the closing follows; clock-anchored sessions (afternoon) unchanged
-- [ ] 2.5 Blocking and status: `activeWorkSchedule` skips flexible windows for blocking (D14); `currentFocusStatus` for flexible sessions (pause over, next focus); tests
+- [x] 2.1 `createFlexibleBlockSession`, `flexibleBlockSessionId` (D3, D4)
+- [x] 2.2 Relative sequence: `FOCUS_COMPLETE` → automatic pause, no `BREAK_COMPLETE` advance, `START_FOCUS { minutes }`, `focusMinutes` accounting, end after the closing or with "Terminar bloque" (D5, D12)
+- [x] 2.3 Cut in flexible blocks (D10) and the 12:00 rule (D11); abandoned-pause grace (Risks)
+- [x] 2.4 Tests: starting at 10:10 loses no segment; the pause starts by itself and the focus doesn't; a manual 40 is respected; at 12:00 the closing follows; clock-anchored sessions (afternoon) unchanged
+- [x] 2.5 Blocking and status: `activeWorkSchedule` skips flexible windows for blocking (D14); `currentFocusStatus` for flexible sessions (pause over, next focus); tests
 
 ## 3. Server
 

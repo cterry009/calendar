@@ -97,8 +97,9 @@ study status by itself.
   chosen: { blockMin, focusMin }, blockNumber, device }`. No new entity. The existing per-pomodoro
   `CHECK_IN` (`scope: 'pomodoro'`) is unchanged.
 
-- **D9 Next focus proposal.** `nextFocusProposal(session)`: the check-in's focus minutes; after a cut
-  in this block, the worked minutes of the last cut focus rounded down to 5, never under 20. The
+- **D9 Next focus proposal.** `nextFocusProposal(session)`: the next focus of the plan. A cut caps
+  every later focus of the plan at the worked minutes rounded down to 5 (never under 20), so the cap
+  stays for the rest of the block; a focus the user lengthens by hand is written into the plan too. The
   user can move it 20-40 before starting. The proposal is shown on the pause screen with − / +.
 
 - **D10 "Cortar tramo" in flexible blocks** ends the running focus, counts it (pomodoro + cut +
@@ -107,8 +108,8 @@ study status by itself.
 - **D11 The 12:00 rule.** `windowEndAt` is the window's end that day. After it, `START_FOCUS` for a
   focus is refused; the closing can still start. When a focus ends after `windowEndAt` (or a pause is
   running at that time), the next segment offered is the closing, not a focus. A block not started by
-  12:00 isn't started by reminders; the user can still start one by hand (it gets the same rule:
-  closing only, so the button says so). The afternoon and lunch schedules don't move.
+  12:00 isn't prompted by reminders; one the user starts by hand after the window has no
+  `windowEndAt` (starting it is the user's explicit choice; implemented 2026-10-22). The afternoon and lunch schedules don't move.
 
 - **D12 Ending a flexible block.** The block ends when the closing ends, or when the plan has no
   segment left, or with "Terminar bloque" (a clean end, not "Salir"). The end-of-pomodoro rating card

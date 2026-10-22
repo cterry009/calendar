@@ -1,5 +1,5 @@
 import type { PomodoroSession } from '../schemas/pomodoro.js';
-import { currentSegment, getPhaseDurationMinutes } from '../pomodoro/state-machine.js';
+import { currentSegment, getPhaseDurationMinutes, pauseOverrunMinutes } from '../pomodoro/state-machine.js';
 import { scheduleOnDate, type ScheduleExceptionLike } from '../plan/plan.js';
 import type { SequenceSegment } from '../plan/sequence.js';
 import { ATTENTION_PROFILE_SPECS, blockOnDay, type BlockTaskLike } from './profiles.js';
@@ -18,6 +18,8 @@ export interface FocusStatusSchedule {
   label: string | null;
   category?: string | null;
   sequence?: SequenceSegment[] | null;
+  /** A flexible morning window (2026-10-22): not work hours by itself, only its started blocks are. */
+  flexibleBlocks?: number | null;
 }
 
 export type FocusStatusTask = BlockTaskLike & { id: string; title: string };
@@ -65,8 +67,30 @@ export function blockSessionId(scheduleId: string, day: Date): string {
 }
 
 /**
+ * A flexible morning block's session id (dynamic-study-blocks D3): several blocks of one schedule in
+ * one day, numbered in start order -- "block-<scheduleId>-<YYYY-MM-DD>-2" is the day's second.
+ */
+export function flexibleBlockSessionId(scheduleId: string, day: Date, n: number): string {
+  return `${blockSessionId(scheduleId, day)}-${n}`;
+}
+
+/** The number the next flexible block of a schedule gets that day: 1 + the highest one started. */
+export function nextFlexibleBlockNumber(sessions: Array<{ id?: string | null }>, scheduleId: string, day: Date): number {
+  const prefix = `${blockSessionId(scheduleId, day)}-`;
+  let highest = 0;
+  for (const session of sessions) {
+    if (!session.id?.startsWith(prefix)) continue;
+    const n = Number(session.id.slice(prefix.length));
+    if (Number.isInteger(n) && n > highest) highest = n;
+  }
+  return highest + 1;
+}
+
+/**
  * The enabled WORK schedule whose window contains `now` (device-local time), if any. Blocks marked
  * "no puedo" for today (`skipped`, blockOccurrenceKey) don't count: no prompt, overlay or blocking.
+ * Flexible morning windows (2026-10-22) don't count either: nothing starts or blocks by itself in
+ * them, only the blocks the user starts do (their sessions; flexibleWindowNow finds the window).
  */
 export function activeWorkSchedule<S extends FocusStatusSchedule>(
   schedules: S[],
@@ -82,11 +106,47 @@ export function activeWorkSchedule<S extends FocusStatusSchedule>(
       (s) =>
         s.kind === 'WORK' &&
         s.enabled &&
+        !s.flexibleBlocks &&
         s.daysOfWeek.includes(now.getDay()) &&
         minute >= s.startMinute &&
         minute < s.endMinute &&
         !skipped?.has(blockOccurrenceKey(s.id, now)),
     ) ?? null
+  );
+}
+
+/** Today's flexible morning window containing `now`, if any (with the day's exceptions applied). */
+export function flexibleWindowNow<S extends FocusStatusSchedule>(
+  schedules: S[],
+  now: Date,
+  exceptions?: ScheduleExceptionLike[],
+): S | null {
+  const minute = now.getHours() * 60 + now.getMinutes();
+  return (
+    schedules
+      .map((s) => (exceptions?.length ? scheduleOnDate(s, exceptions, now) : s))
+      .find(
+        (s) =>
+          s.kind === 'WORK' &&
+          s.enabled &&
+          !!s.flexibleBlocks &&
+          s.daysOfWeek.includes(now.getDay()) &&
+          minute >= s.startMinute &&
+          minute < s.endMinute,
+      ) ?? null
+  );
+}
+
+/** Today's flexible window (any time of day): the morning a block started now belongs to. */
+export function flexibleWindowToday<S extends FocusStatusSchedule>(
+  schedules: S[],
+  now: Date,
+  exceptions?: ScheduleExceptionLike[],
+): S | null {
+  return (
+    schedules
+      .map((s) => (exceptions?.length ? scheduleOnDate(s, exceptions, now) : s))
+      .find((s) => s.kind === 'WORK' && s.enabled && !!s.flexibleBlocks && s.daysOfWeek.includes(now.getDay())) ?? null
   );
 }
 
@@ -103,13 +163,20 @@ export function currentFocusStatus(input: {
   const block = schedule ? blockOnDay(schedule, input.tasks, now) : null;
   // A mechanical block ends 60 minutes in, even if its schedule window runs longer.
   const inBlock = block && now < block.endAt ? block : null;
-  const label = schedule?.label ?? null;
-
   const session = input.session;
+  // A flexible block isn't an active work schedule (its window isn't work hours): its session says which block it is.
+  const sessionSchedule = session?.scheduleId ? input.schedules.find((s) => s.id === session.scheduleId) : null;
+  const label = schedule?.label ?? sessionSchedule?.label ?? null;
+
   // Left the block with "Salir": nothing counts until "Volver al bloque".
   if (session?.active && session.pausedAt) {
     const exits = session.exitCount ?? 1;
-    const end = session.blockEndAt ? new Date(session.blockEndAt) : inBlock?.endAt;
+    // A flexible block has no fixed end: it waits, paused, for as long as the user is out.
+    const end = session.blockEndAt
+      ? new Date(session.blockEndAt)
+      : session.flexible
+        ? new Date(now.getTime() + 60 * 60_000)
+        : inBlock?.endAt;
     if (end && end > now) {
       // What's left of the pomodoro, frozen at the moment the user left.
       const leftMs = session.startedAt
@@ -135,6 +202,17 @@ export function currentFocusStatus(input: {
     const focus = session.state === 'FOCUS';
     // Sequence mode: the segment's own label ("P2 · profundo: ...") says what this stretch is for.
     const segment = currentSegment(session);
+    // A flexible pause that's over waits for the user (pause automatic, focus manual).
+    if (session.flexible && !focus && pauseOverrunMinutes(session, now.getTime()) > 0) {
+      return {
+        kind: 'pomodoro',
+        title: 'Pausa terminada',
+        text: [label, task?.title, 'empieza el siguiente foco cuando quieras'].filter(Boolean).join(' · '),
+        endsAt,
+        blockLabel: label,
+        key: `pomodoro:${session.id ?? ''}:segment:${segment?.index ?? 'x'}:over`,
+      };
+    }
     if (segment) {
       return {
         kind: 'pomodoro',

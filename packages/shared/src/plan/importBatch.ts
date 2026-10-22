@@ -110,6 +110,7 @@ export function timetableImportBatch(input: {
         enabled: true,
         category: s.category,
         sequence: s.sequence,
+        flexibleBlocks: s.flexibleBlocks,
       })),
     ],
     studyPlan: [{ updatedAt: now, planData: plan }],

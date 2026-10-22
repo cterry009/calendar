@@ -138,14 +138,23 @@ export interface TemplateSchedule {
   label: string;
   category: PlanCategory | null;
   sequence: SequenceSegment[] | null;
+  /**
+   * The morning window (2026-10-22): this many blocks started on demand inside it, each sized by a
+   * check-in (morning.ts). Null for a fixed block.
+   */
+  flexibleBlocks: number | null;
 }
 
-const MORNING_CATEGORIES: PlanCategory[] = ['estudio_b1', 'estudio_b2', 'pilar_e'];
+export const MORNING_CATEGORIES: readonly PlanCategory[] = ['estudio_b1', 'estudio_b2', 'pilar_e'];
 
-/** Which sequence a template block uses (nota_secuencias): Saturday's, the morning one, or the afternoon one. */
-function sequenceForTemplateBlock(day: string, category: PlanCategory, sequences: PlanSequences): SequenceSegment[] {
-  if (day === 'sabado') return sequences.sabado;
-  return MORNING_CATEGORIES.includes(category) ? sequences.manana : sequences.tarde;
+/** A Monday-Friday morning study block: a flexible window since 2026-10-22, not a fixed block. */
+function isMorningBlock(day: string, category: PlanCategory): boolean {
+  return day !== 'sabado' && MORNING_CATEGORIES.includes(category);
+}
+
+/** Which fixed sequence a template block uses (nota_secuencias): Saturday's or the afternoon one. */
+function sequenceForTemplateBlock(day: string, sequences: PlanSequences): SequenceSegment[] {
+  return day === 'sabado' ? sequences.sabado : sequences.tarde;
 }
 
 /**
@@ -160,7 +169,7 @@ export function templateToSchedules(
 ): TemplateSchedule[] {
   const byKey = new Map<string, TemplateSchedule>();
   const add = (day: number, entry: Omit<TemplateSchedule, 'daysOfWeek'>) => {
-    const key = [entry.kind, entry.startMinute, entry.endMinute, entry.label, entry.category].join('|');
+    const key = [entry.kind, entry.startMinute, entry.endMinute, entry.label, entry.category, entry.flexibleBlocks].join('|');
     const existing = byKey.get(key);
     if (existing) existing.daysOfWeek.push(day);
     else byKey.set(key, { ...entry, daysOfWeek: [day] });
@@ -168,21 +177,72 @@ export function templateToSchedules(
   for (const dayKey of ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'] as const) {
     const day = PLAN_DAY_KEYS.indexOf(dayKey);
     for (const block of template[dayKey]) {
+      const morning = isMorningBlock(dayKey, block.categoria);
       add(day, {
         kind: 'WORK',
         startMinute: parseClock(block.inicio),
         endMinute: parseClock(block.fin),
         label: block.titulo,
         category: block.categoria,
-        sequence: sequenceForTemplateBlock(dayKey, block.categoria, sequences),
+        sequence: morning ? null : sequenceForTemplateBlock(dayKey, sequences),
+        flexibleBlocks: morning ? HORARIO_2026.bloques_manana.bloques : null,
       });
     }
     const breaks = dayKey === 'sabado' ? template.descansos_sabado : template.descansos_lun_vie;
     for (const rest of breaks) {
-      add(day, { kind: 'REST', startMinute: parseClock(rest.inicio), endMinute: parseClock(rest.fin), label: rest.titulo, category: null, sequence: null });
+      add(day, {
+        kind: 'REST',
+        startMinute: parseClock(rest.inicio),
+        endMinute: parseClock(rest.fin),
+        label: rest.titulo,
+        category: null,
+        sequence: null,
+        flexibleBlocks: null,
+      });
     }
   }
   return [...byKey.values()];
+}
+
+/**
+ * Turns an existing user's morning study blocks into the flexible window (D2), in place: same
+ * schedule ids, so their exceptions, completions and history stay attached. Re-importing the
+ * timetable would delete and recreate every WORK block instead. Afternoon, Saturday-only and
+ * already-updated blocks are left alone.
+ */
+export function morningWindowChanges(
+  schedules: Array<
+    Pick<PlanScheduleLike, 'id' | 'kind' | 'daysOfWeek' | 'startMinute' | 'endMinute' | 'category'> & {
+      flexibleBlocks?: number | null;
+      deletedAt?: string | null;
+    }
+  >,
+  now: string,
+): Record<string, unknown>[] {
+  const window = { startMinute: parseClock(HORARIO_2026.bloques_manana.ventana.inicio), endMinute: parseClock(HORARIO_2026.bloques_manana.ventana.fin) };
+  return schedules
+    .filter(
+      (s) =>
+        s.kind === 'WORK' &&
+        !s.deletedAt &&
+        isPlanCategory(s.category) &&
+        MORNING_CATEGORIES.includes(s.category) &&
+        s.daysOfWeek.some((d) => d >= 1 && d <= 5) &&
+        !(s.flexibleBlocks && s.startMinute === window.startMinute && s.endMinute === window.endMinute),
+    )
+    .map((s) => ({
+      id: s.id,
+      updatedAt: now,
+      startMinute: window.startMinute,
+      endMinute: window.endMinute,
+      sequence: null,
+      flexibleBlocks: HORARIO_2026.bloques_manana.bloques,
+    }));
+}
+
+/** Whether the user's morning blocks still need morningWindowChanges. */
+export function needsMorningWindowUpdate(schedules: Parameters<typeof morningWindowChanges>[0]): boolean {
+  return morningWindowChanges(schedules, '').length > 0;
 }
 
 // ─── Exceptions and generation ───────────────────────────────────────────────
@@ -197,6 +257,7 @@ export interface PlanScheduleLike {
   enabled?: boolean;
   category?: string | null;
   sequence?: SequenceSegment[] | null;
+  flexibleBlocks?: number | null;
 }
 
 /** A one-off change to one block on one day; null fields keep the template's value. */
@@ -228,6 +289,8 @@ export interface PlanOccurrence {
   sequenceWarning: string | null;
   /** This day differs from the template. */
   isException: boolean;
+  /** A flexible window (2026-10-22): blocks started on demand inside it; null for a fixed block. */
+  flexibleBlocks: number | null;
 }
 
 function exceptionFor(exceptions: ScheduleExceptionLike[], scheduleId: string, date: string): ScheduleExceptionLike | null {
@@ -290,6 +353,7 @@ export function occurrencesOnDate(
         segments: fitted?.segments ?? null,
         sequenceWarning: fitted?.warning ?? null,
         isException: day !== schedule,
+        flexibleBlocks: schedule.flexibleBlocks ?? null,
       };
     })
     .sort((a, b) => a.startMinute - b.startMinute);

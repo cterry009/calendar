@@ -15,7 +15,7 @@ import {
   type PlanScheduleLike,
   type ScheduleExceptionLike,
 } from './plan.js';
-import { fitSequence, sequenceMinutes } from './sequence.js';
+import { fitSequence, sequenceMinutes, type SequenceSegment } from './sequence.js';
 import { timetableImportBatch, WAKE_EXERCISE_HABIT_TITLE } from './importBatch.js';
 import {
   canCutSegment,
@@ -27,6 +27,18 @@ import { pomodoroTransitionEvents } from '../pomodoro/focus-events.js';
 import type { PomodoroSession } from '../schemas/pomodoro.js';
 
 const plan = defaultStudyPlanData('2026-10-19');
+// The morning sequence of 2026-10-19 to 2026-10-22, kept as a fixture for clock-anchored blocks.
+const CLOCK_SEQUENCE: SequenceSegment[] = [
+  { tipo: 'foco', minutos: 30, etiqueta: 'P1' },
+  { tipo: 'pausa', minutos: 5, etiqueta: 'Pausa' },
+  { tipo: 'foco', minutos: 40, etiqueta: 'P2' },
+  { tipo: 'pausa', minutos: 15, etiqueta: 'Pausa larga' },
+  { tipo: 'foco', minutos: 40, etiqueta: 'P3' },
+  { tipo: 'pausa', minutos: 10, etiqueta: 'Pausa' },
+  { tipo: 'foco', minutos: 20, etiqueta: 'P4' },
+  { tipo: 'pausa', minutos: 5, etiqueta: 'Pausa' },
+  { tipo: 'cierre', minutos: 15, etiqueta: 'Cierre' },
+];
 const schedules: PlanScheduleLike[] = templateToSchedules().map((s, i) => ({ ...s, id: `s${i}` }));
 const byTitle = (title: string) => schedules.find((s) => s.label === title)!;
 
@@ -49,7 +61,10 @@ describe('template', () => {
     expect(byTitle('Estudio B1').daysOfWeek).toEqual([1, 2, 4]);
     expect(byTitle('Código de las notas').daysOfWeek).toEqual([1, 5]);
     expect(byTitle('Almuerzo')).toMatchObject({ kind: 'REST', daysOfWeek: [1, 2, 3, 4, 5], startMinute: 750, endMinute: 840 });
-    expect(byTitle('Estudio B1').sequence).toBe(HORARIO_2026.secuencias_pomodoro.manana);
+    // The morning is a flexible window since 2026-10-22: no fixed sequence.
+    expect(byTitle('Estudio B1')).toMatchObject({ startMinute: 480, endMinute: 720, sequence: null, flexibleBlocks: 2 });
+    expect(byTitle('Estudio Pilar E')).toMatchObject({ daysOfWeek: [5], flexibleBlocks: 2 });
+    expect(byTitle('Proyecto de datos').flexibleBlocks).toBeNull();
     expect(byTitle('Proyecto de datos').sequence).toBe(HORARIO_2026.secuencias_pomodoro.tarde);
   });
 });
@@ -62,7 +77,7 @@ describe('week generation', () => {
     const monday = week.days[0];
     expect(monday.date).toBe('2026-10-19');
     expect(monday.occurrences.map((o) => [o.startMinute, o.endMinute, o.title])).toEqual([
-      [570, 750, 'Estudio B1'],
+      [480, 720, 'Estudio B1'],
       [750, 840, 'Almuerzo'],
       [840, 925, 'Código de las notas'],
       [925, 935, 'Descanso'],
@@ -115,7 +130,6 @@ describe('week generation', () => {
 
 describe('sequences end exactly at the block end', () => {
   it.each([
-    ['manana', 180],
     ['tarde', 85],
     ['sabado', 90],
   ] as const)('%s adds up to %i minutes', (name, minutes) => {
@@ -135,11 +149,11 @@ describe('sequences end exactly at the block end', () => {
   });
 });
 
-describe('a morning block on the timer', () => {
+describe('a clock-anchored block on the timer', () => {
   // Monday 19 Oct 2026, local time.
   const at = (h: number, m = 0) => new Date(2026, 9, 19, h, m);
   const morning = () =>
-    createSequenceBlockSession('b', 'DEEP', at(9, 30).toISOString(), at(12, 30).toISOString(), HORARIO_2026.secuencias_pomodoro.manana);
+    createSequenceBlockSession('b', 'DEEP', at(9, 30).toISOString(), at(12, 30).toISOString(), CLOCK_SEQUENCE);
   const endOf = (s: PomodoroSession) => new Date(new Date(s.startedAt!).getTime() + getPhaseDurationMinutes(s)! * 60_000);
 
   afterEach(() => jest.useRealTimers());

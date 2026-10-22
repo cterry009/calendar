@@ -19,6 +19,9 @@ export const ScheduleSchema = z.object({
   // sequence; without a sequence the block runs pomodoroMin/shortBreakMin as before.
   category: z.string().max(40).optional().nullable(),
   sequence: z.array(SequenceSegmentSchema).max(40).optional().nullable(),
+  // The morning window (dynamic-study-blocks, 2026-10-22): this many blocks started on demand inside
+  // it, each sized by a check-in; null for a fixed block.
+  flexibleBlocks: z.number().int().min(1).max(6).optional().nullable(),
 });
 
 export const CreateScheduleSchema = ScheduleSchema.omit({ id: true });

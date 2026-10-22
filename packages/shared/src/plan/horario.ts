@@ -2,6 +2,10 @@
 // from the JSON they provided -- don't add content here that isn't in it. The weekly template
 // becomes the user's recurring blocks (plan.ts's templateToSchedules); phases, suggested pomodoros,
 // milestones and adjustment rules live in the synced StudyPlan.
+//
+// One change by the user after the JSON (2026-10-22, dynamic-study-blocks): the morning study blocks
+// are no longer 09:30-12:30 with a fixed sequence but a window, 08:00-12:00, for two blocks that start
+// when the user starts them, sized by a check-in (bloques_manana; the rules are in morning.ts).
 
 import type { SequenceSegment } from './sequence.js';
 
@@ -78,14 +82,25 @@ export interface PlanMilestone {
   categoria: PlanCategory;
 }
 
+/** Fixed, clock-anchored sequences. The morning has none since 2026-10-22 (bloques_manana). */
 export interface PlanSequences {
-  manana: SequenceSegment[];
   tarde: SequenceSegment[];
   sabado: SequenceSegment[];
 }
 
+export interface MorningBlocksSetting {
+  ventana: { inicio: string; fin: string };
+  bloques: number;
+  /** Energy E = round((motivation + concentration) / 2) -> block and focus minutes. */
+  tabla_energia: Array<{ energia: string; bloque_min: number; foco_min: number }>;
+  pausas: string;
+  bloque_cumplido: string;
+  nota: string;
+}
+
 export interface HorarioData {
   plantilla_semanal: WeeklyTemplate;
+  bloques_manana: MorningBlocksSetting;
   secuencias_pomodoro: PlanSequences;
   nota_secuencias: string;
   pomodoros_sugeridos: Partial<Record<PlanCategory, string[]>>;
@@ -99,27 +114,27 @@ export const PLAN_WEEKS = 14;
 export const HORARIO_2026: HorarioData = {
   plantilla_semanal: {
     lunes: [
-      { inicio: '09:30', fin: '12:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
+      { inicio: '08:00', fin: '12:00', categoria: 'estudio_b1', titulo: 'Estudio B1' },
       { inicio: '14:00', fin: '15:25', categoria: 'codigo_academico', titulo: 'Código de las notas' },
       { inicio: '15:35', fin: '17:00', categoria: 'carrera', titulo: 'Maestrías: investigar programas' },
     ],
     martes: [
-      { inicio: '09:30', fin: '12:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
+      { inicio: '08:00', fin: '12:00', categoria: 'estudio_b1', titulo: 'Estudio B1' },
       { inicio: '14:00', fin: '15:25', categoria: 'codigo_datos', titulo: 'Proyecto de datos' },
       { inicio: '15:35', fin: '17:00', categoria: 'carrera', titulo: 'CV: las 3 versiones + CV académico' },
     ],
     miercoles: [
-      { inicio: '09:30', fin: '12:30', categoria: 'estudio_b2', titulo: 'Estudio B2' },
+      { inicio: '08:00', fin: '12:00', categoria: 'estudio_b2', titulo: 'Estudio B2' },
       { inicio: '14:00', fin: '15:25', categoria: 'investigacion', titulo: 'Investigación PINN (experimentos del Pilar E)' },
       { inicio: '15:35', fin: '17:00', categoria: 'carrera', titulo: 'Maestrías: documentos (carta, SOP)' },
     ],
     jueves: [
-      { inicio: '09:30', fin: '12:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
+      { inicio: '08:00', fin: '12:00', categoria: 'estudio_b1', titulo: 'Estudio B1' },
       { inicio: '14:00', fin: '15:25', categoria: 'codigo_datos', titulo: 'SQL + proyecto de datos' },
       { inicio: '15:35', fin: '17:00', categoria: 'carrera', titulo: 'Trabajo: aplicaciones dirigidas' },
     ],
     viernes: [
-      { inicio: '09:30', fin: '12:30', categoria: 'pilar_e', titulo: 'Estudio Pilar E' },
+      { inicio: '08:00', fin: '12:00', categoria: 'pilar_e', titulo: 'Estudio Pilar E' },
       { inicio: '14:00', fin: '15:25', categoria: 'codigo_academico', titulo: 'Código de las notas' },
       {
         inicio: '15:35',
@@ -144,22 +159,21 @@ export const HORARIO_2026: HorarioData = {
     descansos_sabado: [{ inicio: '10:30', fin: '11:00', titulo: 'Descanso' }],
   },
 
-  secuencias_pomodoro: {
-    manana: [
-      { tipo: 'foco', minutos: 30, etiqueta: 'P1 · arranque: meta de la sesión en una línea + leer la sección' },
-      { tipo: 'pausa', minutos: 5, etiqueta: 'Pausa' },
-      { tipo: 'foco', minutos: 40, etiqueta: 'P2 · profundo: rehacer derivaciones a mano' },
-      { tipo: 'pausa', minutos: 15, etiqueta: 'Pausa larga: sin pantallas' },
-      { tipo: 'foco', minutos: 40, etiqueta: 'P3 · profundo: terminar derivaciones o ejercicios 🟡' },
-      { tipo: 'pausa', minutos: 10, etiqueta: 'Pausa' },
-      { tipo: 'foco', minutos: 20, etiqueta: 'P4 · corto: ejercicios 🟢 (viernes: anotar qué probar el miércoles)' },
-      { tipo: 'pausa', minutos: 5, etiqueta: 'Pausa' },
-      {
-        tipo: 'cierre',
-        minutos: 15,
-        etiqueta: 'Cierre: recuerdo activo, marcar avance en el PENSUM, primera tarea de la próxima sesión',
-      },
+  // 2026-10-22: replaces secuencias_pomodoro.manana (30+5+40+15+40+10+20+5+15 anchored to 09:30).
+  bloques_manana: {
+    ventana: { inicio: '08:00', fin: '12:00' },
+    bloques: 2,
+    tabla_energia: [
+      { energia: 'E ≤ 2', bloque_min: 90, foco_min: 20 },
+      { energia: 'E = 3', bloque_min: 120, foco_min: 30 },
+      { energia: 'E ≥ 4', bloque_min: 150, foco_min: 40 },
     ],
+    pausas: '5 min después de un foco de 20-30 y 10 min después de uno de 40; el bloque cierra con un tramo de cierre de 15 min.',
+    bloque_cumplido: 'Al menos 60 min de foco real; la mañana se cumple con dos bloques cumplidos.',
+    nota: 'El horario es una recomendación: cada bloque empieza cuando lo inicias y su secuencia se ancla a esa hora. Al iniciar, motivación y concentración (1 a 5) proponen la duración del bloque (90-150) y de los focos (20-40); se pueden ajustar. La pausa arranca sola y el foco no. A las 12:00 no empieza ningún foco nuevo: el que corre termina y sigue el cierre; la tarde no se mueve.',
+  },
+
+  secuencias_pomodoro: {
     tarde: [
       { tipo: 'foco', minutos: 25, etiqueta: 'Pomodoro 1' },
       { tipo: 'pausa', minutos: 5, etiqueta: 'Pausa' },
@@ -178,7 +192,7 @@ export const HORARIO_2026: HorarioData = {
   },
 
   nota_secuencias:
-    'Los bloques de la mañana (estudio_b1, estudio_b2, pilar_e) usan secuencias_pomodoro.manana; los de la tarde, secuencias_pomodoro.tarde; los del sábado, secuencias_pomodoro.sabado. En la tarde y el sábado, las etiquetas de los pomodoros salen de pomodoros_sugeridos según la categoría.',
+    'Los bloques de la mañana (estudio_b1, estudio_b2, pilar_e) no tienen secuencia fija desde el 2026-10-22: siguen bloques_manana. Los de la tarde usan secuencias_pomodoro.tarde; los del sábado, secuencias_pomodoro.sabado. En la tarde y el sábado, las etiquetas de los pomodoros salen de pomodoros_sugeridos según la categoría.',
 
   pomodoros_sugeridos: {
     codigo_academico: ['Planear y escribir', 'Escribir y probar', 'Probar, documentar, commit'],

@@ -40,6 +40,14 @@ export const PomodoroSessionSchema = z.object({
   sequence: z.array(SequenceSegmentSchema).optional().nullable(),
   segmentIndex: z.number().int().min(0).optional().nullable(),
   cutCount: z.number().int().min(0).optional(),
+  // A flexible morning block (dynamic-study-blocks, 2026-10-22): started on demand, its sequence runs
+  // relative to the real start (pause automatic, focus manual) and has no blockEndAt. windowEndAt is
+  // the morning window's end (no focus starts after it); plannedBlockMin, the check-in's length;
+  // focusMinutes, real focus done, which only goes up (sync keeps the max).
+  flexible: z.boolean().optional(),
+  plannedBlockMin: z.number().int().min(1).optional().nullable(),
+  windowEndAt: z.string().datetime().optional().nullable(),
+  focusMinutes: z.number().int().min(0).optional(),
 });
 
 export type PomodoroConfig = z.infer<typeof PomodoroConfigSchema>;
