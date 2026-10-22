@@ -59,7 +59,9 @@ internal object FocusOverlay {
   private val WARNING = Color.parseColor("#E0B64C")
   private val MUTED = Color.parseColor("#A9B8B0")
   private val BODY = Color.parseColor("#F2F7F4")
-  private val RATINGS = listOf(1 to "Muy mal", 2 to "Mal", 3 to "Regular", 4 to "Bien", 5 to "Excelente")
+  // The rating is 0-100 since 2026-10-22 (dynamic-study-blocks revision 2): each button is a starting
+  // value the app's sheet opens with, to adjust there; >= 70 is "alta", under 45 "baja".
+  private val RATINGS = listOf(10 to "Muy mal", 30 to "Mal", 55 to "Regular", 75 to "Bien", 95 to "Excelente")
 
   private fun prefs(context: Context): SharedPreferences =
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -236,7 +238,7 @@ internal object FocusOverlay {
       addView(text(service, "¿Cómo te fue en este pomodoro?", 18f, BODY, center = true))
       for ((value, label) in RATINGS) {
         addView(
-          button(service, "$value · $label", primary = value >= 4) {
+          button(service, "$label · $value", primary = value >= 70) {
             markReviewed(service, key)
             hide(service)
             val uri = Uri.Builder()

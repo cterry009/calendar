@@ -3,8 +3,11 @@ import {
   blockSessionId,
   canCutSegment,
   createBlockPomodoroSession,
+  createFlexibleBlockSession,
   createSequenceBlockSession,
   createPomodoroSession,
+  flexibleBlockSessionId,
+  nextFlexibleBlockNumber,
   getPhaseDurationMinutes,
   isBlockingPhase,
   isPhaseAbandoned,
@@ -44,6 +47,12 @@ interface PomodoroContextValue {
   start: (taskId?: string | null) => Promise<void>;
   /** Starts a session for a WORK block: its id, or null if one is already running or the block is nearly over. */
   startBlock: (block: StartBlockOptions) => Promise<string | null>;
+  /** Starts a flexible block after its first diagnosis (dynamic-study-blocks revision 2): its id, or null. */
+  startFlexibleBlock: (block: StartFlexibleBlockOptions) => Promise<string | null>;
+  /** Flexible block: start the next focus (or the closing) by hand, after its diagnosis. */
+  startFocus: (options?: StartFocusOptions) => Promise<void>;
+  /** Flexible block: "Terminar bloque", a clean end. */
+  endBlock: () => Promise<void>;
   cancel: () => Promise<void>;
   reset: () => Promise<void>;
   /** "Salir": stop counting (from `at` when the exit was recorded elsewhere). */
@@ -68,6 +77,33 @@ export interface StartBlockOptions {
   taskId?: string | null;
   /** The block's pomodoro and break (blockOnDay); the profile's when omitted. */
   timing?: { focusMin: number; breakMin: number };
+}
+
+export interface StartFlexibleBlockOptions {
+  scheduleId: string;
+  /** Its window's end today (13:00, 18:00): no focus starts after it. Null past the window. */
+  windowEndAt: Date | null;
+  blockMin: number;
+  focusMin: number;
+  taskId?: string | null;
+  label?: string;
+  checkIn: { motivation: number; concentration: number; band: string; proposed: { blockMin: number; focusMin: number } };
+}
+
+/** The next focus of a flexible block (revision 2, D24-D26); the same as the web's. */
+export interface StartFocusOptions {
+  minutes?: number;
+  plannedBlockMin?: number;
+  closing?: boolean;
+  label?: string;
+  diagnosis?: {
+    motivation: number;
+    concentration: number;
+    band: string;
+    proposedFocusMin: number;
+    plannedBefore: number | null;
+    rule: string;
+  };
 }
 
 /** Which block a running session belongs to, for the events it logs. */
@@ -340,6 +376,85 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     [logTransition, persistSession, session?.active],
   );
 
+  // Starting a flexible block from the phone (2026-10-22): the same session and logs as the PC's.
+  const startFlexibleBlock = useCallback(
+    async ({ scheduleId, windowEndAt, blockMin, focusMin, taskId, label, checkIn }: StartFlexibleBlockOptions) => {
+      if (session?.active) return null;
+      const now = new Date();
+      // Numbered from every session of the day, so the PC and the phone agree on the block's number.
+      const snapshot = await pullSnapshot();
+      const n = nextFlexibleBlockNumber(snapshot.pomodoroSessions ?? [], scheduleId, now);
+      const id = flexibleBlockSessionId(scheduleId, now, n);
+      const base = {
+        ...createFlexibleBlockSession(id, { blockMin, focusMin, windowEndAt: windowEndAt?.toISOString() ?? null, label }),
+        scheduleId,
+      };
+      const started = transitionPomodoro(base, { type: 'START', taskId: taskId ?? undefined });
+      if (started === base) return null;
+      const record = withRecordMetadata(started, null);
+      blockContextRef.current = { sessionId: record.id, scheduleId, blockStartAt: record.blockStartAt ?? now.toISOString() };
+      saveBlockContext(blockContextRef.current);
+      logFocusEvent({
+        kind: 'CHECK_IN',
+        scheduleId,
+        taskId: taskId ?? undefined,
+        pomodoroSessionId: record.id,
+        meta: {
+          scope: 'block-start',
+          scale: '0-100',
+          motivation: checkIn.motivation,
+          concentration: checkIn.concentration,
+          band: checkIn.band,
+          proposed: checkIn.proposed,
+          chosen: { blockMin, focusMin },
+          plannedBefore: null,
+          plannedAfter: blockMin,
+          cycle: 1,
+          blockNumber: n,
+          device: 'phone',
+        },
+      });
+      await persistSession(record);
+      logTransition(null, record);
+      return record.id;
+    },
+    [logTransition, persistSession, session?.active],
+  );
+
+  const startFocus = useCallback(
+    async (options: StartFocusOptions = {}) => {
+      const { diagnosis, ...event } = options;
+      if (diagnosis && session) {
+        logFocusEvent({
+          kind: 'CHECK_IN',
+          scheduleId: session.scheduleId ?? undefined,
+          taskId: session.taskId ?? undefined,
+          pomodoroSessionId: session.id,
+          meta: {
+            scope: 'pomodoro-diagnosis',
+            scale: '0-100',
+            motivation: diagnosis.motivation,
+            concentration: diagnosis.concentration,
+            band: diagnosis.band,
+            proposed: { focusMin: diagnosis.proposedFocusMin },
+            chosen: { focusMin: event.minutes, blockMin: event.plannedBlockMin },
+            plannedBefore: diagnosis.plannedBefore,
+            plannedAfter: event.plannedBlockMin,
+            rule: diagnosis.rule,
+            cycle: session.completedCycles + 1,
+            device: 'phone',
+          },
+        });
+      }
+      await transitionSession({ type: 'START_FOCUS', ...event }, false);
+    },
+    [session, transitionSession],
+  );
+
+  const endBlock = useCallback(async () => {
+    await transitionSession({ type: 'END_BLOCK' }, false);
+  }, [transitionSession]);
+
   const start = useCallback(
     async (taskId?: string | null) => {
       await transitionSession({ type: 'START', taskId: taskId || undefined }, true);
@@ -514,6 +629,9 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       refetch,
       start,
       startBlock,
+      startFlexibleBlock,
+      startFocus,
+      endBlock,
       cancel,
       reset,
       pause,
@@ -535,6 +653,9 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       session,
       start,
       startBlock,
+      startFlexibleBlock,
+      startFocus,
+      endBlock,
       cancel,
       pause,
       resume,

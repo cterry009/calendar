@@ -1,4 +1,4 @@
-import { BLOCK_RATINGS, BLOCK_REVIEW_TAGS, studyLineOf } from '@calendar/shared';
+import { BLOCK_REVIEW_TAGS, studyLineOf } from '@calendar/shared';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView } from 'react-native';
@@ -7,8 +7,11 @@ import { usePomodoro } from '../context/PomodoroContext';
 import { useCalendarData } from '../hooks/useCalendarData';
 import { closeReviewSheet, markReviewed, subscribeReviewSheet, type ReviewRequest } from '../lib/blockPrompt/reviewSheet';
 import { logFocusEvent } from '../lib/focusEvents/log';
+import { flexibleStore } from '../lib/pomodoro/flexibleStore';
+import { ScaleInput } from './pomodoro/ScaleInput';
 
-// The one thing a block asks, at its end (user-requested, 2026-10-07): how it went on a 1-5 scale,
+// The one thing a block asks, at its end (user-requested, 2026-10-07): how it went (0-100 since
+// 2026-10-22, dynamic-study-blocks revision 2: it feeds the block's ±10 rule),
 // what applied (productive, concentrated, distracted...), a comment on what could have gone better,
 // and -- for a study block -- whether the session got done (done completes it; otherwise it stays
 // pending and is the session of the line's next block). Logged as a CHECK_IN focus event.
@@ -57,7 +60,9 @@ export function BlockReviewSheet() {
 
   useEffect(() => subscribeReviewSheet(setRequest), []);
   useEffect(() => {
-    setRating(request?.rating ?? null);
+    // The overlay's buttons open the sheet with 0-100 values; an older overlay's 1-5 is converted.
+    const preset = request?.rating ?? null;
+    setRating(preset === null ? null : preset <= 5 ? (preset - 1) * 25 : preset);
     setTags([]);
     setComment('');
     setSessionDone(null);
@@ -72,14 +77,16 @@ export function BlockReviewSheet() {
 
   async function finish(save: boolean) {
     if (!request) return;
-    if (save && rating) {
+    // The next focus's ±10 rule reads it (a dismissed card is no signal).
+    flexibleStore.setLastRating(request.sessionId, request.cycle, save ? rating : null);
+    if (save && rating !== null) {
       logFocusEvent({
         kind: 'CHECK_IN',
         scheduleId: request.scheduleId,
         taskId: request.taskId ?? undefined,
         pomodoroSessionId: request.sessionId,
         value: rating,
-        meta: { review: true, scope: 'pomodoro', cycle: request.cycle, rating, tags, comment: comment.trim() || undefined, sessionDone: sessionDone ?? undefined },
+        meta: { review: true, scope: 'pomodoro', cycle: request.cycle, rating, scale: '0-100', tags, comment: comment.trim() || undefined, sessionDone: sessionDone ?? undefined },
       });
       if (studyTask && sessionDone) await completeTask(studyTask).catch(() => undefined);
     }
@@ -101,11 +108,7 @@ export function BlockReviewSheet() {
               Pomodoro {request.cycle} · {schedule?.label ?? 'Bloque de trabajo'}
             </Paragraph>
 
-            <XStack gap="$2" flexWrap="wrap">
-              {BLOCK_RATINGS.map((option) => (
-                <Chip key={option.value} label={`${option.value} · ${option.label}`} selected={rating === option.value} onPress={() => setRating(option.value)} />
-              ))}
-            </XStack>
+            <ScaleInput label="Calificación" value={rating} onChange={setRating} />
 
             <Text fontWeight="700">¿Qué pasó?</Text>
             <XStack gap="$2" flexWrap="wrap">
@@ -127,7 +130,7 @@ export function BlockReviewSheet() {
             <Text fontWeight="700">¿Qué pudo haber sido mejor?</Text>
             <Input placeholder="Comentario (opcional)" value={comment} onChangeText={setComment} multiline numberOfLines={3} />
 
-            <AppButton variant="primary" disabled={!rating} onPress={() => void finish(true)}>
+            <AppButton variant="primary" disabled={rating === null} onPress={() => void finish(true)}>
               Guardar
             </AppButton>
             <AppButton variant="ghost" onPress={() => void finish(false)}>

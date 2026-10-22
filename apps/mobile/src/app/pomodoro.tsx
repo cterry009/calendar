@@ -13,6 +13,7 @@ import { blockTaskId, blockToday } from '../lib/blockPrompt/block';
 import { activeWorkSchedule } from '@calendar/shared';
 import { formatTimer } from '../lib/pomodoro/timer';
 import { SequenceTimeline } from '../components/pomodoro/SequenceTimeline';
+import { FlexibleBlockPanel } from '../components/pomodoro/FlexibleBlockPanel';
 
 const PHASE_LABELS: Record<string, string> = {
   IDLE: 'En espera',
@@ -232,6 +233,9 @@ export default function PomodoroScreen() {
             </YStack>
           </AppCard>
         </TutorialTarget>
+
+        {/* Flexible blocks (dynamic-study-blocks revision 2): today's suggestions, or the running one. */}
+        <FlexibleBlockPanel />
 
         {session ? (
           <Paragraph color="$muted" textAlign="center" margin={0}>
