@@ -42,7 +42,10 @@ export interface NightWindowSetting {
 }
 
 /** 22:00-08:00 (2026-10-15). */
-export const DEFAULT_PLAN_NIGHT_WINDOW: NightWindowSetting = { startMinutes: 22 * 60, endMinutes: 8 * 60 };
+export const DEFAULT_PLAN_NIGHT_WINDOW: NightWindowSetting = {
+  startMinutes: 22 * 60,
+  endMinutes: 8 * 60,
+};
 
 /** The night block can't be shorter than this (8 h since 2026-10-15, was 10 h on the phone). */
 export const MIN_NIGHT_WINDOW_HOURS = 8;
@@ -99,7 +102,7 @@ export function isMondayKey(key: string): boolean {
 export function nextMondayKey(from: Date): string {
   const key = localDateKey(from);
   const dow = dayOfWeekOfKey(key);
-  return addDaysToKey(key, ((8 - dow) % 7) || 7);
+  return addDaysToKey(key, (8 - dow) % 7 || 7);
 }
 
 /** Plan week of a day: 1 for the start week, 0 or less before it, past `weeks` after the plan. */
@@ -117,7 +120,11 @@ export function phaseForWeek(plan: Pick<StudyPlanData, 'fases'>, week: number): 
 }
 
 /** A block's description: what its category covers in the week's phase (none outside the plan). */
-export function blockDescription(plan: Pick<StudyPlanData, 'fases'>, category: string | null | undefined, week: number): string | null {
+export function blockDescription(
+  plan: Pick<StudyPlanData, 'fases'>,
+  category: string | null | undefined,
+  week: number,
+): string | null {
   if (!isPlanCategory(category)) return null;
   return phaseForWeek(plan, week)?.contenido[category] ?? null;
 }
@@ -139,22 +146,17 @@ export interface TemplateSchedule {
   category: PlanCategory | null;
   sequence: SequenceSegment[] | null;
   /**
-   * The morning window (2026-10-22): this many blocks started on demand inside it, each sized by a
-   * check-in (morning.ts). Null for a fixed block.
+   * A flexible weekday block (2026-10-22, revision 2): 1, started on demand at any time, its hours only a
+   * suggestion; sized by diagnoses (morning.ts). Null for a fixed, clock-anchored block (Saturday).
    */
   flexibleBlocks: number | null;
 }
 
 export const MORNING_CATEGORIES: readonly PlanCategory[] = ['estudio_b1', 'estudio_b2', 'pilar_e'];
 
-/** A Monday-Friday morning study block: a flexible window since 2026-10-22, not a fixed block. */
-function isMorningBlock(day: string, category: PlanCategory): boolean {
-  return day !== 'sabado' && MORNING_CATEGORIES.includes(category);
-}
-
-/** Which fixed sequence a template block uses (nota_secuencias): Saturday's or the afternoon one. */
-function sequenceForTemplateBlock(day: string, sequences: PlanSequences): SequenceSegment[] {
-  return day === 'sabado' ? sequences.sabado : sequences.tarde;
+/** Which fixed sequence a template block uses (nota_secuencias): Saturday's; weekday blocks have none. */
+function sequenceForTemplateBlock(day: string, sequences: PlanSequences): SequenceSegment[] | null {
+  return day === 'sabado' ? sequences.sabado : null;
 }
 
 /**
@@ -169,7 +171,14 @@ export function templateToSchedules(
 ): TemplateSchedule[] {
   const byKey = new Map<string, TemplateSchedule>();
   const add = (day: number, entry: Omit<TemplateSchedule, 'daysOfWeek'>) => {
-    const key = [entry.kind, entry.startMinute, entry.endMinute, entry.label, entry.category, entry.flexibleBlocks].join('|');
+    const key = [
+      entry.kind,
+      entry.startMinute,
+      entry.endMinute,
+      entry.label,
+      entry.category,
+      entry.flexibleBlocks,
+    ].join('|');
     const existing = byKey.get(key);
     if (existing) existing.daysOfWeek.push(day);
     else byKey.set(key, { ...entry, daysOfWeek: [day] });
@@ -177,15 +186,15 @@ export function templateToSchedules(
   for (const dayKey of ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'] as const) {
     const day = PLAN_DAY_KEYS.indexOf(dayKey);
     for (const block of template[dayKey]) {
-      const morning = isMorningBlock(dayKey, block.categoria);
+      const weekday = dayKey !== 'sabado';
       add(day, {
         kind: 'WORK',
         startMinute: parseClock(block.inicio),
         endMinute: parseClock(block.fin),
         label: block.titulo,
         category: block.categoria,
-        sequence: morning ? null : sequenceForTemplateBlock(dayKey, sequences),
-        flexibleBlocks: morning ? HORARIO_2026.bloques_manana.bloques : null,
+        sequence: sequenceForTemplateBlock(dayKey, sequences),
+        flexibleBlocks: weekday ? 1 : null,
       });
     }
     const breaks = dayKey === 'sabado' ? template.descansos_sabado : template.descansos_lun_vie;
@@ -204,45 +213,120 @@ export function templateToSchedules(
   return [...byKey.values()];
 }
 
-/**
- * Turns an existing user's morning study blocks into the flexible window (D2), in place: same
- * schedule ids, so their exceptions, completions and history stay attached. Re-importing the
- * timetable would delete and recreate every WORK block instead. Afternoon, Saturday-only and
- * already-updated blocks are left alone.
- */
-export function morningWindowChanges(
-  schedules: Array<
-    Pick<PlanScheduleLike, 'id' | 'kind' | 'daysOfWeek' | 'startMinute' | 'endMinute' | 'category'> & {
-      flexibleBlocks?: number | null;
-      deletedAt?: string | null;
-    }
-  >,
-  now: string,
-): Record<string, unknown>[] {
-  const window = { startMinute: parseClock(HORARIO_2026.bloques_manana.ventana.inicio), endMinute: parseClock(HORARIO_2026.bloques_manana.ventana.fin) };
-  return schedules
-    .filter(
-      (s) =>
-        s.kind === 'WORK' &&
-        !s.deletedAt &&
-        isPlanCategory(s.category) &&
-        MORNING_CATEGORIES.includes(s.category) &&
-        s.daysOfWeek.some((d) => d >= 1 && d <= 5) &&
-        !(s.flexibleBlocks && s.startMinute === window.startMinute && s.endMinute === window.endMinute),
-    )
-    .map((s) => ({
-      id: s.id,
-      updatedAt: now,
-      startMinute: window.startMinute,
-      endMinute: window.endMinute,
-      sequence: null,
-      flexibleBlocks: HORARIO_2026.bloques_manana.bloques,
-    }));
+export interface WeekdayScheduleLike {
+  id: string;
+  kind: 'WORK' | 'REST';
+  daysOfWeek: number[];
+  startMinute: number;
+  endMinute: number;
+  label?: string | null;
+  category?: string | null;
+  sequence?: SequenceSegment[] | null;
+  flexibleBlocks?: number | null;
+  deletedAt?: string | null;
 }
 
-/** Whether the user's morning blocks still need morningWindowChanges. */
-export function needsMorningWindowUpdate(schedules: Parameters<typeof morningWindowChanges>[0]): boolean {
-  return morningWindowChanges(schedules, '').length > 0;
+export interface WeekdayV2Changes<S extends WeekdayScheduleLike> {
+  /** Existing schedules at their new times (same ids), flexible, without a sequence. */
+  updates: S[];
+  /** The morning's second suggestions, missing until now. */
+  creates: Array<Omit<S, 'id'>>;
+  /** Schedule ids that go away (the 15:25 break). */
+  deletes: string[];
+}
+
+const SUGGESTIONS = {
+  morning: [
+    [9 * 60, 10 * 60 + 30],
+    [11 * 60, 12 * 60 + 30],
+  ],
+  afternoon: [
+    [14 * 60, 15 * 60 + 30],
+    [16 * 60, 17 * 60 + 30],
+  ],
+  lunch: [13 * 60, 14 * 60],
+} as const;
+
+const isWeekday = (s: Pick<WeekdayScheduleLike, 'daysOfWeek'>) =>
+  s.daysOfWeek.some((d) => d >= 1 && d <= 5);
+
+/**
+ * Turns an existing timetable into revision 2's weekday (D30), keeping every schedule id so exceptions,
+ * completions and history stay attached (re-importing the timetable would delete and recreate every
+ * WORK block). A morning study schedule -- 09:30-12:30 from the JSON, or revision 1's 08:00-12:00
+ * window -- becomes the 09:00 suggestion and gets an 11:00 sibling; an afternoon block moves to 14:00 or
+ * 16:00 by where it was; lunch moves to 13:00; the 15:25 break goes. Saturday isn't touched, and a
+ * schedule already where it belongs isn't sent again.
+ */
+export function weekdayV2Changes<S extends WeekdayScheduleLike>(
+  schedules: S[],
+): WeekdayV2Changes<S> {
+  const live = schedules.filter((s) => !s.deletedAt && isWeekday(s));
+  const result: WeekdayV2Changes<S> = { updates: [], creates: [], deletes: [] };
+  const place = (s: S, [startMinute, endMinute]: readonly [number, number], flexible: boolean) => {
+    const target = flexible ? 1 : null;
+    if (
+      s.startMinute === startMinute &&
+      s.endMinute === endMinute &&
+      (s.flexibleBlocks ?? null) === target &&
+      (!flexible || !s.sequence)
+    ) {
+      return;
+    }
+    result.updates.push({
+      ...s,
+      startMinute,
+      endMinute,
+      ...(flexible ? { sequence: null, flexibleBlocks: 1 } : {}),
+    });
+  };
+
+  for (const s of live) {
+    if (s.kind === 'REST') {
+      if (s.label === 'Almuerzo') place(s, SUGGESTIONS.lunch, false);
+      else if (s.label === 'Descanso' && s.startMinute >= 15 * 60 && s.startMinute < 16 * 60)
+        result.deletes.push(s.id);
+      continue;
+    }
+    const morning =
+      isPlanCategory(s.category) &&
+      MORNING_CATEGORIES.includes(s.category) &&
+      s.startMinute < 13 * 60;
+    if (morning) {
+      const second = s.startMinute >= SUGGESTIONS.morning[1][0];
+      place(s, SUGGESTIONS.morning[second ? 1 : 0], true);
+      if (!second) {
+        const sibling = live.some(
+          (o) =>
+            o !== s &&
+            o.kind === 'WORK' &&
+            o.label === s.label &&
+            o.category === s.category &&
+            o.startMinute === SUGGESTIONS.morning[1][0],
+        );
+        if (!sibling) {
+          const { id: _id, ...rest } = s;
+          result.creates.push({
+            ...rest,
+            startMinute: SUGGESTIONS.morning[1][0],
+            endMinute: SUGGESTIONS.morning[1][1],
+            sequence: null,
+            flexibleBlocks: 1,
+          });
+        }
+      }
+    } else {
+      // The afternoon: the earlier block (14:00-15:25 until now) is the 14:00 suggestion, the later one 16:00.
+      place(s, SUGGESTIONS.afternoon[s.startMinute < 15 * 60 ? 0 : 1], true);
+    }
+  }
+  return result;
+}
+
+/** Whether an existing timetable still needs weekdayV2Changes ("Actualizar la jornada"). */
+export function needsWeekdayUpdate(schedules: WeekdayScheduleLike[]): boolean {
+  const changes = weekdayV2Changes(schedules);
+  return changes.updates.length + changes.creates.length + changes.deletes.length > 0;
 }
 
 // ─── Exceptions and generation ───────────────────────────────────────────────
@@ -293,8 +377,14 @@ export interface PlanOccurrence {
   flexibleBlocks: number | null;
 }
 
-function exceptionFor(exceptions: ScheduleExceptionLike[], scheduleId: string, date: string): ScheduleExceptionLike | null {
-  return exceptions.find((e) => e.scheduleId === scheduleId && e.date === date && !e.deletedAt) ?? null;
+function exceptionFor(
+  exceptions: ScheduleExceptionLike[],
+  scheduleId: string,
+  date: string,
+): ScheduleExceptionLike | null {
+  return (
+    exceptions.find((e) => e.scheduleId === scheduleId && e.date === date && !e.deletedAt) ?? null
+  );
 }
 
 /**
@@ -303,9 +393,19 @@ function exceptionFor(exceptions: ScheduleExceptionLike[], scheduleId: string, d
  * (the block prompt, blocking, the timer).
  */
 export function scheduleOnDate<
-  S extends { id: string; startMinute: number; endMinute: number; label?: string | null; category?: string | null },
+  S extends {
+    id: string;
+    startMinute: number;
+    endMinute: number;
+    label?: string | null;
+    category?: string | null;
+  },
 >(schedule: S, exceptions: ScheduleExceptionLike[], day: Date | string): S {
-  const exception = exceptionFor(exceptions, schedule.id, typeof day === 'string' ? day : localDateKey(day));
+  const exception = exceptionFor(
+    exceptions,
+    schedule.id,
+    typeof day === 'string' ? day : localDateKey(day),
+  );
   if (!exception) return schedule;
   return {
     ...schedule,
@@ -322,7 +422,10 @@ export function labelledSequenceFor(
   category: string | null | undefined,
   plan: Pick<StudyPlanData, 'pomodoros_sugeridos'> | null,
 ): SequenceSegment[] {
-  return labelSequence(sequence, plan && isPlanCategory(category) ? plan.pomodoros_sugeridos[category] : undefined);
+  return labelSequence(
+    sequence,
+    plan && isPlanCategory(category) ? plan.pomodoros_sugeridos[category] : undefined,
+  );
 }
 
 export function occurrencesOnDate(
@@ -339,7 +442,10 @@ export function occurrencesOnDate(
       const day = scheduleOnDate(schedule, exceptions, date);
       const category = day.category ?? null;
       const fitted = schedule.sequence?.length
-        ? fitSequence(labelledSequenceFor(schedule.sequence, category, plan), day.endMinute - day.startMinute)
+        ? fitSequence(
+            labelledSequenceFor(schedule.sequence, category, plan),
+            day.endMinute - day.startMinute,
+          )
         : null;
       return {
         scheduleId: schedule.id,
@@ -349,7 +455,8 @@ export function occurrencesOnDate(
         endMinute: day.endMinute,
         title: day.label ?? '',
         category,
-        description: plan && schedule.kind === 'WORK' ? blockDescription(plan, category, week) : null,
+        description:
+          plan && schedule.kind === 'WORK' ? blockDescription(plan, category, week) : null,
         segments: fitted?.segments ?? null,
         sequenceWarning: fitted?.warning ?? null,
         isException: day !== schedule,
@@ -389,8 +496,14 @@ export function generatePlanWeek(
 }
 
 /** Every week of the plan (14 from the start Monday). */
-export function generatePlan(schedules: PlanScheduleLike[], exceptions: ScheduleExceptionLike[], plan: StudyPlanData): PlanWeek[] {
-  return Array.from({ length: plan.weeks }, (_, i) => generatePlanWeek(schedules, exceptions, plan, i + 1));
+export function generatePlan(
+  schedules: PlanScheduleLike[],
+  exceptions: ScheduleExceptionLike[],
+  plan: StudyPlanData,
+): PlanWeek[] {
+  return Array.from({ length: plan.weeks }, (_, i) =>
+    generatePlanWeek(schedules, exceptions, plan, i + 1),
+  );
 }
 
 // ─── Adjustments (reglas_de_ajuste as quick actions) ─────────────────────────
@@ -422,8 +535,22 @@ export function swapExceptions(
   b: Pick<PlanOccurrence, 'scheduleId' | 'date' | 'category' | 'title'>,
 ): [ScheduleExceptionLike, ScheduleExceptionLike] {
   return [
-    { scheduleId: a.scheduleId, date: a.date, category: b.category, label: b.title, startMinute: null, endMinute: null },
-    { scheduleId: b.scheduleId, date: b.date, category: a.category, label: a.title, startMinute: null, endMinute: null },
+    {
+      scheduleId: a.scheduleId,
+      date: a.date,
+      category: b.category,
+      label: b.title,
+      startMinute: null,
+      endMinute: null,
+    },
+    {
+      scheduleId: b.scheduleId,
+      date: b.date,
+      category: a.category,
+      label: a.title,
+      startMinute: null,
+      endMinute: null,
+    },
   ];
 }
 
@@ -482,9 +609,11 @@ export function weekProgress(
     const date = localDateKey(new Date(when));
     if (date < weekStart || date >= weekEnd) continue;
     const schedule = schedules.find((s) => s.id === session.scheduleId);
-    const category = exceptionFor(exceptions, session.scheduleId, date)?.category ?? schedule?.category;
+    const category =
+      exceptionFor(exceptions, session.scheduleId, date)?.category ?? schedule?.category;
     if (!category) continue;
-    result.pomodorosByCategory[category] = (result.pomodorosByCategory[category] ?? 0) + session.completedCycles;
+    result.pomodorosByCategory[category] =
+      (result.pomodorosByCategory[category] ?? 0) + session.completedCycles;
     result.cuts += session.cutCount ?? 0;
   }
   return result;

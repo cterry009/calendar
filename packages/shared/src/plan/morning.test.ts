@@ -1,243 +1,337 @@
 import { HORARIO_2026 } from './horario.js';
 import {
+  adjustPlannedBlock,
+  afternoonStatus,
+  bandOf,
   blockDone,
-  checkInProposal,
   clampBlockMin,
   clampFocusMin,
-  dueMorningReminder,
-  energyOf,
+  diagnosisProposal,
+  dueBlockReminder,
+  maxFittingFocus,
   morningStatus,
-  plannedFocusMinutes,
-  planFlexibleBlock,
+  ratingTo100,
+  windowForMinute,
   type FlexibleSessionLike,
 } from './morning.js';
-import { morningWindowChanges, needsMorningWindowUpdate, templateToSchedules } from './plan.js';
-import { sequenceMinutes } from './sequence.js';
+import {
+  needsWeekdayUpdate,
+  templateToSchedules,
+  weekdayV2Changes,
+  type WeekdayScheduleLike,
+} from './plan.js';
 
 // Monday 26 Oct 2026, local time.
 const at = (h: number, m = 0) => new Date(2026, 9, 26, h, m);
-const shape = (blockMin: number, focusMin: number) =>
-  planFlexibleBlock(blockMin, focusMin).map((s) => s.minutos);
 
-describe('energy table', () => {
-  it('averages motivation and concentration, rounding halves up', () => {
-    expect(energyOf(2, 2)).toBe(2);
-    expect(energyOf(3, 2)).toBe(3);
-    expect(energyOf(5, 4)).toBe(5);
+describe('diagnosis 0-100 (revision 2)', () => {
+  it('bands: low under 45, medium 45-69, high from 70', () => {
+    expect(bandOf(44)).toBe('baja');
+    expect(bandOf(45)).toBe('media');
+    expect(bandOf(69)).toBe('media');
+    expect(bandOf(70)).toBe('alta');
   });
 
-  it('E = 2 proposes 90/20 and E = 5 proposes 150/40', () => {
-    expect(checkInProposal(2, 2)).toEqual({ energy: 2, blockMin: 90, focusMin: 20 });
-    expect(checkInProposal(1, 3)).toMatchObject({ blockMin: 90, focusMin: 20 });
-    expect(checkInProposal(3, 3)).toMatchObject({ blockMin: 120, focusMin: 30 });
-    expect(checkInProposal(5, 5)).toEqual({ energy: 5, blockMin: 150, focusMin: 40 });
+  it('a low first diagnosis gives a 60-minute block of 20-minute focuses, a top one 120/40', () => {
+    expect(diagnosisProposal(40, 40)).toMatchObject({ band: 'baja', blockMin: 60, focusMin: 20 });
+    expect(diagnosisProposal(100, 100)).toMatchObject({
+      band: 'alta',
+      blockMin: 120,
+      focusMin: 40,
+    });
+    expect(diagnosisProposal(60, 50)).toMatchObject({ band: 'media', blockMin: 90, focusMin: 30 });
+    // The chat's first diagnosis (90/80) and its second (35/25).
+    expect(diagnosisProposal(90, 80)).toMatchObject({ blockMin: 120, focusMin: 40 });
+    expect(diagnosisProposal(35, 25)).toMatchObject({ band: 'baja', focusMin: 20 });
   });
 
-  it('keeps manual adjustments inside 90-150 and 20-40', () => {
-    expect(clampBlockMin(200)).toBe(150);
-    expect(clampBlockMin(100)).toBe(105);
+  it('keeps manual adjustments inside 60-120 (steps of 10) and 20-40 (steps of 5)', () => {
+    expect(clampBlockMin(130)).toBe(120);
+    expect(clampBlockMin(84)).toBe(80);
+    expect(clampBlockMin(40)).toBe(60);
     expect(clampFocusMin(12)).toBe(20);
-    expect(clampFocusMin(33)).toBe(35);
+    expect(clampFocusMin(27)).toBe(25);
+  });
+
+  it('reads old 1-5 ratings on the 0-100 scale', () => {
+    expect(ratingTo100(1)).toBe(0);
+    expect(ratingTo100(4)).toBe(75);
+    expect(ratingTo100(55, '0-100')).toBe(55);
   });
 });
 
-describe('flexible block plan', () => {
-  it('fits each row of the table with its pauses and the closing', () => {
-    expect(shape(90, 20)).toEqual([20, 5, 20, 5, 20, 5, 15]);
-    expect(shape(120, 30)).toEqual([30, 5, 30, 5, 30, 5, 15]);
-    expect(shape(150, 40)).toEqual([40, 10, 40, 10, 30, 5, 15]);
-    for (const [block, focus] of [
-      [90, 20],
-      [120, 30],
-      [150, 40],
-    ]) {
-      expect(sequenceMinutes(planFlexibleBlock(block, focus))).toBe(block);
-    }
-    expect(plannedFocusMinutes(planFlexibleBlock(90, 20))).toBe(60);
+describe('the ±10 rule', () => {
+  const base = {
+    planned: 90,
+    lastRating: 60,
+    band: 'media' as const,
+    lastCut: false,
+    workedMin: 30,
+  };
+
+  it('+10 when the rating and the diagnosis are both high', () => {
+    expect(adjustPlannedBlock({ ...base, lastRating: 80, band: 'alta' })).toMatchObject({
+      planned: 100,
+      delta: 10,
+    });
   });
 
-  it('drops a last focus under 20 and ends early instead', () => {
-    expect(shape(135, 30)).toEqual([30, 5, 30, 5, 30, 5, 15]);
+  it('−10 when either is low or the focus was cut', () => {
+    expect(adjustPlannedBlock({ ...base, lastRating: 30 }).planned).toBe(80);
+    expect(adjustPlannedBlock({ ...base, band: 'baja' }).planned).toBe(80);
+    expect(
+      adjustPlannedBlock({ ...base, lastCut: true, lastRating: 90, band: 'alta' }).planned,
+    ).toBe(80);
   });
 
-  it('respects a manual adjustment', () => {
-    expect(shape(105, 25)).toEqual([25, 5, 25, 5, 25, 5, 15]);
+  it('the same otherwise, and a dismissed rating is no signal', () => {
+    expect(adjustPlannedBlock(base).planned).toBe(90);
+    expect(adjustPlannedBlock({ ...base, lastRating: null, band: 'alta' }).planned).toBe(90);
   });
 
-  it('ends with the closing and labels the focuses', () => {
-    const plan = planFlexibleBlock(120, 30);
-    expect(plan.at(-1)).toMatchObject({ tipo: 'cierre', minutos: 15 });
-    expect(plan[0].etiqueta).toMatch(/^P1 · arranque/);
-    expect(plan[4].etiqueta).toMatch(/^P3 · corto/);
+  it('stays within 60-120 and never under what was worked', () => {
+    expect(
+      adjustPlannedBlock({ ...base, planned: 120, lastRating: 90, band: 'alta' }),
+    ).toMatchObject({ planned: 120, delta: 0 });
+    expect(adjustPlannedBlock({ ...base, planned: 60, band: 'baja' }).planned).toBe(60);
+    expect(adjustPlannedBlock({ ...base, planned: 80, band: 'baja', workedMin: 76 }).planned).toBe(
+      80,
+    );
+    expect(adjustPlannedBlock({ ...base, planned: 60, lastCut: true, workedMin: 50 }).planned).toBe(
+      60,
+    );
+  });
+
+  it("the chat's block: 120 planned, rated 55, then 35/25 → 110 and a 20-minute focus", () => {
+    const next = diagnosisProposal(35, 25);
+    expect(
+      adjustPlannedBlock({
+        planned: 120,
+        lastRating: 55,
+        band: next.band,
+        lastCut: false,
+        workedMin: 50,
+      }).planned,
+    ).toBe(110);
+    expect(next.focusMin).toBe(20);
   });
 });
 
-describe('block and morning completion', () => {
+describe('what still fits the planned block', () => {
+  it('the longest focus that fits with its pause and the closing, or none', () => {
+    expect(maxFittingFocus(90, 0)).toBe(40);
+    expect(maxFittingFocus(60, 20)).toBe(20); // 40 left: 20 + 5 + 15
+    expect(maxFittingFocus(60, 21)).toBeNull();
+    expect(maxFittingFocus(60, 45)).toBeNull();
+  });
+});
+
+describe('completion', () => {
   const session = (
     n: number,
     focusMinutes: number,
-    extra: Partial<FlexibleSessionLike> = {},
+    h: number,
+    windowEnd: number,
   ): FlexibleSessionLike => ({
-    id: `block-s-2026-10-26-${n}`,
+    id: `block-s${n}-2026-10-26-1`,
+    scheduleId: `s${n}`,
     flexible: true,
-    blockStartAt: at(8 + n).toISOString(),
+    blockStartAt: at(h).toISOString(),
+    windowEndAt: at(windowEnd).toISOString(),
     focusMinutes,
-    ...extra,
   });
 
-  it('a block with 60 minutes of focus is done and one with 30 is not', () => {
-    expect(blockDone({ focusMinutes: 60 })).toBe(true);
+  it('a block with 45 minutes of focus is done and one with 30 is not', () => {
+    expect(blockDone({ focusMinutes: 45 })).toBe(true);
     expect(blockDone({ focusMinutes: 30 })).toBe(false);
   });
 
-  it('the morning is fulfilled with two done blocks', () => {
-    expect(morningStatus([session(1, 72), session(2, 30)], '2026-10-26')).toMatchObject({
+  it("the day's minimum is two done morning blocks; the afternoon is counted apart", () => {
+    const day = [session(1, 72, 9, 13), session(2, 30, 11, 13), session(3, 80, 14, 18)];
+    expect(morningStatus(day, '2026-10-26')).toMatchObject({
       started: 2,
       done: 1,
       fulfilled: false,
     });
-    expect(morningStatus([session(1, 72), session(2, 60)], '2026-10-26')).toMatchObject({
-      done: 2,
-      fulfilled: true,
-    });
-    // Fixed blocks and other days don't count.
+    expect(afternoonStatus(day, '2026-10-26')).toMatchObject({ started: 1, done: 1 });
     expect(
-      morningStatus([{ ...session(1, 90), flexible: false }, session(2, 90)], '2026-10-27').started,
-    ).toBe(0);
+      morningStatus([session(1, 50, 9, 13), session(2, 45, 11, 13)], '2026-10-26').fulfilled,
+    ).toBe(true);
+  });
+
+  it('the windows are 09:00-13:00 and 14:00-18:00', () => {
+    expect(windowForMinute(9 * 60)?.name).toBe('manana');
+    expect(windowForMinute(13 * 60)).toBeNull();
+    expect(windowForMinute(17 * 60 + 59)?.name).toBe('tarde');
   });
 });
 
-describe('reminders', () => {
-  it('reminds at 08:20 and 08:50 when no block has started', () => {
-    expect(dueMorningReminder({ now: at(8, 10), sessions: [], sent: [] })).toBeNull();
-    expect(dueMorningReminder({ now: at(8, 20), sessions: [], sent: [] })?.id).toBe('start-1');
-    expect(dueMorningReminder({ now: at(8, 30), sessions: [], sent: ['start-1'] })).toBeNull();
-    expect(dueMorningReminder({ now: at(8, 50), sessions: [], sent: ['start-1'] })?.id).toBe(
-      'start-2',
-    );
-    // Opened at 09:00: only the latest one, and no earlier one after it.
-    expect(dueMorningReminder({ now: at(9), sessions: [], sent: [] })?.id).toBe('start-2');
-    expect(dueMorningReminder({ now: at(9, 5), sessions: [], sent: ['start-2'] })).toBeNull();
+describe('reminders at the suggested times', () => {
+  const suggestions = [
+    { scheduleId: 'm1', startMinute: 9 * 60, label: 'Estudio B1' },
+    { scheduleId: 'm2', startMinute: 11 * 60, label: 'Estudio B1' },
+    { scheduleId: 'a1', startMinute: 14 * 60, label: 'Código de las notas' },
+    { scheduleId: 'a2', startMinute: 16 * 60, label: 'Maestrías' },
+  ];
+  const ran = (scheduleId: string, active: boolean): FlexibleSessionLike => ({
+    id: `x-${scheduleId}`,
+    scheduleId,
+    flexible: true,
+    active,
+    blockStartAt: at(9, 10).toISOString(),
+    endedAt: active ? null : at(10, 40).toISOString(),
   });
 
-  it('reminds 20 minutes after the first block ended', () => {
-    const first: FlexibleSessionLike = {
-      id: 'b-1',
-      flexible: true,
-      blockStartAt: at(8, 30).toISOString(),
-      endedAt: at(10).toISOString(),
-      focusMinutes: 70,
-    };
-    expect(dueMorningReminder({ now: at(10, 10), sessions: [first], sent: [] })).toBeNull();
-    expect(dueMorningReminder({ now: at(10, 20), sessions: [first], sent: [] })?.id).toBe(
-      'between-1',
-    );
+  it('at 11:00 only when no block is running', () => {
     expect(
-      dueMorningReminder({
-        now: at(10, 20),
-        sessions: [{ ...first, endedAt: null, active: true }],
-        sent: [],
+      dueBlockReminder({ now: at(11), suggestions, sessions: [ran('m1', true)], sent: [] }),
+    ).toBeNull();
+    expect(
+      dueBlockReminder({ now: at(11), suggestions, sessions: [ran('m1', false)], sent: [] })?.id,
+    ).toBe('m2');
+  });
+
+  it('once per suggestion, and not for one already started', () => {
+    expect(
+      dueBlockReminder({
+        now: at(11, 20),
+        suggestions,
+        sessions: [ran('m1', false)],
+        sent: ['m2'],
       }),
     ).toBeNull();
+    expect(
+      dueBlockReminder({ now: at(9, 30), suggestions, sessions: [ran('m1', false)], sent: [] }),
+    ).toBeNull();
+    expect(dueBlockReminder({ now: at(9, 5), suggestions, sessions: [], sent: [] })?.id).toBe('m1');
   });
 
-  it('never after 12:00, once fulfilled, or past the cap', () => {
-    expect(dueMorningReminder({ now: at(12), sessions: [], sent: [] })).toBeNull();
-    expect(
-      dueMorningReminder({ now: at(9), sessions: [], sent: ['start-1', 'x', 'y'] }),
-    ).toBeNull();
-    const done = (n: number): FlexibleSessionLike => ({
-      id: `b-${n}`,
-      flexible: true,
-      blockStartAt: at(8 + n).toISOString(),
-      endedAt: at(9 + n).toISOString(),
-      focusMinutes: 60,
-    });
-    expect(
-      dueMorningReminder({ now: at(11, 30), sessions: [done(1), done(2)], sent: [] }),
-    ).toBeNull();
+  it('not after the window closes, nor before the time', () => {
+    expect(dueBlockReminder({ now: at(13, 10), suggestions, sessions: [], sent: [] })).toBeNull();
+    expect(dueBlockReminder({ now: at(8, 50), suggestions, sessions: [], sent: [] })).toBeNull();
+    expect(dueBlockReminder({ now: at(16, 5), suggestions, sessions: [], sent: ['a1'] })?.id).toBe(
+      'a2',
+    );
   });
 });
 
-describe('the morning window in the timetable', () => {
-  it('is dated and uses two blocks', () => {
-    expect(HORARIO_2026.bloques_manana).toMatchObject({
-      ventana: { inicio: '08:00', fin: '12:00' },
-      bloques: 2,
+describe('the weekday in the timetable (revision 2)', () => {
+  it('is two windows with suggested blocks, lunch at 13:00, and Saturday unchanged', () => {
+    expect(
+      HORARIO_2026.bloques_dinamicos.ventanas_lun_vie.map((w) => `${w.inicio}-${w.fin}`),
+    ).toEqual(['09:00-13:00', '14:00-18:00']);
+    const schedules = templateToSchedules();
+    const b1 = schedules.filter((s) => s.label === 'Estudio B1');
+    expect(b1.map((s) => [s.startMinute, s.endMinute, s.flexibleBlocks, s.sequence])).toEqual([
+      [540, 630, 1, null],
+      [660, 750, 1, null],
+    ]);
+    expect(schedules.find((s) => s.label === 'Proyecto de datos')).toMatchObject({
+      startMinute: 840,
+      endMinute: 930,
+      flexibleBlocks: 1,
+      sequence: null,
+    });
+    expect(schedules.find((s) => s.label === 'Almuerzo')).toMatchObject({
+      startMinute: 780,
+      endMinute: 840,
+    });
+    expect(schedules.some((s) => s.label === 'Descanso' && s.daysOfWeek.includes(1))).toBe(false);
+    expect(schedules.find((s) => s.daysOfWeek.includes(6) && s.kind === 'WORK')).toMatchObject({
+      flexibleBlocks: null,
     });
   });
 
-  it('updates the old morning blocks in place and leaves the rest alone', () => {
-    const old = [
+  it('updates an existing timetable in place: ids kept, second suggestion created, lunch moved, break deleted', () => {
+    const old: WeekdayScheduleLike[] = [
       {
         id: 'b1',
-        kind: 'WORK' as const,
+        kind: 'WORK',
         daysOfWeek: [1, 2, 4],
-        startMinute: 570,
-        endMinute: 750,
+        startMinute: 480,
+        endMinute: 720,
+        label: 'Estudio B1',
         category: 'estudio_b1',
-      },
-      {
-        id: 'pe',
-        kind: 'WORK' as const,
-        daysOfWeek: [5],
-        startMinute: 570,
-        endMinute: 750,
-        category: 'pilar_e',
+        flexibleBlocks: 2,
       },
       {
         id: 'pm',
-        kind: 'WORK' as const,
+        kind: 'WORK',
         daysOfWeek: [1, 5],
         startMinute: 840,
         endMinute: 925,
+        label: 'Código de las notas',
         category: 'codigo_academico',
+        sequence: [{ tipo: 'foco', minutos: 25, etiqueta: 'P' }],
       },
       {
-        id: 'sa',
-        kind: 'WORK' as const,
-        daysOfWeek: [6],
-        startMinute: 540,
-        endMinute: 630,
-        category: 'repaso',
+        id: 'ca',
+        kind: 'WORK',
+        daysOfWeek: [1],
+        startMinute: 935,
+        endMinute: 1020,
+        label: 'Maestrías',
+        category: 'carrera',
       },
       {
         id: 'lu',
-        kind: 'REST' as const,
-        daysOfWeek: [1],
+        kind: 'REST',
+        daysOfWeek: [1, 2, 3, 4, 5],
         startMinute: 750,
         endMinute: 840,
-        category: null,
+        label: 'Almuerzo',
+      },
+      {
+        id: 'de',
+        kind: 'REST',
+        daysOfWeek: [1, 2, 3, 4, 5],
+        startMinute: 925,
+        endMinute: 935,
+        label: 'Descanso',
+      },
+      {
+        id: 'sa',
+        kind: 'WORK',
+        daysOfWeek: [6],
+        startMinute: 540,
+        endMinute: 630,
+        label: 'Repaso',
+        category: 'repaso',
       },
     ];
-    const changes = morningWindowChanges(old, '2026-10-22T12:00:00.000Z');
-    expect(changes).toEqual([
-      {
-        id: 'b1',
-        updatedAt: '2026-10-22T12:00:00.000Z',
-        startMinute: 480,
-        endMinute: 720,
-        sequence: null,
-        flexibleBlocks: 2,
-      },
-      {
-        id: 'pe',
-        updatedAt: '2026-10-22T12:00:00.000Z',
-        startMinute: 480,
-        endMinute: 720,
-        sequence: null,
-        flexibleBlocks: 2,
-      },
+    const changes = weekdayV2Changes(old);
+    expect(
+      changes.updates.map((s) => [s.id, s.startMinute, s.endMinute, s.flexibleBlocks ?? null]),
+    ).toEqual([
+      ['b1', 540, 630, 1],
+      ['pm', 840, 930, 1],
+      ['ca', 960, 1050, 1],
+      ['lu', 780, 840, null],
     ]);
-    const updated = old.map((s) => ({
-      ...s,
-      ...(changes.find((c) => c.id === s.id) ?? {}),
-    })) as typeof old;
-    expect(needsMorningWindowUpdate(updated)).toBe(false);
+    expect(changes.updates.find((s) => s.id === 'pm')?.sequence).toBeNull();
+    expect(changes.creates).toEqual([
+      expect.objectContaining({
+        label: 'Estudio B1',
+        category: 'estudio_b1',
+        daysOfWeek: [1, 2, 4],
+        startMinute: 660,
+        endMinute: 750,
+        flexibleBlocks: 1,
+      }),
+    ]);
+    expect(changes.deletes).toEqual(['de']);
+
+    const applied = [
+      ...old
+        .filter((s) => !changes.deletes.includes(s.id))
+        .map((s) => changes.updates.find((u) => u.id === s.id) ?? s),
+      ...changes.creates.map((c, i) => ({ ...c, id: `new${i}` })),
+    ];
+    expect(needsWeekdayUpdate(applied)).toBe(false);
   });
 
   it('a fresh template needs no update', () => {
     const fresh = templateToSchedules().map((s, i) => ({ ...s, id: `s${i}` }));
-    expect(needsMorningWindowUpdate(fresh)).toBe(false);
+    expect(needsWeekdayUpdate(fresh)).toBe(false);
   });
 });

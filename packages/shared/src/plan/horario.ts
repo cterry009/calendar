@@ -3,9 +3,10 @@
 // becomes the user's recurring blocks (plan.ts's templateToSchedules); phases, suggested pomodoros,
 // milestones and adjustment rules live in the synced StudyPlan.
 //
-// One change by the user after the JSON (2026-10-22, dynamic-study-blocks): the morning study blocks
-// are no longer 09:30-12:30 with a fixed sequence but a window, 08:00-12:00, for two blocks that start
-// when the user starts them, sized by a check-in (bloques_manana; the rules are in morning.ts).
+// Changed by the user after the JSON (2026-10-22, dynamic-study-blocks, revision 2): Monday to Friday
+// is two windows, 09:00-13:00 and 14:00-18:00, each with two suggested blocks that start when the user
+// starts them and last 60-120 min by a diagnosis before every pomodoro (bloques_dinamicos; the rules
+// are in morning.ts). Lunch moved to 13:00-14:00 and the 15:25 break went away. Saturday is as given.
 
 import type { SequenceSegment } from './sequence.js';
 
@@ -82,17 +83,29 @@ export interface PlanMilestone {
   categoria: PlanCategory;
 }
 
-/** Fixed, clock-anchored sequences. The morning has none since 2026-10-22 (bloques_manana). */
+/**
+ * Fixed, clock-anchored sequences. Weekday blocks have none since 2026-10-22 (bloques_dinamicos); the
+ * afternoon one stays for timetables loaded before.
+ */
 export interface PlanSequences {
   tarde: SequenceSegment[];
   sabado: SequenceSegment[];
 }
 
-export interface MorningBlocksSetting {
-  ventana: { inicio: string; fin: string };
-  bloques: number;
-  /** Energy E = round((motivation + concentration) / 2) -> block and focus minutes. */
-  tabla_energia: Array<{ energia: string; bloque_min: number; foco_min: number }>;
+export interface DayWindow {
+  nombre: 'manana' | 'tarde';
+  inicio: string;
+  fin: string;
+}
+
+export interface DynamicBlocksSetting {
+  /** Weekday windows: blocks are suggested inside them, and none starts a focus after the end. */
+  ventanas_lun_vie: DayWindow[];
+  /** Diagnosis (motivation, concentration) and the pomodoro's rating, 0-100 -> band. */
+  bandas: { baja: string; media: string; alta: string };
+  bloque_min: { baja: number; media: number; alta: number; minimo: number; maximo: number; paso: number };
+  foco_min: { baja: number; media: number; alta: number };
+  ajuste: string;
   pausas: string;
   bloque_cumplido: string;
   nota: string;
@@ -100,7 +113,7 @@ export interface MorningBlocksSetting {
 
 export interface HorarioData {
   plantilla_semanal: WeeklyTemplate;
-  bloques_manana: MorningBlocksSetting;
+  bloques_dinamicos: DynamicBlocksSetting;
   secuencias_pomodoro: PlanSequences;
   nota_secuencias: string;
   pomodoros_sugeridos: Partial<Record<PlanCategory, string[]>>;
@@ -114,31 +127,36 @@ export const PLAN_WEEKS = 14;
 export const HORARIO_2026: HorarioData = {
   plantilla_semanal: {
     lunes: [
-      { inicio: '08:00', fin: '12:00', categoria: 'estudio_b1', titulo: 'Estudio B1' },
-      { inicio: '14:00', fin: '15:25', categoria: 'codigo_academico', titulo: 'Código de las notas' },
-      { inicio: '15:35', fin: '17:00', categoria: 'carrera', titulo: 'Maestrías: investigar programas' },
+      { inicio: '09:00', fin: '10:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
+      { inicio: '11:00', fin: '12:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
+      { inicio: '14:00', fin: '15:30', categoria: 'codigo_academico', titulo: 'Código de las notas' },
+      { inicio: '16:00', fin: '17:30', categoria: 'carrera', titulo: 'Maestrías: investigar programas' },
     ],
     martes: [
-      { inicio: '08:00', fin: '12:00', categoria: 'estudio_b1', titulo: 'Estudio B1' },
-      { inicio: '14:00', fin: '15:25', categoria: 'codigo_datos', titulo: 'Proyecto de datos' },
-      { inicio: '15:35', fin: '17:00', categoria: 'carrera', titulo: 'CV: las 3 versiones + CV académico' },
+      { inicio: '09:00', fin: '10:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
+      { inicio: '11:00', fin: '12:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
+      { inicio: '14:00', fin: '15:30', categoria: 'codigo_datos', titulo: 'Proyecto de datos' },
+      { inicio: '16:00', fin: '17:30', categoria: 'carrera', titulo: 'CV: las 3 versiones + CV académico' },
     ],
     miercoles: [
-      { inicio: '08:00', fin: '12:00', categoria: 'estudio_b2', titulo: 'Estudio B2' },
-      { inicio: '14:00', fin: '15:25', categoria: 'investigacion', titulo: 'Investigación PINN (experimentos del Pilar E)' },
-      { inicio: '15:35', fin: '17:00', categoria: 'carrera', titulo: 'Maestrías: documentos (carta, SOP)' },
+      { inicio: '09:00', fin: '10:30', categoria: 'estudio_b2', titulo: 'Estudio B2' },
+      { inicio: '11:00', fin: '12:30', categoria: 'estudio_b2', titulo: 'Estudio B2' },
+      { inicio: '14:00', fin: '15:30', categoria: 'investigacion', titulo: 'Investigación PINN (experimentos del Pilar E)' },
+      { inicio: '16:00', fin: '17:30', categoria: 'carrera', titulo: 'Maestrías: documentos (carta, SOP)' },
     ],
     jueves: [
-      { inicio: '08:00', fin: '12:00', categoria: 'estudio_b1', titulo: 'Estudio B1' },
-      { inicio: '14:00', fin: '15:25', categoria: 'codigo_datos', titulo: 'SQL + proyecto de datos' },
-      { inicio: '15:35', fin: '17:00', categoria: 'carrera', titulo: 'Trabajo: aplicaciones dirigidas' },
+      { inicio: '09:00', fin: '10:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
+      { inicio: '11:00', fin: '12:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
+      { inicio: '14:00', fin: '15:30', categoria: 'codigo_datos', titulo: 'SQL + proyecto de datos' },
+      { inicio: '16:00', fin: '17:30', categoria: 'carrera', titulo: 'Trabajo: aplicaciones dirigidas' },
     ],
     viernes: [
-      { inicio: '08:00', fin: '12:00', categoria: 'pilar_e', titulo: 'Estudio Pilar E' },
-      { inicio: '14:00', fin: '15:25', categoria: 'codigo_academico', titulo: 'Código de las notas' },
+      { inicio: '09:00', fin: '10:30', categoria: 'pilar_e', titulo: 'Estudio Pilar E' },
+      { inicio: '11:00', fin: '12:30', categoria: 'pilar_e', titulo: 'Estudio Pilar E' },
+      { inicio: '14:00', fin: '15:30', categoria: 'codigo_academico', titulo: 'Código de las notas' },
       {
-        inicio: '15:35',
-        fin: '17:00',
+        inicio: '16:00',
+        fin: '17:30',
         categoria: 'carrera',
         titulo: 'Maestrías: correos a profesores y recomendadores + registro y plan de la semana',
       },
@@ -152,25 +170,24 @@ export const HORARIO_2026: HorarioData = {
       },
       { inicio: '11:00', fin: '12:30', categoria: 'repaso', titulo: 'Código pendiente + revisar convocatorias y planear la semana' },
     ],
-    descansos_lun_vie: [
-      { inicio: '12:30', fin: '14:00', titulo: 'Almuerzo' },
-      { inicio: '15:25', fin: '15:35', titulo: 'Descanso' },
-    ],
+    descansos_lun_vie: [{ inicio: '13:00', fin: '14:00', titulo: 'Almuerzo' }],
     descansos_sabado: [{ inicio: '10:30', fin: '11:00', titulo: 'Descanso' }],
   },
 
-  // 2026-10-22: replaces secuencias_pomodoro.manana (30+5+40+15+40+10+20+5+15 anchored to 09:30).
-  bloques_manana: {
-    ventana: { inicio: '08:00', fin: '12:00' },
-    bloques: 2,
-    tabla_energia: [
-      { energia: 'E ≤ 2', bloque_min: 90, foco_min: 20 },
-      { energia: 'E = 3', bloque_min: 120, foco_min: 30 },
-      { energia: 'E ≥ 4', bloque_min: 150, foco_min: 40 },
+  // 2026-10-22 (revision 2): replaces the fixed weekday blocks and secuencias_pomodoro.manana.
+  bloques_dinamicos: {
+    ventanas_lun_vie: [
+      { nombre: 'manana', inicio: '09:00', fin: '13:00' },
+      { nombre: 'tarde', inicio: '14:00', fin: '18:00' },
     ],
+    bandas: { baja: 'promedio < 45', media: '45 a 69', alta: '≥ 70' },
+    bloque_min: { baja: 60, media: 90, alta: 120, minimo: 60, maximo: 120, paso: 10 },
+    foco_min: { baja: 20, media: 30, alta: 40 },
+    ajuste:
+      'Antes de cada foco, con su diagnóstico: +10 min al bloque si la calificación del pomodoro anterior y el diagnóstico son altos; −10 si alguno es bajo o si se cortó el tramo; siempre entre 60 y 120 y nunca por debajo de lo ya trabajado.',
     pausas: '5 min después de un foco de 20-30 y 10 min después de uno de 40; el bloque cierra con un tramo de cierre de 15 min.',
-    bloque_cumplido: 'Al menos 60 min de foco real; la mañana se cumple con dos bloques cumplidos.',
-    nota: 'El horario es una recomendación: cada bloque empieza cuando lo inicias y su secuencia se ancla a esa hora. Al iniciar, motivación y concentración (1 a 5) proponen la duración del bloque (90-150) y de los focos (20-40); se pueden ajustar. La pausa arranca sola y el foco no. A las 12:00 no empieza ningún foco nuevo: el que corre termina y sigue el cierre; la tarde no se mueve.',
+    bloque_cumplido: 'Al menos 45 min de foco real; el mínimo del día son los dos bloques de la mañana.',
+    nota: 'El horario es una recomendación: las horas de los bloques sirven para los recordatorios (09:00, 11:00, 14:00, 16:00) y para dibujar el día. Cada bloque empieza cuando lo inicias. Diagnóstico de motivación y concentración (0-100) antes de cada pomodoro y calificación (0-100) al final. Al cerrar la ventana (13:00, 18:00) no empieza ningún foco nuevo: el que corre termina y sigue el cierre.',
   },
 
   secuencias_pomodoro: {
@@ -192,7 +209,7 @@ export const HORARIO_2026: HorarioData = {
   },
 
   nota_secuencias:
-    'Los bloques de la mañana (estudio_b1, estudio_b2, pilar_e) no tienen secuencia fija desde el 2026-10-22: siguen bloques_manana. Los de la tarde usan secuencias_pomodoro.tarde; los del sábado, secuencias_pomodoro.sabado. En la tarde y el sábado, las etiquetas de los pomodoros salen de pomodoros_sugeridos según la categoría.',
+    'Los bloques de la mañana (estudio_b1, estudio_b2, pilar_e) y de la tarde no tienen secuencia fija desde el 2026-10-22: siguen bloques_dinamicos (secuencias_pomodoro.tarde queda para horarios cargados antes). Los del sábado, secuencias_pomodoro.sabado. En la tarde y el sábado, las etiquetas de los pomodoros salen de pomodoros_sugeridos según la categoría.',
 
   pomodoros_sugeridos: {
     codigo_academico: ['Planear y escribir', 'Escribir y probar', 'Probar, documentar, commit'],

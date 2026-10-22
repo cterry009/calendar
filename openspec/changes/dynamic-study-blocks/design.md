@@ -272,12 +272,11 @@ D1, D2, D6, D7, D9, D13 and D15, and extend D8 and D11.
   all in one batch, keeping every existing id. Revision 1's flexible sessions (only test accounts have
   them) end as they are.
 
-### Open questions (revision 2)
+### Answers (revision 2, 2026-10-22)
 
-1. **Rating card:** keep it 1-5 (today's data) or move it to 0-100 like the diagnosis? Proposed: 1-5,
-   and the rule reads ≥ 4 / ≤ 2 as above.
-2. **Bands:** low < 45, medium 45-69, high ≥ 70. OK?
-3. **The phone:** with the whole weekday flexible, the phone no longer starts any weekday block, and it
-   can't start flexible ones (revision 1, question 1). Add starting a block and the next focus from the
-   phone (diagnosis sliders, rating, start) in this revision? Proposed: yes, the minimum to run a block
-   away from the PC.
+1. **Rating card on 0-100** too, same bands as the diagnosis: the rule reads a rating of 70 or more as
+   high and under 45 as low (D24). Old 1-5 ratings are read as (r − 1) × 25 wherever they are averaged.
+2. **Bands** low < 45, medium 45-69, high ≥ 70: confirmed.
+3. **The phone starts blocks** in this revision: a suggested block with its diagnosis, the next focus
+   after its diagnosis, the 0-100 rating, "Terminar bloque"; and the app is rebuilt and installed on the
+   phone.

@@ -1,8 +1,29 @@
 import type { PomodoroConfig, PomodoroSession } from '../schemas/pomodoro.js';
 import type { PomodoroState } from '../schemas/enums.js';
-import { ATTENTION_PROFILE_SPECS, MIN_TRIMMED_FOCUS_MIN, type AttentionProfile } from '../attention/profiles.js';
-import { fitSequence, isWorkSegment, segmentIndexAt, type SequenceSegment, type TimedSegment } from '../plan/sequence.js';
-import { FOCUS_MIN_MIN, FOCUS_MIN_STEP, clampFocusMin, pauseAfterFocus, planFlexibleBlock } from '../plan/morning.js';
+import {
+  ATTENTION_PROFILE_SPECS,
+  MIN_TRIMMED_FOCUS_MIN,
+  type AttentionProfile,
+} from '../attention/profiles.js';
+import {
+  fitSequence,
+  isWorkSegment,
+  segmentIndexAt,
+  type SequenceSegment,
+  type TimedSegment,
+} from '../plan/sequence.js';
+import {
+  BLOCK_MIN_MAX,
+  CLOSING_LABEL,
+  CLOSING_MIN,
+  CUT_MARK,
+  clampBlockMin,
+  clampFocusMin,
+  focusLabel,
+  maxFittingFocus,
+  minPlannedFor,
+  pauseAfterFocus,
+} from '../plan/morning.js';
 
 export type PomodoroEvent =
   | { type: 'START'; taskId?: string | null }
@@ -16,8 +37,15 @@ export type PomodoroEvent =
   | { type: 'RESUME' }
   // "Cortar tramo" (sequence mode): end the running focus segment and start the next pause now.
   | { type: 'CUT_SEGMENT' }
-  // Flexible block (2026-10-22): start the next focus (or the closing) by hand, with its minutes.
-  | { type: 'START_FOCUS'; minutes?: number }
+  // Flexible block (2026-10-22): start the next focus (or the closing) by hand, with its minutes, the
+  // planned block after the ±10 rule, and the focus's label.
+  | {
+      type: 'START_FOCUS';
+      minutes?: number;
+      plannedBlockMin?: number;
+      closing?: boolean;
+      label?: string;
+    }
   // Flexible block: "Terminar bloque", a clean end (not "Salir").
   | { type: 'END_BLOCK' };
 
@@ -61,7 +89,12 @@ export function createBlockPomodoroSession(
 ): PomodoroSession {
   const { focusMin, breakMin } = timing ?? ATTENTION_PROFILE_SPECS[profile];
   return {
-    ...createPomodoroSession(id, { focusDurationMin: focusMin, shortBreakMin: breakMin, longBreakMin: breakMin, cyclesBeforeLongBreak: 4 }),
+    ...createPomodoroSession(id, {
+      focusDurationMin: focusMin,
+      shortBreakMin: breakMin,
+      longBreakMin: breakMin,
+      cyclesBeforeLongBreak: 4,
+    }),
     blockEndAt,
     attentionProfile: profile,
   };
@@ -80,10 +113,17 @@ export function createSequenceBlockSession(
   /** Already labelled for the block's category (PlanOccurrence segments, or labelSequence). */
   sequence: SequenceSegment[],
 ): PomodoroSession {
-  const focusMin = sequence.find((s) => s.tipo === 'foco')?.minutos ?? DEFAULT_POMODORO_CONFIG.focusDurationMin;
-  const breakMin = sequence.find((s) => s.tipo === 'pausa')?.minutos ?? DEFAULT_POMODORO_CONFIG.shortBreakMin;
+  const focusMin =
+    sequence.find((s) => s.tipo === 'foco')?.minutos ?? DEFAULT_POMODORO_CONFIG.focusDurationMin;
+  const breakMin =
+    sequence.find((s) => s.tipo === 'pausa')?.minutos ?? DEFAULT_POMODORO_CONFIG.shortBreakMin;
   return {
-    ...createPomodoroSession(id, { focusDurationMin: focusMin, shortBreakMin: breakMin, longBreakMin: breakMin, cyclesBeforeLongBreak: 4 }),
+    ...createPomodoroSession(id, {
+      focusDurationMin: focusMin,
+      shortBreakMin: breakMin,
+      longBreakMin: breakMin,
+      cyclesBeforeLongBreak: 4,
+    }),
     blockStartAt,
     blockEndAt,
     sequence: sequence.map(({ tipo, minutos, etiqueta }) => ({ tipo, minutos, etiqueta })),
@@ -94,11 +134,10 @@ export function createSequenceBlockSession(
 }
 
 /**
- * A flexible morning block (dynamic-study-blocks D4-D6): started now, planned from the check-in's
- * lengths, its segments run one after the other from their own starts -- nothing is read from the
- * clock, so starting late loses nothing. No blockEndAt: older clients see no clock-anchored sequence
- * they could misplace. windowEndAt (the morning window's end) stops new focuses (D11); a block
- * started after the window has none.
+ * A flexible block (dynamic-study-blocks D4, D25): started now with its first focus, from the first
+ * diagnosis's lengths; nothing is read from the clock, so starting late loses nothing. No blockEndAt:
+ * older clients see no clock-anchored sequence they could misplace. windowEndAt (its window's end) stops
+ * new focuses (D11); a block started outside the windows has none.
  */
 export function createFlexibleBlockSession(
   id: string,
@@ -107,13 +146,14 @@ export function createFlexibleBlockSession(
     blockMin: number;
     focusMin: number;
     windowEndAt: string | null;
+    /** The first focus's label; the study block's "P1 arranque" by default. */
+    label?: string;
     /** Default now. */
     startAt?: string;
   },
 ): PomodoroSession {
-  const sequence = planFlexibleBlock(options.blockMin, options.focusMin);
   const startAt = options.startAt ?? new Date().toISOString();
-  const focusMin = sequence[0].minutos;
+  const focusMin = clampFocusMin(options.focusMin);
   return {
     ...createPomodoroSession(id, {
       focusDurationMin: focusMin,
@@ -125,8 +165,11 @@ export function createFlexibleBlockSession(
     blockStartAt: startAt,
     blockEndAt: null,
     windowEndAt: options.windowEndAt && options.windowEndAt > startAt ? options.windowEndAt : null,
-    plannedBlockMin: options.blockMin,
-    sequence,
+    plannedBlockMin: clampBlockMin(options.blockMin),
+    sequence: [
+      { tipo: 'foco', minutos: focusMin, etiqueta: options.label ?? focusLabel(1) },
+      { tipo: 'pausa', minutos: pauseAfterFocus(focusMin), etiqueta: 'Pausa' },
+    ],
     segmentIndex: null,
     cutCount: 0,
     focusMinutes: 0,
@@ -149,7 +192,13 @@ export function sessionSegments(session: SequenceFields): TimedSegment[] | null 
 export function flexibleSegments(session: Pick<PomodoroSession, 'sequence'>): TimedSegment[] {
   let t = 0;
   return (session.sequence ?? []).map((segment, index) => {
-    const timed = { ...segment, index, startOffset: t, endOffset: t + segment.minutos, trimmed: false };
+    const timed = {
+      ...segment,
+      index,
+      startOffset: t,
+      endOffset: t + segment.minutos,
+      trimmed: false,
+    };
     t += segment.minutos;
     return timed;
   });
@@ -174,7 +223,10 @@ export function canCutSegment(session: PomodoroSession): boolean {
   if (session.flexible) return currentSegment(session)?.tipo === 'foco';
   const segments = sessionSegments(session);
   if (!segments || session.segmentIndex == null) return false;
-  return segments[session.segmentIndex]?.tipo === 'foco' && segments[session.segmentIndex + 1]?.tipo === 'pausa';
+  return (
+    segments[session.segmentIndex]?.tipo === 'foco' &&
+    segments[session.segmentIndex + 1]?.tipo === 'pausa'
+  );
 }
 
 function segmentOffsetMin(session: SequenceFields, at: number): number {
@@ -191,25 +243,35 @@ function stateForSegment(segment: TimedSegment): PomodoroState {
 }
 
 /** Runs segment `index` from now (or ends the block if there's none left). */
-function enterSegment(session: PomodoroSession, segments: TimedSegment[], index: number): PomodoroSession {
+function enterSegment(
+  session: PomodoroSession,
+  segments: TimedSegment[],
+  index: number,
+): PomodoroSession {
   const now = Date.now();
   // Skip segments already over (the device was asleep) or with under a minute left.
   let i = index;
   while (i < segments.length && segmentEndMs(session, segments[i]) - now < 60_000) i++;
   if (i >= segments.length) return endBlock(session);
-  return { ...session, state: stateForSegment(segments[i]), segmentIndex: i, startedAt: new Date(now).toISOString() };
+  return {
+    ...session,
+    state: stateForSegment(segments[i]),
+    segmentIndex: i,
+    startedAt: new Date(now).toISOString(),
+  };
 }
 
 /** Minutes from `from` (ISO, default now) to the block's end; null outside block mode. */
-export function minutesToBlockEnd(session: Pick<PomodoroSession, 'blockEndAt'>, from: number = Date.now()): number | null {
+export function minutesToBlockEnd(
+  session: Pick<PomodoroSession, 'blockEndAt'>,
+  from: number = Date.now(),
+): number | null {
   if (!session.blockEndAt) return null;
   const end = new Date(session.blockEndAt).getTime();
   return Number.isNaN(end) ? null : (end - from) / 60_000;
 }
 
-export function getPhaseDurationMinutes(
-  session: PomodoroSession,
-): number | null {
+export function getPhaseDurationMinutes(session: PomodoroSession): number | null {
   const base =
     session.state === 'FOCUS'
       ? session.focusDurationMin
@@ -224,7 +286,10 @@ export function getPhaseDurationMinutes(
   // Sequence mode: the running segment ends at its fixed clock time.
   const segment = currentSegment(session);
   if (segment) {
-    return Math.max(0, (segmentEndMs(session, segment) - new Date(session.startedAt).getTime()) / 60_000);
+    return Math.max(
+      0,
+      (segmentEndMs(session, segment) - new Date(session.startedAt).getTime()) / 60_000,
+    );
   }
   // In block mode no phase runs past the block's end.
   const left = minutesToBlockEnd(session, new Date(session.startedAt).getTime());
@@ -253,7 +318,7 @@ export function transitionPomodoro(
     case 'CUT_SEGMENT':
       return session.flexible ? cutFlexibleFocus(session) : cutSegment(session);
     case 'START_FOCUS':
-      return startFlexibleFocus(session, event.minutes);
+      return startFlexibleFocus(session, event);
     case 'END_BLOCK':
       return endFlexibleBlock(session);
     default:
@@ -261,17 +326,20 @@ export function transitionPomodoro(
   }
 }
 
-function startFocus(
-  session: PomodoroSession,
-  taskId?: string | null,
-): PomodoroSession {
+function startFocus(session: PomodoroSession, taskId?: string | null): PomodoroSession {
   if (session.state !== 'IDLE' || session.active) {
     return session;
   }
   if (session.flexible) {
     // Starting the block starts its first focus, from now.
-    const started = { ...session, active: true, interrupted: false, taskId: taskId ?? null, endedAt: null };
-    return enterFlexibleWork(started, 0, session.sequence?.[0]?.minutos);
+    const started = {
+      ...session,
+      active: true,
+      interrupted: false,
+      taskId: taskId ?? null,
+      endedAt: null,
+    };
+    return enterFlexibleWork(started, 0);
   }
   const segments = sessionSegments(session);
   if (segments) {
@@ -280,7 +348,11 @@ function startFocus(
     if (index < 0) return session;
     while (index < segments.length && !isWorkSegment(segments[index])) index++;
     if (index >= segments.length) return session;
-    const started = enterSegment({ ...session, active: true, interrupted: false, taskId: taskId ?? null, endedAt: null }, segments, index);
+    const started = enterSegment(
+      { ...session, active: true, interrupted: false, taskId: taskId ?? null, endedAt: null },
+      segments,
+      index,
+    );
     return started.active ? started : session;
   }
   const left = minutesToBlockEnd(session);
@@ -313,17 +385,27 @@ function resumeSession(session: PomodoroSession): PomodoroSession {
   if (segments) {
     // The sequence runs on the clock: coming back joins whatever segment is running now.
     const index = segmentIndexAt(segments, segmentOffsetMin(session, Date.now()));
-    return enterSegment({ ...session, pausedAt: null }, segments, index < 0 ? segments.length : index);
+    return enterSegment(
+      { ...session, pausedAt: null },
+      segments,
+      index < 0 ? segments.length : index,
+    );
   }
   const left = minutesToBlockEnd(session);
-  if (left !== null && left < MIN_TRIMMED_FOCUS_MIN) return endBlock({ ...session, pausedAt: null });
+  if (left !== null && left < MIN_TRIMMED_FOCUS_MIN)
+    return endBlock({ ...session, pausedAt: null });
   const pausedMs = Date.now() - new Date(session.pausedAt).getTime();
-  const startedAt = new Date(new Date(session.startedAt).getTime() + Math.max(0, pausedMs)).toISOString();
+  const startedAt = new Date(
+    new Date(session.startedAt).getTime() + Math.max(0, pausedMs),
+  ).toISOString();
   return { ...session, startedAt, pausedAt: null };
 }
 
 /** The moment time is measured at: now, or when the session was paused. */
-export function sessionClock(session: Pick<PomodoroSession, 'pausedAt'>, now: number = Date.now()): number {
+export function sessionClock(
+  session: Pick<PomodoroSession, 'pausedAt'>,
+  now: number = Date.now(),
+): number {
   if (!session.pausedAt) return now;
   const paused = new Date(session.pausedAt).getTime();
   return Number.isNaN(paused) ? now : Math.min(now, paused);
@@ -349,12 +431,15 @@ function completeFocus(session: PomodoroSession): PomodoroSession {
     // Block mode: short breaks only (the long break is the one between blocks), and the session
     // ends when the block does.
     if (left <= 0) return endBlock({ ...session, completedCycles: nextCompletedCycles });
-    return { ...session, state: 'SHORT_BREAK', completedCycles: nextCompletedCycles, startedAt: new Date().toISOString() };
+    return {
+      ...session,
+      state: 'SHORT_BREAK',
+      completedCycles: nextCompletedCycles,
+      startedAt: new Date().toISOString(),
+    };
   }
   const nextState: PomodoroState =
-    nextCompletedCycles % session.cyclesBeforeLongBreak === 0
-      ? 'LONG_BREAK'
-      : 'SHORT_BREAK';
+    nextCompletedCycles % session.cyclesBeforeLongBreak === 0 ? 'LONG_BREAK' : 'SHORT_BREAK';
 
   return {
     ...session,
@@ -410,89 +495,125 @@ function cutSegment(session: PomodoroSession): PomodoroSession {
   };
 }
 
-// ─── Flexible blocks (dynamic-study-blocks, 2026-10-22) ──────────────────────
+// ─── Flexible blocks (dynamic-study-blocks, revision 2, 2026-10-22) ─────────
+// The plan is a budget (D25): `plannedBlockMin` is the block's planned length, and the sequence grows
+// one focus (with its pause) at a time, each one sized by its own diagnosis. The ±10 rule (D24) is
+// computed by the caller from the diagnosis and the last rating, and arrives as START_FOCUS's
+// `plannedBlockMin`.
 
-/** Whether the morning window is over for this session at `now`: no new focus then (D11). */
+/** Whether the window is over for this session at `now`: no new focus then (D11). */
 function windowOver(session: Pick<PomodoroSession, 'windowEndAt'>, now: number): boolean {
   if (!session.windowEndAt) return false;
   const end = new Date(session.windowEndAt).getTime();
   return !Number.isNaN(end) && now >= end;
 }
 
+/** Minutes since the block started (time out with "Salir" doesn't count). */
+export function elapsedBlockMinutes(
+  session: Pick<PomodoroSession, 'blockStartAt' | 'pausedAt'>,
+  now: number = Date.now(),
+): number {
+  if (!session.blockStartAt) return 0;
+  return Math.max(
+    0,
+    (sessionClock(session, now) - new Date(session.blockStartAt).getTime()) / 60_000,
+  );
+}
+
+/** Whether the last focus of a flexible block ended with "cortar tramo" (a low-energy signal, D24). */
+export function lastFocusWasCut(session: Pick<PomodoroSession, 'sequence'>): boolean {
+  const last = [...(session.sequence ?? [])].reverse().find((s) => s.tipo === 'foco');
+  return !!last?.etiqueta.endsWith(CUT_MARK);
+}
+
 export interface NextFlexibleWork {
-  /** Index in the plan. */
-  index: number;
   tipo: 'foco' | 'cierre';
-  /** Proposed minutes: the plan's (already capped after cuts, D9); the closing's 15. */
+  /** The longest focus that still fits the planned block (20-40); the closing's 15. */
   minutes: number;
   /** The window is over: only the closing is offered. */
   closingOnly: boolean;
+  /** Focuses already done in the block (the next one is number done + 1). */
+  focusesDone: number;
 }
 
 /**
- * What START_FOCUS would start now: the next focus of the plan or, after the window's end or with no
- * focus left, the closing. Null when nothing is left, or when a work segment is already running.
+ * What comes after the running pause, with the block planned as it is now: a focus while one of at
+ * least 20 still fits with its pause and the closing, else the closing -- also after the window's end.
+ * Null when nothing is left, or when a work segment is running.
  */
-export function nextFlexibleWork(session: PomodoroSession, now: number = Date.now()): NextFlexibleWork | null {
-  if (!session.flexible || !session.active || !session.sequence?.length) return null;
-  if (session.state === 'FOCUS') return null;
-  const from = (session.segmentIndex ?? -1) + 1;
-  const plan = session.sequence;
-  const closingIndex = plan.findIndex((s, i) => i >= from && s.tipo === 'cierre');
-  const focusIndex = plan.findIndex((s, i) => i >= from && s.tipo === 'foco');
-  const over = windowOver(session, now);
-  const index = over || focusIndex < 0 ? closingIndex : focusIndex;
-  if (index < 0) return null;
-  const segment = plan[index];
-  return {
-    index,
-    tipo: segment.tipo === 'cierre' ? 'cierre' : 'foco',
-    minutes: segment.minutos,
-    closingOnly: over && focusIndex >= 0,
-  };
-}
-
-/** The proposed length of the next focus (D9), or null when the next work is the closing. */
-export function nextFocusProposal(session: PomodoroSession, now: number = Date.now()): number | null {
-  const next = nextFlexibleWork(session, now);
-  return next?.tipo === 'foco' ? next.minutes : null;
+export function nextFlexibleWork(
+  session: PomodoroSession,
+  now: number = Date.now(),
+  plannedBlockMin?: number,
+): NextFlexibleWork | null {
+  if (!session.flexible || !session.active || session.state === 'FOCUS') return null;
+  const plan = session.sequence ?? [];
+  if (plan.at(-1)?.tipo === 'cierre') return null;
+  const focusesDone = plan.filter((s) => s.tipo === 'foco').length;
+  if (windowOver(session, now))
+    return { tipo: 'cierre', minutes: CLOSING_MIN, closingOnly: true, focusesDone };
+  const fit = maxFittingFocus(
+    plannedBlockMin ?? session.plannedBlockMin ?? BLOCK_MIN_MAX,
+    elapsedBlockMinutes(session, now),
+  );
+  return fit === null
+    ? { tipo: 'cierre', minutes: CLOSING_MIN, closingOnly: false, focusesDone }
+    : { tipo: 'foco', minutes: fit, closingOnly: false, focusesDone };
 }
 
 /** Minutes a flexible pause has run past its length (0 while it's on time). */
 export function pauseOverrunMinutes(session: PomodoroSession, now: number = Date.now()): number {
   if (!session.flexible || !session.active || session.pausedAt || !session.startedAt) return 0;
   if (session.state !== 'SHORT_BREAK' && session.state !== 'LONG_BREAK') return 0;
-  const over = (now - new Date(session.startedAt).getTime()) / 60_000 - (getPhaseDurationMinutes(session) ?? 0);
+  const over =
+    (now - new Date(session.startedAt).getTime()) / 60_000 -
+    (getPhaseDurationMinutes(session) ?? 0);
   return Math.max(0, over);
 }
 
-/** Runs work segment `index` (a focus or the closing) from now, with `minutes` for a focus. */
-function enterFlexibleWork(session: PomodoroSession, index: number, minutes?: number): PomodoroSession {
-  const plan = [...(session.sequence ?? [])];
-  const segment = plan[index];
+/** Runs work segment `index` (a focus or the closing) from now. */
+function enterFlexibleWork(session: PomodoroSession, index: number): PomodoroSession {
+  const segment = session.sequence?.[index];
   if (!segment || segment.tipo === 'pausa') return session;
-  let length = segment.minutos;
-  if (segment.tipo === 'foco') {
-    length = clampFocusMin(minutes ?? segment.minutos);
-    plan[index] = { ...segment, minutos: length };
-    // Its pause follows the length actually chosen (5 under 40, 10 after a 40).
-    if (plan[index + 1]?.tipo === 'pausa') plan[index + 1] = { ...plan[index + 1], minutos: pauseAfterFocus(length) };
-  }
   return {
     ...session,
-    sequence: plan,
     state: 'FOCUS',
     segmentIndex: index,
-    focusDurationMin: length,
+    focusDurationMin: segment.minutos,
     startedAt: new Date().toISOString(),
   };
 }
 
-function startFlexibleFocus(session: PomodoroSession, minutes?: number): PomodoroSession {
-  if (!session.flexible || session.pausedAt) return session;
-  const next = nextFlexibleWork(session);
+function startFlexibleFocus(
+  session: PomodoroSession,
+  event: { minutes?: number; plannedBlockMin?: number; closing?: boolean; label?: string },
+): PomodoroSession {
+  if (!session.flexible || !session.active || session.pausedAt || session.state === 'FOCUS')
+    return session;
+  const plan = [...(session.sequence ?? [])];
+  if (plan.at(-1)?.tipo === 'cierre') return session;
+  const now = Date.now();
+  // The planned block after the rule (or the user's choice): 60-120 and never under what was worked.
+  const planned = Math.max(
+    minPlannedFor(elapsedBlockMinutes(session, now)),
+    clampBlockMin(event.plannedBlockMin ?? session.plannedBlockMin ?? BLOCK_MIN_MAX),
+  );
+  const withPlan = { ...session, plannedBlockMin: planned };
+  const next = nextFlexibleWork(withPlan, now);
   if (!next) return session;
-  return enterFlexibleWork(session, next.index, next.tipo === 'foco' ? minutes : undefined);
+  if (event.closing || next.tipo === 'cierre') {
+    plan.push({ tipo: 'cierre', minutos: CLOSING_MIN, etiqueta: CLOSING_LABEL });
+    return enterFlexibleWork({ ...withPlan, sequence: plan }, plan.length - 1);
+  }
+  // The user's length wins over what fits: the block can run past its plan if they say so.
+  const minutes = clampFocusMin(event.minutes ?? next.minutes);
+  plan.push({
+    tipo: 'foco',
+    minutos: minutes,
+    etiqueta: event.label ?? focusLabel(next.focusesDone + 1),
+  });
+  plan.push({ tipo: 'pausa', minutos: pauseAfterFocus(minutes), etiqueta: 'Pausa' });
+  return enterFlexibleWork({ ...withPlan, sequence: plan }, plan.length - 2);
 }
 
 /**
@@ -502,14 +623,11 @@ function startFlexibleFocus(session: PomodoroSession, minutes?: number): Pomodor
 function completeFlexibleWork(session: PomodoroSession, workedMin: number): PomodoroSession {
   const segment = currentSegment(session);
   if (!segment || segment.tipo === 'cierre') return endBlock(session);
-  const counted = {
+  const pause = session.sequence?.[segment.index + 1];
+  return {
     ...session,
     completedCycles: session.completedCycles + 1,
     focusMinutes: (session.focusMinutes ?? 0) + Math.max(0, Math.round(workedMin)),
-  };
-  const pause = session.sequence?.[segment.index + 1];
-  return {
-    ...counted,
     state: 'SHORT_BREAK',
     // Without a planned pause after it, it still waits in a short one: the next work is by hand.
     segmentIndex: pause?.tipo === 'pausa' ? segment.index + 1 : segment.index,
@@ -520,24 +638,28 @@ function completeFlexibleWork(session: PomodoroSession, workedMin: number): Pomo
 
 function workedMinutes(session: PomodoroSession, now: number): number {
   if (!session.startedAt) return 0;
-  return Math.max(0, Math.floor((sessionClock(session, now) - new Date(session.startedAt).getTime()) / 60_000));
+  return Math.max(
+    0,
+    Math.floor((sessionClock(session, now) - new Date(session.startedAt).getTime()) / 60_000),
+  );
 }
 
 /**
- * "Cortar tramo" in a flexible block (D10): the focus ends now, counts with the minutes worked, and
- * its pause starts. The following focuses are capped at those minutes rounded down to 5 (never under
- * 20), so the next proposal is shorter (D9).
+ * "Cortar tramo" in a flexible block (D10, D24): the focus ends now, counts with the minutes worked, its
+ * pause starts, and it's marked as cut so the next focus lowers the planned block.
  */
 function cutFlexibleFocus(session: PomodoroSession): PomodoroSession {
   if (!canCutSegment(session)) return session;
-  const worked = workedMinutes(session, Date.now());
-  const cap = Math.max(FOCUS_MIN_MIN, Math.floor(worked / FOCUS_MIN_STEP) * FOCUS_MIN_STEP);
   const index = session.segmentIndex!;
-  const cut = completeFlexibleWork({ ...session, cutCount: (session.cutCount ?? 0) + 1 }, worked);
-  const plan = (cut.sequence ?? []).map((segment, i) =>
-    i > index && segment.tipo === 'foco' && segment.minutos > cap ? { ...segment, minutos: cap } : segment,
+  const plan = (session.sequence ?? []).map((segment, i) =>
+    i === index && !segment.etiqueta.endsWith(CUT_MARK)
+      ? { ...segment, etiqueta: `${segment.etiqueta}${CUT_MARK}` }
+      : segment,
   );
-  return { ...cut, sequence: plan };
+  return completeFlexibleWork(
+    { ...session, sequence: plan, cutCount: (session.cutCount ?? 0) + 1 },
+    workedMinutes(session, Date.now()),
+  );
 }
 
 /** "Terminar bloque": a running focus counts with its minutes, then a clean end. */
@@ -558,7 +680,13 @@ function endFlexibleBlock(session: PomodoroSession): PomodoroSession {
 
 /** The block reached its end: a clean finish, not an interruption. */
 function endBlock(session: PomodoroSession): PomodoroSession {
-  return { ...session, state: 'IDLE', active: false, interrupted: false, endedAt: new Date().toISOString() };
+  return {
+    ...session,
+    state: 'IDLE',
+    active: false,
+    interrupted: false,
+    endedAt: new Date().toISOString(),
+  };
 }
 
 function cancelSession(session: PomodoroSession): PomodoroSession {

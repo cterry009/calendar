@@ -25,7 +25,13 @@ import {
   type ScheduleExceptionLike,
   type StudyPlanData,
 } from '../plan/plan.js';
-import { morningStatus } from '../plan/morning.js';
+import {
+  BLOCK_DONE_FOCUS_MIN,
+  afternoonStatus,
+  bandOf,
+  morningStatus,
+  ratingTo100,
+} from '../plan/morning.js';
 import { STUDY_LINE_MAP, STUDY_LINE_NAMES, studyLineOf } from '../planning/study.js';
 
 export const STUDY_STATUS_MD_FILE = 'Estado_estudio.md';
@@ -380,18 +386,33 @@ export function buildStudyStatus(input: StudyStatusInput): StudyStatus {
       cumplidos: m.status.done,
       cumplida: m.status.fulfilled,
       minutosFoco: m.status.blocks.map((b) => b.focusMinutes),
+      tarde: afternoonStatus(sessions, m.date).blocks.map((b) => b.focusMinutes),
     }));
-  // The check-ins at block start, for calibrating the energy table later (D8).
+  // The diagnoses before each pomodoro (revision 2, 0-100) and the chat's, for calibrating the rule
+  // later (D26). Revision 1's 1-5 block check-ins are left out: another scale.
+  const DIAGNOSIS_SCOPES = ['block-start', 'pomodoro-diagnosis', 'chat-diagnosis'];
   const checkIns = focusEvents
-    .filter((e) => e.kind === 'CHECK_IN' && e.meta?.scope === 'block-start')
-    .slice(-10)
+    .filter(
+      (e) =>
+        e.kind === 'CHECK_IN' &&
+        DIAGNOSIS_SCOPES.includes(e.meta?.scope as string) &&
+        e.meta?.scale === '0-100',
+    )
+    .slice(-15)
     .map((e) => ({
       fecha: localDateKey(new Date(e.occurredAt)),
+      hora: new Date(e.occurredAt).toTimeString().slice(0, 5),
+      origen: e.meta?.source === 'chat' ? 'chat' : 'app',
       motivacion: e.meta?.motivation ?? null,
       concentracion: e.meta?.concentration ?? null,
-      energia: e.meta?.energy ?? null,
-      propuesto: e.meta?.proposed ?? null,
-      elegido: e.meta?.chosen ?? null,
+      banda: e.meta?.band ?? null,
+      focoElegido:
+        (e.meta?.chosen as { focusMin?: number } | undefined)?.focusMin ?? e.meta?.focusMin ?? null,
+      bloqueAntes: e.meta?.plannedBefore ?? null,
+      bloqueDespues:
+        e.meta?.plannedAfter ??
+        (e.meta?.chosen as { blockMin?: number } | undefined)?.blockMin ??
+        null,
     }));
 
   // ─── Focus quality ─────────────────────────────────────────────────────────
@@ -410,7 +431,8 @@ export function buildStudyStatus(input: StudyStatusInput): StudyStatus {
     const meta = e.meta ?? {};
     return {
       fecha: date,
-      calificacion: (meta.rating as number | undefined) ?? e.value ?? 0,
+      // On 0-100 since 2026-10-22; older 1-5 ratings are converted, so averages mix them fairly.
+      calificacion: ratingTo100((meta.rating as number | undefined) ?? e.value ?? 1, meta.scale),
       categoria: categoryOf(e.scheduleId, date, e.taskId),
       sesion: task?.title ?? null,
       etiquetas: (meta.tags as string[] | undefined) ?? [],
@@ -421,9 +443,12 @@ export function buildStudyStatus(input: StudyStatusInput): StudyStatus {
   type Review = (typeof reviews)[number];
   const average = (list: Review[]) =>
     list.length ? round1(list.reduce((s, r) => s + r.calificacion, 0) / list.length) : null;
-  const distribution = Object.fromEntries(
-    [1, 2, 3, 4, 5].map((v) => [v, reviews.filter((r) => r.calificacion === v).length]),
-  ) as Record<number, number>;
+  // By band, like the diagnosis: low < 45, medium 45-69, high ≥ 70.
+  const distribution = {
+    baja: reviews.filter((r) => bandOf(r.calificacion) === 'baja').length,
+    media: reviews.filter((r) => bandOf(r.calificacion) === 'media').length,
+    alta: reviews.filter((r) => bandOf(r.calificacion) === 'alta').length,
+  };
   const tagCounts: Record<string, number> = {};
   for (const r of reviews)
     for (const tag of r.etiquetas) tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
@@ -595,13 +620,13 @@ export function buildStudyStatus(input: StudyStatusInput): StudyStatus {
     `- **Esta semana:** ${thisWeek.pomodorosEstudio} pomodoros de estudio (${hm(thisWeek.minutosEstudio)}), ${thisWeek.diasConEstudio} días con estudio.`,
   );
   md.push(
-    `- **Mañanas:** hoy ${todayMorning.done} de ${todayMorning.target} bloques cumplidos${todayMorning.fulfilled ? ' (mañana cumplida)' : ''}; esta semana ${thisWeek.mananasCumplidas} ${thisWeek.mananasCumplidas === 1 ? 'mañana cumplida' : 'mañanas cumplidas'}. Un bloque se cumple con 60 min de foco real.`,
+    `- **Mañanas:** hoy ${todayMorning.done} de ${todayMorning.target} bloques cumplidos${todayMorning.fulfilled ? ' (mañana cumplida)' : ''}; esta semana ${thisWeek.mananasCumplidas} ${thisWeek.mananasCumplidas === 1 ? 'mañana cumplida' : 'mañanas cumplidas'}. Un bloque se cumple con ${BLOCK_DONE_FOCUS_MIN} min de foco real.`,
   );
   md.push(
     `- **Racha:** ${streak} ${streak === 1 ? 'día' : 'días'} seguidos con estudio${lastStudyDay ? ` (último: ${lastStudyDay})` : ''}. Los domingos no la cortan.`,
   );
   md.push(
-    `- **Foco (últimos ${STUDY_STATUS_QUALITY_DAYS} días):** ${quality.calificaciones} pomodoros calificados, promedio ${quality.promedio ?? '—'} / 5.`,
+    `- **Foco (últimos ${STUDY_STATUS_QUALITY_DAYS} días):** ${quality.calificaciones} pomodoros calificados, promedio ${quality.promedio ?? '—'} / 100.`,
   );
   md.push(
     gameStatus.intentos
@@ -659,37 +684,40 @@ export function buildStudyStatus(input: StudyStatusInput): StudyStatus {
     for (const s of recentlyDone) md.push(`- ${s.fecha}: ${s.sesion}`);
   }
   md.push('');
-  md.push('## Mañanas de estudio');
+  md.push('## Bloques del día');
   md.push('');
   md.push(
-    'Desde el 2026-10-22 la mañana es una ventana de 08:00 a 12:00 para dos bloques que empiezan cuando los inicias. Un bloque se cumple con al menos 60 min de foco real; la mañana, con dos bloques cumplidos.',
+    `Desde el 2026-10-22 lunes a viernes son dos ventanas, 09:00-13:00 y 14:00-18:00, con dos bloques sugeridos cada una que empiezan cuando los inicias y duran 60-120 min según el diagnóstico (motivación y concentración, 0-100) antes de cada pomodoro. Un bloque se cumple con al menos ${BLOCK_DONE_FOCUS_MIN} min de foco real; el mínimo del día son los dos de la mañana.`,
   );
   md.push('');
   if (recentMornings.length) {
-    md.push('| Día | Bloques | Cumplidos | Foco por bloque | Mañana |');
-    md.push('|---|:-:|:-:|---|:-:|');
+    md.push(
+      '| Día | Mañana: bloques | Cumplidos | Foco por bloque | Mínimo | Tarde: foco por bloque |',
+    );
+    md.push('|---|:-:|:-:|---|:-:|---|');
     for (const m of recentMornings) {
       md.push(
-        `| ${m.fecha} | ${m.bloques} | ${m.cumplidos} | ${m.minutosFoco.map((n) => hm(n)).join(' · ')} | ${m.cumplida ? '✅' : '—'} |`,
+        `| ${m.fecha} | ${m.bloques} | ${m.cumplidos} | ${m.minutosFoco.map((n) => hm(n)).join(' · ')} | ${m.cumplida ? '✅' : '—'} | ${m.tarde.map((n) => hm(n)).join(' · ') || '—'} |`,
       );
     }
   } else {
-    md.push('Todavía no hay bloques de la mañana con el horario nuevo.');
+    md.push('Todavía no hay bloques con el horario nuevo.');
   }
   if (checkIns.length) {
     md.push('');
     md.push(
-      '**Check-ins al empezar** (motivación/concentración → propuesto → elegido, en min de bloque/foco):',
+      '**Diagnósticos antes de cada pomodoro** (motivación/concentración, 0-100 → banda → foco elegido; bloque planeado antes → después):',
     );
     md.push('');
-    const pair = (p: unknown) => {
-      const v = p as { blockMin?: number; focusMin?: number } | null;
-      return v ? `${v.blockMin}/${v.focusMin}` : '—';
-    };
-    for (const c of checkIns)
+    for (const c of checkIns) {
+      const plan =
+        c.bloqueAntes != null || c.bloqueDespues != null
+          ? `; bloque ${c.bloqueAntes ?? '—'} → ${c.bloqueDespues ?? '—'} min`
+          : '';
       md.push(
-        `- ${c.fecha}: ${c.motivacion}/${c.concentracion} (E ${c.energia}) → ${pair(c.propuesto)} → ${pair(c.elegido)}`,
+        `- ${c.fecha} ${c.hora}${c.origen === 'chat' ? ' (chat)' : ''}: ${c.motivacion}/${c.concentracion}${c.banda ? ` → ${c.banda}` : ''}${c.focoElegido ? ` → foco de ${c.focoElegido}` : ''}${plan}`,
       );
+    }
   }
   md.push('');
   md.push('## Tiempo de estudio');
@@ -731,7 +759,7 @@ export function buildStudyStatus(input: StudyStatusInput): StudyStatus {
   );
   md.push('');
   md.push(
-    `- **Calificación:** ${quality.calificaciones} pomodoros, promedio ${quality.promedio ?? '—'} / 5 (estudio: ${quality.promedioEstudio ?? '—'}). Distribución: ${[1, 2, 3, 4, 5].map((v) => `${v}★ ${distribution[v]}`).join(' · ')}.`,
+    `- **Calificación:** ${quality.calificaciones} pomodoros, promedio ${quality.promedio ?? '—'} / 100 (estudio: ${quality.promedioEstudio ?? '—'}). Por banda: baja ${distribution.baja} · media ${distribution.media} · alta ${distribution.alta}. Las de antes del 2026-10-22 (1-5) se convierten como (r − 1) × 25.`,
   );
   const tagsText = Object.entries(quality.etiquetas)
     .map(([tag, n]) => `${tag} (${n})`)
@@ -752,7 +780,7 @@ export function buildStudyStatus(input: StudyStatusInput): StudyStatus {
     md.push('');
     for (const r of quality.comentariosRecientes) {
       md.push(
-        `- ${r.fecha} · ${r.calificacion}★${r.sesion ? ` · ${r.sesion}` : r.categoria ? ` · ${categoryName(r.categoria)}` : ''}: "${r.comentario}"`,
+        `- ${r.fecha} · ${r.calificacion}/100${r.sesion ? ` · ${r.sesion}` : r.categoria ? ` · ${categoryName(r.categoria)}` : ''}: "${r.comentario}"`,
       );
     }
   }

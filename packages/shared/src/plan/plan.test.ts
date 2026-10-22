@@ -60,12 +60,30 @@ describe('template', () => {
   it('becomes one recurring schedule per distinct block, with its days', () => {
     expect(byTitle('Estudio B1').daysOfWeek).toEqual([1, 2, 4]);
     expect(byTitle('Código de las notas').daysOfWeek).toEqual([1, 5]);
-    expect(byTitle('Almuerzo')).toMatchObject({ kind: 'REST', daysOfWeek: [1, 2, 3, 4, 5], startMinute: 750, endMinute: 840 });
-    // The morning is a flexible window since 2026-10-22: no fixed sequence.
-    expect(byTitle('Estudio B1')).toMatchObject({ startMinute: 480, endMinute: 720, sequence: null, flexibleBlocks: 2 });
-    expect(byTitle('Estudio Pilar E')).toMatchObject({ daysOfWeek: [5], flexibleBlocks: 2 });
-    expect(byTitle('Proyecto de datos').flexibleBlocks).toBeNull();
-    expect(byTitle('Proyecto de datos').sequence).toBe(HORARIO_2026.secuencias_pomodoro.tarde);
+    expect(byTitle('Almuerzo')).toMatchObject({
+      kind: 'REST',
+      daysOfWeek: [1, 2, 3, 4, 5],
+      startMinute: 780,
+      endMinute: 840,
+    });
+    // Weekday blocks are flexible suggestions since 2026-10-22 (revision 2): no fixed sequence.
+    expect(byTitle('Estudio B1')).toMatchObject({
+      startMinute: 540,
+      endMinute: 630,
+      sequence: null,
+      flexibleBlocks: 1,
+    });
+    expect(byTitle('Estudio Pilar E')).toMatchObject({ daysOfWeek: [5], flexibleBlocks: 1 });
+    expect(byTitle('Proyecto de datos')).toMatchObject({
+      startMinute: 840,
+      endMinute: 930,
+      sequence: null,
+      flexibleBlocks: 1,
+    });
+    expect(
+      byTitle('Repaso y ejercicios atrasados: rehacer 2-3 ejercicios sin mirar la solución')
+        .sequence,
+    ).toBe(HORARIO_2026.secuencias_pomodoro.sabado);
   });
 });
 
@@ -77,20 +95,18 @@ describe('week generation', () => {
     const monday = week.days[0];
     expect(monday.date).toBe('2026-10-19');
     expect(monday.occurrences.map((o) => [o.startMinute, o.endMinute, o.title])).toEqual([
-      [480, 720, 'Estudio B1'],
-      [750, 840, 'Almuerzo'],
-      [840, 925, 'Código de las notas'],
-      [925, 935, 'Descanso'],
-      [935, 1020, 'Maestrías: investigar programas'],
+      [540, 630, 'Estudio B1'],
+      [660, 750, 'Estudio B1'],
+      [780, 840, 'Almuerzo'],
+      [840, 930, 'Código de las notas'],
+      [960, 1050, 'Maestrías: investigar programas'],
     ]);
-    expect(monday.occurrences[0].description).toBe('Pensum geometría: 00b → 01a → AN1b (secciones 4-6) → 01 → 02');
-    expect(monday.occurrences[1].description).toBeNull();
-    // Afternoon pomodoros take the category's suggested labels.
-    expect(monday.occurrences[2].segments!.filter((s) => s.tipo === 'foco').map((s) => s.etiqueta)).toEqual([
-      'Planear y escribir',
-      'Escribir y probar',
-      'Probar, documentar, commit',
-    ]);
+    expect(monday.occurrences[0].description).toBe(
+      'Pensum geometría: 00b → 01a → AN1b (secciones 4-6) → 01 → 02',
+    );
+    expect(monday.occurrences[2].description).toBeNull();
+    // Weekday blocks have no fixed segments: they're drawn as suggestions.
+    expect(monday.occurrences[3]).toMatchObject({ segments: null, flexibleBlocks: 1 });
     const saturday = week.days[5];
     expect(saturday.occurrences.map((o) => o.title)).toEqual([
       'Repaso y ejercicios atrasados: rehacer 2-3 ejercicios sin mirar la solución',
@@ -124,7 +140,10 @@ describe('week generation', () => {
   it('puts milestones on the Monday of their week', () => {
     const tasks = milestoneTasks(plan);
     expect(tasks).toHaveLength(13);
-    expect(tasks.find((t) => t.title === 'SOP base v1')).toMatchObject({ date: '2026-11-16', category: 'carrera' });
+    expect(tasks.find((t) => t.title === 'SOP base v1')).toMatchObject({
+      date: '2026-11-16',
+      category: 'carrera',
+    });
   });
 });
 
@@ -141,7 +160,10 @@ describe('sequences end exactly at the block end', () => {
   });
 
   it('trims the last segment of an edited sequence that runs long, and says so', () => {
-    const edited = [...HORARIO_2026.secuencias_pomodoro.tarde, { tipo: 'pausa' as const, minutos: 10, etiqueta: 'Pausa' }];
+    const edited = [
+      ...HORARIO_2026.secuencias_pomodoro.tarde,
+      { tipo: 'pausa' as const, minutos: 10, etiqueta: 'Pausa' },
+    ];
     const fitted = fitSequence(edited, 85);
     expect(fitted.segments.at(-1)!.endOffset).toBe(85);
     expect(fitted.segments).toHaveLength(5);
@@ -153,8 +175,15 @@ describe('a clock-anchored block on the timer', () => {
   // Monday 19 Oct 2026, local time.
   const at = (h: number, m = 0) => new Date(2026, 9, 19, h, m);
   const morning = () =>
-    createSequenceBlockSession('b', 'DEEP', at(9, 30).toISOString(), at(12, 30).toISOString(), CLOCK_SEQUENCE);
-  const endOf = (s: PomodoroSession) => new Date(new Date(s.startedAt!).getTime() + getPhaseDurationMinutes(s)! * 60_000);
+    createSequenceBlockSession(
+      'b',
+      'DEEP',
+      at(9, 30).toISOString(),
+      at(12, 30).toISOString(),
+      CLOCK_SEQUENCE,
+    );
+  const endOf = (s: PomodoroSession) =>
+    new Date(new Date(s.startedAt!).getTime() + getPhaseDurationMinutes(s)! * 60_000);
 
   afterEach(() => jest.useRealTimers());
 
@@ -166,7 +195,9 @@ describe('a clock-anchored block on the timer', () => {
       const end = endOf(session);
       seen.push([session.state, `${end.getHours()}:${String(end.getMinutes()).padStart(2, '0')}`]);
       jest.setSystemTime(end);
-      session = transitionPomodoro(session, { type: session.state === 'FOCUS' ? 'FOCUS_COMPLETE' : 'BREAK_COMPLETE' });
+      session = transitionPomodoro(session, {
+        type: session.state === 'FOCUS' ? 'FOCUS_COMPLETE' : 'BREAK_COMPLETE',
+      });
     }
     expect(seen).toEqual([
       ['FOCUS', '10:00'],
@@ -205,11 +236,19 @@ describe('a clock-anchored block on the timer', () => {
     jest.setSystemTime(at(10, 20));
     expect(canCutSegment(running)).toBe(true);
     const cut = transitionPomodoro(running, { type: 'CUT_SEGMENT' });
-    expect(cut).toMatchObject({ state: 'LONG_BREAK', segmentIndex: 3, cutCount: 1, completedCycles: 1 });
+    expect(cut).toMatchObject({
+      state: 'LONG_BREAK',
+      segmentIndex: 3,
+      cutCount: 1,
+      completedCycles: 1,
+    });
     // The long pause still ends at 11:00, when P3 starts as planned; the block still ends at 12:30.
     expect(endOf(cut).getTime()).toBe(at(11, 0).getTime());
     expect(cut.blockEndAt).toBe(at(12, 30).toISOString());
-    expect(pomodoroTransitionEvents(running, cut).map((e) => e.kind)).toEqual(['FOCUS_COMPLETED', 'SEGMENT_CUT']);
+    expect(pomodoroTransitionEvents(running, cut).map((e) => e.kind)).toEqual([
+      'FOCUS_COMPLETED',
+      'SEGMENT_CUT',
+    ]);
     // Only a focus segment followed by a pause can be cut.
     expect(canCutSegment(cut)).toBe(false);
     expect(transitionPomodoro(cut, { type: 'CUT_SEGMENT' })).toBe(cut);
@@ -229,14 +268,22 @@ describe('a clock-anchored block on the timer', () => {
 describe('exceptions', () => {
   const codeBlock = byTitle('Código de las notas');
   // Week 3's Monday: the 14:00 block moves to carrera that day only.
-  const moved: ScheduleExceptionLike = { scheduleId: codeBlock.id, date: '2026-11-02', category: 'carrera' };
+  const moved: ScheduleExceptionLike = {
+    scheduleId: codeBlock.id,
+    date: '2026-11-02',
+    category: 'carrera',
+  };
 
   it('change only that day of that week', () => {
     const week3 = generatePlanWeek(schedules, [moved], plan, 3);
     const block = week3.days[0].occurrences.find((o) => o.scheduleId === codeBlock.id)!;
-    expect(block).toMatchObject({ category: 'carrera', isException: true, startMinute: 840, endMinute: 925 });
+    expect(block).toMatchObject({
+      category: 'carrera',
+      isException: true,
+      startMinute: 840,
+      endMinute: 930,
+    });
     expect(block.description).toBe(plan.fases[0].contenido.carrera);
-    expect(block.segments!.filter((s) => s.tipo === 'foco').map((s) => s.etiqueta)[2]).toBe('Cierre: anotar qué sigue');
     // Friday of the same week, and Monday of every other week, keep the template.
     const friday = week3.days[4].occurrences.find((o) => o.scheduleId === codeBlock.id)!;
     expect(friday).toMatchObject({ category: 'codigo_academico', isException: false });
@@ -249,17 +296,42 @@ describe('exceptions', () => {
   });
 
   it('a moved block runs at its new time that day; a deleted exception is ignored', () => {
-    const later = { scheduleId: codeBlock.id, date: '2026-11-02', startMinute: 17 * 60, endMinute: 18 * 60 + 25 };
-    expect(scheduleOnDate(codeBlock, [later], '2026-11-02')).toMatchObject({ startMinute: 1020, endMinute: 1105 });
+    const later = {
+      scheduleId: codeBlock.id,
+      date: '2026-11-02',
+      startMinute: 17 * 60,
+      endMinute: 18 * 60 + 25,
+    };
+    expect(scheduleOnDate(codeBlock, [later], '2026-11-02')).toMatchObject({
+      startMinute: 1020,
+      endMinute: 1105,
+    });
     expect(scheduleOnDate(codeBlock, [later], '2026-11-06')).toBe(codeBlock);
-    expect(scheduleOnDate(codeBlock, [{ ...later, deletedAt: '2026-11-01T00:00:00Z' }], '2026-11-02')).toBe(codeBlock);
+    expect(
+      scheduleOnDate(codeBlock, [{ ...later, deletedAt: '2026-11-01T00:00:00Z' }], '2026-11-02'),
+    ).toBe(codeBlock);
   });
 
   it('swapping two blocks exchanges their content and keeps their times', () => {
-    const [code, career] = occurrencesOnDate(schedules, [], plan, '2026-10-19').filter((o) => o.kind === 'WORK').slice(1);
-    const swapped = occurrencesOnDate(schedules, swapExceptions(code, career), plan, '2026-10-19').filter((o) => o.kind === 'WORK');
-    expect(swapped[1]).toMatchObject({ startMinute: 840, title: career.title, category: 'carrera' });
-    expect(swapped[2]).toMatchObject({ startMinute: 935, title: code.title, category: 'codigo_academico' });
+    const [code, career] = occurrencesOnDate(schedules, [], plan, '2026-10-19')
+      .filter((o) => o.kind === 'WORK')
+      .slice(2);
+    const swapped = occurrencesOnDate(
+      schedules,
+      swapExceptions(code, career),
+      plan,
+      '2026-10-19',
+    ).filter((o) => o.kind === 'WORK');
+    expect(swapped[2]).toMatchObject({
+      startMinute: 840,
+      title: career.title,
+      category: 'carrera',
+    });
+    expect(swapped[3]).toMatchObject({
+      startMinute: 960,
+      title: code.title,
+      category: 'codigo_academico',
+    });
   });
 });
 
@@ -268,11 +340,30 @@ describe('weekly progress', () => {
     const b1 = byTitle('Estudio B1');
     const code = byTitle('Código de las notas');
     const sessions = [
-      { scheduleId: b1.id, blockStartAt: new Date(2026, 9, 19, 9, 30).toISOString(), completedCycles: 4, cutCount: 1 },
-      { scheduleId: b1.id, blockStartAt: new Date(2026, 9, 20, 9, 30).toISOString(), completedCycles: 3, cutCount: 2 },
-      { scheduleId: code.id, blockStartAt: new Date(2026, 9, 19, 14, 0).toISOString(), completedCycles: 3 },
+      {
+        scheduleId: b1.id,
+        blockStartAt: new Date(2026, 9, 19, 9, 30).toISOString(),
+        completedCycles: 4,
+        cutCount: 1,
+      },
+      {
+        scheduleId: b1.id,
+        blockStartAt: new Date(2026, 9, 20, 9, 30).toISOString(),
+        completedCycles: 3,
+        cutCount: 2,
+      },
+      {
+        scheduleId: code.id,
+        blockStartAt: new Date(2026, 9, 19, 14, 0).toISOString(),
+        completedCycles: 3,
+      },
       // The next week: not counted.
-      { scheduleId: b1.id, blockStartAt: new Date(2026, 9, 26, 9, 30).toISOString(), completedCycles: 4, cutCount: 1 },
+      {
+        scheduleId: b1.id,
+        blockStartAt: new Date(2026, 9, 26, 9, 30).toISOString(),
+        completedCycles: 4,
+        cutCount: 1,
+      },
     ];
     const moved = [{ scheduleId: code.id, date: '2026-10-19', category: 'carrera' }];
     expect(weekProgress(sessions, schedules, moved, '2026-10-19')).toEqual({
@@ -301,13 +392,21 @@ describe('loading the timetable', () => {
     expect(batch.schedules.filter((s) => !s.deleted)).toHaveLength(templateToSchedules().length);
     expect(batch.studyPlan).toHaveLength(1);
     expect(batch.tasks).toHaveLength(13);
-    expect(batch.habits).toEqual([expect.objectContaining({ title: WAKE_EXERCISE_HABIT_TITLE, reminderStartMinute: 480 })]);
+    expect(batch.habits).toEqual([
+      expect.objectContaining({ title: WAKE_EXERCISE_HABIT_TITLE, reminderStartMinute: 480 }),
+    ]);
   });
 
   it('does not repeat the exercise habit or the milestones already created', () => {
     const first = timetableImportBatch(input);
-    const tasks = first.tasks.map((t, i) => ({ ...(t as object), id: `t${i}`, deletedAt: null }) as never);
-    const again = timetableImportBatch({ ...input, tasks, habits: [{ title: WAKE_EXERCISE_HABIT_TITLE }] });
+    const tasks = first.tasks.map(
+      (t, i) => ({ ...(t as object), id: `t${i}`, deletedAt: null }) as never,
+    );
+    const again = timetableImportBatch({
+      ...input,
+      tasks,
+      habits: [{ title: WAKE_EXERCISE_HABIT_TITLE }],
+    });
     expect(again.habits).toEqual([]);
     expect(again.tasks).toEqual([]);
   });
