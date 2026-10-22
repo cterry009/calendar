@@ -209,3 +209,20 @@ untouched files (`notes/pensum.test.ts`, `plan/sequence.ts`); the new files are 
   get `plainMath` (ℝ). "1 intentos" → "1 intento".
 - Not tried live: the block's "Tutor" button and the tutor line in the pomodoro card (they need a
   running study block); both typecheck and reuse tested helpers.
+
+## The "Tutor" button with a real block (2026-10-22)
+
+- **Seen by the user:** in the morning's study block neither the pill's "Tutor" nor the panel showed up.
+- **Why:** (1) the installed desktop app was the 2026-10-16 build, from before phase 4: it had no
+  tutor at all (the web was built, the installer wasn't). It was rebuilt at 09:14 and again after
+  dynamic-study-blocks. (2) The panel lived at the bottom of the pomodoro page, out of sight while the
+  timer ran. (3) A pomodoro on a study session started by hand from the page (not a block) didn't
+  load the session's note in the panel: `TutorPanel` only took the task when the session had a
+  `scheduleId`. The pill did detect study blocks: `studySectionsOf` finds `00b` and "Secciones: 1-4".
+- **Fixed:** the focus view (dynamic-study-blocks D17) puts the tutor's chat on screen while any
+  study pomodoro runs, block or not, with the pomodoro as a narrow, resizable column; `TutorPanel`
+  takes the running pomodoro's study session either way (commits 1583c38, 7b8361c).
+- **Tried with the real block** (the dev user's B1 of 2026-10-22, 09:30-12:30 sequence, session 00b
+  "Secciones: 1-4", at 11:40 in its pause), web against the dev API: the focus view showed the clock
+  sequence and the tutor on 00b §1-§4; "Ver la app" left the pill with "Vista de foco" and "Tutor".
+  The desktop app was reinstalled with that build.

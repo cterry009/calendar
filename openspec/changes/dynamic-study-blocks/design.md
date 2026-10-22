@@ -187,6 +187,24 @@ study status by itself.
 Rollback: the fields are additive; setting `flexibleBlocks` back to null and the old times restores
 the fixed block.
 
+## Calibration data from the chat (2026-10-22)
+
+Before the app was ready the user studied with Claude in a chat (vault:
+`progreso_chat_2026-10-21_22.json`). `scripts/import-chat-attempts.mjs` brings its 30 graded exercises
+in as ExerciseAttempts and the session of the 22nd as `CHECK_IN` focus events, where D8 keeps the
+check-ins, with their own scopes (`chat-diagnosis`, `chat-pomodoro-rating`, `chat-pause`,
+`chat-block`; `source: 'chat'`, `scale: '0-100'`) so they never mix with the app's 1-5 values:
+
+- Block 1, 09:24-11:11 local, 50 min of focus, counted as done in the chat.
+- Pomodoro 1: diagnosis 90/80 (first given as 5 and 4 on 1-5), 40 min of focus, final rating
+  55/100 ("se paró varias veces, tomó un tinto").
+- Pause: planned 10, real 29. The one soft notice at the pause's end (D5) is what was missing.
+- Pomodoro 2: diagnosis 35/25, planned 20, closed at 10 min from tiredness. Closing a block early
+  without penalty is `END_BLOCK` ("Terminar bloque", D12): it counts the focus done, and the block is
+  done if that reached the minimum.
+- The user asked in the chat for a 0-100 diagnosis scale; this change uses 1-5 (pending question,
+  2026-10-22).
+
 ## Open Questions
 
 Approved 2026-10-22 without answers to these, so the proposed defaults apply:
