@@ -10,6 +10,8 @@ import { useTasks } from '../../hooks/useTasks';
 import { recordFocusFeedbackSample } from '../../lib/pomodoro/planner';
 import { formatTimer } from '../../lib/pomodoro/timer';
 import { FrictionOverlay } from '../friction/FrictionOverlay';
+import { phaseKey, useFocusViewState } from '../../lib/focusView/store';
+import { isStudyTask } from './FocusView';
 
 const FOCUS_REMINDER_KINDS = new Set(['WEBSITE', 'DESKTOP_APP', 'MOBILE_APP']);
 
@@ -33,6 +35,7 @@ export function SoftFocusOverlay() {
   const tasksData = useTasks();
   const [feedbackSavedFor, setFeedbackSavedFor] = useState<string | null>(null);
   const [showExitFriction, setShowExitFriction] = useState(false);
+  const focusViewState = useFocusViewState();
 
   const isPomodoroBlocking = pomodoro.isBlocking;
   const isManualFocus = !isPomodoroBlocking && softFocus.manualSoftFocus.active;
@@ -49,7 +52,12 @@ export function SoftFocusOverlay() {
       return softFocus.manualRemainingSeconds;
     }
     return null;
-  }, [isManualFocus, isPomodoroBlocking, pomodoro.remainingSeconds, softFocus.manualRemainingSeconds]);
+  }, [
+    isManualFocus,
+    isPomodoroBlocking,
+    pomodoro.remainingSeconds,
+    softFocus.manualRemainingSeconds,
+  ]);
 
   const phaseLabel = isPomodoroBlocking
     ? 'Enfoque pomodoro activo'
@@ -79,7 +87,9 @@ export function SoftFocusOverlay() {
   );
 
   const plannedFocusMin = pomodoro.phaseDurationMinutes ?? pomodoro.config.focusDurationMin;
-  const feedbackKey = pomodoro.session ? `${pomodoro.session.id}-${pomodoro.session.completedCycles}` : null;
+  const feedbackKey = pomodoro.session
+    ? `${pomodoro.session.id}-${pomodoro.session.completedCycles}`
+    : null;
 
   // User-requested: while genuinely focused (not trying to exit), reinforce staying with it
   // instead of only listing distractors to avoid. Re-picked per session/cycle (or per focus
@@ -93,7 +103,16 @@ export function SoftFocusOverlay() {
     setFeedbackSavedFor(feedbackKey);
   }
 
-  if (!isVisible || typeof document === 'undefined') {
+  // A pomodoro on a study session gets the focus view (with the tutor) instead (2026-10-22).
+  const sessionTask = pomodoro.session?.taskId
+    ? tasksData.tasks.find((t) => t.id === pomodoro.session?.taskId)
+    : null;
+  const studyFocusView =
+    isPomodoroBlocking &&
+    isStudyTask(sessionTask) &&
+    focusViewState.collapsedFor !== phaseKey(pomodoro.session!);
+
+  if (!isVisible || studyFocusView || typeof document === 'undefined') {
     return null;
   }
 
@@ -172,8 +191,8 @@ export function SoftFocusOverlay() {
 
             {isLocationBlocking ? (
               <Paragraph margin={0} color="$muted">
-                Este bloqueo permanece activo mientras el navegador detecte que estas dentro del radio configurado
-                para esta condicion.
+                Este bloqueo permanece activo mientras el navegador detecte que estas dentro del
+                radio configurado para esta condicion.
               </Paragraph>
             ) : null}
 
@@ -210,12 +229,17 @@ export function SoftFocusOverlay() {
             </YStack>
 
             <Paragraph margin={0} color="$warning">
-              Aviso: este modo solo muestra recordatorios visuales en web y no bloquea aplicaciones ni sitios a nivel
-              sistema operativo.
+              Aviso: este modo solo muestra recordatorios visuales en web y no bloquea aplicaciones
+              ni sitios a nivel sistema operativo.
             </Paragraph>
 
             {isPomodoroBlocking ? (
-              <YStack gap="$2" borderTopWidth={1} borderTopColor="rgba(255,255,255,0.12)" paddingTop="$4">
+              <YStack
+                gap="$2"
+                borderTopWidth={1}
+                borderTopColor="rgba(255,255,255,0.12)"
+                paddingTop="$4"
+              >
                 {feedbackSavedFor === feedbackKey ? (
                   <Paragraph margin={0} color="$success" size="$2">
                     Gracias, usaremos esto para ajustar la duracion sugerida del pomodoro.

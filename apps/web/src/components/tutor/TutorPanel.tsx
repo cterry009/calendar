@@ -54,17 +54,22 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'No se pudo hablar con el tutor.';
 }
 
-export function TutorPanel() {
+/**
+ * `fullHeight`: inside the focus view (2026-10-22) the chat takes the screen's height instead of the
+ * page's 380 px.
+ */
+export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}) {
   const pomodoro = usePomodoro();
   const { tasks } = useTasks();
   const fieldStyle = useNativeFieldStyle();
   const session = pomodoro.session;
 
-  // The block's study session, when its pomodoro is on one.
+  // The study session the running pomodoro is on: a block's, or one picked by hand on the pomodoro
+  // page (2026-10-22: the tutor starts on its note there too).
   const blockTask = useMemo(() => {
-    if (!session?.active || !session.scheduleId || !session.taskId) return null;
+    if (!session?.active || !session.taskId) return null;
     return tasks.find((t) => t.id === session.taskId) ?? null;
-  }, [session?.active, session?.scheduleId, session?.taskId, tasks]);
+  }, [session?.active, session?.taskId, tasks]);
   const blockSections = useMemo(() => (blockTask ? studySectionsOf(blockTask) : null), [blockTask]);
 
   const [notes, setNotes] = useState<TutorNoteSummary[] | null>(null);
@@ -317,7 +322,8 @@ export function TutorPanel() {
             <div
               ref={scroller}
               style={{
-                maxHeight: 380,
+                maxHeight: fullHeight ? 'calc(100vh - 340px)' : 380,
+                minHeight: fullHeight ? 240 : undefined,
                 overflowY: 'auto',
                 display: 'flex',
                 flexDirection: 'column',

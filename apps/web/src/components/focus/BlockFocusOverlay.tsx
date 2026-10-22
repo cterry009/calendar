@@ -113,7 +113,7 @@ export function BlockFocusOverlay() {
   const { pullSnapshot } = useSync();
   // The focus view (D17) covers the window while it's open; the pill is its collapsed form, and
   // "Salir" pressed there opens this card's "¿Por qué?".
-  const focusViewVisible = useFocusViewVisible(session);
+  const focusViewVisible = useFocusViewVisible(session, tasks);
   const { exitRequests } = useFocusViewState();
   const seenExitRequests = useRef(exitRequests);
   useEffect(() => {
@@ -128,7 +128,12 @@ export function BlockFocusOverlay() {
     const before = previous.current;
     previous.current = session;
     if (!before?.active || !before.scheduleId || !session || session.id !== before.id) return;
-    if (before.state !== 'FOCUS' || session.interrupted || session.completedCycles <= before.completedCycles) return;
+    if (
+      before.state !== 'FOCUS' ||
+      session.interrupted ||
+      session.completedCycles <= before.completedCycles
+    )
+      return;
     if ((session.reviewedCycles ?? 0) >= session.completedCycles) return;
     const task = before.taskId ? tasks.find((t) => t.id === before.taskId) : undefined;
     setEnded({
@@ -136,7 +141,9 @@ export function BlockFocusOverlay() {
       taskId: before.taskId ?? null,
       sessionId: session.id,
       cycle: session.completedCycles,
-      askSession: !session.active || (!!task?.estimatedPomodoros && session.completedCycles >= task.estimatedPomodoros),
+      askSession:
+        !session.active ||
+        (!!task?.estimatedPomodoros && session.completedCycles >= task.estimatedPomodoros),
     });
     setRating(null);
     setTags([]);
@@ -156,7 +163,8 @@ export function BlockFocusOverlay() {
     let cancelled = false;
     pullSnapshot()
       .then((snapshot) => {
-        if (!cancelled) setTutorSummary(pomodoroTutorSummary(snapshot.exerciseAttempts ?? [], ended.sessionId));
+        if (!cancelled)
+          setTutorSummary(pomodoroTutorSummary(snapshot.exerciseAttempts ?? [], ended.sessionId));
       })
       .catch(() => undefined);
     return () => {
@@ -172,7 +180,8 @@ export function BlockFocusOverlay() {
     return () => window.clearInterval(timer);
   }, [ended, pomodoro.refetch]);
   useEffect(() => {
-    if (ended && session?.id === ended.sessionId && (session.reviewedCycles ?? 0) >= ended.cycle) setEnded(null);
+    if (ended && session?.id === ended.sessionId && (session.reviewedCycles ?? 0) >= ended.cycle)
+      setEnded(null);
   }, [ended, session]);
 
   if (typeof document === 'undefined') return null;
@@ -180,8 +189,12 @@ export function BlockFocusOverlay() {
   if (ended) {
     const schedule = schedules.find((s) => s.id === ended.scheduleId);
     const task = ended.taskId ? tasks.find((t) => t.id === ended.taskId) : null;
-    const studyTask = ended.askSession && task && studyLineOf(task) && task.status !== 'COMPLETED' ? task : null;
-    const toggleTag = (tag: string) => setTags((current) => (current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]));
+    const studyTask =
+      ended.askSession && task && studyLineOf(task) && task.status !== 'COMPLETED' ? task : null;
+    const toggleTag = (tag: string) =>
+      setTags((current) =>
+        current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag],
+      );
     const finish = (save: boolean) => {
       if (save && rating) {
         logFocusEvent({
@@ -221,13 +234,18 @@ export function BlockFocusOverlay() {
           </Paragraph>
           {tutorSummary ? (
             <Text color="$accent" fontWeight="700">
-              Tutor: {tutorSummary.exercises} {tutorSummary.exercises === 1 ? 'ejercicio' : 'ejercicios'}, +{tutorSummary.xp} XP, θ{' '}
+              Tutor: {tutorSummary.exercises}{' '}
+              {tutorSummary.exercises === 1 ? 'ejercicio' : 'ejercicios'}, +{tutorSummary.xp} XP, θ{' '}
               {tutorSummary.thetaFrom.toFixed(2)} → {tutorSummary.thetaTo.toFixed(2)}
             </Text>
           ) : null}
           <XStack gap="$2" flexWrap="wrap">
             {BLOCK_RATINGS.map((option) => (
-              <AppButton key={option.value} variant={rating === option.value ? 'primary' : 'ghost'} onPress={() => setRating(option.value)}>
+              <AppButton
+                key={option.value}
+                variant={rating === option.value ? 'primary' : 'ghost'}
+                onPress={() => setRating(option.value)}
+              >
                 {`${option.value} · ${option.label}`}
               </AppButton>
             ))}
@@ -235,7 +253,11 @@ export function BlockFocusOverlay() {
           <Text fontWeight="700">¿Qué pasó?</Text>
           <XStack gap="$2" flexWrap="wrap">
             {BLOCK_REVIEW_TAGS.map((tag) => (
-              <AppButton key={tag} variant={tags.includes(tag) ? 'primary' : 'ghost'} onPress={() => toggleTag(tag)}>
+              <AppButton
+                key={tag}
+                variant={tags.includes(tag) ? 'primary' : 'ghost'}
+                onPress={() => toggleTag(tag)}
+              >
                 {tag}
               </AppButton>
             ))}
@@ -244,17 +266,29 @@ export function BlockFocusOverlay() {
             <>
               <Text fontWeight="700">¿Completaste la sesión «{studyTask.title}»?</Text>
               <XStack gap="$2" flexWrap="wrap">
-                <AppButton variant={sessionDone === true ? 'primary' : 'ghost'} onPress={() => setSessionDone(true)}>
+                <AppButton
+                  variant={sessionDone === true ? 'primary' : 'ghost'}
+                  onPress={() => setSessionDone(true)}
+                >
                   Sí, completada
                 </AppButton>
-                <AppButton variant={sessionDone === false ? 'primary' : 'ghost'} onPress={() => setSessionDone(false)}>
+                <AppButton
+                  variant={sessionDone === false ? 'primary' : 'ghost'}
+                  onPress={() => setSessionDone(false)}
+                >
                   No, pasa al próximo bloque
                 </AppButton>
               </XStack>
             </>
           ) : null}
           <Text fontWeight="700">¿Qué pudo haber sido mejor?</Text>
-          <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Comentario (opcional)" rows={3} style={inputStyle} />
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Comentario (opcional)"
+            rows={3}
+            style={inputStyle}
+          />
           <XStack gap="$3" marginTop="$2" justifyContent="flex-end">
             <AppButton variant="ghost" onPress={() => finish(false)}>
               Ahora no
@@ -276,7 +310,10 @@ export function BlockFocusOverlay() {
   const exits = session.exitCount ?? 0;
   const remaining = pomodoro.remainingSeconds;
   const phraseSeed = `${session.id}:${session.completedCycles}:${session.state}`;
-  const exitsLabel = exits === 0 ? 'Sin salidas en este bloque' : `Saliste ${exits} ${exits === 1 ? 'vez' : 'veces'} de este bloque`;
+  const exitsLabel =
+    exits === 0
+      ? 'Sin salidas en este bloque'
+      : `Saliste ${exits} ${exits === 1 ? 'vez' : 'veces'} de este bloque`;
   const next = schedule ? nextBlockOccurrence(schedule, new Date()) : null;
   // Sequence blocks (horario 2026-10-19): the running segment's own label says what it's for.
   const segment = currentSegment(session);
@@ -296,7 +333,14 @@ export function BlockFocusOverlay() {
       const now = new Date();
       await syncBatch({
         scheduleCompletions: [
-          { clientId: crypto.randomUUID(), updatedAt: now.toISOString(), scheduleId, date: localDayKey(now), status: 'SKIPPED', reason: trimmed ?? null },
+          {
+            clientId: crypto.randomUUID(),
+            updatedAt: now.toISOString(),
+            scheduleId,
+            date: localDayKey(now),
+            status: 'SKIPPED',
+            reason: trimmed ?? null,
+          },
         ],
       }).catch(() => undefined);
     } else {
@@ -307,7 +351,12 @@ export function BlockFocusOverlay() {
       scheduleId,
       pomodoroSessionId: session.id,
       taskId: session.taskId ?? undefined,
-      meta: { reason: trimmed, rescheduled: reschedule, nextAt: reschedule ? next?.toISOString() : undefined, device: 'desktop' },
+      meta: {
+        reason: trimmed,
+        rescheduled: reschedule,
+        nextAt: reschedule ? next?.toISOString() : undefined,
+        device: 'desktop',
+      },
     });
   }
 
@@ -338,7 +387,11 @@ export function BlockFocusOverlay() {
             {finishPomodoroPhrase(remaining / 60, phraseSeed, true)}
           </Text>
         </YStack>
-        <AppButton variant="primary" disabled={pomodoro.isMutating} onPress={() => void pomodoro.resume()}>
+        <AppButton
+          variant="primary"
+          disabled={pomodoro.isMutating}
+          onPress={() => void pomodoro.resume()}
+        >
           Volver al bloque
         </AppButton>
       </XStack>,
@@ -360,17 +413,34 @@ export function BlockFocusOverlay() {
           <Text fontWeight="700">¿Por qué?</Text>
           <XStack gap="$2" flexWrap="wrap">
             {BLOCK_EXIT_REASONS.map((option) => (
-              <AppButton key={option} variant={reason === option ? 'primary' : 'ghost'} onPress={() => setReason(option)}>
+              <AppButton
+                key={option}
+                variant={reason === option ? 'primary' : 'ghost'}
+                onPress={() => setReason(option)}
+              >
                 {option}
               </AppButton>
             ))}
           </XStack>
-          <input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="O escribe el motivo (opcional)" style={inputStyle} />
+          <input
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="O escribe el motivo (opcional)"
+            style={inputStyle}
+          />
           <XStack gap="$3" flexWrap="wrap" marginTop="$2">
-            <AppButton variant="primary" disabled={pomodoro.isMutating} onPress={() => void leave(false)}>
+            <AppButton
+              variant="primary"
+              disabled={pomodoro.isMutating}
+              onPress={() => void leave(false)}
+            >
               Vuelvo en un rato (pausa el tiempo)
             </AppButton>
-            <AppButton variant="ghost" disabled={pomodoro.isMutating} onPress={() => void leave(true)}>
+            <AppButton
+              variant="ghost"
+              disabled={pomodoro.isMutating}
+              onPress={() => void leave(true)}
+            >
               {session.flexible ? 'Terminar este bloque' : 'No hago este bloque hoy (reprogramar)'}
             </AppButton>
             <AppButton variant="ghost" onPress={() => setAskingWhy(false)}>
@@ -381,8 +451,8 @@ export function BlockFocusOverlay() {
             {session.flexible
               ? 'Si lo terminas, cuenta el foco que llevas; puedes empezar otro bloque cuando quieras.'
               : task
-              ? `Si lo reprogramas, «${task.title}» queda pendiente y pasa al próximo bloque${next ? `: ${describeOccurrence(next)}` : ''}.`
-              : `Si lo reprogramas, el bloque queda como "no puedo" hoy${next ? ` y vuelve ${describeOccurrence(next)}` : ''}.`}
+                ? `Si lo reprogramas, «${task.title}» queda pendiente y pasa al próximo bloque${next ? `: ${describeOccurrence(next)}` : ''}.`
+                : `Si lo reprogramas, el bloque queda como "no puedo" hoy${next ? ` y vuelve ${describeOccurrence(next)}` : ''}.`}
           </Paragraph>
         </YStack>
       </YStack>,
@@ -423,7 +493,11 @@ export function BlockFocusOverlay() {
         ) : null}
       </YStack>
       {pomodoro.canCutSegment ? (
-        <AppButton variant="ghost" disabled={pomodoro.isMutating} onPress={() => void pomodoro.cutSegment()}>
+        <AppButton
+          variant="ghost"
+          disabled={pomodoro.isMutating}
+          onPress={() => void pomodoro.cutSegment()}
+        >
           Cortar tramo
         </AppButton>
       ) : null}

@@ -28,14 +28,27 @@ import { TutorPanel } from '../tutor/TutorPanel';
 // the phase and, in study blocks, the tutor -- instead of the navigation and a page. It lives inside
 // the app's own window: nothing comes up over other apps and the window isn't brought to the front
 // (the 2026-10-06 rule). "Ver la app" collapses it to the pill for the rest of the phase. A plain
-// pomodoro keeps SoftFocusOverlay, which already fills the window during its focus.
+// pomodoro keeps SoftFocusOverlay, which already fills the window during its focus -- unless it's on a
+// study session: then the tutor's chat is what the screen is for (user-requested, 2026-10-22), so
+// the focus view takes it, blocks or not, with the chat as the wider column.
+
+/** A study session with exercises (note and sections): the tutor goes with its pomodoro. */
+export function isStudyTask(
+  task: Parameters<typeof studySectionsOf>[0] | null | undefined,
+): boolean {
+  return !!task && !!studySectionsOf(task);
+}
 
 /** Whether the focus view is showing for this session (the pill hides while it is). */
-export function useFocusViewVisible(session: SyncPomodoroRecord | null): boolean {
+export function useFocusViewVisible(
+  session: SyncPomodoroRecord | null,
+  tasks: Array<Parameters<typeof studySectionsOf>[0] & { id: string }>,
+): boolean {
   const { collapsedFor } = useFocusViewState();
+  const task = session?.taskId ? tasks.find((t) => t.id === session.taskId) : null;
   return (
     !!session?.active &&
-    !!session.scheduleId &&
+    (!!session.scheduleId || isStudyTask(task)) &&
     !session.pausedAt &&
     collapsedFor !== phaseKey(session)
   );
@@ -157,7 +170,7 @@ export function FocusView() {
   const { schedules } = useSchedules();
   const { tasks } = useTasks();
   const session = pomodoro.session;
-  const visible = useFocusViewVisible(session);
+  const visible = useFocusViewVisible(session, tasks);
 
   if (!visible || !session || typeof document === 'undefined') return null;
 
@@ -168,7 +181,8 @@ export function FocusView() {
   const focus = session.state === 'FOCUS';
   const flexible = !!session.flexible;
   const overrun = flexible && !focus ? pauseOverrunMinutes(session, Date.now()) : 0;
-  const withTutor = !!task && !!studySectionsOf(task);
+  const withTutor = isStudyTask(task);
+  const inBlock = !!session.scheduleId;
   const phaseLabel = segment?.etiqueta ?? (focus ? 'Foco' : 'Pausa');
 
   return createPortal(
@@ -186,7 +200,13 @@ export function FocusView() {
       style={{ overflowY: 'auto', overflowX: 'hidden' }}
       alignItems="flex-start"
     >
-      <YStack flex={1} minWidth={320} gap="$4" alignItems="center">
+      <YStack
+        flex={1}
+        minWidth={320}
+        maxWidth={withTutor ? 520 : undefined}
+        gap="$4"
+        alignItems="center"
+      >
         <XStack
           width="100%"
           justifyContent="space-between"
@@ -196,7 +216,7 @@ export function FocusView() {
         >
           <YStack>
             <Text color="$accent" fontWeight="700" textTransform="uppercase" letterSpacing={1}>
-              {schedule?.label ?? 'Bloque de trabajo'}
+              {schedule?.label ?? (inBlock ? 'Bloque de trabajo' : 'Pomodoro de estudio')}
             </Text>
             {task ? (
               <Text color="$muted" fontSize="$3">
@@ -245,19 +265,30 @@ export function FocusView() {
               Terminar bloque
             </AppButton>
           ) : null}
-          <AppButton variant="ghost" onPress={() => focusView.requestExit(key)}>
-            Salir
-          </AppButton>
+          {inBlock ? (
+            <AppButton variant="ghost" onPress={() => focusView.requestExit(key)}>
+              Salir
+            </AppButton>
+          ) : (
+            <AppButton
+              variant="ghost"
+              disabled={pomodoro.isMutating}
+              onPress={() => void pomodoro.cancel()}
+            >
+              Cancelar pomodoro
+            </AppButton>
+          )}
         </XStack>
 
         <YStack width="100%" maxWidth={560}>
-          {flexible ? <FlexiblePlan session={session} /> : <SequenceTimeline />}
+          {flexible ? <FlexiblePlan session={session} /> : inBlock ? <SequenceTimeline /> : null}
         </YStack>
       </YStack>
 
       {withTutor ? (
-        <YStack flex={1} minWidth={360} maxWidth={720}>
-          <TutorPanel />
+        // The chat is what a study pomodoro is for: the wide column, the whole height.
+        <YStack flex={2} minWidth={420} alignSelf="stretch">
+          <TutorPanel fullHeight />
         </YStack>
       ) : null}
     </XStack>,
