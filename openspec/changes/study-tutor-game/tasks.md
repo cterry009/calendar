@@ -146,4 +146,21 @@ untouched files (`notes/pensum.test.ts`, `plan/sequence.ts`); the new files are 
 ## 14. Phase 3: tests and a live try
 
 - [x] 14.1 Tests with a fake model on the test database: first turn, grading records an attempt and moves on, grade for another exercise → 502, generated exercise keeps the engine's b, unknown conversation → new one with a warning, 429, missing binary → 503, `GET /tutor/state`
-- [ ] 14.2 Live test (`TUTOR_LIVE=1`) and one real turn against the dev API with a throwaway account; record time and results here
+- [x] 14.2 Live test (`TUTOR_LIVE=1`) and one real turn against the dev API with a throwaway account; record time and results here
+
+## Phase 3 results (2026-10-21)
+
+- **Server:** 90 tests (11 new for the tutor, with a fake Claude on the test database) and typecheck
+  green; shared 245 tests (3 new for `noteSections`). The server loads the built `@calendar/shared`
+  with `require`; shared's `exports` needed a `default` condition for that (it only had `import`).
+- **Live test** (`TUTOR_LIVE=1 npx vitest run test/tutor.live.test.ts`): Opus graded a complete answer
+  to AN1#1#1 with r = 1 in 9 s, attempt recorded (θ 0 → 0.22, 5 XP).
+- **Real turns through the API** (throwaway account `tutor-phase3-*@local.test`, the real vault,
+  AN1 §3): `GET /tutor/state` 62 ms. Turn 1 (7.9 s): the engine put the true/false AN1#3#9 on the table
+  and Claude presented its six claims without revealing the answers. Turn 2 (12.9 s): five right and
+  item 5 wrong (convergence vs absolute convergence); Claude spotted exactly that, gave the
+  counterexample $(-1)^n/\sqrt n$, graded r = 0.5 with no hints; the attempt was stored with the
+  feedback, θ went 0 → −0.25 (a V/F at b = −1.5 was expected to be fully right), +2 XP, and the
+  engine moved on to 🟢 AN1#3#1.
+- Not done: the study session in the prompt comes only from `studyTaskId` when the client sends it
+  (the UI will, in phase 4), not from the schedule as `planning/study.ts` would infer it.
