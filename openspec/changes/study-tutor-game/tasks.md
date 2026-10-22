@@ -119,3 +119,31 @@ untouched files (`notes/pensum.test.ts`, `plan/sequence.ts`); the new files are 
   (version 2).
 - Lint: the new files are clean; `apps/web` still reports two unused imports in
   `DesktopUsageWarnings.tsx` (untouched).
+
+## 10. Phase 3: shared in the server
+
+- [ ] 10.1 `noteSections(fileName, markdown)` in `packages/shared/src/notes/exercises.ts`, with tests (D29)
+- [ ] 10.2 `"@calendar/shared": "file:../packages/shared"` in the server; `require` works in Nest and Vitest; CLAUDE.md and README updated (D26)
+
+## 11. Phase 3: catalog and game on the server
+
+- [ ] 11.1 `server/src/tutor/catalog.ts`: vault notes parsed with `parseExercises` and `noteSections`, cached by mtime
+- [ ] 11.2 `tutor-game.service.ts`: the user's attempts replayed, the section state and `nextExercise`; `GET /tutor/state` (D34)
+
+## 12. Phase 3: Claude
+
+- [ ] 12.1 `profesor.md` (Spanish): rubric for r, hints, LaTeX, read only the given range, never compute θ/XP
+- [ ] 12.2 `TutorModel` interface and `ClaudeCliTutor` (spawn without shell, JSON schema, session id / resume, timeout, errors → 503) (D27, D28, D33)
+- [ ] 12.3 Turn prompt builder: study session, θ, current exercise, note path and section range (D29)
+- [ ] 12.4 Reply validation (D31)
+
+## 13. Phase 3: the turn
+
+- [ ] 13.1 `POST /tutor/turn`: pick or keep the exercise, run Claude, validate, record the attempt through the sync service, next exercise, game state (D30)
+- [ ] 13.2 Conversation ownership in memory, one turn per user (D32)
+- [ ] 13.3 `.env.example`: `TUTOR_MODEL`, `TUTOR_CLAUDE_BIN`, `TUTOR_TIMEOUT_MS`
+
+## 14. Phase 3: tests and a live try
+
+- [ ] 14.1 Tests with a fake model on the test database: first turn, grading records an attempt and moves on, grade for another exercise → 502, generated exercise keeps the engine's b, unknown conversation → new one with a warning, 429, missing binary → 503, `GET /tutor/state`
+- [ ] 14.2 Live test (`TUTOR_LIVE=1`) and one real turn against the dev API with a throwaway account; record time and results here

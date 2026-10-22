@@ -144,3 +144,65 @@ between them, with nothing writing to it yet in production.
   per section, XP, global level, bosses, review queue), replayed from the pulled attempts with the
   catalog parsed from the vault, to both `Estado_estudio.md` and `estado_estudio.json`, as
   `Tutor_diseno.md` asks. With no attempts yet it says so.
+
+## Phase 3: the tutor on the server (proposed 2026-10-21)
+
+Checked first (2026-10-21): `claude` 2.1.292 is at `~/.local/bin/claude.exe` and logged in. A real
+`claude -p ... --output-format json --json-schema ...` graded AN1#1#1 correctly (r = 0.5, with a sound
+justification) and returned `structured_output`. Cost per turn, at list prices, is mostly Claude
+Code's own system prompt (`--bare` would drop it but needs an API key): Opus reading the whole note
+22 s / $0.59; Sonnet with the exercise in the prompt 10 s / $0.20; Haiku 16 s / $0.10. On a
+subscription this is quota, not money.
+
+- **D26 The server imports `@calendar/shared` (user-confirmed).** First time: a
+  `"@calendar/shared": "file:../packages/shared"` dependency, built with `npm run build:shared`
+  (CI already builds it before the server). Nest compiles to CommonJS and shared is ESM; Node ≥ 22.12
+  (here 24) loads it with `require`, checked on 2026-10-21. One engine for server and clients: the
+  catalog parser, `replay` and `nextExercise` are not ported. CLAUDE.md's "the server does not import
+  @calendar/shared" changes.
+- **D27 Model (user's choice: Opus).** `TUTOR_MODEL` (default `opus`), `TUTOR_CLAUDE_BIN` (default
+  `claude`), `TUTOR_TIMEOUT_MS` (default 180 000). The vault is `CALENDAR_VAULT`, as for the planner.
+- **D28 How Claude runs.** `spawn` with an argument array and no shell, since the user's message is
+  in the arguments: `claude -p <turn> --model <m> --output-format json --json-schema <schema>
+  --append-system-prompt-file profesor.md --add-dir <vault> --tools Read --allowedTools Read
+  --permission-mode dontAsk`, plus `--session-id <uuid>` on a conversation's first turn and
+  `--resume <uuid>` after. The working directory is an empty folder of the server's own (not the
+  repo, so the repo's CLAUDE.md and settings aren't loaded). With `dontAsk` and only Read allowed,
+  reading outside that folder and the vault is refused.
+- **D29 Context (user-confirmed: the exercise plus a bounded Read).** Each turn the server puts in the
+  prompt: the current study session (from the user's tasks, as `planning/study.ts` sees it), the
+  section's θ and level, the current exercise with its reference answer and hint (or, for a
+  generated one, its statement and target b), and the note's path with the **line range of the
+  section**. `profesor.md` tells Claude to read only that range (Read's offset/limit) when it needs to
+  explain. A new shared helper, `noteSections(fileName, markdown)`, returns each section's title and
+  line range with the same rules as `parseExercises`.
+- **D30 One endpoint, stateless apart from the conversation.** `POST /tutor/turn` takes
+  `{ message, noteCode, section, sessionId?, current?, pomodoroSessionId?, studyTaskId? }`, where
+  `current` is the exercise on the table (a catalog id, or a generated exercise as returned by an
+  earlier turn). The server:
+  1. loads the catalog (vault notes parsed with `parseExercises`, cached by file mtime) and replays the
+     user's attempts;
+  2. if there is no `current`, picks one with `nextExercise`; a `generate` result asks Claude to write
+     one at that b in this turn;
+  3. runs Claude and validates the reply (D31);
+  4. if Claude graded, records the attempt through the sync service (same idempotent create, so other
+     devices get `sync:changes`), replays again and picks the next exercise;
+  5. answers `{ sessionId, mensaje, accion, current, attempt?, game: { theta, level, xp, xpGained,
+     combo, review }, warnings }`.
+- **D31 Validating Claude's reply.** The schema allows `accion` ∈ {explicar, proponer_ejercicio,
+  pista, calificar}, a `calificacion { exerciseId, r, pistas, justificacion }` and an
+  `ejercicioGenerado { enunciado, respuesta, b }`. The code then checks: a grade is for the current
+  exercise only, r ∈ {0, 0.5, 1}, hints ≥ 0; a generated exercise has a statement and gets the
+  engine's target b (Claude's own b is ignored: D5, the code decides difficulty) and the id
+  `<noteCode>#gen-<8 hex>`. Anything else → 502 `tutor_invalid_reply` and nothing is recorded.
+- **D32 Conversations.** A conversation is one Claude session (`--session-id`, then `--resume`). The
+  server remembers which user owns which session id in memory; an unknown id (e.g. after a server
+  restart) starts a new conversation and says so in `warnings`. One turn at a time per user (429 if one
+  is running).
+- **D33 When Claude isn't there.** Missing binary, timeout, a non-zero exit or `is_error` → 503
+  `tutor_unavailable` with the reason; nothing is recorded, and the block keeps working as before (the
+  UI in phase 4 shows it).
+- **D34 Read-only game endpoint.** `GET /tutor/state?noteCode&section` returns the replayed state of
+  that section and the next exercise, without calling Claude: for the UI and for testing.
+- **D35 Testable without Claude.** The CLI sits behind a `TutorModel` interface (like `Planner`);
+  tests use a fake model on the real test database. One live test runs only with `TUTOR_LIVE=1`.

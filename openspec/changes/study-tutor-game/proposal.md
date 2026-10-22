@@ -43,6 +43,9 @@ No breaking changes.
   creates, the whole history in the pull without its long texts, a read endpoint for the texts, web and
   mobile snapshot types, and the game state in the study status export.
 
+- `tutor-service` (phase 3): `POST /tutor/turn` running `claude -p` with bounded context, validating
+  its reply and recording the grade; `GET /tutor/state`; section line ranges in shared.
+
 ### Modified Capabilities
 <!-- None: there are no main specs yet (openspec/specs/ doesn't exist). -->
 
@@ -50,6 +53,7 @@ No breaking changes.
 
 - Phase 1 done 2026-10-21 (commits f9c1a16, ebe0cc7).
 - Phase 2 done 2026-10-21 (design D19-D25, tasks 6-9).
+- Phase 3 proposed 2026-10-21 (design D26-D35, tasks 10-14).
 
 ## Impact
 
