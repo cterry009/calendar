@@ -1,5 +1,6 @@
-Phase 1 only (catalog + engine in `packages/shared`). Phases 2-5 (data, tutor, UI, MCP) get their tasks
-when phase 1 closes; see proposal.md.
+Phase 1 (catalog + engine in `packages/shared`): groups 1-5, done. Phase 2 (data and sync): groups
+6-9, at the end. Phases 3-5 (tutor, UI, MCP) get their tasks when the previous phase closes; see
+proposal.md.
 
 ## 1. Exercise catalog
 
@@ -75,3 +76,26 @@ pooled success rate 0.7998, mean bias −0.085.
 
 **Checks:** shared 239 tests and typecheck green. `npm run lint` still reports two errors in
 untouched files (`notes/pensum.test.ts`, `plan/sequence.ts`); the new files are clean.
+
+## 6. Phase 2: entity and server sync
+
+- [ ] 6.1 `schema.prisma`: `ExerciseAttempt` with enums `ExerciseSource` / `ExerciseGrader`, and the migration (D19)
+- [ ] 6.2 `sync.types.ts` + `dto/sync-batch.dto.ts`: `exerciseAttempts` with its validation (D22)
+- [ ] 6.3 `sync.service.ts`: `applyExerciseAttemptChange` (idempotent create, P2002 skipped, D20) and the attempts in the pull without texts (D21)
+- [ ] 6.4 `GET /sync/exercise-attempts?since=` (controller + service)
+- [ ] 6.5 Server tests: retry skipped, correction as a new row, correction before its original, pull with old attempts and no texts and no other user's, the full endpoint with `since`, DTO rejects r = 0.7 and b = 7
+
+## 7. Phase 2: shared schema
+
+- [ ] 7.1 `packages/shared/src/schemas/exercise-attempt.ts`: `ExerciseAttemptSchema`, exported, its type usable as `replay` input (D23); test
+
+## 8. Phase 2: clients
+
+- [ ] 8.1 Web: `exerciseAttempts?` in `SyncSnapshot`, offline entity type and conflict label, `logExerciseAttempt` in `lib/studyGame/` (D24)
+- [ ] 8.2 Mobile: `exerciseAttempts?` in the snapshot type and the pull/batch types
+- [ ] 8.3 Web and mobile typecheck; web tests
+
+## 9. Phase 2: export and wrap-up
+
+- [ ] 9.1 `export-study-status.mjs`: game state per note in the markdown and the JSON (D25); dry run against the dev user
+- [ ] 9.2 Server tests and typecheck, shared tests and build green; record the results here

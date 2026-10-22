@@ -39,8 +39,17 @@ No breaking changes.
   of attempts (corrections, cold start, XP, levels, combo, bosses, review queue) and next-exercise
   selection.
 
+- `exercise-attempt-sync` (phase 2): the synced `ExerciseAttempt` entity: immutable, idempotent
+  creates, the whole history in the pull without its long texts, a read endpoint for the texts, web and
+  mobile snapshot types, and the game state in the study status export.
+
 ### Modified Capabilities
-<!-- None in phase 1. Phases 2-4 will modify `cross-platform-sync` and `pomodoro-timer`. -->
+<!-- None: there are no main specs yet (openspec/specs/ doesn't exist). -->
+
+## Phase status
+
+- Phase 1 done 2026-10-21 (commits f9c1a16, ebe0cc7).
+- Phase 2 proposed 2026-10-21 (design D19-D25, tasks 6-9).
 
 ## Impact
 

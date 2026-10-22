@@ -106,3 +106,41 @@ Phase 1 decisions (user-confirmed 2026-10-21 where marked):
   uses 100 students with θ_true uniform in [−2, 2] and a fixed seed, and checks: at least 75 within 0.5
   (passes for ~99% of seed sets), pooled success rate 0.8 ± 0.03 (pooled mean 0.7995, sd 0.007 across
   seed sets) and |mean bias| < 0.15 (~98%; 0.1 would pass only ~75%).
+
+## Phase 2: data and sync (proposed 2026-10-21)
+
+The engine needs the attempts on every device: `replay` rebuilds the game from the **whole** history
+(D6), so the 30-day window used for `BlockEvent` doesn't fit. Writers: the server's tutor (phase 3)
+records Claude's grades; the web UI (phase 4) records the user's corrections. Phase 2 builds the pipe
+between them, with nothing writing to it yet in production.
+
+- **D19 Entity.** `ExerciseAttempt` (`exercise_attempts`): `id` (client UUID, primary key), `userId`,
+  `exerciseId`, `exerciseSource` (`nota` | `generado`), `noteCode`, `section`, `b` (float), `r` (float:
+  0, 0.5 or 1), `hints`, `minutes?`, `gradedBy` (`claude` | `usuario`), `supersedes?`,
+  `generatedStatement?` (text), `feedback?` (text), `studyTaskId?`, `pomodoroSessionId?`,
+  `occurredAt`, `createdAt`. Enum values are lowercase so the rows match `ExerciseAttemptInput`
+  without mapping. Indexes on (userId, occurredAt) and (userId, noteCode).
+- **D20 Immutable and idempotent, like `FocusEvent`.** A create on the client id; a retry (or a
+  concurrent duplicate hitting P2002) is `skipped`, never an update. A correction is a *new* attempt
+  with `supersedes`. `supersedes` isn't checked against existing rows: `replay` already treats an
+  unknown target as a plain attempt, and the original can arrive after its correction from another
+  device's queue.
+- **D21 Pull without texts (user-confirmed).** `GET /sync/pull` returns every attempt of the user,
+  oldest first, without `generatedStatement` and `feedback` (~7 000 attempts a year, ~1.5 MB instead of
+  ~5 MB). `GET /sync/exercise-attempts?since=` returns full rows (all of them without `since`), for
+  showing a past exercise and its feedback.
+- **D22 Validation.** The DTO accepts `r` only in {0, 0.5, 1}, `b` in [−6, 6], `hints` ≥ 0,
+  `minutes` ≥ 0, ids and codes up to 200 characters, `generatedStatement` up to 20 000 and `feedback`
+  up to 10 000. Whether a generated exercise is well formed is the tutor's job (phase 3), not sync's.
+- **D23 Shared schema.** `ExerciseAttemptSchema` (Zod) in `packages/shared/src/schemas/`, whose type
+  extends `ExerciseAttemptInput` with the optional fields, so a synced record goes straight into
+  `replay`.
+- **D24 Clients (user-confirmed).** Web: snapshot field `exerciseAttempts?` (defaulted with `?? []`,
+  since cached snapshots predate it), offline entity type and conflict label, and
+  `logExerciseAttempt` (through the offline-aware batch, like `logFocusEvent`) for phase 4's
+  corrections. Mobile: only the snapshot type and the pull field; writing from the phone comes with
+  its UI.
+- **D25 Study status export.** `scripts/export-study-status.mjs` adds the game per note (θ and level
+  per section, XP, global level, bosses, review queue), replayed from the pulled attempts with the
+  catalog parsed from the vault, to both `Estado_estudio.md` and `estado_estudio.json`, as
+  `Tutor_diseno.md` asks. With no attempts yet it says so.
