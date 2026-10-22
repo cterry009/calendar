@@ -40,5 +40,32 @@
 
 ## 6. Checks and a real try
 
-- [ ] 6.1 shared, web, server tests and typechecks; desktop installer
-- [ ] 6.2 Real try on the dev API with the dev user: apply the morning update, start a block with a check-in, a focus, the automatic pause, a manual focus, a cut, the tutor button; the vault's `Estado_estudio.md` updated by the server; record results here
+- [x] 6.1 shared, web, server tests and typechecks; desktop installer
+- [x] 6.2 Real try on the dev API with the dev user: apply the morning update, start a block with a check-in, a focus, the automatic pause, a manual focus, a cut, the tutor button; the vault's `Estado_estudio.md` updated by the server; record results here
+
+## Results (2026-10-22)
+
+- **Checks:** shared 275 tests (30 new: `plan/morning`, `pomodoro/flexible`, `study-status`), server
+  95 + the skipped live one (4 new: flexible sync, study status with a temp vault), web 97 (3 new),
+  typechecks of shared, ui, server, web and mobile, web build, desktop installer.
+- **Real try in a browser** (headless Edge over the DevTools protocol, throwaway account
+  `morning-ui-*@local.test` with the old 09:30-12:30 B1 and a study session `00b`, at 10:30 on a
+  Thursday): "Actualizar la mañana" turned B1 into 08:00-12:00 with `flexibleBlocks = 2` (the
+  afternoon block untouched); the calendar draws "Estudio B1: ventana para 2 bloques". "Empezar bloque
+  1" → check-in 4/3 → "Energía 4: propuesta de 150 min con focos de 40", moved to 120/30. The focus
+  view filled the window with the timer, the plan (30·5·30·5·30·5·15) and the tutor on 00b §1/§2.
+  "Cortar tramo" at once: the rating card for pomodoro 1, then the pause by itself (5 min) with
+  "Empezar foco de 20 min" and "Propuesta más corta porque cortaste un tramo"; 3 s later still in
+  the pause. "+" → 25, started: 25:00. "Ver la app" → the pill with "Vista de foco" and "Tutor".
+  "Terminar bloque" → the morning card shows "Bloque 1 · 0 min de foco" and "Empezar bloque 2".
+  Stored: session `block-<B1>-2026-10-22-1`, `flexible`, `plannedBlockMin` 120, `windowEndAt` 12:00,
+  `blockEndAt` null, cut 1, plan 30·5·25·5·20·5·15; the `CHECK_IN` with `scope: block-start`, 4/3,
+  E 4, proposed 150/40, chosen 120/30.
+- **Dev user:** "Actualizar la mañana" applied (B1, B2, Pilar E → 08:00-12:00, same ids); the server
+  rewrote `Estado_estudio.md` 30 s later with the "Mañanas" lines, the Notas section kept.
+- **Fixed from that try:** the check-in card and the focus view showed white horizontal scrollbars
+  (`overflow="scroll"`); now vertical only.
+- Not tried live: the 12:00 rule, the pause-over notice and the reminders (they need the clock;
+  covered by the shared tests), and the phone following a PC block (typecheck only).
+- Plain pomodoros (no block) keep SoftFocusOverlay, which already fills the window during focus;
+  the focus view is for block sessions.

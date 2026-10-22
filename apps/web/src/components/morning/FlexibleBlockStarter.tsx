@@ -202,7 +202,7 @@ export function FlexibleBlockStarter() {
         borderColor="$accent"
         backgroundColor="$background"
         maxHeight="100%"
-        overflow="scroll"
+        style={{ overflowY: 'auto', overflowX: 'hidden' }}
       >
         <Text color="$accent" fontWeight="700" textTransform="uppercase" letterSpacing={1}>
           {morning.schedule?.label ?? 'Estudio'} · bloque {morning.nextNumber}

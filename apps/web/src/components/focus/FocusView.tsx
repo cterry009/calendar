@@ -183,7 +183,7 @@ export function FocusView() {
       padding="$5"
       gap="$5"
       flexWrap="wrap"
-      overflow="scroll"
+      style={{ overflowY: 'auto', overflowX: 'hidden' }}
       alignItems="flex-start"
     >
       <YStack flex={1} minWidth={320} gap="$4" alignItems="center">
