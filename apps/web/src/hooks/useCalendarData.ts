@@ -16,14 +16,20 @@ interface UseCalendarDataResult {
   scheduleExceptions: NonNullable<SyncSnapshot['scheduleExceptions']>;
   studyPlan?: SyncSnapshot['studyPlan'];
   habitRecords: SyncSnapshot['habitRecords'];
+  /** Study game attempts (2026-10-21); empty for snapshots cached before them. */
+  exerciseAttempts: NonNullable<SyncSnapshot['exerciseAttempts']>;
   syncedAt: string | null;
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 }
 
-type CalendarSnapshot = Omit<SyncSnapshot, 'syncedAt' | 'scheduleExceptions'> & {
+type CalendarSnapshot = Omit<
+  SyncSnapshot,
+  'syncedAt' | 'scheduleExceptions' | 'exerciseAttempts'
+> & {
   scheduleExceptions: NonNullable<SyncSnapshot['scheduleExceptions']>;
+  exerciseAttempts: NonNullable<SyncSnapshot['exerciseAttempts']>;
 };
 
 const EMPTY_SNAPSHOT: CalendarSnapshot = {
@@ -47,6 +53,7 @@ const EMPTY_SNAPSHOT: CalendarSnapshot = {
   scheduleCompletions: [],
   scheduleExceptions: [],
   studyPlan: null,
+  exerciseAttempts: [],
 };
 
 export function useCalendarData(): UseCalendarDataResult {
@@ -85,6 +92,7 @@ export function useCalendarData(): UseCalendarDataResult {
         scheduleCompletions: data.scheduleCompletions ?? [],
         scheduleExceptions: data.scheduleExceptions ?? [],
         studyPlan: data.studyPlan ?? null,
+        exerciseAttempts: data.exerciseAttempts ?? [],
       });
       setSyncedAt(data.syncedAt);
     } catch (errorValue) {
@@ -107,6 +115,7 @@ export function useCalendarData(): UseCalendarDataResult {
   useSyncRefetch('detoxPlan', refetch);
   useSyncRefetch('scheduleExceptions', refetch);
   useSyncRefetch('studyPlan', refetch);
+  useSyncRefetch('exerciseAttempts', refetch);
 
   useEffect(() => {
     void refetch();

@@ -23,13 +23,31 @@ export type ExerciseAttemptLogInput = Omit<ExerciseAttempt, 'id' | 'occurredAt'>
  * user's correction must not be lost), and a resend is harmless since the id is the idempotency key.
  */
 export function logExerciseAttempt(input: ExerciseAttemptLogInput): ExerciseAttempt {
+  const { attempt, sent } = sendExerciseAttempt(input);
+  void sent;
+  return attempt;
+}
+
+/**
+ * Same as `logExerciseAttempt`, plus `sent`: true once the server has it, false when it was queued.
+ * The tutor panel waits for it before re-reading the game, so a correction shows at once (D42).
+ */
+export function sendExerciseAttempt(input: ExerciseAttemptLogInput): {
+  attempt: ExerciseAttempt;
+  sent: Promise<boolean>;
+} {
   const attempt: ExerciseAttempt = {
     id: crypto.randomUUID(),
     occurredAt: new Date().toISOString(),
     ...input,
   };
-  void syncBatch({ exerciseAttempts: [attempt] }).catch(() =>
-    enqueueSyncItem('exerciseAttempts', [attempt]).catch(() => undefined),
+  const sent = syncBatch({ exerciseAttempts: [attempt] }).then(
+    (response) => Boolean(response.applied.exerciseAttempts?.length),
+    () =>
+      enqueueSyncItem('exerciseAttempts', [attempt]).then(
+        () => false,
+        () => false,
+      ),
   );
-  return attempt;
+  return { attempt, sent };
 }

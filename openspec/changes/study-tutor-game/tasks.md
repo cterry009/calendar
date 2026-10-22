@@ -172,21 +172,21 @@ untouched files (`notes/pensum.test.ts`, `plan/sequence.ts`); the new files are 
 
 ## 16. Phase 4: rendering
 
-- [ ] 16.1 Dependencies `react-markdown`, `remark-math`, `rehype-katex`, `katex`; lazy `TutorMarkdown` (D36)
+- [x] 16.1 Dependencies `react-markdown`, `remark-math`, `rehype-katex`, `katex`; lazy `TutorMarkdown` (D36)
 
 ## 17. Phase 4: the panel
 
-- [ ] 17.1 `TutorPanel` in the pomodoro page: note/section choice (block or picker), chat, thinking state, errors (D37, D39)
-- [ ] 17.2 Exercise card with kind badge and shortcuts (D40)
-- [ ] 17.3 Game feedback: XP float, combo, θ/level bar, level-up toast, bosses; reduced motion (D41)
-- [ ] 17.4 "Corregir" on the last grade (D42)
+- [x] 17.1 `TutorPanel` in the pomodoro page: note/section choice (block or picker), chat, thinking state, errors (D37, D39)
+- [x] 17.2 Exercise card with kind badge and shortcuts (D40)
+- [x] 17.3 Game feedback: XP float, combo, θ/level bar, level-up toast, bosses; reduced motion (D41)
+- [x] 17.4 "Corregir" on the last grade (D42)
 
 ## 18. Phase 4: around the block
 
-- [ ] 18.1 "Tutor" on the block's pill; tutor line in the pomodoro rating card (D37, D43)
-- [ ] 18.2 Dashboard "Juego de ejercicios" panel (D44)
+- [x] 18.1 "Tutor" on the block's pill; tutor line in the pomodoro rating card (D37, D43)
+- [x] 18.2 Dashboard "Juego de ejercicios" panel (D44)
 
 ## 19. Phase 4: checks and a real try
 
-- [ ] 19.1 Web typecheck, tests and build; server tests
+- [x] 19.1 Web typecheck, tests and build; server tests
 - [ ] 19.2 Real try in the browser against the dev API (throwaway account or dev user's choice); record results here

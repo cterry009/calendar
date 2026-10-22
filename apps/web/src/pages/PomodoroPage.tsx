@@ -5,6 +5,7 @@ import { AppButton, AppCard, Paragraph, XStack, YStack } from '@calendar/ui';
 import { PageHeader } from '../components/PageHeader';
 import { PomodoroStreakCard } from '../components/pomodoro/PomodoroStreakCard';
 import { PomodoroTimer } from '../components/pomodoro/PomodoroTimer';
+import { TutorPanel } from '../components/tutor/TutorPanel';
 import { usePomodoro } from '../context/PomodoroContext';
 import { useSoftFocus } from '../context/SoftFocusContext';
 import { useCalendarData } from '../hooks/useCalendarData';
@@ -132,6 +133,10 @@ export function PomodoroPage() {
           onReset={pomodoro.reset}
           onToggleNotifications={pomodoro.toggleNotifications}
         />
+      </YStack>
+
+      <YStack id="tutor" data-tutorial="pomodoro-tutor">
+        <TutorPanel />
       </YStack>
     </YStack>
   );

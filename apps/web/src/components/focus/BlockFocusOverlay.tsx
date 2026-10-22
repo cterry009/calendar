@@ -13,13 +13,17 @@ import {
   studyLineOf,
   studySessionLine,
 } from '@calendar/shared';
+import { usePanel } from '../../context/PanelContext';
 import { usePomodoro } from '../../context/PomodoroContext';
+import { useSync } from '../../context/SyncContext';
 import { useSchedules } from '../../hooks/useSchedules';
 import { useTasks } from '../../hooks/useTasks';
 import { isDesktop } from '../../lib/desktop';
 import { logFocusEvent } from '../../lib/focusEvents/log';
 import { syncBatch } from '../../lib/offline/sync-client';
 import { formatTimer } from '../../lib/pomodoro/timer';
+import { studySectionsOf } from '../../lib/studyGame/studySections';
+import { pomodoroTutorSummary, type PomodoroTutorSummary } from '../../lib/studyGame/summary';
 
 // A WORK block's pomodoro on the PC (user-requested, 2026-10-06/07):
 // - While it runs, nothing comes up over other apps -- that broke the concentration it's for. Inside
@@ -102,6 +106,9 @@ export function BlockFocusOverlay() {
   const [tags, setTags] = useState<string[]>([]);
   const [comment, setComment] = useState('');
   const [sessionDone, setSessionDone] = useState<boolean | null>(null);
+  const [tutorSummary, setTutorSummary] = useState<PomodoroTutorSummary | null>(null);
+  const { openPanel } = usePanel();
+  const { pullSnapshot } = useSync();
 
   // A focus pomodoro of the block just finished: ask how it went, once per pomodoro.
   const previous = useRef(session);
@@ -128,6 +135,22 @@ export function BlockFocusOverlay() {
   useEffect(() => {
     void setOnTop(!!ended);
   }, [ended]);
+
+  // What the tutor did in the pomodoro that just ended (study-tutor-game D43), from a fresh pull:
+  // its grades were recorded by the server, which doesn't notify the device that asked.
+  useEffect(() => {
+    setTutorSummary(null);
+    if (!ended) return;
+    let cancelled = false;
+    pullSnapshot()
+      .then((snapshot) => {
+        if (!cancelled) setTutorSummary(pomodoroTutorSummary(snapshot.exerciseAttempts ?? [], ended.sessionId));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [ended, pullSnapshot]);
 
   // Answered or dismissed on the phone (the session's reviewedCycles caught up): close. While the
   // card is up the session is re-pulled every few seconds to notice it.
@@ -184,6 +207,12 @@ export function BlockFocusOverlay() {
           <Paragraph margin={0} color="$muted">
             {schedule?.label ?? 'Bloque de trabajo'}
           </Paragraph>
+          {tutorSummary ? (
+            <Text color="$accent" fontWeight="700">
+              Tutor: {tutorSummary.exercises} {tutorSummary.exercises === 1 ? 'ejercicio' : 'ejercicios'}, +{tutorSummary.xp} XP, θ{' '}
+              {tutorSummary.thetaFrom.toFixed(2)} → {tutorSummary.thetaTo.toFixed(2)}
+            </Text>
+          ) : null}
           <XStack gap="$2" flexWrap="wrap">
             {BLOCK_RATINGS.map((option) => (
               <AppButton key={option.value} variant={rating === option.value ? 'primary' : 'ghost'} onPress={() => setRating(option.value)}>
@@ -377,6 +406,11 @@ export function BlockFocusOverlay() {
       {pomodoro.canCutSegment ? (
         <AppButton variant="ghost" disabled={pomodoro.isMutating} onPress={() => void pomodoro.cutSegment()}>
           Cortar tramo
+        </AppButton>
+      ) : null}
+      {task && studySectionsOf(task) ? (
+        <AppButton variant="ghost" onPress={() => openPanel('pomodoro')}>
+          Tutor
         </AppButton>
       ) : null}
       <AppButton variant="ghost" disabled={pomodoro.isMutating} onPress={() => setAskingWhy(true)}>

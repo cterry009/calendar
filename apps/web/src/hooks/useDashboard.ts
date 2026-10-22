@@ -4,10 +4,13 @@ import { useSync } from '../context/SyncContext';
 import { buildDashboardMetrics } from '../lib/analytics/aggregate';
 import { seedDemoData } from '../lib/analytics/seed-demo';
 import type { DashboardMetrics } from '../lib/analytics/types';
+import { gameDashboard, type GameDashboard } from '../lib/studyGame/summary';
 import { useSyncRefetch } from './useSyncRefetch';
 
 interface UseDashboardResult {
   metrics: DashboardMetrics | null;
+  /** The study game replayed from the attempts; null before the first exercise. */
+  game: GameDashboard | null;
   isLoading: boolean;
   isSeeding: boolean;
   error: string | null;
@@ -19,6 +22,7 @@ interface UseDashboardResult {
 export function useDashboard(): UseDashboardResult {
   const { pullSnapshot } = useSync();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [game, setGame] = useState<GameDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSeeding, setIsSeeding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +47,8 @@ export function useDashboard(): UseDashboardResult {
         dailyGameTime: snapshot.dailyGameTime,
       });
       setMetrics(nextMetrics);
+      const attempts = snapshot.exerciseAttempts ?? [];
+      setGame(attempts.length ? gameDashboard(attempts) : null);
       setSyncedAt(snapshot.syncedAt);
     } catch (errorValue) {
       if (errorValue instanceof ApiError) {
@@ -60,6 +66,7 @@ export function useDashboard(): UseDashboardResult {
   useSyncRefetch('tasks', refetch);
   useSyncRefetch('pomodoroSessions', refetch);
   useSyncRefetch('fitnessEntries', refetch);
+  useSyncRefetch('exerciseAttempts', refetch);
 
   useEffect(() => {
     void refetch();
@@ -87,6 +94,7 @@ export function useDashboard(): UseDashboardResult {
   return useMemo(
     () => ({
       metrics,
+      game,
       isLoading,
       isSeeding,
       error,
@@ -94,6 +102,6 @@ export function useDashboard(): UseDashboardResult {
       refetch,
       seedDemo,
     }),
-    [error, isLoading, isSeeding, metrics, refetch, seedDemo, syncedAt],
+    [error, game, isLoading, isSeeding, metrics, refetch, seedDemo, syncedAt],
   );
 }

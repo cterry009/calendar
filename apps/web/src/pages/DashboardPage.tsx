@@ -10,6 +10,7 @@ import { GameTimePanel } from '../components/dashboard/GameTimePanel';
 import { HabitCompletionPanel } from '../components/dashboard/HabitCompletionPanel';
 import { MetricCard } from '../components/dashboard/MetricCard';
 import { ScreenTimePanel } from '../components/dashboard/ScreenTimePanel';
+import { StudyGamePanel } from '../components/dashboard/StudyGamePanel';
 import { WeekComparisonPanel } from '../components/dashboard/WeekComparisonPanel';
 import { PageHeader } from '../components/PageHeader';
 import { StatusCard } from '../components/StatusCard';
@@ -32,7 +33,7 @@ function hasCrossPlatformData(metrics: DashboardMetrics): boolean {
 
 export function DashboardPage() {
   const { openPanel } = usePanel();
-  const { metrics, isLoading, isSeeding, error, syncedAt, refetch, seedDemo } = useDashboard();
+  const { metrics, game, isLoading, isSeeding, error, syncedAt, refetch, seedDemo } = useDashboard();
 
   const isEmpty = !isLoading && metrics && !metrics.hasData && !hasCrossPlatformData(metrics);
 
@@ -138,6 +139,8 @@ export function DashboardPage() {
           <DesktopAppTimePanel />
         </YStack>
       ) : null}
+
+      {game ? <StudyGamePanel game={game} /> : null}
 
       {syncedAt ? (
         <Paragraph size="$2" color="$muted" margin={0}>
