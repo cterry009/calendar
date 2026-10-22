@@ -6,6 +6,7 @@ import { PageHeader } from '../components/PageHeader';
 import { PomodoroStreakCard } from '../components/pomodoro/PomodoroStreakCard';
 import { PomodoroTimer } from '../components/pomodoro/PomodoroTimer';
 import { TutorPanel } from '../components/tutor/TutorPanel';
+import { MorningCard } from '../components/morning/MorningCard';
 import { usePomodoro } from '../context/PomodoroContext';
 import { useSoftFocus } from '../context/SoftFocusContext';
 import { useCalendarData } from '../hooks/useCalendarData';
@@ -64,6 +65,8 @@ export function PomodoroPage() {
         title="Temporizador pomodoro"
         description="Vincula tus ciclos de enfoque y descanso a una tarea para mejorar trazabilidad y consistencia."
       />
+
+      <MorningCard />
 
       <YStack data-tutorial="pomodoro-streak">
         <PomodoroStreakCard streak={streak} />

@@ -187,6 +187,7 @@ function scheduleEventsForRange(
           isException: occurrence.isException,
           segments: occurrence.segments,
           sequenceWarning: occurrence.sequenceWarning,
+          flexibleBlocks: occurrence.flexibleBlocks,
           scheduleId: schedule.id,
           done: doneKeys.has(`${schedule.id}:${dateKey(current)}`),
           skipped: skippedKeys.has(`${schedule.id}:${dateKey(current)}`),

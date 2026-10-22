@@ -19,6 +19,8 @@ export interface SyncScheduleRecord {
   category?: string | null;
   /** The block's pomodoro sequence; wins over pomodoroMin & co. */
   sequence?: SequenceSegment[] | null;
+  /** The morning window (2026-10-22): blocks started on demand in it; null for a fixed block. */
+  flexibleBlocks?: number | null;
 }
 
 export interface ScheduleFormValues {
@@ -36,6 +38,7 @@ export interface ScheduleFormValues {
   /** Left undefined, the block keeps its category / sequence (the server only writes sent fields). */
   category?: string | null;
   sequence?: SequenceSegment[] | null;
+  flexibleBlocks?: number | null;
 }
 
 export const SCHEDULE_KINDS: ScheduleKind[] = ['WORK', 'REST'];

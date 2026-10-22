@@ -3,8 +3,11 @@ import {
   blockSessionId,
   canCutSegment,
   createBlockPomodoroSession,
+  createFlexibleBlockSession,
   createPomodoroSession,
   createSequenceBlockSession,
+  flexibleBlockSessionId,
+  nextFlexibleBlockNumber,
   getPhaseDurationMinutes,
   isBlockingPhase,
   isPhaseAbandoned,
@@ -21,6 +24,7 @@ import { useSync } from './SyncContext';
 import { playPomodoroChime, primePomodoroChime } from '../lib/pomodoro/chime';
 import { buildCreatePomodoroPayload, buildUpdatePomodoroPayload, syncPomodoroBatch } from '../lib/pomodoro/sync';
 import { getRemainingSeconds } from '../lib/pomodoro/timer';
+import { notifySystem } from '../lib/desktop/notify';
 import type { PomodoroConfigFormValues, SyncPomodoroRecord } from '../lib/pomodoro/types';
 import { useSyncRefetch } from '../hooks/useSyncRefetch';
 
@@ -39,6 +43,12 @@ interface PomodoroContextValue {
   start: (taskId?: string | null, overrideConfig?: Partial<PomodoroConfigFormValues>) => Promise<void>;
   /** Starts a session for a WORK block: its id, or null if one is already running or the block is nearly over. */
   startBlock: (block: StartBlockOptions) => Promise<string | null>;
+  /** Starts a flexible morning block after its check-in (dynamic-study-blocks D16): its id, or null. */
+  startFlexibleBlock: (block: StartFlexibleBlockOptions) => Promise<string | null>;
+  /** Flexible block: start the next focus (or the closing) by hand, with its minutes. */
+  startFocus: (minutes?: number) => Promise<void>;
+  /** Flexible block: "Terminar bloque", a clean end. */
+  endBlock: () => Promise<void>;
   cancel: () => Promise<void>;
   reset: () => Promise<void>;
   /** "Salir": stop counting the block's time (the exit is counted). */
@@ -66,6 +76,22 @@ export interface StartBlockOptions {
   timing?: { focusMin: number; breakMin: number };
   /** The block's sequence, labelled for its category (horario 2026-10-19); wins over timing. */
   sequence?: SequenceSegment[] | null;
+}
+
+export interface StartFlexibleBlockOptions {
+  scheduleId: string;
+  /** The window's end today (12:00): no focus starts after it. */
+  windowEndAt: Date | null;
+  blockMin: number;
+  focusMin: number;
+  taskId?: string | null;
+  /** The check-in, logged for calibrating the energy table (D8). */
+  checkIn: {
+    motivation: number;
+    concentration: number;
+    energy: number;
+    proposed: { blockMin: number; focusMin: number };
+  };
 }
 
 /** Which block a running session belongs to, for the events it logs. */
@@ -172,6 +198,10 @@ function withRecordMetadata(base: ReturnType<typeof createPomodoroSession>, fall
     sequence: base.sequence ?? null,
     segmentIndex: base.segmentIndex ?? null,
     cutCount: base.cutCount ?? 0,
+    flexible: base.flexible ?? false,
+    plannedBlockMin: base.plannedBlockMin ?? null,
+    windowEndAt: base.windowEndAt ?? null,
+    focusMinutes: base.focusMinutes ?? 0,
     createdAt: fallback?.createdAt ?? nowIso,
     updatedAt: nowIso,
   };
@@ -188,6 +218,8 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   const [now, setNow] = useState(() => Date.now());
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const transitionInFlightRef = useRef(false);
+  // Flexible pauses already announced as over: one soft notice per pause (D5), not one per tick.
+  const pauseNoticesRef = useRef(new Set<string>());
   const blockContextRef = useRef<BlockContext | null>(typeof window === 'undefined' ? null : loadBlockContext());
 
   const logTransition = useCallback((prev: SyncPomodoroRecord | null, next: SyncPomodoroRecord, reason?: string) => {
@@ -327,6 +359,52 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     [logTransition, persistSession, session],
   );
 
+  const startFlexibleBlock = useCallback(
+    async ({ scheduleId, windowEndAt, blockMin, focusMin, taskId, checkIn }: StartFlexibleBlockOptions) => {
+      if (session?.active) return null;
+      primePomodoroChime();
+      const now = new Date();
+      // Numbered from every session of the day, so the PC and the phone agree on "block 2".
+      const snapshot = await pullSnapshot();
+      const n = nextFlexibleBlockNumber((snapshot.pomodoroSessions ?? []) as SyncPomodoroRecord[], scheduleId, now);
+      const id = flexibleBlockSessionId(scheduleId, now, n);
+      const base = {
+        ...createFlexibleBlockSession(id, { blockMin, focusMin, windowEndAt: windowEndAt?.toISOString() ?? null }),
+        scheduleId,
+      };
+      const started = transitionPomodoro(base, { type: 'START', taskId: taskId ?? undefined });
+      if (started === base) return null;
+      const record = withRecordMetadata(started, null);
+      blockContextRef.current = { sessionId: record.id, scheduleId, blockStartAt: record.blockStartAt ?? now.toISOString() };
+      try {
+        window.localStorage.setItem(BLOCK_CONTEXT_KEY, JSON.stringify(blockContextRef.current));
+      } catch {
+        // Private mode or storage full: the events just lose their block if the page reloads.
+      }
+      logFocusEvent({
+        kind: 'CHECK_IN',
+        scheduleId,
+        taskId: taskId ?? undefined,
+        pomodoroSessionId: record.id,
+        value: checkIn.energy,
+        meta: {
+          scope: 'block-start',
+          motivation: checkIn.motivation,
+          concentration: checkIn.concentration,
+          energy: checkIn.energy,
+          proposed: checkIn.proposed,
+          chosen: { blockMin, focusMin },
+          blockNumber: n,
+          device: 'desktop',
+        },
+      });
+      await persistSession(record, true);
+      logTransition(null, record);
+      return record.id;
+    },
+    [logTransition, persistSession, pullSnapshot, session],
+  );
+
   const start = useCallback(
     async (taskId?: string | null, overrideConfig?: Partial<PomodoroConfigFormValues>) => {
       // Prime the chime inside this click so the browser's autoplay policy lets the
@@ -362,6 +440,18 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
 
   const cutSegment = useCallback(async () => {
     await transitionSession({ type: 'CUT_SEGMENT' }, false);
+  }, [transitionSession]);
+
+  const startFocus = useCallback(
+    async (minutes?: number) => {
+      primePomodoroChime();
+      await transitionSession({ type: 'START_FOCUS', minutes }, false);
+    },
+    [transitionSession],
+  );
+
+  const endBlock = useCallback(async () => {
+    await transitionSession({ type: 'END_BLOCK' }, false);
   }, [transitionSession]);
 
   const markPomodoroReviewed = useCallback(
@@ -433,7 +523,27 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const flexiblePause = !!session.flexible && session.state !== 'FOCUS';
+    if (flexiblePause && !isPhaseAbandoned(session, now)) {
+      // Pause automatic, focus manual (D5): the pause just waits; say once that it's over.
+      const key = `${session.id}:${session.segmentIndex ?? ''}:${session.startedAt ?? ''}`;
+      if (!pauseNoticesRef.current.has(key)) {
+        pauseNoticesRef.current.add(key);
+        playPomodoroChime();
+        void notifySystem('Pausa terminada', 'Empieza el siguiente foco cuando quieras.');
+      }
+      return;
+    }
+
     transitionInFlightRef.current = true;
+
+    if (flexiblePause) {
+      // A flexible pause left open an hour past its end: the block ends cleanly with the focus it has.
+      void transitionSession({ type: 'END_BLOCK' }, false, undefined, 'abandoned').finally(() => {
+        transitionInFlightRef.current = false;
+      });
+      return;
+    }
 
     if (isPhaseAbandoned(session, now)) {
       // The app was closed/backgrounded for far longer than this phase's own grace window --
@@ -476,7 +586,9 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
           const title = finishedState === 'FOCUS' ? 'Enfoque finalizado' : 'Descanso finalizado';
           const body =
             finishedState === 'FOCUS'
-              ? 'Empieza tu descanso para recuperar energia.'
+              ? session.flexible
+                ? 'La pausa ya empezó; el siguiente foco empieza cuando lo inicies.'
+                : 'Empieza tu descanso para recuperar energia.'
               : 'Vuelve a enfoque para el siguiente ciclo.';
           new Notification(title, { body });
         }
@@ -514,6 +626,9 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       refetch,
       start,
       startBlock,
+      startFlexibleBlock,
+      startFocus,
+      endBlock,
       cancel,
       reset,
       pause,
@@ -536,6 +651,9 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       session,
       start,
       startBlock,
+      startFlexibleBlock,
+      startFocus,
+      endBlock,
       syncedAt,
       cancel,
       pause,

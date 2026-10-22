@@ -4,6 +4,7 @@ import { AppButton, AppCard, H2, H3, Paragraph, Text, XStack, YStack } from '@ca
 import { DayTimeGrid } from './DayTimeGrid';
 import { EVENT_TYPE_COLOR, EVENT_TYPE_LABEL, categoryColor } from './eventStyles';
 import { PlanBlockDetails, type ExceptionChange } from './PlanBlockDetails';
+import { StartFlexibleBlockButton } from '../morning/FlexibleBlockStarter';
 import { FitnessForm } from '../fitness/FitnessForm';
 import { StatusCard } from '../StatusCard';
 import { QuickAddTask } from '../tasks/QuickAddTask';
@@ -390,7 +391,16 @@ export function DayView({
                 />
               ) : null}
 
-              {isWork && !block.meta?.segments?.length ? (
+              {isWork && block.meta?.flexibleBlocks ? (
+                // The flexible morning: two blocks started on demand, sized by a check-in (2026-10-22).
+                <YStack gap="$2">
+                  <Paragraph margin={0} color="$muted" fontSize="$2">
+                    Ventana para {block.meta.flexibleBlocks} bloques: cada uno empieza cuando lo inicias y dura de 90 a 150 min
+                    según cómo llegues. Se cumple con 60 min de foco real.
+                  </Paragraph>
+                  {isSelectedDateToday ? <StartFlexibleBlockButton compact /> : null}
+                </YStack>
+              ) : isWork && !block.meta?.segments?.length ? (
                 <FocusPlanSummary
                   block={block}
                   isToday={isSelectedDateToday}

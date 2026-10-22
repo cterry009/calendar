@@ -11,6 +11,7 @@ import { HabitCompletionPanel } from '../components/dashboard/HabitCompletionPan
 import { MetricCard } from '../components/dashboard/MetricCard';
 import { ScreenTimePanel } from '../components/dashboard/ScreenTimePanel';
 import { StudyGamePanel } from '../components/dashboard/StudyGamePanel';
+import { MorningCard } from '../components/morning/MorningCard';
 import { WeekComparisonPanel } from '../components/dashboard/WeekComparisonPanel';
 import { PageHeader } from '../components/PageHeader';
 import { StatusCard } from '../components/StatusCard';
@@ -140,6 +141,7 @@ export function DashboardPage() {
         </YStack>
       ) : null}
 
+      <MorningCard withWeek />
       {game ? <StudyGamePanel game={game} /> : null}
 
       {syncedAt ? (

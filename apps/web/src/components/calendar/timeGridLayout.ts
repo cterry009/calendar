@@ -65,6 +65,23 @@ export function buildDayBars(events: CalendarEvent[]): GridBar[] {
   const consumedTaskIds = new Set<string>();
 
   for (const block of blocks) {
+    if (block.type === 'work' && block.meta?.flexibleBlocks) {
+      // The flexible morning (2026-10-22) is a window, not fixed pomodoros: one bar for it, and the
+      // blocks the user starts show up as their pomodoro sessions.
+      const from = minuteOfDay(block.start);
+      const to = minuteOfDay(block.end);
+      result.push({
+        id: `${block.id}-window`,
+        label: `${block.title}: ventana para ${block.meta.flexibleBlocks} bloques`,
+        detail: `${minuteToLabel(from)} - ${minuteToLabel(to)} · cada bloque empieza cuando lo inicias`,
+        startMinute: from,
+        endMinute: to,
+        color: categoryColor(block.meta?.category) ?? EVENT_TYPE_COLOR.work,
+        lane: 'background',
+        done: block.meta?.done,
+      });
+      continue;
+    }
     const segments = block.meta?.segments;
     if (block.type === 'work' && segments?.length) {
       // A block with its own sequence (horario 2026-10-19) is drawn as its segments, at their

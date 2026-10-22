@@ -7,6 +7,9 @@ import { DesktopUsageWarnings } from '../components/desktop/DesktopUsageWarnings
 import { DesktopNightWarnings } from '../components/desktop/DesktopNightWarnings';
 import { DesktopTrayBridge } from '../components/desktop/DesktopTrayBridge';
 import { BlockFocusOverlay } from '../components/focus/BlockFocusOverlay';
+import { FocusView } from '../components/focus/FocusView';
+import { FlexibleBlockStarter } from '../components/morning/FlexibleBlockStarter';
+import { MorningReminders } from '../components/morning/MorningReminders';
 import { SoftFocusOverlay } from '../components/focus/SoftFocusOverlay';
 import { PanelHost } from '../components/panels/PanelHost';
 import { GlobalQuickAdd } from '../components/tasks/GlobalQuickAdd';
@@ -41,7 +44,10 @@ export function ProtectedAppLayout() {
                   <Outlet />
                   <PanelHost />
                   <SoftFocusOverlay />
+                  <FocusView />
                   <BlockFocusOverlay />
+                  <FlexibleBlockStarter />
+                  <MorningReminders />
                   <GlobalQuickAdd />
                 </QuickAddProvider>
               </PanelProvider>

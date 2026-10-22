@@ -27,6 +27,10 @@ export interface PomodoroSyncChangeDto {
   sequence?: SequenceSegment[] | null;
   segmentIndex?: number | null;
   cutCount?: number;
+  flexible?: boolean;
+  plannedBlockMin?: number | null;
+  windowEndAt?: string | null;
+  focusMinutes?: number;
 }
 
 interface SyncBatchResponse {
@@ -58,6 +62,10 @@ function buildPayloadFromSession(
     | 'sequence'
     | 'segmentIndex'
     | 'cutCount'
+    | 'flexible'
+    | 'plannedBlockMin'
+    | 'windowEndAt'
+    | 'focusMinutes'
   >,
 ): Omit<PomodoroSyncChangeDto, 'id' | 'updatedAt'> {
   return {
@@ -82,6 +90,11 @@ function buildPayloadFromSession(
     sequence: session.sequence ?? null,
     segmentIndex: session.segmentIndex ?? null,
     cutCount: session.cutCount ?? 0,
+    // Flexible morning blocks (2026-10-22); a plain session sends flexible: false.
+    flexible: session.flexible ?? false,
+    plannedBlockMin: session.plannedBlockMin ?? null,
+    windowEndAt: session.windowEndAt ?? null,
+    focusMinutes: session.focusMinutes ?? 0,
   };
 }
 

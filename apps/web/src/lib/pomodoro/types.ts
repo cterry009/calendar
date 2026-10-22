@@ -27,6 +27,11 @@ export interface SyncPomodoroRecord {
   sequence?: SequenceSegment[] | null;
   segmentIndex?: number | null;
   cutCount?: number;
+  /** Flexible morning block (2026-10-22): relative sequence, window end, check-in length, real focus. */
+  flexible?: boolean;
+  plannedBlockMin?: number | null;
+  windowEndAt?: string | null;
+  focusMinutes?: number;
   createdAt: string;
   updatedAt: string;
 }

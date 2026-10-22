@@ -23,15 +23,15 @@
 
 ## 4. Web and desktop
 
-- [ ] 4.1 Types and offline defaults for the new fields; no auto-start for flexible schedules (`SoftFocusContext`)
-- [ ] 4.2 `PomodoroContext`: `startFlexibleBlock`, `startFocus(minutes)`, `endBlock`; the timer doesn't fire `BREAK_COMPLETE` for flexible pauses; pause-over notice
-- [ ] 4.3 Check-in card and "Empezar bloque N" on the day view, plan and pomodoro page (D16); `CHECK_IN` log (D8)
-- [ ] 4.4 `FocusView` in the layout: timer, plan progress, pause screen with the next-focus control, cut, end, "Salir", tutor; "Ver la app" (D17)
-- [ ] 4.5 Blocking: soft focus and desktop blocking follow D14
-- [ ] 4.6 Reminders on the PC (D15)
-- [ ] 4.7 Completion in the day view and the dashboard (D13)
-- [ ] 4.8 "Actualizar la mañana" on the plan page (D2)
-- [ ] 4.9 Vitest for the new web helpers; typecheck, tests, build
+- [x] 4.1 Types and offline defaults for the new fields; no auto-start for flexible schedules (`SoftFocusContext`)
+- [x] 4.2 `PomodoroContext`: `startFlexibleBlock`, `startFocus(minutes)`, `endBlock`; the timer doesn't fire `BREAK_COMPLETE` for flexible pauses; pause-over notice
+- [x] 4.3 Check-in card and "Empezar bloque N" on the day view, plan and pomodoro page (D16); `CHECK_IN` log (D8)
+- [x] 4.4 `FocusView` in the layout: timer, plan progress, pause screen with the next-focus control, cut, end, "Salir", tutor; "Ver la app" (D17)
+- [x] 4.5 Blocking: soft focus and desktop blocking follow D14
+- [x] 4.6 Reminders on the PC (D15)
+- [x] 4.7 Completion in the day view and the dashboard (D13)
+- [x] 4.8 "Actualizar la mañana" on the plan page (D2)
+- [x] 4.9 Vitest for the new web helpers; typecheck, tests, build
 
 ## 5. Phone (minimal)
 

@@ -24,6 +24,8 @@ import { syncBatch } from '../../lib/offline/sync-client';
 import { formatTimer } from '../../lib/pomodoro/timer';
 import { studySectionsOf } from '../../lib/studyGame/studySections';
 import { pomodoroTutorSummary, type PomodoroTutorSummary } from '../../lib/studyGame/summary';
+import { focusView, useFocusViewState } from '../../lib/focusView/store';
+import { useFocusViewVisible } from './FocusView';
 
 // A WORK block's pomodoro on the PC (user-requested, 2026-10-06/07):
 // - While it runs, nothing comes up over other apps -- that broke the concentration it's for. Inside
@@ -109,6 +111,16 @@ export function BlockFocusOverlay() {
   const [tutorSummary, setTutorSummary] = useState<PomodoroTutorSummary | null>(null);
   const { openPanel } = usePanel();
   const { pullSnapshot } = useSync();
+  // The focus view (D17) covers the window while it's open; the pill is its collapsed form, and
+  // "Salir" pressed there opens this card's "¿Por qué?".
+  const focusViewVisible = useFocusViewVisible(session);
+  const { exitRequests } = useFocusViewState();
+  const seenExitRequests = useRef(exitRequests);
+  useEffect(() => {
+    if (exitRequests === seenExitRequests.current) return;
+    seenExitRequests.current = exitRequests;
+    if (inBlock && !isOut) setAskingWhy(true);
+  }, [exitRequests, inBlock, isOut]);
 
   // A focus pomodoro of the block just finished: ask how it went, once per pomodoro.
   const previous = useRef(session);
@@ -275,7 +287,11 @@ export function BlockFocusOverlay() {
     const scheduleId = session.scheduleId;
     setAskingWhy(false);
     setReason('');
-    if (reschedule) {
+    if (reschedule && session.flexible) {
+      // A flexible morning block just ends here (with the focus it has); the window stays open for
+      // another block, so the day isn't marked "no puedo".
+      await pomodoro.endBlock();
+    } else if (reschedule) {
       await pomodoro.cancel();
       const now = new Date();
       await syncBatch({
@@ -355,14 +371,16 @@ export function BlockFocusOverlay() {
               Vuelvo en un rato (pausa el tiempo)
             </AppButton>
             <AppButton variant="ghost" disabled={pomodoro.isMutating} onPress={() => void leave(true)}>
-              No hago este bloque hoy (reprogramar)
+              {session.flexible ? 'Terminar este bloque' : 'No hago este bloque hoy (reprogramar)'}
             </AppButton>
             <AppButton variant="ghost" onPress={() => setAskingWhy(false)}>
               Seguir en el bloque
             </AppButton>
           </XStack>
           <Paragraph margin={0} color="$muted" fontSize="$2">
-            {task
+            {session.flexible
+              ? 'Si lo terminas, cuenta el foco que llevas; puedes empezar otro bloque cuando quieras.'
+              : task
               ? `Si lo reprogramas, «${task.title}» queda pendiente y pasa al próximo bloque${next ? `: ${describeOccurrence(next)}` : ''}.`
               : `Si lo reprogramas, el bloque queda como "no puedo" hoy${next ? ` y vuelve ${describeOccurrence(next)}` : ''}.`}
           </Paragraph>
@@ -373,6 +391,7 @@ export function BlockFocusOverlay() {
   }
 
   // Running: a quiet pill inside the app's window only -- never over other apps.
+  if (focusViewVisible) return null;
   return createPortal(
     <XStack
       position="fixed"
@@ -408,6 +427,9 @@ export function BlockFocusOverlay() {
           Cortar tramo
         </AppButton>
       ) : null}
+      <AppButton variant="ghost" onPress={focusView.expand}>
+        Vista de foco
+      </AppButton>
       {task && studySectionsOf(task) ? (
         <AppButton variant="ghost" onPress={() => openPanel('pomodoro')}>
           Tutor

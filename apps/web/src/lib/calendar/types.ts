@@ -54,6 +54,8 @@ export interface SyncSchedule {
   chunks: number | null;
   category?: string | null;
   sequence?: SequenceSegment[] | null;
+  /** The morning window (2026-10-22): blocks started on demand in it; null for a fixed block. */
+  flexibleBlocks?: number | null;
 }
 
 export interface SyncPomodoroSession {
@@ -72,6 +74,9 @@ export interface SyncPomodoroSession {
   scheduleId?: string | null;
   blockStartAt?: string | null;
   cutCount?: number;
+  /** Flexible morning block (2026-10-22): its real focus minutes count it as done (60+). */
+  flexible?: boolean;
+  focusMinutes?: number;
   createdAt?: string;
 }
 
@@ -316,6 +321,8 @@ export interface CalendarEvent {
     isException?: boolean;
     segments?: TimedSegment[] | null;
     sequenceWarning?: string | null;
+    /** The morning window (2026-10-22): blocks started on demand inside it, no fixed pomodoros. */
+    flexibleBlocks?: number | null;
   };
 }
 

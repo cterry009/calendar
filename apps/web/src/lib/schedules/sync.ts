@@ -19,6 +19,7 @@ export interface ScheduleSyncChangeDto {
   chunks?: number;
   category?: string | null;
   sequence?: SequenceSegment[] | null;
+  flexibleBlocks?: number | null;
 }
 
 interface SyncBatchResponse {
@@ -42,6 +43,7 @@ function buildUpsertPayload(values: ScheduleFormValues): Omit<ScheduleSyncChange
     // Only when the form set them: otherwise the block keeps what it has.
     ...(values.category !== undefined ? { category: values.category } : {}),
     ...(values.sequence !== undefined ? { sequence: values.sequence } : {}),
+    ...(values.flexibleBlocks !== undefined ? { flexibleBlocks: values.flexibleBlocks } : {}),
   };
 }
 
