@@ -3,11 +3,11 @@ when phase 1 closes; see proposal.md.
 
 ## 1. Exercise catalog
 
-- [ ] 1.1 `src/notes/exercises.ts`: `Exercise` type and `parseExercises(fileName, markdown)` for 🟢/🟡 exercises in `## N.` sections and `### N.` sections under `## Desarrollo`, with statement/answer separation (D7, D8, D10)
-- [ ] 1.2 True/false callouts as one `vf` exercise each, claims without verdicts as statement (D9)
-- [ ] 1.3 🔴/⚫ closings: `D1`/`M1` labels, optional title, hint and solution
-- [ ] 1.4 Jest tests with short fixtures copied from the real format (ids, b₀, LaTeX intact, answer and hint apart, sections under Desarrollo, re-parse equality)
-- [ ] 1.5 Optional test over the real vault (skipped without it): AN1 gives 20 🟢 and 32 🟡
+- [x] 1.1 `src/notes/exercises.ts`: `Exercise` type and `parseExercises(fileName, markdown)` for 🟢/🟡 exercises in `## N.` sections and `### N.` sections under `## Desarrollo`, with statement/answer separation (D7, D8, D10)
+- [x] 1.2 True/false callouts as one `vf` exercise each, claims without verdicts as statement (D9)
+- [x] 1.3 🔴/⚫ closings: `D1`/`M1` labels, optional title, hint and solution
+- [x] 1.4 Jest tests with short fixtures copied from the real format (ids, b₀, LaTeX intact, answer and hint apart, sections under Desarrollo, re-parse equality)
+- [x] 1.5 Optional test over the real vault (skipped without it): AN1 gives 20 🟢 and 32 🟡
 
 ## 2. Engine core
 
