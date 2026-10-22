@@ -189,4 +189,23 @@ untouched files (`notes/pensum.test.ts`, `plan/sequence.ts`); the new files are 
 ## 19. Phase 4: checks and a real try
 
 - [x] 19.1 Web typecheck, tests and build; server tests
-- [ ] 19.2 Real try in the browser against the dev API (throwaway account or dev user's choice); record results here
+- [x] 19.2 Real try in the browser against the dev API (throwaway account or dev user's choice); record results here
+
+## Phase 4 results (2026-10-22)
+
+- **Checks:** web 94 tests (12 new in `lib/studyGame/`), typecheck and build green; KaTeX and
+  react-markdown land in their own chunk (`TutorMarkdown`, 397 KB / 120 KB gzip) loaded only with the
+  tutor. Server 91 tests (1 new for `GET /tutor/notes`) + the skipped live one. Lint: only the old
+  `DesktopUsageWarnings.tsx` errors.
+- **Real try in a browser** (headless Edge driven over the DevTools protocol, since the session had no
+  browser tool; throwaway account `tutor-ui-*@local.test`, real vault and Opus): the note picker
+  listed 27 notes; AN1 §3 started at θ 0, level 3 and showed its 7 bosses locked. Turn 1 (8.2 s): the
+  true/false AN1#3#9 came up, rendered with KaTeX in the chat and in the card. "No sé" (11.7 s): graded
+  0, θ 0 → −0.65, and with no catalog exercise near b* the panel said a generated one would come
+  next. Correcting to 1: "Calificación corregida", θ 0.15 and +4 XP from the replayed state. After a
+  reload the 4 messages were still there. The dashboard showed "Juego de ejercicios": 1 attempt
+  (the correction replaced the grade), 4 XP, AN1 §3 θ 0.15.
+- **Fixed from that try:** the section picker showed raw LaTeX (`$\mathbb{R}$`); native selects now
+  get `plainMath` (ℝ). "1 intentos" → "1 intento".
+- Not tried live: the block's "Tutor" button and the tutor line in the pomodoro card (they need a
+  running study block); both typecheck and reuse tested helpers.

@@ -1,9 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import type { ExerciseAttemptInput } from '@calendar/shared';
 import { EMPTY_CHAT, loadChat, saveChat, withTurn, withUserMessage } from './chat';
-import { studySectionsOf } from './studySections';
+import { plainMath, studySectionsOf } from './studySections';
 import { gameDashboard, pomodoroTutorSummary } from './summary';
 import { currentForTurn, type TutorTurnResult } from './tutorApi';
+
+describe('plainMath', () => {
+  it('turns a heading’s LaTeX into plain text for a native select', () => {
+    expect(plainMath(String.raw`Sucesiones y series en $\mathbb{R}$`)).toBe(
+      'Sucesiones y series en ℝ',
+    );
+    expect(plainMath(String.raw`El espacio $L^p$ y $\mathrm{Lip}(f)$`)).toBe(
+      'El espacio L^p y Lip(f)',
+    );
+  });
+});
 
 describe('studySectionsOf', () => {
   it('reads the note from the clientId and the sections from the description', () => {

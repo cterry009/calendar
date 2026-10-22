@@ -57,7 +57,7 @@ No breaking changes.
 - Phase 1 done 2026-10-21 (commits f9c1a16, ebe0cc7).
 - Phase 2 done 2026-10-21 (design D19-D25, tasks 6-9).
 - Phase 3 done 2026-10-21 (design D26-D35, tasks 10-14).
-- Phase 4 proposed 2026-10-22 (design D36-D45, tasks 15-19). The phone stays out of it.
+- Phase 4 done 2026-10-22 (design D36-D45, tasks 15-19). The phone stays out of it.
 
 ## Impact
 

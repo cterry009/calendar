@@ -42,3 +42,23 @@ export function sectionLabel(section: string): string {
   if (section === 'cierre-negro') return 'Cierre ⚫';
   return `§${section}`;
 }
+
+const DOUBLE_STRUCK: Record<string, string> = { R: 'ℝ', N: 'ℕ', Z: 'ℤ', Q: 'ℚ', C: 'ℂ' };
+
+/**
+ * A heading's LaTeX as plain text, for places that can't render it (a native `<select>`):
+ * "Sucesiones y series en $\mathbb{R}$" -> "Sucesiones y series en ℝ".
+ */
+export function plainMath(text: string): string {
+  return text
+    .replace(/\\mathbb\{([A-Z])\}/g, (_, letter: string) => DOUBLE_STRUCK[letter] ?? letter)
+    .replace(/\\(?:mathrm|mathcal|text|operatorname)\{([^}]*)\}/g, '$1')
+    .replace(/\\([a-zA-Z]+)/g, '$1')
+    .replace(/[${}]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}

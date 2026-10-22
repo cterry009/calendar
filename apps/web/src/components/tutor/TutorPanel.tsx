@@ -14,7 +14,7 @@ import {
   withUserMessage,
   type ChatState,
 } from '../../lib/studyGame/chat';
-import { sectionLabel, studySectionsOf } from '../../lib/studyGame/studySections';
+import { plainMath, sectionLabel, studySectionsOf } from '../../lib/studyGame/studySections';
 import {
   currentForTurn,
   tutorNotes,
@@ -279,7 +279,7 @@ export function TutorPanel() {
               <option value="">{notes ? 'Elige una nota' : 'Cargando notas…'}</option>
               {notes?.map((n) => (
                 <option key={n.noteCode} value={n.noteCode}>
-                  {n.noteCode} — {n.title}
+                  {n.noteCode} — {plainMath(n.title)}
                 </option>
               ))}
             </select>
@@ -301,7 +301,8 @@ export function TutorPanel() {
               >
                 {selectedNote.sections.map((s) => (
                   <option key={s.section} value={s.section}>
-                    {sectionLabel(s.section)} · {s.title.replace(/^\d+\.\s*/, '')} ({s.exercises})
+                    {sectionLabel(s.section)} · {plainMath(s.title.replace(/^\d+\.\s*/, ''))} (
+                    {s.exercises})
                   </option>
                 ))}
               </select>

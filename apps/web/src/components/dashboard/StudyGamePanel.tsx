@@ -1,5 +1,5 @@
 import { AppCard, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
-import { sectionLabel } from '../../lib/studyGame/studySections';
+import { plural, sectionLabel } from '../../lib/studyGame/studySections';
 import type { GameDashboard } from '../../lib/studyGame/summary';
 
 // The study game across notes (study-tutor-game D44): replayed on the client from the pulled
@@ -15,7 +15,7 @@ export function StudyGamePanel({ game }: { game: GameDashboard }) {
           </H2>
           <Paragraph color="$muted" margin={0}>
             Nivel {game.level} · {game.xp} XP (el siguiente pide {game.nextLevelXp}) ·{' '}
-            {game.attempts} intentos con el tutor.
+            {plural(game.attempts, 'intento', 'intentos')} con el tutor.
           </Paragraph>
           <div style={{ height: 8, borderRadius: 6, background: 'rgba(127,127,127,0.18)' }}>
             <div

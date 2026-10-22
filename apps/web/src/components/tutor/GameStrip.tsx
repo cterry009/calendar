@@ -1,5 +1,5 @@
 import { Text, XStack, YStack } from '@calendar/ui';
-import { sectionLabel } from '../../lib/studyGame/studySections';
+import { plural, sectionLabel } from '../../lib/studyGame/studySections';
 import type { TutorSectionGame } from '../../lib/studyGame/tutorApi';
 
 // The game around the chat (study-tutor-game D41): θ and the section level on a bar, global level
@@ -100,7 +100,7 @@ export function GameStrip({
       </div>
       <XStack justifyContent="space-between">
         <Text fontSize="$1" color="$muted">
-          θ = {game.theta.toFixed(2)} · {game.attempts} intentos
+          θ = {game.theta.toFixed(2)} · {plural(game.attempts, 'intento', 'intentos')}
         </Text>
         <Text fontSize="$1" color="$muted">
           marcas: 🟢 🟡 🔴 ⚫
