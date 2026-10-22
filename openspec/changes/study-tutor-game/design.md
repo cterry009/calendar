@@ -206,3 +206,44 @@ subscription this is quota, not money.
   that section and the next exercise, without calling Claude: for the UI and for testing.
 - **D35 Testable without Claude.** The CLI sits behind a `TutorModel` interface (like `Planner`);
   tests use a fake model on the real test database. One live test runs only with `TUTOR_LIVE=1`.
+
+## Phase 4: the tutor in the web and desktop app (proposed 2026-10-22)
+
+The pomodoro page is a 560 px slide-over panel on the calendar (`PanelHost`); during a block the
+desktop shows a quiet pill (`BlockFocusOverlay`) and, after each pomodoro, the rating card. Study
+tasks carry their note in the clientId (`note:pensum_analisis.md#AN1#2`) and their sections in the
+description (`Secciones: 4-5.`). The web has no markdown or LaTeX renderer yet. The phone is out of
+this phase (user, 2026-10-22): it would be its own phase on the same API.
+
+- **D36 Rendering (user-confirmed).** `react-markdown` + `remark-math` + `rehype-katex` + `katex`,
+  behind one `TutorMarkdown` component loaded lazily, so the ~300 KB only load with the tutor. Raw
+  HTML in a message is not rendered.
+- **D37 Where (user-confirmed).** A `TutorPanel` in the pomodoro page, under the timer. During a
+  block whose pomodoro is on a study task, it starts on that task's note and sections (`### N.`
+  chips; the closings too when the session is a "cierre" one). Outside a block the user picks a note
+  and a section (for Saturday's review). The block's pill gets a "Tutor" button that opens the panel.
+- **D38 Note list.** `GET /tutor/notes` returns the notes with exercises: code, title, sections
+  (key, title, exercises in it). The client has no vault; this is all it needs to offer choices.
+- **D39 The conversation.** Messages and the conversation id live in the panel's state and in
+  `sessionStorage` per section (try/catch), so a reload during a block doesn't lose the chat; the
+  exercise on the table is sent back on each turn as the server returned it. While a turn runs (8-20
+  s with Opus) the panel says "El tutor está pensando…" with the seconds; 503 shows the server's
+  reason and the block goes on, 502 offers to retry, 429 waits.
+- **D40 The exercise card.** Kind badge (🟢 🟡 V/F 🔴 ⚫ or "generado") and the statement, rendered;
+  the reference answer is never shown by the panel (Claude shows it when it grades). Shortcuts:
+  "Pista", "No sé", "Explícame la sección".
+- **D41 The game, animated.** After a grade: "+N XP" floats up, the combo badge (×1.1 ... ×1.5),
+  θ and the section level as a bar, a toast when the section or global level goes up, and the note's
+  bosses (🔒 🔓 ✅). CSS keyframes only, none under `prefers-reduced-motion`.
+- **D42 Correcting a grade (D2).** The last graded attempt has "Corregir": 0, ½ or 1. It records a
+  new attempt with `supersedes` and `gradedBy: 'usuario'` through `logExerciseAttempt` (offline
+  queue), then re-reads `GET /tutor/state`. Only for attempts the panel saw this session.
+- **D43 Block summary.** The rating card after a pomodoro adds one line when the tutor was used in
+  it: exercises, XP and θ change, from the attempts with that `pomodoroSessionId` (the pull's, plus
+  the ones the panel just made).
+- **D44 Dashboard.** A "Juego de ejercicios" panel: global level and XP, each note's sections with θ
+  and level, the review queue; replayed on the client from the pulled attempts (no catalog needed
+  for that; bosses stay in the tutor panel).
+- **D45 Tests.** The pure parts in `lib/studyGame/` (study task → note and sections, chat state,
+  per-pomodoro summary, dashboard rows) with Vitest; typecheck and build; then a real try in the
+  browser against the dev API.

@@ -46,6 +46,9 @@ No breaking changes.
 - `tutor-service` (phase 3): `POST /tutor/turn` running `claude -p` with bounded context, validating
   its reply and recording the grade; `GET /tutor/state`; section line ranges in shared.
 
+- `tutor-ui` (phase 4): the tutor panel in the web pomodoro page (block or free choice), markdown and
+  LaTeX, game feedback, grade corrections, block summary and dashboard; `GET /tutor/notes`.
+
 ### Modified Capabilities
 <!-- None: there are no main specs yet (openspec/specs/ doesn't exist). -->
 
@@ -54,6 +57,7 @@ No breaking changes.
 - Phase 1 done 2026-10-21 (commits f9c1a16, ebe0cc7).
 - Phase 2 done 2026-10-21 (design D19-D25, tasks 6-9).
 - Phase 3 done 2026-10-21 (design D26-D35, tasks 10-14).
+- Phase 4 proposed 2026-10-22 (design D36-D45, tasks 15-19). The phone stays out of it.
 
 ## Impact
 
