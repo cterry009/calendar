@@ -5,6 +5,7 @@ import {
   localDateKey,
   morningStatus,
   scheduleOnDate,
+  studyLinesForBlock,
   windowForMinute,
   type DayWindowName,
   type MorningStatus,
@@ -41,6 +42,8 @@ export interface DayBlocks {
   morning: MorningStatus;
   afternoon: WindowStatus;
 }
+
+const PLAIN_LABELS = Array.from({ length: 12 }, (_, i) => `Pomodoro ${i + 1}`);
 
 function at(minute: number, day: Date): Date {
   const d = new Date(day);
@@ -88,7 +91,11 @@ export function useDayBlocks(): DayBlocks {
           windowEnd: window ? at(window.endMinute, now) : null,
           started: today.some((s) => s.scheduleId === schedule.id),
           studyTask: currentStudySession(schedule.label, tasks),
-          focusLabels: category && plan ? plan.pomodoros_sugeridos[category] : undefined,
+          // The category's suggested pomodoros; a non-study block without a plan gets plain numbers
+          // (the default labels are the study block's).
+          focusLabels:
+            (category && plan ? plan.pomodoros_sugeridos[category] : undefined) ??
+            (studyLinesForBlock(schedule.label).length ? undefined : PLAIN_LABELS),
         };
       })
       .sort((a, b) => a.start.getTime() - b.start.getTime());

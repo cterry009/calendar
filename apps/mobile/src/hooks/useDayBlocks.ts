@@ -5,6 +5,7 @@ import {
   localDateKey,
   morningStatus,
   scheduleOnDate,
+  studyLinesForBlock,
   windowForMinute,
   type MorningStatus,
   type WindowStatus,
@@ -32,6 +33,8 @@ export interface DayBlocks {
   afternoon: WindowStatus;
 }
 
+const PLAIN_LABELS = Array.from({ length: 12 }, (_, i) => `Pomodoro ${i + 1}`);
+
 function at(minute: number, day: Date): Date {
   const d = new Date(day);
   d.setHours(Math.floor(minute / 60), minute % 60, 0, 0);
@@ -49,20 +52,33 @@ export function useDayBlocks(): DayBlocks {
 
   return useMemo(() => {
     const dateKey = localDateKey(now);
-    const today = pomodoroSessions.filter((s) => s.blockStartAt && localDateKey(new Date(s.blockStartAt)) === dateKey);
+    const today = pomodoroSessions.filter(
+      (s) => s.blockStartAt && localDateKey(new Date(s.blockStartAt)) === dateKey,
+    );
     const suggestions = schedules
-      .filter((s) => s.kind === 'WORK' && s.enabled && !!s.flexibleBlocks && s.daysOfWeek.includes(now.getDay()))
+      .filter(
+        (s) =>
+          s.kind === 'WORK' &&
+          s.enabled &&
+          !!s.flexibleBlocks &&
+          s.daysOfWeek.includes(now.getDay()),
+      )
       .map((template) => {
         const schedule = exceptions.length ? scheduleOnDate(template, exceptions, now) : template;
         const window = windowForMinute(schedule.startMinute);
-        const category = schedule.category as keyof NonNullable<typeof plan>['pomodoros_sugeridos'] | null | undefined;
+        const category = schedule.category as
+          keyof NonNullable<typeof plan>['pomodoros_sugeridos'] | null | undefined;
         return {
           schedule,
           start: at(schedule.startMinute, now),
           windowEnd: window ? at(window.endMinute, now) : null,
           started: today.some((s) => s.scheduleId === schedule.id),
           studyTask: currentStudySession(schedule.label, tasks),
-          focusLabels: category && plan ? plan.pomodoros_sugeridos[category] : undefined,
+          // The category's suggested pomodoros; a non-study block without a plan gets plain numbers
+          // (the default labels are the study block's).
+          focusLabels:
+            (category && plan ? plan.pomodoros_sugeridos[category] : undefined) ??
+            (studyLinesForBlock(schedule.label).length ? undefined : PLAIN_LABELS),
         };
       })
       .sort((a, b) => a.start.getTime() - b.start.getTime());
