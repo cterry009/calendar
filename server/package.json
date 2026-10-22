@@ -20,6 +20,7 @@
     "seed": "ts-node --transpile-only prisma/seed.ts"
   },
   "dependencies": {
+    "@calendar/shared": "file:../packages/shared",
     "@google/genai": "^2.25.0",
     "@nestjs/common": "^11.0.5",
     "@nestjs/config": "^4.0.0",

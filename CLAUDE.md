@@ -31,8 +31,11 @@ and the README use.
 `apps/web/vite.config.ts` aliases them and `apps/mobile/metro.config.js` resolves them (and forces
 single copies of react/tamagui — duplicate Tamagui instances cause "Missing theme" / null `.map`
 crashes; read those files' comments before touching resolution). Shared source uses NodeNext-style
-`./foo.js` relative imports; keep that. Only `scripts/import-study-notes.mjs` and
-`scripts/export-study-status.mjs` need `npm run build:shared` first. The server does not import `@calendar/shared`.
+`./foo.js` relative imports; keep that. The server, `scripts/import-study-notes.mjs` and
+`scripts/export-study-status.mjs` use the **built** package and need `npm run build:shared` first
+(and again after changing shared). The server depends on it as `file:../packages/shared` since the
+study tutor (2026-10-21); Nest is CommonJS and shared is ESM, which works because Node ≥ 22.12
+`require`s ESM and shared's `exports` has a `default` condition.
 
 ## Commands
 
@@ -60,7 +63,8 @@ typecheck/test/build, server build. It does not run server tests, mobile, or des
 
 Server env: copy `server/.env.example` to `server/.env`. `GEMINI_API_KEY` and `LAYA_URL` are
 optional; without them planning falls back to the heuristic planner / stored complexity and says
-so in the proposal's `warnings`.
+so in the proposal's `warnings`. The study tutor needs the Claude Code CLI installed and logged in
+on the server's machine (`TUTOR_MODEL`, default `opus`); without it `POST /tutor/turn` answers 503.
 
 ## Architecture
 
@@ -86,7 +90,7 @@ each client's snapshot types (`lib/calendar/types.ts`), offline types/conflicts 
 Clients default missing snapshot fields (`?? []`) because cached snapshots predate new entities.
 
 **Server modules** (`server/src/`): `auth` (email/password, Google/Apple ID tokens, JWT access +
-per-device refresh tokens), `devices`, `sync`, `realtime`, `planning`, `prisma`. Global
+per-device refresh tokens), `devices`, `sync`, `realtime`, `planning`, `tutor`, `prisma`. Global
 `ValidationPipe` uses `whitelist` + `forbidNonWhitelisted`, so every accepted field needs a
 class-validator decorator on its DTO. JSON body limit is 10mb for large offline flushes. In
 development each request logs an `[http] METHOD url status ms ip` line.
@@ -96,6 +100,13 @@ asks Gemini (`gemini-planner.ts`, model fallback list in `GEMINI_MODEL`) or the
 `heuristic-planner.ts`, then `plan-validator.ts` enforces the hard rules. Models classify and
 propose; code decides minutes, capacity and order; the user approves. See
 `docs/planning/flujo-ia.md`.
+
+**Study tutor and game** (`openspec/changes/study-tutor-game/`): the vault's exercises are parsed
+into a catalog (`packages/shared/src/notes/exercises.ts`) and the game (θ per note section, XP,
+levels, bosses, review) is **never stored**: it is replayed from the synced `ExerciseAttempt` rows
+(`packages/shared/src/study-game/`). `server/src/tutor/`: `POST /tutor/turn` runs `claude -p` (no
+shell, Read only, inside the vault) with the exercise the engine picked; Claude grades, the code
+checks the grade and records the attempt. `GET /tutor/state` shows a section without Claude.
 
 **Desktop** loads `http://localhost:5173` in dev and `apps/web/dist` in production; web code
 detects Tauri and dynamic-imports `@tauri-apps/api` (`apps/web/src/lib/desktop/`,

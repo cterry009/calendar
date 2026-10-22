@@ -62,7 +62,7 @@ queue, bosses of the note) and the next exercise, without calling Claude.
 - **THEN** θ is 0, XP is 0, and the next exercise is the one `nextExercise` picks
 
 ### Requirement: Section line ranges
-`noteSections(fileName, markdown)` SHALL return every section of a note (numbered `##`, `###` under
+`noteSections(markdown)` SHALL return every section of a note (numbered `##`, `###` under
 Desarrollo, and the two closings) with its title and its first and last line, using the same rules as
 `parseExercises`.
 

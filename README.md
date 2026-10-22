@@ -42,7 +42,7 @@ Instala dependencias en todos los paquetes: `packages/shared`, `packages/ui`, `a
 npm run build:shared
 ```
 
-Compila TypeScript de `packages/shared` a `dist/`. Necesario para que la web y el server puedan importarlo.
+Compila TypeScript de `packages/shared` a `dist/`. El server lo importa compilado (`file:../packages/shared`, para el tutor de estudio), así que hay que volver a compilarlo después de cambiar `packages/shared`.
 
 ### 4. Levantar base de datos y cache
 
@@ -257,3 +257,5 @@ Endpoints principales:
 - `POST /auth/login` — Login
 - `GET /sync/pull` — Pull de datos
 - `POST /sync/batch` — Batch sync
+- `POST /tutor/turn` — Un turno del tutor de estudio (necesita el CLI `claude` con sesión iniciada en el equipo del server)
+- `GET /tutor/state` — Estado del juego de ejercicios de una sección

@@ -174,7 +174,7 @@ subscription this is quota, not money.
   section's θ and level, the current exercise with its reference answer and hint (or, for a
   generated one, its statement and target b), and the note's path with the **line range of the
   section**. `profesor.md` tells Claude to read only that range (Read's offset/limit) when it needs to
-  explain. A new shared helper, `noteSections(fileName, markdown)`, returns each section's title and
+  explain. A new shared helper, `noteSections(markdown)`, returns each section's title and
   line range with the same rules as `parseExercises`.
 - **D30 One endpoint, stateless apart from the conversation.** `POST /tutor/turn` takes
   `{ message, noteCode, section, sessionId?, current?, pomodoroSessionId?, studyTaskId? }`, where

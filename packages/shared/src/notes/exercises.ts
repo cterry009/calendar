@@ -72,6 +72,66 @@ const VERDICT = /\s+—\s+\*\*(Verdadero|Falso)\b.*$/;
 
 type Context = 'section' | 'development' | 'closing' | null;
 
+export interface NoteSection {
+  /** Same keys as `Exercise.section`: "3", "cierre-rojo", "cierre-negro". */
+  section: string;
+  /** The heading without its #s, e.g. "3. Sucesiones y series en $\mathbb{R}$". */
+  title: string;
+  /** 1-based, the heading line. */
+  startLine: number;
+  /** 1-based, the last non-blank line before the next section or level-2 heading. */
+  endLine: number;
+}
+
+/**
+ * Each section's line range, with the same section rules as `parseExercises`. The tutor points
+ * Claude at one range so it reads a section, not a 3 000-line note (study-tutor-game D29).
+ */
+export function noteSections(markdown: string): NoteSection[] {
+  const lines = markdown.split(/\r?\n/);
+  const sections: NoteSection[] = [];
+  let open: NoteSection | null = null;
+  let inDevelopment = false;
+
+  const close = (beforeIndex: number) => {
+    if (!open) return;
+    let end = beforeIndex;
+    while (end > open.startLine && lines[end - 1].trim() === '') end -= 1;
+    open.endLine = end;
+    sections.push(open);
+    open = null;
+  };
+  const start = (section: string, index: number) => {
+    open = {
+      section,
+      title: lines[index].trim().replace(/^#+\s+/, ''),
+      startLine: index + 1,
+      endLine: index + 1,
+    };
+  };
+
+  lines.forEach((raw, i) => {
+    const line = raw.trim();
+    if (line.startsWith('## ')) {
+      close(i);
+      const numbered = NUMBERED_SECTION.exec(line);
+      inDevelopment = DEVELOPMENT.test(line);
+      if (numbered) start(numbered[1], i);
+      else if (CLOSING.test(line) && /🔴|⚫/u.test(line)) {
+        start(line.includes('🔴') ? 'cierre-rojo' : 'cierre-negro', i);
+      }
+      return;
+    }
+    const sub = inDevelopment ? NUMBERED_SUBSECTION.exec(line) : null;
+    if (sub) {
+      close(i);
+      start(sub[1], i);
+    }
+  });
+  close(lines.length);
+  return sections;
+}
+
 export function noteCodeOf(fileName: string): string {
   const base = fileName.replace(/^.*[\\/]/, '').replace(/\.md$/i, '');
   return base.split('_')[0];

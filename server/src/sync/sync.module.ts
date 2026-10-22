@@ -7,5 +7,6 @@ import { SyncService } from './sync.service';
   imports: [RealtimeModule],
   controllers: [SyncController],
   providers: [SyncService],
+  exports: [SyncService],
 })
 export class SyncModule {}

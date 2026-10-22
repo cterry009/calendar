@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { noteCodeOf, parseExercises } from './exercises.js';
+import { noteCodeOf, noteSections, parseExercises } from './exercises.js';
 
 // Trimmed straight from the user's vault (Fundamentos/Analisis/AN1_analisis_real.md).
 const AN1 = `# AN1 — Análisis real
@@ -237,5 +237,37 @@ const an1Path = existsSync(vault) ? findNote(vault, 'AN1_') : null;
     expect(exercises.filter((e) => e.kind === 'medio')).toHaveLength(32);
     expect(exercises.filter((e) => e.answer === null)).toEqual([]);
     expect(new Set(exercises.map((e) => e.id)).size).toBe(exercises.length);
+  });
+});
+
+describe('noteSections', () => {
+  it('gives each section the line range that holds its exercises', () => {
+    const lines = AN1.split('\n');
+    const sections = noteSections(AN1);
+    expect(sections.map((s) => s.section)).toEqual(['1', '3', 'cierre-rojo', 'cierre-negro']);
+    for (const exercise of parseExercises('AN1_analisis_real.md', AN1)) {
+      const range = sections.find((s) => s.section === exercise.section)!;
+      const firstLine = exercise.statement.split('\n')[0];
+      const at = lines.findIndex((l) => l.includes(firstLine)) + 1;
+      expect(at).toBeGreaterThanOrEqual(range.startLine);
+      expect(at).toBeLessThanOrEqual(range.endLine);
+    }
+  });
+
+  it('starts at the heading and ends before the blank lines and the next level-2 heading', () => {
+    const lines = AN1.split('\n');
+    const first = noteSections(AN1)[0];
+    expect(first.title).toBe('1. Los números reales');
+    expect(lines[first.startLine - 1]).toBe('## 1. Los números reales');
+    expect(lines[first.endLine - 1]).toMatch(/^> 2\. Si \$a\^3>0\$/);
+    expect(lines[first.endLine]).toBe('');
+  });
+
+  it('reads pillar sections under ## Desarrollo', () => {
+    expect(noteSections(B1).map((s) => [s.section, s.title])).toEqual([
+      ['1', '1. Grafos y matriz de adyacencia'],
+      ['4', '4. Clustering'],
+      ['cierre-rojo', 'Cierre — 🔴 Difícil'],
+    ]);
   });
 });
