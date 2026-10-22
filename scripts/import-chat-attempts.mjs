@@ -49,6 +49,10 @@ const password = process.env.CALENDAR_PASSWORD ?? 'devpassword123';
 const MATCH_MIN = 0.4;
 const MATCH_MARGIN = 0.15;
 
+// Attempts the user confirmed by hand (2026-10-22): marked "generado" in the file, but they are
+// the note's exercise.
+const CONFIRMED = new Map([['Demostrar f⁻¹(B1∩B2)=f⁻¹(B1)∩f⁻¹(B2)', '00b#8#5']]);
+
 const hash = (text) => createHash('sha256').update(text).digest('hex');
 
 // ─── Matching chat statements to the notes' exercises ─────────────────────
@@ -134,6 +138,12 @@ for (const a of data.intentos) {
     generatedStatement: a.statement,
   });
 
+  const confirmed = CONFIRMED.has(a.statement) ? catalog.find((e) => e.id === CONFIRMED.get(a.statement)) : null;
+  if (confirmed) {
+    attempts.push({ ...base, exerciseId: confirmed.id, exerciseSource: 'nota', b: confirmed.b0, generatedStatement: null });
+    report.catalog.push(`${confirmed.id} (confirmado a mano) ← "${a.statement}"`);
+    continue;
+  }
   if (a.exerciseSource === 'nota') {
     const { exercise, best } = catalogMatch(a);
     if (exercise) {
