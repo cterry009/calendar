@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { PlanningModule } from './planning/planning.module';
 import { SyncModule } from './sync/sync.module';
+import { StudyStatusModule } from './study-status/study-status.module';
 import { TutorModule } from './tutor/tutor.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { TutorModule } from './tutor/tutor.module';
     SyncModule,
     PlanningModule,
     TutorModule,
+    StudyStatusModule,
   ],
   controllers: [AppController],
 })
