@@ -87,7 +87,7 @@ untouched files (`notes/pensum.test.ts`, `plan/sequence.ts`); the new files are 
 
 ## 7. Phase 2: shared schema
 
-- [ ] 7.1 `packages/shared/src/schemas/exercise-attempt.ts`: `ExerciseAttemptSchema`, exported, its type usable as `replay` input (D23); test
+- [x] 7.1 `packages/shared/src/schemas/exercise-attempt.ts`: `ExerciseAttemptSchema`, exported, its type usable as `replay` input (D23); test
 
 ## 8. Phase 2: clients
 
