@@ -8,6 +8,8 @@ export interface CatalogNote {
   path: string;
   /** Relative to the vault, for people. */
   relativePath: string;
+  /** The note's "# " heading, or its file name. */
+  title: string;
   sections: NoteSection[];
 }
 
@@ -50,6 +52,7 @@ export class TutorCatalog {
                 noteCode: parsed[0].noteCode,
                 path,
                 relativePath: relative(vault, path).replace(/\\/g, '/'),
+                title: (/^#\s+(.+)$/m.exec(markdown)?.[1] ?? name.replace(/\.md$/, '')).trim(),
                 sections: noteSections(markdown),
               }
             : null,

@@ -29,6 +29,14 @@ import {
 import { buildTurnPrompt, type TutorExercise } from './tutor-prompt';
 import { parseTutorReply, type TutorAction } from './tutor-reply';
 
+export interface TutorNoteSummary {
+  noteCode: string;
+  title: string;
+  /** Relative to the vault, e.g. "Fundamentos/Analisis/AN1_analisis_real.md". */
+  path: string;
+  sections: { section: string; title: string; exercises: number }[];
+}
+
 export interface TutorTurnResult {
   sessionId: string;
   mensaje: string;
@@ -78,6 +86,27 @@ export class TutorService {
 
   state(userId: string, ref: SectionRef): Promise<SectionGameView> {
     return this.game.sectionView(userId, ref);
+  }
+
+  /** The notes with exercises and their sections: the web has no vault, so this is its menu (D38). */
+  notes(): TutorNoteSummary[] {
+    const catalog = this.game.loadCatalog();
+    return [...catalog.notes.values()]
+      .map((note) => ({
+        noteCode: note.noteCode,
+        title: note.title,
+        path: note.relativePath,
+        sections: note.sections
+          .map((s) => ({
+            section: s.section,
+            title: s.title,
+            exercises: catalog.exercises.filter(
+              (e) => e.noteCode === note.noteCode && e.section === s.section,
+            ).length,
+          }))
+          .filter((s) => s.exercises > 0),
+      }))
+      .sort((a, b) => a.path.localeCompare(b.path, 'es', { numeric: true }));
   }
 
   async turn(userId: string, deviceId: string, dto: TutorTurnDto): Promise<TutorTurnResult> {

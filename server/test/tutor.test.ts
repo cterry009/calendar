@@ -292,3 +292,29 @@ describe('tutor', () => {
     expect(claude.requests).toHaveLength(0);
   });
 });
+
+describe('tutor notes', () => {
+  const h = useSyncHarness();
+
+  it('lists the notes with exercises and their sections with counts', () => {
+    const prisma = h.prisma as unknown as PrismaService;
+    const tutor = new TutorService(
+      new FakeClaude(),
+      new TutorGameService(prisma, new TutorCatalog(vault)),
+      h.service,
+      prisma,
+    );
+    expect(tutor.notes()).toEqual([
+      {
+        noteCode: 'AN1',
+        title: 'AN1 — Análisis real',
+        path: 'Fundamentos/Analisis/AN1_analisis_real.md',
+        sections: [
+          { section: '1', title: '1. Los números reales', exercises: 3 },
+          { section: '3', title: '3. Sucesiones', exercises: 1 },
+          { section: 'cierre-rojo', title: 'Cierre — 🔴 Difícil', exercises: 1 },
+        ],
+      },
+    ]);
+  });
+});

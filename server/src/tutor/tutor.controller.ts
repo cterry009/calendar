@@ -32,6 +32,12 @@ export class TutorController {
     return this.tutor.turn(req.user.userId, req.user.deviceId, dto);
   }
 
+  @Get('notes')
+  @ApiOperation({ summary: 'Notas del vault con ejercicios y sus secciones' })
+  notes() {
+    return this.tutor.notes();
+  }
+
   @Get('state')
   @ApiOperation({
     summary: 'Estado del juego de una sección y el siguiente ejercicio (sin Claude)',

@@ -167,8 +167,8 @@ untouched files (`notes/pensum.test.ts`, `plan/sequence.ts`); the new files are 
 
 ## 15. Phase 4: server and pure helpers
 
-- [ ] 15.1 `GET /tutor/notes` (D38), with a test
-- [ ] 15.2 `apps/web/src/lib/studyGame/`: study task → note and sections, the tutor API client, chat state with sessionStorage, per-pomodoro summary, dashboard rows; Vitest (D39, D43, D44, D45)
+- [x] 15.1 `GET /tutor/notes` (D38), with a test
+- [x] 15.2 `apps/web/src/lib/studyGame/`: study task → note and sections, the tutor API client, chat state with sessionStorage, per-pomodoro summary, dashboard rows; Vitest (D39, D43, D44, D45)
 
 ## 16. Phase 4: rendering
 
