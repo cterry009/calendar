@@ -5,6 +5,7 @@ import { SyncEventsService } from '../realtime/sync-events.service';
 import {
   BlockEventSyncChangeDto,
   FocusEventSyncChangeDto,
+  ExerciseAttemptSyncChangeDto,
   BlockListSyncChangeDto,
   DailyDesktopAppTimeSyncChangeDto,
   DailyGameTimeSyncChangeDto,
@@ -57,6 +58,7 @@ export class SyncService {
       scheduleCompletions,
       scheduleExceptions,
       studyPlan,
+      exerciseAttempts,
     ] = await Promise.all([
       this.prisma.task.findMany({
         where: { userId, deletedAt: null },
@@ -94,6 +96,14 @@ export class SyncService {
         where: { userId, date: { gte: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) } },
       }),
       this.prisma.studyPlan.findUnique({ where: { userId } }),
+      // Every attempt, unlike block events: the study game is replayed from the whole history
+      // (study-tutor-game D6, D21). The long texts stay out (GET /sync/exercise-attempts has them),
+      // so a year of ~7 000 attempts is ~1.5 MB instead of ~5.
+      this.prisma.exerciseAttempt.findMany({
+        where: { userId },
+        omit: { generatedStatement: true, feedback: true },
+        orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
+      }),
     ]);
 
     return {
@@ -114,6 +124,7 @@ export class SyncService {
       journalEntries,
       scheduleCompletions,
       scheduleExceptions,
+      exerciseAttempts,
       studyPlan: studyPlan
         ? {
             id: studyPlan.id,
@@ -269,6 +280,18 @@ export class SyncService {
         this.bucketResult(result, 'focusEvents', outcome);
         if (outcome.status === 'applied') {
           changedEntities.add('focusEvents');
+        }
+      }
+    }
+
+    if (dto.exerciseAttempts?.length) {
+      result.applied.exerciseAttempts = [];
+      result.conflicts.exerciseAttempts = [];
+      for (const change of dto.exerciseAttempts) {
+        const outcome = await this.applyExerciseAttemptChange(userId, change);
+        this.bucketResult(result, 'exerciseAttempts', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('exerciseAttempts');
         }
       }
     }
@@ -967,6 +990,58 @@ export class SyncService {
       where: { userId, occurredAt: { gte: since } },
       orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
     });
+  }
+
+  // Full attempts, texts included (the pull leaves them out): for showing a past exercise and its
+  // feedback. Oldest first; without `since`, the whole history.
+  async listExerciseAttempts(userId: string, since?: Date) {
+    return this.prisma.exerciseAttempt.findMany({
+      where: { userId, ...(since ? { occurredAt: { gte: since } } : {}) },
+      orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  // A graded exercise: immutable like a focus event, so an idempotent create on the client id. A
+  // regrade is a new attempt that `supersedes` the old one, never an update; `supersedes` isn't
+  // checked, since a correction can arrive before its original and replay ignores unknown targets.
+  private async applyExerciseAttemptChange(
+    userId: string,
+    change: ExerciseAttemptSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const existing = await this.prisma.exerciseAttempt.findFirst({
+      where: { id: change.id, userId },
+    });
+    if (existing) {
+      return { status: 'skipped', clientKey: change.id };
+    }
+
+    try {
+      const record = await this.prisma.exerciseAttempt.create({
+        data: {
+          id: change.id,
+          userId,
+          exerciseId: change.exerciseId,
+          exerciseSource: change.exerciseSource,
+          noteCode: change.noteCode,
+          section: change.section,
+          b: change.b,
+          r: change.r,
+          hints: change.hints,
+          minutes: change.minutes ?? null,
+          gradedBy: change.gradedBy,
+          supersedes: change.supersedes ?? null,
+          generatedStatement: change.generatedStatement ?? null,
+          feedback: change.feedback ?? null,
+          studyTaskId: change.studyTaskId ?? null,
+          pomodoroSessionId: change.pomodoroSessionId ?? null,
+          occurredAt: new Date(change.occurredAt),
+        },
+      });
+      return { status: 'applied', clientKey: change.id, record };
+    } catch (error) {
+      if (isDuplicateId(error)) return { status: 'skipped', clientKey: change.id };
+      throw error;
+    }
   }
 
   // Focus-block telemetry: immutable like a block event, so an idempotent create on the client id.

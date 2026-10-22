@@ -34,6 +34,17 @@ export class SyncController {
     return this.syncService.listFocusEvents(req.user.userId, parsed);
   }
 
+  @Get('exercise-attempts')
+  @ApiOperation({ summary: 'Intentos de ejercicios con enunciado generado y feedback' })
+  @ApiQuery({ name: 'since', required: false, description: 'ISO; sin él, toda la historia' })
+  exerciseAttempts(@Req() req: AuthenticatedRequest, @Query('since') since?: string) {
+    const parsed = since ? new Date(since) : undefined;
+    if (parsed && Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException('since must be an ISO date');
+    }
+    return this.syncService.listExerciseAttempts(req.user.userId, parsed);
+  }
+
   @Post('batch')
   @ApiOperation({
     summary: 'Aplicar cambios offline con resolución de conflictos',

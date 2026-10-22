@@ -98,6 +98,18 @@ enum AttentionSource {
   USER
 }
 
+// Study game (openspec study-tutor-game, phase 2, 2026-10-21). Lowercase on purpose: the rows go
+// straight into the shared `replay` (ExerciseAttemptInput) without mapping.
+enum ExerciseSource {
+  nota
+  generado
+}
+
+enum ExerciseGrader {
+  claude
+  usuario
+}
+
 // What a FocusEvent records. All of it is telemetry for calibrating profiles and training models.
 enum FocusEventKind {
   BLOCK_PROMPT_ACCEPTED // "Iniciar" on the block-start notification
@@ -180,6 +192,7 @@ model User {
   journalEntries      JournalEntry[]
   blockEvents         BlockEvent[]
   focusEvents         FocusEvent[]
+  exerciseAttempts    ExerciseAttempt[]
   studyPlan           StudyPlan?
   scheduleExceptions  ScheduleException[]
 
@@ -450,6 +463,40 @@ model FocusEvent {
   @@index([userId, occurredAt])
   @@index([userId, kind])
   @@map("focus_events")
+}
+
+/// One graded try at a study exercise. Immutable like FocusEvent: the client id is the idempotency
+/// key, and a regrade is a new row that `supersedes` the old one. The game state (θ, XP, levels) is
+/// never stored: clients replay these rows (packages/shared study-game).
+model ExerciseAttempt {
+  id                 String         @id
+  userId             String
+  /// `AN1#3#2`, `AN1#cierre-rojo#D2`, or the tutor's id for a generated exercise.
+  exerciseId         String
+  exerciseSource     ExerciseSource
+  noteCode           String
+  section            String
+  /// Difficulty on the logit scale when it was attempted.
+  b                  Float
+  /// 0, 0.5 or 1.
+  r                  Float
+  hints              Int            @default(0)
+  minutes            Int?
+  gradedBy           ExerciseGrader
+  /// The attempt this one corrects; not a foreign key, since it can arrive before its original.
+  supersedes         String?
+  generatedStatement String?        @db.Text
+  feedback           String?        @db.Text
+  studyTaskId        String?
+  pomodoroSessionId  String?
+  occurredAt         DateTime
+  createdAt          DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, occurredAt])
+  @@index([userId, noteCode])
+  @@map("exercise_attempts")
 }
 
 model BlockEvent {

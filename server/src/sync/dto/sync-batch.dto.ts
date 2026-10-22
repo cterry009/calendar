@@ -26,6 +26,8 @@ import {
   BlockListKind,
   BlockListScope,
   DevicePlatform,
+  ExerciseGrader,
+  ExerciseSource,
   FitnessIntensity,
   FitnessSource,
   FocusEventKind,
@@ -723,6 +725,80 @@ export class FocusEventSyncChangeDto {
   meta?: Record<string, unknown>;
 }
 
+// A graded try at a study exercise (study-tutor-game phase 2, 2026-10-21). Immutable like a focus
+// event: the client id is the idempotency key and a regrade is a new attempt with `supersedes`.
+// Only the shape is checked here; whether a generated exercise makes sense is the tutor's job.
+export class ExerciseAttemptSyncChangeDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  id!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  exerciseId!: string;
+
+  @IsEnum(ExerciseSource)
+  exerciseSource!: ExerciseSource;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  noteCode!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  section!: string;
+
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(-6)
+  @Max(6)
+  b!: number;
+
+  @IsIn([0, 0.5, 1])
+  r!: 0 | 0.5 | 1;
+
+  @IsInt()
+  @Min(0)
+  hints!: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minutes?: number | null;
+
+  @IsEnum(ExerciseGrader)
+  gradedBy!: ExerciseGrader;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  supersedes?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
+  generatedStatement?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10000)
+  feedback?: string | null;
+
+  @IsOptional()
+  @IsString()
+  studyTaskId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  pomodoroSessionId?: string | null;
+
+  @IsDateString()
+  occurredAt!: string;
+}
+
 export class DetoxPlanSyncChangeDto {
   @IsOptional()
   @IsString()
@@ -1065,6 +1141,12 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => FocusEventSyncChangeDto)
   focusEvents?: FocusEventSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ExerciseAttemptSyncChangeDto)
+  exerciseAttempts?: ExerciseAttemptSyncChangeDto[];
 
   @IsOptional()
   @IsArray()

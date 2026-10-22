@@ -494,3 +494,97 @@ describe('horario 2026-10-19: sequences, exceptions and the study plan', () => {
     expect(snapshot.studyPlan?.planData).toEqual({ startDate: '2026-10-19', weeks: 14 });
   });
 });
+
+describe('exercise attempts (study-tutor-game phase 2)', () => {
+  const h = useSyncHarness();
+  const attempt = (id: string, minutes: number, extra: Record<string, unknown> = {}) => ({
+    id,
+    exerciseId: 'AN1#3#2',
+    exerciseSource: 'nota',
+    noteCode: 'AN1',
+    section: '3',
+    b: 0,
+    r: 1,
+    hints: 0,
+    gradedBy: 'claude',
+    occurredAt: at(minutes),
+    ...extra,
+  });
+
+  it('stores an attempt once: a retry and a racing duplicate are skipped, never updates', async () => {
+    const first = await h.batch({ exerciseAttempts: [attempt('ea-1', 0)] });
+    const retry = await h.batch({ exerciseAttempts: [attempt('ea-1', 0, { r: 0 })] });
+    const [raceA, raceB] = await Promise.all([
+      h.batch({ exerciseAttempts: [attempt('ea-2', 5)] }),
+      h.batch({ exerciseAttempts: [attempt('ea-2', 5)] }),
+    ]);
+
+    expect(first.applied.exerciseAttempts?.[0].status).toBe('applied');
+    expect(retry.applied.exerciseAttempts?.[0].status).toBe('skipped');
+    expect([raceA, raceB].map((x) => x.applied.exerciseAttempts?.[0].status).sort()).toEqual(['applied', 'skipped']);
+    const rows = await h.prisma.exerciseAttempt.findMany({ where: { userId: h.userId }, orderBy: { id: 'asc' } });
+    expect(rows.map((x) => [x.id, x.r])).toEqual([['ea-1', 1], ['ea-2', 1]]);
+    // Other devices are told to re-pull.
+    expect(h.notifications.some((n) => n.entities.includes('exerciseAttempts'))).toBe(true);
+  });
+
+  it('keeps a correction as a new row, even when it arrives before its original', async () => {
+    const correction = await h.batch({
+      exerciseAttempts: [attempt('ea-fix', 10, { r: 1, gradedBy: 'usuario', supersedes: 'ea-orig' })],
+    });
+    const original = await h.batch({ exerciseAttempts: [attempt('ea-orig', 0, { r: 0 })] });
+
+    expect(correction.applied.exerciseAttempts?.[0].status).toBe('applied');
+    expect(original.applied.exerciseAttempts?.[0].status).toBe('applied');
+    const rows = await h.prisma.exerciseAttempt.findMany({ where: { userId: h.userId }, orderBy: { occurredAt: 'asc' } });
+    expect(rows.map((x) => [x.id, x.r, x.supersedes])).toEqual([
+      ['ea-orig', 0, null],
+      ['ea-fix', 1, 'ea-orig'],
+    ]);
+  });
+
+  it('pulls the whole history oldest first, without the long texts or other users', async () => {
+    await h.batch({
+      exerciseAttempts: [
+        attempt('ea-new', 0, {
+          exerciseId: 'AN1#gen-1',
+          exerciseSource: 'generado',
+          b: -0.4,
+          r: 0.5,
+          generatedStatement: 'Demuestra que $\sqrt3$ es irracional.',
+          feedback: 'Bien, faltó justificar el paso de paridad.',
+          minutes: 7,
+          pomodoroSessionId: 'block-b1-2026-10-21',
+        }),
+        attempt('ea-old', -400 * 24 * 60),
+      ],
+    });
+    await h.batch({ exerciseAttempts: [attempt('ea-other', 1)] }, h.otherUserId);
+
+    const { exerciseAttempts } = await h.pull();
+    expect(exerciseAttempts.map((x) => x.id)).toEqual(['ea-old', 'ea-new']);
+    expect(exerciseAttempts[1]).not.toHaveProperty('generatedStatement');
+    expect(exerciseAttempts[1]).not.toHaveProperty('feedback');
+    expect(exerciseAttempts[1]).toMatchObject({ exerciseSource: 'generado', b: -0.4, r: 0.5, minutes: 7 });
+
+    const full = await h.service.listExerciseAttempts(h.userId);
+    expect(full.map((x) => x.id)).toEqual(['ea-old', 'ea-new']);
+    expect(full[1]).toMatchObject({
+      generatedStatement: 'Demuestra que $\sqrt3$ es irracional.',
+      feedback: 'Bien, faltó justificar el paso de paridad.',
+    });
+    const recent = await h.service.listExerciseAttempts(h.userId, new Date(at(-60)));
+    expect(recent.map((x) => x.id)).toEqual(['ea-new']);
+  });
+
+  it('rejects a grade other than 0, 0.5 or 1, a b out of range and an unknown grader', async () => {
+    const check = (change: Record<string, unknown>) =>
+      validate(plainToInstance(SyncBatchDto, { exerciseAttempts: [change] }), { whitelist: true, forbidNonWhitelisted: true });
+    expect(await check(attempt('ok', 0, { r: 0.5, minutes: null, supersedes: null }))).toEqual([]);
+    expect(JSON.stringify(await check(attempt('bad-r', 0, { r: 0.7 })))).toContain('"r"');
+    expect(JSON.stringify(await check(attempt('bad-b', 0, { b: 7 })))).toContain('"b"');
+    expect(JSON.stringify(await check(attempt('bad-hints', 0, { hints: -1 })))).toContain('hints');
+    expect(JSON.stringify(await check(attempt('bad-grader', 0, { gradedBy: 'gemini' })))).toContain('gradedBy');
+    expect(JSON.stringify(await check(attempt('long', 0, { feedback: 'x'.repeat(10_001) })))).toContain('feedback');
+  });
+});

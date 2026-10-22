@@ -79,11 +79,11 @@ untouched files (`notes/pensum.test.ts`, `plan/sequence.ts`); the new files are 
 
 ## 6. Phase 2: entity and server sync
 
-- [ ] 6.1 `schema.prisma`: `ExerciseAttempt` with enums `ExerciseSource` / `ExerciseGrader`, and the migration (D19)
-- [ ] 6.2 `sync.types.ts` + `dto/sync-batch.dto.ts`: `exerciseAttempts` with its validation (D22)
-- [ ] 6.3 `sync.service.ts`: `applyExerciseAttemptChange` (idempotent create, P2002 skipped, D20) and the attempts in the pull without texts (D21)
-- [ ] 6.4 `GET /sync/exercise-attempts?since=` (controller + service)
-- [ ] 6.5 Server tests: retry skipped, correction as a new row, correction before its original, pull with old attempts and no texts and no other user's, the full endpoint with `since`, DTO rejects r = 0.7 and b = 7
+- [x] 6.1 `schema.prisma`: `ExerciseAttempt` with enums `ExerciseSource` / `ExerciseGrader`, and the migration (D19)
+- [x] 6.2 `sync.types.ts` + `dto/sync-batch.dto.ts`: `exerciseAttempts` with its validation (D22)
+- [x] 6.3 `sync.service.ts`: `applyExerciseAttemptChange` (idempotent create, P2002 skipped, D20) and the attempts in the pull without texts (D21)
+- [x] 6.4 `GET /sync/exercise-attempts?since=` (controller + service)
+- [x] 6.5 Server tests: retry skipped, correction as a new row, correction before its original, pull with old attempts and no texts and no other user's, the full endpoint with `since`, DTO rejects r = 0.7 and b = 7
 
 ## 7. Phase 2: shared schema
 
