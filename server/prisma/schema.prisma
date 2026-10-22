@@ -280,6 +280,9 @@ model Schedule {
   // sequence, [{tipo: foco|pausa|cierre, minutos, etiqueta}], which wins over pomodoroMin & co.
   category String?
   sequence Json?
+  // The morning window (dynamic-study-blocks, 2026-10-22): this many blocks started on demand inside
+  // it, each sized by a check-in; null for a fixed block.
+  flexibleBlocks Int?
 
   user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   completions ScheduleCompletion[]
@@ -393,6 +396,12 @@ model PomodoroSession {
   sequence              Json?
   segmentIndex          Int?
   cutCount              Int               @default(0)
+  // Flexible morning block (2026-10-22): sequence relative to the real start, no blockEndAt;
+  // windowEndAt stops new focuses; focusMinutes is real focus done and only goes up (sync keeps the max).
+  flexible              Boolean           @default(false)
+  plannedBlockMin       Int?
+  windowEndAt           DateTime?
+  focusMinutes          Int               @default(0)
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 

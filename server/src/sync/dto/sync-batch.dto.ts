@@ -236,6 +236,14 @@ export class ScheduleSyncChangeDto {
   @ValidateNested({ each: true })
   @Type(() => SequenceSegmentDto)
   sequence?: SequenceSegmentDto[] | null;
+
+  // The morning window (dynamic-study-blocks, 2026-10-22): blocks started on demand in it; null = a
+  // fixed block. Not sent (an older client) keeps what the schedule has.
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(6)
+  flexibleBlocks?: number | null;
 }
 
 export class PomodoroSyncChangeDto {
@@ -349,6 +357,26 @@ export class PomodoroSyncChangeDto {
   @IsInt()
   @Min(0)
   cutCount?: number;
+
+  // Flexible morning block (2026-10-22): relative sequence, the window's end, the check-in's length
+  // and the real focus done (the server keeps the max).
+  @IsOptional()
+  @IsBoolean()
+  flexible?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  plannedBlockMin?: number | null;
+
+  @IsOptional()
+  @IsDateString()
+  windowEndAt?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  focusMinutes?: number;
 }
 
 export class BlockListSyncChangeDto {

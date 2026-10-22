@@ -17,7 +17,7 @@
 
 ## 3. Server
 
-- [ ] 3.1 Prisma migration for the five fields; sync types, DTO, pull and apply (`focusMinutes` max); `test/sync.service.test.ts`
+- [x] 3.1 Prisma migration for the five fields; sync types, DTO, pull and apply (`focusMinutes` max); `test/sync.service.test.ts`
 - [ ] 3.2 Study status builder moved to `packages/shared/src/study-status/`; the script uses it (D18)
 - [ ] 3.3 `StudyStatusService`: debounce per user, `STUDY_STATUS_EMAIL`, atomic writes, Notes kept; tests with a temp vault
 

@@ -596,6 +596,8 @@ export class SyncService {
       // Not sent (a client from before 2026-10-15) keeps what the block has; null clears it.
       category: change.category === undefined ? (existing?.category ?? null) : change.category,
       sequence: jsonOrNull(change.sequence === undefined ? existing?.sequence : change.sequence),
+      flexibleBlocks:
+        change.flexibleBlocks === undefined ? (existing?.flexibleBlocks ?? null) : change.flexibleBlocks,
       updatedAt: new Date(change.updatedAt),
     };
 
@@ -1717,7 +1719,9 @@ function jsonOrNull(value: unknown): Prisma.InputJsonValue | typeof Prisma.DbNul
 
 /**
  * A session's sequence-mode fields from a change. Fields the client didn't send (an app from before
- * 2026-10-15 pausing a block the PC started) keep the stored value; cutCount never goes down.
+ * 2026-10-15 pausing a block the PC started) keep the stored value; cutCount never goes down. The
+ * flexible-block fields (2026-10-22) work the same way, and focusMinutes never goes down either: a
+ * device that hasn't seen the last focus end mustn't undo its minutes.
  */
 function sequenceSessionFields(
   change: PomodoroSyncChangeDto,
@@ -1726,16 +1730,27 @@ function sequenceSessionFields(
     sequence: Prisma.JsonValue | null;
     segmentIndex: number | null;
     cutCount: number;
+    flexible: boolean;
+    plannedBlockMin: number | null;
+    windowEndAt: Date | null;
+    focusMinutes: number;
   } | null,
 ) {
   const blockStartAt =
     change.blockStartAt === undefined ? existing?.blockStartAt : change.blockStartAt;
+  const windowEndAt = change.windowEndAt;
   return {
     blockStartAt: blockStartAt ? new Date(blockStartAt) : null,
     sequence: jsonOrNull(change.sequence === undefined ? existing?.sequence : change.sequence),
     segmentIndex:
       change.segmentIndex === undefined ? (existing?.segmentIndex ?? null) : change.segmentIndex,
     cutCount: Math.max(existing?.cutCount ?? 0, change.cutCount ?? 0),
+    flexible: change.flexible ?? existing?.flexible ?? false,
+    plannedBlockMin:
+      change.plannedBlockMin === undefined ? (existing?.plannedBlockMin ?? null) : change.plannedBlockMin,
+    windowEndAt:
+      windowEndAt === undefined ? (existing?.windowEndAt ?? null) : windowEndAt ? new Date(windowEndAt) : null,
+    focusMinutes: Math.max(existing?.focusMinutes ?? 0, change.focusMinutes ?? 0),
   };
 }
 

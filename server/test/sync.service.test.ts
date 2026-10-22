@@ -468,6 +468,44 @@ describe('horario 2026-10-19: sequences, exceptions and the study plan', () => {
     expect(row.blockStartAt?.toISOString()).toBe('2026-10-19T14:30:00.000Z');
   });
 
+  it('syncs flexible morning blocks: the window on the schedule, and focus minutes that never go down (dynamic-study-blocks)', async () => {
+    const block = { updatedAt: at(0), kind: 'WORK', daysOfWeek: [1, 2, 4], startMinute: 480, endMinute: 720, label: 'Estudio B1', category: 'estudio_b1', sequence: null, flexibleBlocks: 2 };
+    await h.batch({ schedules: [block] });
+    const schedule = await h.prisma.schedule.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(schedule.flexibleBlocks).toBe(2);
+    // An older client edits the block without the field: it stays flexible.
+    const { flexibleBlocks: _f, ...old } = block;
+    await h.batch({ schedules: [{ ...old, id: schedule.id, updatedAt: at(1), label: 'Estudio B1 (editado)' }] });
+    expect((await h.prisma.schedule.findFirstOrThrow({ where: { userId: h.userId } })).flexibleBlocks).toBe(2);
+
+    const session = {
+      id: `block-${schedule.id}-2026-10-26-1`,
+      updatedAt: at(0),
+      state: 'FOCUS',
+      active: true,
+      scheduleId: schedule.id,
+      blockStartAt: '2026-10-26T15:10:00.000Z',
+      sequence: [{ tipo: 'foco', minutos: 30, etiqueta: 'P1' }, { tipo: 'pausa', minutos: 5, etiqueta: 'Pausa' }, { tipo: 'cierre', minutos: 15, etiqueta: 'Cierre' }],
+      segmentIndex: 0,
+      flexible: true,
+      plannedBlockMin: 120,
+      windowEndAt: '2026-10-26T17:00:00.000Z',
+      focusMinutes: 40,
+    };
+    await h.batch({ pomodoroSessions: [session] });
+    // The other device, behind, pushes a lower count; an older one doesn't send the fields at all.
+    await h.batch({ pomodoroSessions: [{ ...session, updatedAt: at(1), focusMinutes: 30 }] });
+    const { flexible: _x, plannedBlockMin: _p, windowEndAt: _w, focusMinutes: _m, ...older } = session;
+    await h.batch({ pomodoroSessions: [{ ...older, updatedAt: at(2), pausedAt: at(2), exitCount: 1 }] });
+    const row = await h.prisma.pomodoroSession.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(row).toMatchObject({ flexible: true, plannedBlockMin: 120, focusMinutes: 40, exitCount: 1, blockEndAt: null });
+    expect(row.windowEndAt?.toISOString()).toBe('2026-10-26T17:00:00.000Z');
+
+    const snapshot = await h.pull();
+    expect(snapshot.schedules[0]).toMatchObject({ flexibleBlocks: 2 });
+    expect(snapshot.pomodoroSessions[0]).toMatchObject({ flexible: true, focusMinutes: 40 });
+  });
+
   it('keeps one exception per block and day, updates it, and deletes it', async () => {
     const schedule = await h.prisma.schedule.create({
       data: { userId: h.userId, kind: 'WORK', daysOfWeek: [1], startMinute: 840, endMinute: 925, category: 'codigo_academico' },
