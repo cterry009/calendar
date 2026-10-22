@@ -97,5 +97,25 @@ untouched files (`notes/pensum.test.ts`, `plan/sequence.ts`); the new files are 
 
 ## 9. Phase 2: export and wrap-up
 
-- [ ] 9.1 `export-study-status.mjs`: game state per note in the markdown and the JSON (D25); dry run against the dev user
-- [ ] 9.2 Server tests and typecheck, shared tests and build green; record the results here
+- [x] 9.1 `export-study-status.mjs`: game state per note in the markdown and the JSON (D25); dry run against the dev user
+- [x] 9.2 Server tests and typecheck, shared tests and build green; record the results here
+
+## Phase 2 results (2026-10-21)
+
+- **Server:** migration `20261022015728_exercise_attempts` (additive: a table, two enums, two
+  indexes). 79 tests (4 new: idempotent create with a racing duplicate, correction before its
+  original, whole-history pull without texts or other users, DTO limits) and typecheck green.
+- **Shared:** `ExerciseAttemptSchema`, 242 tests and typecheck green; a parsed attempt goes straight
+  into `replay` (checked at compile time).
+- **Web:** snapshot field, offline queue and `logExerciseAttempt`, which also queues a send that fails
+  while online (a user's correction must not be lost). 85 tests and typecheck green. **Mobile:** types
+  only, typecheck green.
+- **End to end against the dev API** with a throwaway account (`tutor-phase2-*@local.test`, so the
+  user's own history stays empty): 6 attempts applied, r = 0.7 rejected with 400, the pull has the 6
+  without feedback, `GET /sync/exercise-attempts` has the feedback, and the export's dry run showed 5
+  effective attempts (the correction replaced the failure), 28 XP, θ per section and 00b#2#1 in the
+  review queue. The real export for dev@local.test now has the "Juego de ejercicios" section
+  ("todavía no hay ejercicios intentados", 304 exercises in 26 notes) and `juego` in the JSON
+  (version 2).
+- Lint: the new files are clean; `apps/web` still reports two unused imports in
+  `DesktopUsageWarnings.tsx` (untouched).

@@ -2,7 +2,9 @@
 // Writes the study status into the Obsidian vault ("Notas de Fisica") so the user, Claude or any
 // other AI can read how the study plan is going without opening the app (user-requested,
 // 2026-10-21): progress per pensum, study time per week, how the pomodoros were rated, and the
-// plan's week, phase and milestones. Two files with the same data:
+// plan's week, phase and milestones, and the study game per note (θ, levels, XP, bosses, review
+// queue; study-tutor-game D25, replayed from the attempts against the vault's exercises). Two files
+// with the same data:
 //   Estado_estudio.md     -- for reading in Obsidian; its "Notas" section is written by hand
 //   estado_estudio.json   -- for an AI to read without parsing tables
 //
@@ -21,20 +23,23 @@
 //   --email <email>   CALENDAR_EMAIL     default: dev@local.test
 //   CALENDAR_PASSWORD (env only)
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import {
   addDaysToKey,
   localDateKey,
+  parseExercises,
   phaseForWeek,
   planWeekOf,
   planWeekStart,
   PLAN_CATEGORY_INFO,
+  replay,
   STUDY_LINE_MAP,
   STUDY_LINE_NAMES,
   studyLineOf,
   weekProgress,
+  xpForLevel,
 } from '../packages/shared/dist/index.js';
 
 function arg(name, fallback) {
@@ -310,6 +315,62 @@ const quality = {
   pomodorosTerminados: countKind('FOCUS_COMPLETED'),
 };
 
+// ─── Study game ────────────────────────────────────────────────────────────
+// Replayed from every attempt in the pull (the game state is never stored, study-tutor-game D6)
+// against the catalog parsed from the vault's notes as they are now (D25).
+
+function walkNotes(dir) {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) return name.startsWith('.') ? [] : walkNotes(path);
+    return name.endsWith('.md') ? [path] : [];
+  });
+}
+
+const noteFiles = new Map();
+const catalog = [];
+for (const path of walkNotes(vault)) {
+  const name = basename(path);
+  const exercises = parseExercises(name, readFileSync(path, 'utf8'));
+  if (!exercises.length) continue;
+  noteFiles.set(exercises[0].noteCode, name.replace(/\.md$/, ''));
+  catalog.push(...exercises);
+}
+const game = replay(snapshot.exerciseAttempts ?? [], catalog);
+const round2 = (n) => (n === null || n === undefined ? null : Math.round(n * 100) / 100);
+const gameNotes = [...new Set(Object.values(game.sections).map((s) => s.noteCode))].sort().map((noteCode) => {
+  const inNote = catalog.filter((e) => e.noteCode === noteCode);
+  const note = game.notes[noteCode];
+  return {
+    nota: noteCode,
+    archivo: noteFiles.get(noteCode) ?? null,
+    ejerciciosEnLaNota: inNote.length,
+    intentados: inNote.filter((e) => game.exercises[e.id]).length,
+    resueltos: inNote.filter((e) => game.exercises[e.id]?.solved).length,
+    thetaMedio: round2(note?.meanTheta),
+    secciones: Object.values(game.sections)
+      .filter((s) => s.noteCode === noteCode)
+      .map((s) => ({ seccion: s.section, theta: round2(s.theta), nivel: s.level, intentos: s.attempts })),
+    jefes: (note?.bosses ?? []).map((b) => ({
+      id: b.exerciseId,
+      tipo: b.kind === 'dificil' ? '🔴' : '⚫',
+      desbloqueado: b.unlocked,
+      vencido: b.beaten,
+    })),
+    cerrada: note?.closed ?? false,
+  };
+});
+const gameStatus = {
+  intentos: game.outcomes.length,
+  xp: game.xp,
+  nivel: game.level,
+  xpParaElSiguienteNivel: Math.ceil(xpForLevel(game.level + 1)),
+  combo: game.combo.streak,
+  catalogo: { ejercicios: catalog.length, notas: noteFiles.size },
+  notas: gameNotes,
+  repaso: game.review.map((r) => ({ ejercicio: r.exerciseId, nota: r.noteCode, seccion: r.section, desde: r.since })),
+};
+
 // ─── Output ────────────────────────────────────────────────────────────────
 
 const totalDone = lines.reduce((s, l) => s + l.hechas, 0);
@@ -325,7 +386,7 @@ if (existsSync(MD_FILE)) {
 }
 
 const status = {
-  version: 1,
+  version: 2,
   generadoEl: now.toISOString(),
   comoRegenerar: 'node scripts/export-study-status.mjs (en Proyectos/calendar, con la API corriendo)',
   plan: plan
@@ -355,6 +416,7 @@ const status = {
   tiempoPorSemana: weeks,
   calidadDelFoco: quality,
   hitos: milestones,
+  juego: gameStatus,
   notasManuales: manualNotes,
 };
 
@@ -379,6 +441,11 @@ md.push(`- **Sesiones de pensum:** ${totalDone} de ${totalSessions} (${pct(total
 md.push(`- **Esta semana:** ${thisWeek.pomodorosEstudio} pomodoros de estudio (${hm(thisWeek.minutosEstudio)}), ${thisWeek.diasConEstudio} días con estudio.`);
 md.push(`- **Racha:** ${streak} ${streak === 1 ? 'día' : 'días'} seguidos con estudio${lastStudyDay ? ` (último: ${lastStudyDay})` : ''}. Los domingos no la cortan.`);
 md.push(`- **Foco (últimos ${QUALITY_DAYS} días):** ${quality.calificaciones} pomodoros calificados, promedio ${quality.promedio ?? '—'} / 5.`);
+md.push(
+  gameStatus.intentos
+    ? `- **Juego:** nivel ${gameStatus.nivel}, ${gameStatus.xp} XP, ${gameStatus.intentos} intentos, ${gameStatus.repaso.length} en repaso.`
+    : '- **Juego:** todavía no hay ejercicios intentados.',
+);
 if (milestones.atrasados.length) md.push(`- **Hitos atrasados:** ${milestones.atrasados.length}.`);
 md.push('');
 md.push('## Notas');
@@ -447,6 +514,33 @@ if (quality.comentariosRecientes.length) {
   md.push('');
   for (const r of quality.comentariosRecientes) {
     md.push(`- ${r.fecha} · ${r.calificacion}★${r.sesion ? ` · ${r.sesion}` : r.categoria ? ` · ${categoryName(r.categoria)}` : ''}: "${r.comentario}"`);
+  }
+}
+md.push('');
+md.push('## Juego de ejercicios');
+md.push('');
+if (!gameStatus.intentos) {
+  md.push(`Todavía no hay ejercicios intentados. El catálogo tiene ${catalog.length} ejercicios en ${noteFiles.size} notas; el tutor los propone durante los bloques de estudio.`);
+} else {
+  md.push(`**Nivel ${gameStatus.nivel}** · ${gameStatus.xp} XP (el siguiente nivel pide ${gameStatus.xpParaElSiguienteNivel}) · ${gameStatus.intentos} intentos · combo actual ${gameStatus.combo}.`);
+  md.push('');
+  md.push('| Nota | Intentados | Resueltos | θ medio | Secciones (θ · nivel · intentos) | Jefes |');
+  md.push('|---|:-:|:-:|:-:|---|---|');
+  for (const n of gameNotes) {
+    const link = n.archivo ? `[[${n.archivo}\\|${n.nota}]]` : n.nota;
+    const sections = n.secciones.map((s) => `§${s.seccion}: ${s.theta} · N${s.nivel} · ${s.intentos}`).join('<br>');
+    const bosses = n.jefes
+      .map((b) => `${b.tipo} ${b.id.split('#').pop()} ${b.vencido ? '✅' : b.desbloqueado ? '🔓' : '🔒'}`)
+      .join(' ');
+    md.push(`| ${link}${n.cerrada ? ' ✅' : ''} | ${n.intentados}/${n.ejerciciosEnLaNota} | ${n.resueltos} | ${n.thetaMedio ?? '—'} | ${sections} | ${bosses || '—'} |`);
+  }
+  md.push('');
+  md.push('θ es la habilidad estimada en escala logit: con θ = 0 un 🟡 sale la mitad de las veces. Nivel de sección: N2 desde θ −1, N3 desde 0, N4 desde 1, N5 desde 2. Jefes: ✅ vencido, 🔓 desbloqueado, 🔒 bloqueado.');
+  if (gameStatus.repaso.length) {
+    md.push('');
+    md.push('**Cola de repaso** (fallados, para el sábado):');
+    md.push('');
+    for (const r of gameStatus.repaso) md.push(`- \`${r.ejercicio}\` desde ${r.desde.slice(0, 10)}`);
   }
 }
 md.push('');
