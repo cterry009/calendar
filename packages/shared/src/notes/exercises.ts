@@ -161,7 +161,10 @@ export function parseExercises(fileName: string, markdown: string): Exercise[] {
         push({
           kind: 'vf',
           title: null,
-          statement: body.lines.map((l) => l.replace(VERDICT, '')).join('\n').trim(),
+          statement: body.lines
+            .map((l) => l.replace(VERDICT, ''))
+            .join('\n')
+            .trim(),
           answer: body.lines.join('\n').trim() || null,
           hint: null,
         });

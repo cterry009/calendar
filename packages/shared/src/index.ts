@@ -14,6 +14,8 @@ export * from './pomodoro/focusPlan.js';
 export * from './attention/profiles.js';
 export * from './attention/focus-status.js';
 export * from './notes/pensum.js';
+export * from './notes/exercises.js';
+export * from './study-game/index.js';
 export * from './analytics/estimation-accuracy.js';
 export * from './analytics/suggestions.js';
 export * from './analytics/fitness-correlation.js';
