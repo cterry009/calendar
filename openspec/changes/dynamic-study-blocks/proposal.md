@@ -73,3 +73,29 @@ old clients. Sessions created by older clients keep the current behaviour.
 - `apps/mobile`: snapshot/session types, no auto-start for flexible blocks, follows a block started on
   the PC (status and blocking); starting flexible blocks from the phone is out of scope.
 - `apps/desktop`: no Rust changes expected (blocking already follows the web's focus state).
+
+## Revision 2 (2026-10-22, afternoon)
+
+Revision 1 (above) is implemented (tasks 1-6). The user then chose the vault's "versión 2" of the
+prompt (`Notas de Fisica/Prompt_bloques_dinamicos.md`), with a 0-100 diagnosis, after studying a block
+with Claude in a chat (`progreso_chat_2026-10-21_22.json`). What changes from revision 1:
+
+- **The whole weekday is flexible, not only the morning.** Morning window **09:00-13:00** with suggested
+  blocks 09:00-10:30 and 11:00-12:30 (the day's study line); lunch **13:00-14:00**; afternoon window
+  **14:00-18:00** with suggested blocks 14:00-15:30 and 16:00-17:30 (the categories the template already
+  gives each day). Saturday doesn't change. Suggested times only drive reminders and the drawing of the
+  day.
+- **Blocks of 60-120 min in steps of 10**, sized by a rule in shared code from two signals: a
+  **diagnosis before every pomodoro** (motivation and concentration, **0-100** each) and the existing
+  **rating card after every pomodoro** (1-5). The first diagnosis sets the block (low 60, medium 90,
+  high 120) and each diagnosis sets its focus (20 / 30 / 40); after each pomodoro the planned block
+  moves ±10 (both signals high: +10; either low or a cut: −10), within 60-120 and never under what was
+  already worked. Every proposal can be moved by hand.
+- **Block done with at least 45 min of real focus** (was 60); the day's minimum is the two morning
+  blocks.
+- **Reminders at 09:00, 11:00, 14:00 and 16:00** when no block is running, one per suggested block.
+- **Windows close at 13:00 and 18:00** with the rule of revision 1 (the running focus finishes, then
+  the closing; nothing else moves).
+- Unchanged from revision 1: start on demand, automatic pause and manual focus, the one pause-over
+  notice, "Terminar bloque" (closing early without penalty), blocking only in focus and closing, the
+  full-window focus view with the tutor, the study status written by the server.

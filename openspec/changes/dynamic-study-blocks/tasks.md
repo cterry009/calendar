@@ -69,3 +69,33 @@
   covered by the shared tests), and the phone following a PC block (typecheck only).
 - Plain pomodoros (no block) keep SoftFocusOverlay, which already fills the window during focus;
   the focus view is for block sessions.
+
+## 7. Revision 2: shared rules (D20-D29)
+
+- [ ] 7.1 `horario.ts` v2: windows 09:00-13:00 and 14:00-18:00, suggested blocks, lunch 13:00-14:00, no 15:25 break, header dated; `templateToSchedules` one flexible schedule per suggestion; `EXCLUDED_WORK_WINDOWS` 13:00-14:00 (D20, D21)
+- [ ] 7.2 `morning.ts` → bands of a 0-100 diagnosis, lengths per band, `adjustPlannedBlock` (±10 within 60-120 and ≥ worked), done with 45, day status by window (D22-D24, D27); tests: 40/40 → 60/20, 100/100 → 120/40, the ±10 cases and bounds, 45 done and 30 not
+- [ ] 7.3 State machine: the plan as a budget (`START_FOCUS` appends focus + pause, applies the rule; closing when the next focus no longer fits or the window closed) (D25); tests: start at 10:10 loses nothing, the pause starts alone and the focus doesn't, a manual length is kept, window end → closing, a cut lowers the block
+- [ ] 7.4 Reminders at the suggested times (D28); tests: 11:00 with a block running → none, 11:00 idle → one, never twice, none after 13:00
+- [ ] 7.5 `weekdayV2Changes` for an existing timetable (D30); tests: ids kept, the second suggestion created, lunch moved, break deleted, Saturday untouched
+
+## 8. Revision 2: server and logs
+
+- [ ] 8.1 Study status: the 45-minute criterion, morning and afternoon blocks, the per-pomodoro diagnoses and the chat's calibration events (D26, D27)
+
+## 9. Revision 2: web and desktop
+
+- [ ] 9.1 Diagnosis sliders (0-100) at block start and before every focus; the rule's result shown (planned block before → after); the rating card feeds it (D22-D24, D26)
+- [ ] 9.2 Focus view: planned block, worked and left; the closing when it no longer fits (D25)
+- [ ] 9.3 Day view, plan and dashboard for the two windows; "Empezar" on each suggestion; "Actualizar la jornada" (D27, D30)
+- [ ] 9.4 Reminders at 09:00, 11:00, 14:00, 16:00 (D28)
+- [ ] 9.5 Vitest, typecheck, build, installer
+
+## 10. Revision 2: phone (per open question 3)
+
+- [ ] 10.1 Types; no auto-start of any weekday block; blocking per D14 (afternoon included)
+- [ ] 10.2 If approved: start a suggested block and the next focus from the phone (sliders, rating, start)
+
+## 11. Revision 2: checks and a real try
+
+- [ ] 11.1 shared, server, web tests and typechecks; desktop installer; mobile typecheck
+- [ ] 11.2 Real try (throwaway account): a morning block with diagnoses, the ±10 rule, a cut, the closing when it no longer fits, "Terminar bloque" after 45; the dev user's "Actualizar la jornada"; record results here

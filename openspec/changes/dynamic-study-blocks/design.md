@@ -214,3 +214,70 @@ Approved 2026-10-22 without answers to these, so the proposed defaults apply:
 3. **Wake-up exercise:** unchanged.
 4. **Vault `Horario.md`:** not touched (the user's file); only `horario.ts` changes.
 5. **Third block:** allowed when two are done before 12:00.
+
+## Revision 2 (2026-10-22, afternoon)
+
+The user chose the vault's "versión 2" with a 0-100 diagnosis (proposal, "Revision 2"). The engine of
+revision 1 stays (flexible sessions, relative segments, automatic pause and manual focus, `START_FOCUS`,
+`END_BLOCK`, the 12:00-style closing rule, blocking, focus view, study status); these decisions replace
+D1, D2, D6, D7, D9, D13 and D15, and extend D8 and D11.
+
+- **D20 One schedule per suggested block.** Each weekday suggestion is its own flexible Schedule at its
+  suggested time, `flexibleBlocks = 1`: B1 on Mon/Tue/Thu is two schedules, 09:00-10:30 and
+  11:00-12:30, same label and category (so `studyLinesForBlock`, the tutor and the pill work as now);
+  the afternoon keeps its two schedules per day, moved to 14:00-15:30 and 16:00-17:30. Session ids stay
+  `block-<scheduleId>-<date>-<n>`; n is 1 unless the same suggestion is started twice that day.
+  *Rejected:* one schedule per window with N blocks (revision 1's model) -- the afternoon's two blocks
+  have different categories, and a reminder per suggestion needs a time per suggestion.
+- **D21 Windows in the timetable.** `horario.ts` gets `ventanas_lun_vie`: mañana 09:00-13:00, tarde
+  14:00-18:00. A session's `windowEndAt` is the end of the window that contains its schedule's start;
+  a block started outside any window has none (as in D11). Lunch is 13:00-14:00; the 15:25-15:35 break
+  goes away (pauses live inside blocks). `EXCLUDED_WORK_WINDOWS` (focusPlan.ts) moves to 13:00-14:00;
+  the planner and free slots read the schedules, so they follow; the night window doesn't change.
+- **D22 Diagnosis 0-100.** Motivation and concentration as two sliders, 0-100 in steps of 5, starting
+  at the day's last values. Band of the average: **low < 45, medium 45-69, high ≥ 70** (the chat's 85
+  is high, 30 is low).
+- **D23 Lengths from the bands.** The first diagnosis sets the planned block: low 60, medium 90, high
+  120. Each diagnosis sets its focus: low 20, medium 30, high 40; pause 5 after 20-30 and 10 after 40;
+  the closing stays 15. Every proposal can be moved by hand (block 60-120 in steps of 10, focus 20-40 in
+  steps of 5).
+- **D24 The ±10 rule.** When the next focus starts (that's when its diagnosis is given) the planned
+  block moves: **+10** if the last pomodoro's rating is ≥ 4 and the new band is high; **−10** if the
+  rating is ≤ 2, the new band is low, or the last focus was cut ("cortar tramo" counts as low energy);
+  otherwise 0. Always within 60-120 and never under the minutes already worked in the block (rounded
+  up to 10). A dismissed rating card counts as no rating (only the diagnosis decides). The chat's block:
+  85 → 120 planned, focus 40; rating 55/100 (≈ 3) and then 30 → −10 → 110, focus 20.
+- **D25 The plan is a budget.** Instead of a precomputed list (D6), the session keeps `plannedBlockMin`
+  and its sequence grows as it goes: each `START_FOCUS` appends the focus with its minutes and its
+  pause. The closing is offered when the next focus (at least 20) plus its pause plus the closing no
+  longer fits the planned block, or the window closed; "Terminar bloque" any time (D12). The focus view
+  shows the planned block, the minutes worked and what's left.
+- **D26 What's logged.** Every diagnosis is a `CHECK_IN` with `scope: 'pomodoro-diagnosis'`,
+  `scale: '0-100'`, motivation, concentration, band, proposed and chosen focus, planned block before
+  and after the rule, and the cycle; the first one of a block also carries the proposed and chosen
+  block (`scope: 'block-start'`, as D8). The rating card stays as it is (1-5, `scope: 'pomodoro'`).
+  The chat's imported events (`chat-*` scopes) sit beside them for calibration.
+- **D27 Done with 45.** `BLOCK_DONE_FOCUS_MIN = 45`. The day's minimum is two done blocks from the
+  morning window's schedules ("mañana cumplida"); the afternoon shows its blocks without a minimum.
+- **D28 Reminders at the suggested times.** At each suggestion's start (09:00, 11:00, 14:00, 16:00),
+  if no block is running and that suggestion hasn't been started today: one reminder, id = the
+  schedule, never repeated, never after its window's end. `MAX_BLOCK_REMINDERS` (3) caps them per window
+  start + returns as today; with one per suggestion it never binds.
+- **D29 Labels.** Morning focuses keep revision 1's labels (P1 arranque, profundo, corto); afternoon
+  focuses take the category's suggested pomodoros in order (`pomodoros_sugeridos`), as the clock
+  sequences did.
+- **D30 Updating an existing timetable.** "Actualizar la jornada" replaces "Actualizar la mañana":
+  `weekdayV2Changes(schedules)` updates each morning schedule in place to the first suggestion and
+  creates its second one, moves the afternoon schedules, moves lunch and deletes the 15:25 break --
+  all in one batch, keeping every existing id. Revision 1's flexible sessions (only test accounts have
+  them) end as they are.
+
+### Open questions (revision 2)
+
+1. **Rating card:** keep it 1-5 (today's data) or move it to 0-100 like the diagnosis? Proposed: 1-5,
+   and the rule reads ≥ 4 / ≤ 2 as above.
+2. **Bands:** low < 45, medium 45-69, high ≥ 70. OK?
+3. **The phone:** with the whole weekday flexible, the phone no longer starts any weekday block, and it
+   can't start flexible ones (revision 1, question 1). Add starting a block and the next focus from the
+   phone (diagnosis sliders, rating, start) in this revision? Proposed: yes, the minimum to run a block
+   away from the PC.
