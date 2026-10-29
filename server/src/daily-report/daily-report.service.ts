@@ -124,13 +124,17 @@ export class DailyReportService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Builds, sends and records the report for `date` (also POST /daily-report/send). */
-  async send(userId: string, to: string, date: string): Promise<{ subject: string }> {
+  /**
+   * Builds and sends the report for `date`, and records it as that day's. A manual send (POST
+   * /daily-report/send) passes `record: false`: a test at noon must not stand in for the 21:00 one
+   * (it did on 2026-10-29).
+   */
+  async send(userId: string, to: string, date: string, { record = true } = {}): Promise<{ subject: string }> {
     if (!this.mailer) throw new Error('Falta DAILY_REPORT_SMTP_USER / DAILY_REPORT_SMTP_PASSWORD en el servidor.');
     // The email is the moment of truth: a suggestion still pending is rebuilt with the day's tasks.
     const email = buildReportEmail(await this.gather(userId, date, true));
     await this.mailer.send({ to, ...email });
-    await this.prisma.dailyReport.upsert({
+    if (record) await this.prisma.dailyReport.upsert({
       where: { userId_date: { userId, date } },
       create: { userId, date },
       update: { sentAt: new Date() },

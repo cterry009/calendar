@@ -22,5 +22,7 @@
 
 - [x] 4.1 Logged in as `c.terry009@gmail.com`; the dry run of 2026-10-29 listed Friday's four blocks
   and suggested "AN1 · Axiomas…" in Código de las notas (Gemini 503s, the fallback answered).
-- [ ] 4.2 The user creates the Gmail app password; first real email.
+- [x] 4.2 The Gmail app password is in `server/.env`; first real emails 2026-10-29 (the catch-up of
+  10-28 at start, and a manual send of 10-29). Fixed from it: a manual send counted as the day's
+  report, so the 21:00 one would have been skipped; now only the scheduled send records it.
 - [ ] 4.3 Approve a suggestion from the PC and the phone.

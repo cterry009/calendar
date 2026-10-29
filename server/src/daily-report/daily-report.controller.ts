@@ -44,6 +44,6 @@ export class DailyReportController {
     const day = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : this.reports.today();
     if (dryRun === 'true' || dryRun === '1') return this.reports.preview(req.user.userId, day);
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: req.user.userId }, select: { email: true } });
-    return this.reports.send(req.user.userId, user.email, day);
+    return this.reports.send(req.user.userId, user.email, day, { record: false });
   }
 }
