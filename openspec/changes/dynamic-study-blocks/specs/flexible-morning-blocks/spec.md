@@ -79,13 +79,19 @@ already running SHALL finish and the block SHALL go to its closing. Nothing afte
 - **THEN** nothing is moved or rescheduled and no morning reminder is shown
 
 ### Requirement: Blocking follows the block
-During the weekday windows, app and site blocking SHALL be on only during the focus and closing
-segments of a started flexible block, and off in its pauses and between blocks. Saturday's fixed blocks
+The weekday windows (09:00-13:00, 14:00-18:00) SHALL be work hours (revision 3, 2026-10-29): games and
+social media SHALL be blocked through them on the PC and the phone, whether a block is running or not,
+and lunch (13:00-14:00) and the time outside the windows SHALL be free. The rest of the block list SHALL
+be on only during the focus and closing segments of a started flexible block. Saturday's fixed blocks
 SHALL keep blocking their whole window.
 
 #### Scenario: Between blocks
 - **WHEN** it is 10:40, the first block ended at 10:30 and the second hasn't started
-- **THEN** nothing is blocked on the PC or the phone
+- **THEN** games and social media are blocked on the PC and the phone, and the rest of the block list isn't
+
+#### Scenario: Lunch
+- **WHEN** it is 13:30 on a weekday
+- **THEN** games and social media can be used
 
 #### Scenario: During a focus
 - **WHEN** a focus of a flexible block is running

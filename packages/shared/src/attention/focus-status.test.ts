@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { currentFocusStatus, type FocusStatusSchedule } from './focus-status.js';
+import { currentFocusStatus, flexibleWorkWindowNow, flexibleWorkWindows, type FocusStatusSchedule } from './focus-status.js';
 import { createBlockPomodoroSession, transitionPomodoro } from '../pomodoro/state-machine.js';
 
 // Monday 5 Oct 2026, local time.
@@ -32,5 +32,29 @@ describe('currentFocusStatus', () => {
     expect(currentFocusStatus({ session: null, schedules: [b1], tasks, now: at(11) })).toBeNull();
     const mechanical = [{ ...tasks[0], attentionProfile: 'MECHANICAL' as const }];
     expect(currentFocusStatus({ session: null, schedules: [b1], tasks: mechanical, now: at(10, 5) })).toBeNull();
+  });
+});
+
+describe('flexibleWorkWindowNow', () => {
+  const flexible: FocusStatusSchedule[] = [
+    { ...b1, flexibleBlocks: 1, daysOfWeek: [1, 2, 3, 4, 5] },
+    { ...b1, id: 'tarde', flexibleBlocks: 1, daysOfWeek: [1, 2, 3, 4, 5], startMinute: 14 * 60, endMinute: 15 * 60 + 30 },
+  ];
+
+  it('is work hours through both windows, between the suggested blocks too', () => {
+    expect(flexibleWorkWindowNow(flexible, at(9))?.name).toBe('manana');
+    // 10:40: the first block is over and the second hasn't started -- still work hours.
+    expect(flexibleWorkWindowNow(flexible, at(10, 40))?.name).toBe('manana');
+    expect(flexibleWorkWindowNow(flexible, at(17, 59))?.name).toBe('tarde');
+  });
+
+  it('leaves lunch, the evening and days without flexible blocks free', () => {
+    expect(flexibleWorkWindowNow(flexible, at(13, 30))).toBeNull();
+    expect(flexibleWorkWindowNow(flexible, at(18))).toBeNull();
+    expect(flexibleWorkWindowNow(flexible, at(8, 59))).toBeNull();
+    // Saturday 10 Oct 2026.
+    expect(flexibleWorkWindowNow(flexible, new Date(2026, 9, 10, 10))).toBeNull();
+    expect(flexibleWorkWindowNow([b1], at(10))).toBeNull();
+    expect(flexibleWorkWindows([{ ...flexible[0], enabled: false }])).toEqual([]);
   });
 });

@@ -4,6 +4,7 @@ import {
   blockOnDay,
   blockSessionId,
   currentStudySession,
+  flexibleWorkWindowNow,
   isWithinRadius,
   labelledSequenceFor,
   MIN_TRIMMED_FOCUS_MIN,
@@ -35,6 +36,9 @@ interface SoftFocusContextValue {
   // Raw "inside an enabled WORK block right now", ignoring the overlay dismissal above. For rules
   // that must stay strict even when the soft overlay was waved away (the work-hours game limit).
   isWithinWorkSchedule: boolean;
+  // Inside a weekday work window (09:00-13:00, 14:00-18:00), block started or not: games and social
+  // media stay blocked through it (user, 2026-10-29). Lunch between them is free.
+  isInWorkWindow: boolean;
   isLocationActive: boolean;
   activeLocationTriggerLabel: string | null;
   startManualFocus: (minutes: number) => void;
@@ -182,6 +186,10 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
     [schedules, now, skipped, exceptions],
   );
   const rawIsWorkHoursActive = activeSchedule !== null;
+  const isInWorkWindow = useMemo(
+    () => flexibleWorkWindowNow(schedules, new Date(now)) !== null,
+    [schedules, now],
+  );
 
   // A dismissal only lasts for the remainder of the current work block: once we're no longer
   // inside any enabled WORK schedule, the flag resets so the next block triggers normally.
@@ -262,6 +270,7 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
         pomodoro.isBlocking || manualSoftFocus.active || (isWorkHoursActive && !exitedThisBlock) || isLocationActive,
       isWorkHoursActive,
       isWithinWorkSchedule: rawIsWorkHoursActive,
+      isInWorkWindow,
       isLocationActive,
       activeLocationTriggerLabel: matchedLocationTrigger?.label ?? null,
       startManualFocus,
@@ -272,12 +281,15 @@ export function SoftFocusProvider({ children }: { children: ReactNode }) {
     [
       dismissLocationFocus,
       dismissWorkHoursFocus,
+      exitedThisBlock,
+      isInWorkWindow,
       isLocationActive,
       isWorkHoursActive,
       manualRemainingSeconds,
       manualSoftFocus,
       matchedLocationTrigger,
       pomodoro.isBlocking,
+      pomodoro.session?.scheduleId,
       rawIsWorkHoursActive,
       startManualFocus,
       stopManualFocus,

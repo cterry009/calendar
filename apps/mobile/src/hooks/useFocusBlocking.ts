@@ -8,6 +8,7 @@ import { setBlockPopupContent, setBlockedDomains, setBlockingState, setWorkSocia
 import {
   activeWorkSchedule,
   activitySuggestionsByCategory,
+  flexibleWorkWindows,
   getPhaseDurationMinutes,
   knownDistractingPackages,
   motivationalPhrases,
@@ -147,9 +148,9 @@ export function useFocusBlocking(): FocusBlockingState {
 
   // The strict social limit during work hours runs natively (WorkSocialLimit.kt); it only needs the
   // WORK windows and the social list, pushed whenever the schedules change.
-  const workWindowsKey = JSON.stringify(
-    schedules
-      // The flexible morning window (2026-10-22) isn't work hours: only its started blocks block, from JS.
+  const workWindowsKey = JSON.stringify([
+    ...schedules
+      // Flexible blocks (2026-10-22) don't block by themselves; their weekday windows below do.
       .filter((schedule) => schedule.enabled && schedule.kind === 'WORK' && !schedule.flexibleBlocks)
       .map((schedule) => ({
         days: schedule.daysOfWeek,
@@ -168,7 +169,17 @@ export function useFocusBlocking(): FocusBlockingState {
             .map((e) => e.date),
         ],
       })),
-  );
+    // The weekday work windows (09:00-13:00, 14:00-18:00), block started or not (user, 2026-10-29):
+    // the native side kicks games and social media out through them (kickIfInWorkFocus), with the RN
+    // process dead too. No id: the "fuera del bloque" bar belongs to a block, not to the window.
+    ...flexibleWorkWindows(schedules).map((window) => ({
+      days: window.days,
+      start: window.startMinute,
+      end: window.endMinute,
+      label: 'Horario de trabajo',
+      skip: [],
+    })),
+  ]);
   useEffect(() => {
     setWorkSocialLimit(JSON.parse(workWindowsKey), knownDistractingPackages());
   }, [workWindowsKey]);

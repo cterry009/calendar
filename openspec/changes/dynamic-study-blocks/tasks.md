@@ -127,3 +127,20 @@
 - **Desktop:** reinstalled with this build.
 - Not tried live: the reminders at 09:00/11:00/14:00/16:00 and the window's end (shared tests only).
 - The phone build doesn't have the plain-label fix (it only matters without a study plan).
+
+## 12. Revision 3: the weekday windows are work hours (2026-10-29)
+
+The user: blocks stay flexible, but they live inside a work schedule; through it games and social media
+are blocked whether a block is running or not, and lunch is free.
+
+- [x] 12.1 Shared: `flexibleWorkWindows` / `flexibleWorkWindowNow` (attention/focus-status.ts) -- the
+  09:00-13:00 and 14:00-18:00 windows on the days with an enabled flexible WORK schedule; Jest tests
+  (between blocks, lunch, evening, Saturday, disabled).
+- [x] 12.2 Web and desktop: `SoftFocusContext.isInWorkWindow`; `DesktopBlockingBridge` blocks every game
+  and the social apps/sites through it. The rest of the FOCUS list still waits for a started focus.
+  Fixed on the way: the context's memo missed `exitedThisBlock`, so "Volver al bloque" could leave the
+  FOCUS list off until another input changed.
+- [x] 12.3 Phone: the windows are pushed to the native work windows (`setWorkSocialLimit`), so
+  `kickIfInWorkFocus` kicks games and social media out through them, with the RN process dead too.
+- [x] 12.4 Spec: "Blocking follows the block" rewritten (revision 3).
+- [ ] 12.5 Rebuild and reinstall the desktop app and the phone's APK, and try 10:40 / 13:30 for real.

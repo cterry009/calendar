@@ -39,7 +39,7 @@ function identifiersFor(
 }
 
 export function DesktopBlockingBridge() {
-  const { isFocusActive: isOverlayVisible, isWithinWorkSchedule } = useSoftFocus();
+  const { isFocusActive: isOverlayVisible, isWithinWorkSchedule, isInWorkWindow } = useSoftFocus();
   const isNightActive = useNightWindowActive();
   const { entries } = useBlockList('ALL');
   // Games locked by the strict work-hours limit (DesktopUsageWarnings starts the countdown; this
@@ -47,8 +47,10 @@ export function DesktopBlockingBridge() {
   // ends.
   const workLockedGames = useWorkGameLock(isWithinWorkSchedule);
   // In a work focus (pomodoro, manual focus, or a WORK block -- the latter even if its soft overlay
-  // was dismissed), every game and the social apps/sites are blocked outright, list or no list.
-  const inWorkFocus = isOverlayVisible || isWithinWorkSchedule;
+  // was dismissed), every game and the social apps/sites are blocked outright, list or no list. So
+  // through a weekday work window, even between flexible blocks (user, 2026-10-29); the rest of the
+  // FOCUS list still waits for a started focus.
+  const inWorkFocus = isOverlayVisible || isWithinWorkSchedule || isInWorkWindow;
   // The night window (on/off + hours in the Nocturno tab) blocks the same targets: from 22:30 by
   // default, social media and games are off until morning, list or no list.
   const focusTargets = useMemo(

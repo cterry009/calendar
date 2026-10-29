@@ -1,6 +1,7 @@
 import type { PomodoroSession } from '../schemas/pomodoro.js';
 import { currentSegment, getPhaseDurationMinutes, pauseOverrunMinutes } from '../pomodoro/state-machine.js';
 import { scheduleOnDate, type ScheduleExceptionLike } from '../plan/plan.js';
+import { DAY_WINDOWS, type DayWindowName } from '../plan/morning.js';
 import type { SequenceSegment } from '../plan/sequence.js';
 import { ATTENTION_PROFILE_SPECS, blockOnDay, type BlockTaskLike } from './profiles.js';
 
@@ -18,7 +19,10 @@ export interface FocusStatusSchedule {
   label: string | null;
   category?: string | null;
   sequence?: SequenceSegment[] | null;
-  /** A flexible morning window (2026-10-22): not work hours by itself, only its started blocks are. */
+  /**
+   * A flexible block (2026-10-22): starts only when the user starts it. Its weekday window is still
+   * work hours for games and social media (flexibleWorkWindows, 2026-10-29).
+   */
   flexibleBlocks?: number | null;
 }
 
@@ -134,6 +138,39 @@ export function flexibleWindowNow<S extends FocusStatusSchedule>(
           minute >= s.startMinute &&
           minute < s.endMinute,
       ) ?? null
+  );
+}
+
+export interface FlexibleWorkWindow {
+  days: number[];
+  startMinute: number;
+  endMinute: number;
+  name: DayWindowName;
+}
+
+/**
+ * The weekday's work hours (user, 2026-10-29): its blocks start on demand, but the windows they live
+ * in (09:00-13:00, 14:00-18:00) are work hours all the same -- games and social media stay blocked
+ * through them, block or no block, and lunch between them is free. A day counts when it has an
+ * enabled flexible WORK schedule (Monday to Friday in the template).
+ */
+export function flexibleWorkWindows(schedules: FocusStatusSchedule[]): FlexibleWorkWindow[] {
+  const days = [
+    ...new Set(
+      schedules.filter((s) => s.kind === 'WORK' && s.enabled && !!s.flexibleBlocks).flatMap((s) => s.daysOfWeek),
+    ),
+  ].sort((a, b) => a - b);
+  if (!days.length) return [];
+  return DAY_WINDOWS.map((w) => ({ days, startMinute: w.startMinute, endMinute: w.endMinute, name: w.name }));
+}
+
+/** The weekday work window containing `now`, if any (flexibleWorkWindows). */
+export function flexibleWorkWindowNow(schedules: FocusStatusSchedule[], now: Date): FlexibleWorkWindow | null {
+  const minute = now.getHours() * 60 + now.getMinutes();
+  return (
+    flexibleWorkWindows(schedules).find(
+      (w) => w.days.includes(now.getDay()) && minute >= w.startMinute && minute < w.endMinute,
+    ) ?? null
   );
 }
 
