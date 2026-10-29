@@ -143,4 +143,9 @@ are blocked whether a block is running or not, and lunch is free.
 - [x] 12.3 Phone: the windows are pushed to the native work windows (`setWorkSocialLimit`), so
   `kickIfInWorkFocus` kicks games and social media out through them, with the RN process dead too.
 - [x] 12.4 Spec: "Blocking follows the block" rewritten (revision 3).
-- [ ] 12.5 Rebuild and reinstall the desktop app and the phone's APK, and try 10:40 / 13:30 for real.
+- [x] 12.5 Desktop installer and release APK rebuilt and installed (2026-10-29). Tried at 10:55 on a
+  Thursday with no block started: Instagram opened on the phone went straight home with the block
+  popup; the accessibility service stayed bound after `adb install -r`. Not tried live: lunch at
+  13:30, a game on the PC.
+- [ ] 12.6 The PC's hosts file had lost the user's Modify grant (Docker Desktop rewrites it on
+  start), so sites aren't blocked there until "conceder acceso" in Lista de bloqueo is accepted again.
