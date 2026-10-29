@@ -31,6 +31,7 @@ export function PlanSuggestionCard() {
   const [suggestion, setSuggestion] = useState<PlanSuggestion | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -63,6 +64,7 @@ export function PlanSuggestionCard() {
 
   const act = async (approve: boolean) => {
     setBusy(true);
+    setError(null);
     try {
       if (approve) {
         const result = await approveSuggestion(suggestion.id);
@@ -76,8 +78,10 @@ export function PlanSuggestionCard() {
         setMessage('Plan sugerido descartado.');
       }
       setSuggestion(null);
-    } catch (error) {
-      setMessage(`No se pudo: ${(error as Error).message}`);
+      // A missed report can leave two pending (today's and tomorrow's): show the next one.
+      void load();
+    } catch (failure) {
+      setError(`No se pudo: ${(failure as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -102,8 +106,9 @@ export function PlanSuggestionCard() {
               {block.start ? `${block.start}-${block.end} · ` : ''}
               {block.label}
             </Text>
-            {block.tasks.map((task) => (
-              <Text key={task.title} fontSize="$2" color="$muted">
+            {block.tasks.map((task, index) => (
+              // Titles repeat (two tasks can share one), so the position keys them.
+              <Text key={index} fontSize="$2" color="$muted">
                 · {task.title}
                 {task.reason ? ` — ${task.reason}` : ''}
               </Text>
@@ -116,8 +121,13 @@ export function PlanSuggestionCard() {
           </Text>
         ) : null}
         {message ? (
-          <Text fontSize="$2" color="$error">
+          <Text fontSize="$2" color="$accent">
             {message}
+          </Text>
+        ) : null}
+        {error ? (
+          <Text fontSize="$2" color="$error">
+            {error}
           </Text>
         ) : null}
         <XStack gap="$2" flexWrap="wrap">
