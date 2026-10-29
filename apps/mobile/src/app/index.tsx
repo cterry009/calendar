@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AgendaRow } from '../components/calendar/AgendaRow';
 import { UsageCategoriesCard } from '../components/screenTime/UsageCategoriesCard';
+import { PlanSuggestionCard } from '../components/planning/PlanSuggestionCard';
 import { useDayAgenda } from '../hooks/useDayAgenda';
 import { TaskRow } from '../components/calendar/TaskRow';
 import { HabitChecklistRow } from '../components/habits/HabitChecklistRow';
@@ -37,7 +38,7 @@ function startOfWeek(date: Date): Date {
 export default function HomeScreen() {
   const { user, logout } = useAuth();
   const { startTour } = useOnboarding();
-  const { tasks, pomodoroSessions, isLoading, isMutating, error, completeTask } = useCalendarData();
+  const { tasks, pomodoroSessions, isLoading, isMutating, error, completeTask, refetch } = useCalendarData();
   const {
     habits,
     records: habitRecords,
@@ -102,6 +103,8 @@ export default function HomeScreen() {
               Hola{user?.name ? `, ${user.name}` : ''} -- sesion iniciada como {user?.email}.
             </Paragraph>
           </YStack>
+
+          <PlanSuggestionCard onApproved={() => void refetch()} />
 
           <UsageCategoriesCard />
 

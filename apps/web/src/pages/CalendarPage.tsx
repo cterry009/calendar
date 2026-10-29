@@ -9,6 +9,7 @@ import type { CalendarViewMode } from '../lib/calendar/types';
 import { startOfDay } from '../lib/calendar/utils';
 import { ScheduleManager } from '../components/schedules/ScheduleManager';
 import { MorningCard } from '../components/morning/MorningCard';
+import { PlanSuggestionCard } from '../components/planning/PlanSuggestionCard';
 
 export function CalendarPage() {
   const { t } = useLanguage();
@@ -31,6 +32,7 @@ export function CalendarPage() {
         </YStack>
 
         <YStack flex={1} minWidth={300} gap="$5">
+          <PlanSuggestionCard />
           <MorningCard />
           <AppCard>
             <MiniMonthCalendar

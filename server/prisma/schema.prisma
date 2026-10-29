@@ -195,6 +195,8 @@ model User {
   exerciseAttempts    ExerciseAttempt[]
   studyPlan           StudyPlan?
   scheduleExceptions  ScheduleException[]
+  dailyReports        DailyReport[]
+  planSuggestions     PlanSuggestion[]
 
   @@map("users")
 }
@@ -835,4 +837,47 @@ model JournalEntry {
   @@unique([userId, clientId])
   @@index([habitId, createdAt])
   @@map("journal_entries")
+}
+
+// ─── Daily email report (daily-email-report, 2026-10-29) ─────────────────────
+// Server-only, not synced: the report is an email, and the suggestion is read and answered through
+// /planning/suggestions while online (approving it writes the tasks, which do sync).
+
+/** One report sent: the day it covers, so it goes out once per day even across restarts. */
+model DailyReport {
+  id     String   @id @default(cuid())
+  userId String
+  /** The local day the report covers (YYYY-MM-DD). */
+  date   String
+  sentAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_reports")
+}
+
+enum PlanSuggestionStatus {
+  PENDING
+  APPROVED
+  DISMISSED
+}
+
+/** A plan of blocks the report proposed for a day with nothing planned, waiting for the user. */
+model PlanSuggestion {
+  id        String               @id @default(cuid())
+  userId    String
+  /** The local day it plans (YYYY-MM-DD). */
+  date      String
+  timeZone  String
+  status    PlanSuggestionStatus @default(PENDING)
+  /** The planner's PlanProposal (planning.types.ts), with the task titles at the time. */
+  proposal  Json
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("plan_suggestions")
 }

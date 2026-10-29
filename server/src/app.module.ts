@@ -9,6 +9,7 @@ import { PlanningModule } from './planning/planning.module';
 import { SyncModule } from './sync/sync.module';
 import { StudyStatusModule } from './study-status/study-status.module';
 import { TutorModule } from './tutor/tutor.module';
+import { DailyReportModule } from './daily-report/daily-report.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { TutorModule } from './tutor/tutor.module';
     PlanningModule,
     TutorModule,
     StudyStatusModule,
+    DailyReportModule,
   ],
   controllers: [AppController],
 })

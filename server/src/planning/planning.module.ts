@@ -38,5 +38,6 @@ import { GEMINI, LAYA, PlanningService } from './planning.service';
       },
     },
   ],
+  exports: [PlanningService],
 })
 export class PlanningModule {}
