@@ -13,6 +13,8 @@ export interface BlockListSyncChangeDto {
   enabled?: boolean;
   hardMode?: boolean;
   scope?: BlockListFormValues['scope'];
+  nightStartMinutes?: number | null;
+  weekendNightStartMinutes?: number | null;
 }
 
 interface SyncBatchResponse {
@@ -32,6 +34,8 @@ function buildUpsertPayload(
     enabled: values.enabled,
     hardMode: values.hardMode,
     scope: values.scope,
+    nightStartMinutes: values.nightStartMinutes,
+    weekendNightStartMinutes: values.weekendNightStartMinutes,
   };
 }
 

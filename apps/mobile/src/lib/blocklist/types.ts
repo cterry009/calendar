@@ -16,6 +16,9 @@ export interface SyncBlockListRecord {
   // cares about only one scope (useFocusBlocking.ts's daytime trigger, the night-list screen)
   // filters for itself.
   scope: BlockListScope;
+  // weekend-mode: a NIGHT entry's own start (null/absent = the night window's).
+  nightStartMinutes?: number | null;
+  weekendNightStartMinutes?: number | null;
   updatedAt: string;
 }
 
@@ -28,4 +31,6 @@ export interface BlockListFormValues {
   enabled: boolean;
   hardMode: boolean;
   scope: BlockListScope;
+  nightStartMinutes?: number | null;
+  weekendNightStartMinutes?: number | null;
 }

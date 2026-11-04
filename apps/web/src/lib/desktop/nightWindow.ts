@@ -1,4 +1,10 @@
-import { MIN_NIGHT_WINDOW_HOURS } from '@calendar/shared';
+import {
+  DEFAULT_WEEKEND_NIGHT_START,
+  MIN_NIGHT_WINDOW_HOURS,
+  upcomingNightStart,
+  validateNightStart,
+  type NightWarningTarget,
+} from '@calendar/shared';
 
 // Desktop counterpart of apps/mobile/src/lib/nightBlock/state.ts. Deliberately a separate, small
 // implementation rather than sharing mobile's module: that one is entangled with native storage
@@ -25,6 +31,8 @@ const WINDOW_KEY = 'desktop_night_block_window_v1';
 export interface NightWindow {
   startMinutes: number;
   endMinutes: number;
+  /** Friday and Saturday nights (weekend-mode), 0 = from midnight. Absent: DEFAULT_WEEKEND_NIGHT_START. */
+  weekendStartMinutes?: number;
 }
 
 export interface NightSettings {
@@ -63,21 +71,7 @@ export function validateNightWindow(next: NightWindow): { ok: true } | { ok: fal
     const hours = Math.round((duration / 60) * 10) / 10;
     return { ok: false, error: `La ventana debe durar al menos ${MIN_NIGHT_WINDOW_MINUTES / 60} horas (dura ${hours}h con estos valores).` };
   }
-  return { ok: true };
-}
-
-export function isWithinNightWindow(
-  date: Date,
-  startMinutes = DEFAULT_NIGHT_START_MINUTES,
-  endMinutes = DEFAULT_NIGHT_END_MINUTES,
-): boolean {
-  const minutesNow = date.getHours() * 60 + date.getMinutes();
-  if (startMinutes === endMinutes) return false;
-  if (startMinutes < endMinutes) {
-    return minutesNow >= startMinutes && minutesNow < endMinutes;
-  }
-  // Window wraps midnight (e.g. 22:30 -> 08:00).
-  return minutesNow >= startMinutes || minutesNow < endMinutes;
+  return next.weekendStartMinutes === undefined ? { ok: true } : validateNightStart(next.weekendStartMinutes);
 }
 
 // ---- Persisted settings + pub/sub ----
@@ -88,7 +82,11 @@ export function isWithinNightWindow(
 
 function readSettings(): NightSettings {
   let enabled = true;
-  let window: NightWindow = { startMinutes: DEFAULT_NIGHT_START_MINUTES, endMinutes: DEFAULT_NIGHT_END_MINUTES };
+  let window: NightWindow = {
+    startMinutes: DEFAULT_NIGHT_START_MINUTES,
+    endMinutes: DEFAULT_NIGHT_END_MINUTES,
+    weekendStartMinutes: DEFAULT_WEEKEND_NIGHT_START,
+  };
   try {
     const storedEnabled = localStorage.getItem(ENABLED_KEY);
     if (storedEnabled !== null) enabled = storedEnabled === 'true';
@@ -100,7 +98,11 @@ function readSettings(): NightSettings {
         typeof parsed.endMinutes === 'number' &&
         validateNightWindow({ startMinutes: parsed.startMinutes, endMinutes: parsed.endMinutes }).ok
       ) {
-        window = { startMinutes: parsed.startMinutes, endMinutes: parsed.endMinutes };
+        window = {
+          startMinutes: parsed.startMinutes,
+          endMinutes: parsed.endMinutes,
+          weekendStartMinutes: parsed.weekendStartMinutes ?? DEFAULT_WEEKEND_NIGHT_START,
+        };
       }
     }
   } catch {
@@ -153,27 +155,19 @@ export function setNightWindow(next: NightWindow): { ok: true } | { ok: false; e
 
 // ---- Pre-night warnings ----
 //
-// The half hour before the window opens warns every 15 minutes that social media and games are
-// about to be blocked (22:00 and 22:15 with the default 22:30 start). Same numbers as Android's
-// accessibility service (NIGHT_WARNING_LEAD_MIN / NIGHT_WARNING_EVERY_MS).
-export const NIGHT_WARNING_LEAD_MINUTES = 30;
+// The half hour before a block starts warns every 15 minutes (21:30 and 21:45 with the default
+// 22:00 start; League of Legends' own 20:00 warns at 19:30). Same numbers as Android's accessibility
+// service (NIGHT_WARNING_LEAD_MIN / NIGHT_WARNING_EVERY_MS).
 export const NIGHT_WARNING_EVERY_MINUTES = 15;
 
-/** Minutes until tonight's window opens (0 at the start minute), wrapping midnight. */
-export function minutesUntilNightStart(date: Date, startMinutes: number): number {
-  const now = date.getHours() * 60 + date.getMinutes();
-  return (((startMinutes - now) % 1440) + 1440) % 1440;
-}
-
-/** Minutes left when a warning is due now, otherwise null. */
+/** What's about to start when a warning is due now, otherwise null. Without targets, the general block. */
 export function nightWarningDue(
   now: Date,
   settings: NightSettings,
   lastWarnedAtMs: number | null,
-): number | null {
+  targets: readonly NightWarningTarget[] = [{ label: null }],
+) {
   if (!settings.enabled) return null;
-  const left = minutesUntilNightStart(now, settings.window.startMinutes);
-  if (left < 1 || left > NIGHT_WARNING_LEAD_MINUTES) return null;
   if (lastWarnedAtMs !== null && now.getTime() - lastWarnedAtMs < NIGHT_WARNING_EVERY_MINUTES * 60_000) return null;
-  return left;
+  return upcomingNightStart(now, settings.window, targets);
 }

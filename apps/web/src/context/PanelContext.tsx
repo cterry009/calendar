@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-export const PANEL_IDS = ['horario', 'dashboard', 'suggestions', 'pomodoro', 'blocklist', 'fitness', 'detox', 'ritual', 'habits', 'settings', 'wellness'] as const;
+export const PANEL_IDS = ['horario', 'dashboard', 'suggestions', 'pomodoro', 'blocklist', 'fitness', 'detox', 'ritual', 'habits', 'settings', 'wellness', 'reports'] as const;
 
 export type PanelId = (typeof PANEL_IDS)[number];
 

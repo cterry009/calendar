@@ -31,7 +31,7 @@ async function cancelHabitReminders(habitId: string): Promise<void> {
   );
 }
 
-type ReminderHabit = Pick<SyncHabit, 'id' | 'title' | 'reminderEndMinute' | 'reminderDaysOfWeek'>;
+type ReminderHabit = Pick<SyncHabit, 'id' | 'title' | 'reminderEndMinute' | 'reminderDaysOfWeek' | 'kind'>;
 
 // Cancels any previously scheduled reminder for this habit, then reschedules from its current
 // reminderEndMinute/reminderDaysOfWeek -- safe to call on every habits refetch (idempotent), which
@@ -46,7 +46,8 @@ export async function scheduleHabitReminder(habit: ReminderHabit): Promise<void>
   const minute = habit.reminderEndMinute % 60;
   const content: Notifications.NotificationContentInput = {
     title: habit.title,
-    body: 'Se cumplio hoy?',
+    // A weekend activity reminds ahead of doing it (weekend-mode); a habit asks at its deadline.
+    body: habit.kind === 'WEEKEND_ACTIVITY' ? 'Actividad del fin de semana. ¿Ya la hiciste?' : 'Se cumplio hoy?',
     categoryIdentifier: HABIT_CONFIRMATION_CATEGORY,
     data: { habitId: habit.id },
   };

@@ -1,6 +1,8 @@
 import { useEffect, useMemo } from 'react';
+import { isInNightWindow } from '@calendar/shared';
 import { useBlockList } from '../../hooks/useBlockList';
-import { useNightWindowActive } from '../../hooks/useNightWindowActive';
+import { useCommitment } from '../../hooks/useCommitment';
+import { useNightClock, useNightSettings } from '../../hooks/useNightWindowActive';
 import { useWorkGameLock } from '../../hooks/useWorkGameLock';
 import { focusBlockTargets } from '../../lib/desktop/focusBlockTargets';
 import { useSoftFocus } from '../../context/SoftFocusContext';
@@ -16,11 +18,13 @@ import { isDesktop } from '../../lib/desktop';
 // Each entry's own `scope` decides *when* it's active, unioned into whatever's currently blocked:
 // FOCUS entries follow the existing SoftFocus signal (`isOverlayVisible` = pomodoro focus ||
 // manual soft-focus || work-hours || location), NIGHT entries follow the user-configured night window
-// (lib/desktop/nightWindow.ts, on/off + HH:MM) via useNightWindowActive(). Rust itself has no notion of scope --
+// (lib/desktop/nightWindow.ts, on/off + HH:MM), each from its own start when it has one, and Friday
+// and Saturday from the weekend start (weekend-mode). Rust itself has no notion of scope --
 // it just kills/blocks whatever's in the list it's handed while `active`, so this component is
 // the only place the FOCUS/NIGHT distinction is computed. Renders nothing; completely inert in a
 // plain browser.
 
+// One entry can name several processes, "a.exe|b.exe": League of Legends is a client and a game.
 function identifiersFor(
   entries: ReturnType<typeof useBlockList>['entries'],
   kind: 'DESKTOP_APP' | 'WEBSITE',
@@ -34,14 +38,31 @@ function identifiersFor(
         (entry.scope ?? 'FOCUS') === scope &&
         (kind === 'WEBSITE' || entry.platform === 'WINDOWS' || entry.platform == null),
     )
-    .map((entry) => entry.identifier.trim())
+    .flatMap((entry) => (kind === 'DESKTOP_APP' ? entry.identifier.split('|') : [entry.identifier]))
+    .map((identifier) => identifier.trim())
     .filter(Boolean);
 }
 
 export function DesktopBlockingBridge() {
   const { isFocusActive: isOverlayVisible, isWithinWorkSchedule, isInWorkWindow } = useSoftFocus();
-  const isNightActive = useNightWindowActive();
+  const { enabled: nightEnabled, window: nightWindow } = useNightSettings();
+  const { isLocked } = useCommitment();
+  const now = useNightClock();
+  // The commitment keeps the night block on, whatever the local switch says.
+  const nightOn = nightEnabled || isLocked;
+  const isNightActive = nightOn && isInNightWindow(now, nightWindow);
   const { entries } = useBlockList('ALL');
+  // Which NIGHT entries have started, as a string so the memos below don't rerun on every tick.
+  const startedNightIds = nightOn
+    ? entries
+        .filter((entry) => entry.scope === 'NIGHT' && isInNightWindow(now, nightWindow, entry))
+        .map((entry) => entry.id)
+        .join(' ')
+    : '';
+  const nightEntries = useMemo(() => {
+    const started = new Set(startedNightIds.split(' '));
+    return entries.filter((entry) => started.has(entry.id));
+  }, [entries, startedNightIds]);
   // Games locked by the strict work-hours limit (DesktopUsageWarnings starts the countdown; this
   // enforces it). Not block-list entries -- a temporary union that disappears when the WORK block
   // ends.
@@ -60,15 +81,15 @@ export function DesktopBlockingBridge() {
 
   const blockedProcesses = useMemo(() => {
     const focus = isOverlayVisible ? identifiersFor(entries, 'DESKTOP_APP', 'FOCUS') : [];
-    const night = isNightActive ? identifiersFor(entries, 'DESKTOP_APP', 'NIGHT') : [];
+    const night = identifiersFor(nightEntries, 'DESKTOP_APP', 'NIGHT');
     return Array.from(new Set([...focus, ...night, ...workLockedGames, ...focusTargets.processes]));
-  }, [entries, isOverlayVisible, isNightActive, workLockedGames, focusTargets]);
+  }, [entries, nightEntries, isOverlayVisible, workLockedGames, focusTargets]);
 
   const blockedWebsites = useMemo(() => {
     const focus = isOverlayVisible ? identifiersFor(entries, 'WEBSITE', 'FOCUS') : [];
-    const night = isNightActive ? identifiersFor(entries, 'WEBSITE', 'NIGHT') : [];
+    const night = identifiersFor(nightEntries, 'WEBSITE', 'NIGHT');
     return Array.from(new Set([...focus, ...night, ...focusTargets.websites]));
-  }, [entries, isOverlayVisible, isNightActive, focusTargets]);
+  }, [entries, nightEntries, isOverlayVisible, focusTargets]);
 
   // Rust's `active` flag is a single on/off gate for the whole list it's handed -- since the list
   // passed below is already the FOCUS/NIGHT union for whichever window(s) are currently open,

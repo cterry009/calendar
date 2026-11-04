@@ -82,11 +82,7 @@ async function refreshAccessToken(): Promise<string | null> {
   return data.accessToken;
 }
 
-export async function apiFetch<T>(
-  path: string,
-  init: RequestInit = {},
-  retryOnUnauthorized = true,
-): Promise<T> {
+async function authorizedFetch(path: string, init: RequestInit, retryOnUnauthorized: boolean): Promise<Response> {
   const headers = new Headers(init.headers);
 
   if (init.body && !headers.has('Content-Type')) {
@@ -113,11 +109,26 @@ export async function apiFetch<T>(
     throw new ApiError(await parseError(response), response.status);
   }
 
+  return response;
+}
+
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+  retryOnUnauthorized = true,
+): Promise<T> {
+  const response = await authorizedFetch(path, init, retryOnUnauthorized);
+
   if (response.status === 204) {
     return undefined as T;
   }
 
   return (await response.json()) as T;
+}
+
+/** For endpoints that answer text: the weekly presentation and CSV (weekend-mode). */
+export async function apiFetchText(path: string): Promise<string> {
+  return (await authorizedFetch(path, {}, true)).text();
 }
 
 function persistSession(session: AuthSession): AuthSession {

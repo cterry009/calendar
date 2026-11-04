@@ -11,6 +11,10 @@ export const BlockListEntrySchema = z.object({
   enabled: z.boolean().default(true),
   hardMode: z.boolean().default(false),
   scope: BlockListScopeSchema.default('FOCUS'),
+  // weekend-mode: a NIGHT entry's own start, weeknights and Friday/Saturday (minutes from midnight,
+  // 0 = from midnight); null = the night window's (blocking/nightSchedule.ts).
+  nightStartMinutes: z.number().int().min(0).max(1439).optional().nullable(),
+  weekendNightStartMinutes: z.number().int().min(0).max(1439).optional().nullable(),
 });
 
 export const CreateBlockListEntrySchema = BlockListEntrySchema.omit({ id: true });

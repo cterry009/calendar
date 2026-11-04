@@ -31,9 +31,60 @@ export function setNightBlockingState(enabled: boolean, blockedPackages: string[
 // midnight (e.g. 22:30 -> 1350). The >=10h-duration check lives in lib/nightBlock/state.ts, not
 // here -- this is just the native push, same "no business logic on this side" shape as
 // setNightBlockingState above.
-export function setNightWindow(startMinutes: number, endMinutes: number): void {
+export function setNightWindow(startMinutes: number, endMinutes: number, weekendStartMinutes: number): void {
   if (Platform.OS !== 'android') return;
-  FocusBlockModule.setNightWindow(startMinutes, endMinutes);
+  try {
+    FocusBlockModule.setNightWindow(startMinutes, endMinutes, weekendStartMinutes);
+  } catch {
+    // An installed binary older than this JS: it takes two arguments, and keeps every night the same.
+    (FocusBlockModule.setNightWindow as unknown as (start: number, end: number) => void)(startMinutes, endMinutes);
+  }
+}
+
+// weekend-mode: {"identifier":{"s":minutes|null,"w":minutes|null}} for NIGHT entries with their own start.
+export function setNightAppStarts(json: string): void {
+  if (Platform.OS !== 'android') return;
+  try {
+    FocusBlockModule.setNightAppStarts(json);
+  } catch {
+    // Older native build: those apps follow the general start until a rebuild.
+  }
+}
+
+export function setCommitmentUntil(untilMs: number): void {
+  if (Platform.OS !== 'android') return;
+  try {
+    FocusBlockModule.setCommitmentUntil(untilMs);
+  } catch {
+    // Older native build: the server still enforces it, the phone's guards need a rebuild.
+  }
+}
+
+export function isDeviceAdminActive(): boolean {
+  if (Platform.OS !== 'android') return false;
+  try {
+    return FocusBlockModule.isDeviceAdminActive();
+  } catch {
+    return false;
+  }
+}
+
+export function requestDeviceAdmin(): void {
+  if (Platform.OS !== 'android') return;
+  try {
+    FocusBlockModule.requestDeviceAdmin();
+  } catch {
+    // Older native build.
+  }
+}
+
+export function removeDeviceAdmin(): void {
+  if (Platform.OS !== 'android') return;
+  try {
+    FocusBlockModule.removeDeviceAdmin();
+  } catch {
+    // Older native build.
+  }
 }
 
 export function getNightWindowStartMinutes(): number {

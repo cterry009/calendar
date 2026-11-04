@@ -56,6 +56,26 @@ class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModul
     throw new Error('El bloqueo real de apps solo esta disponible en Android.');
   }
 
+  setNightAppStarts(): void {
+    // No-op off Android.
+  }
+
+  setCommitmentUntil(): void {
+    // No-op off Android.
+  }
+
+  isDeviceAdminActive(): boolean {
+    return false;
+  }
+
+  requestDeviceAdmin(): void {
+    // No-op off Android.
+  }
+
+  removeDeviceAdmin(): void {
+    // No-op off Android.
+  }
+
   getNightWindowStartMinutes(): number {
     return 22 * 60 + 30;
   }

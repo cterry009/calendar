@@ -1,15 +1,21 @@
 import { AppButton, AppCard, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { BLOCK_LIST_KIND_LABELS, BLOCK_LIST_PLATFORM_LABELS } from '../../lib/blocklist/labels';
 import type { SyncBlockListRecord } from '../../lib/blocklist/types';
+import { NightStartEditor } from './NightStartEditor';
 
 interface BlockListItemProps {
   entry: SyncBlockListRecord;
   isBusy: boolean;
   onEdit: (entry: SyncBlockListRecord) => void;
   onDelete: (entry: SyncBlockListRecord) => Promise<void>;
+  onSaveNightStarts?: (entry: SyncBlockListRecord, weekday: number | null, weekend: number | null) => Promise<void>;
+  isLocked?: boolean;
 }
 
-export function BlockListItem({ entry, isBusy, onEdit, onDelete }: BlockListItemProps) {
+export function BlockListItem({ entry, isBusy, onEdit, onDelete, onSaveNightStarts, isLocked }: BlockListItemProps) {
+  // The commitment refuses weakening a night entry; only its start can still move, earlier.
+  const lockedNight = isLocked && entry.scope === 'NIGHT';
+
   async function handleDelete() {
     const message = entry.hardMode
       ? `"${entry.label}" esta en modo estricto. Eliminarla anula la barrera que te pusiste a ti mismo. Esta seguro?`
@@ -61,14 +67,25 @@ export function BlockListItem({ entry, isBusy, onEdit, onDelete }: BlockListItem
           </Text>
         </XStack>
 
-        <XStack gap="$2" justifyContent="flex-end" flexWrap="wrap">
-          <AppButton type="button" variant="ghost" disabled={isBusy} onPress={() => onEdit(entry)}>
-            Editar
-          </AppButton>
-          <AppButton type="button" variant="danger" disabled={isBusy} onPress={() => void handleDelete()}>
-            Eliminar
-          </AppButton>
-        </XStack>
+        {entry.scope === 'NIGHT' && onSaveNightStarts ? (
+          <NightStartEditor
+            entry={entry}
+            isLocked={!!isLocked}
+            isBusy={isBusy}
+            onSave={(weekday, weekend) => onSaveNightStarts(entry, weekday, weekend)}
+          />
+        ) : null}
+
+        {lockedNight ? null : (
+          <XStack gap="$2" justifyContent="flex-end" flexWrap="wrap">
+            <AppButton type="button" variant="ghost" disabled={isBusy} onPress={() => onEdit(entry)}>
+              Editar
+            </AppButton>
+            <AppButton type="button" variant="danger" disabled={isBusy} onPress={() => void handleDelete()}>
+              Eliminar
+            </AppButton>
+          </XStack>
+        )}
       </YStack>
     </AppCard>
   );

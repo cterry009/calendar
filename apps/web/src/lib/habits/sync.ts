@@ -21,6 +21,7 @@ export interface HabitSyncChangeDto {
   reminderStartMinute?: number;
   reminderEndMinute?: number;
   reminderDaysOfWeek?: number[];
+  kind?: HabitFormValues['kind'];
 }
 
 export interface HabitRecordSyncChangeDto {
@@ -67,6 +68,7 @@ function buildHabitUpsertPayload(values: HabitFormValues): Omit<HabitSyncChangeD
     reminderStartMinute: values.reminderStartMinute ?? undefined,
     reminderEndMinute: values.reminderEndMinute ?? undefined,
     reminderDaysOfWeek: values.reminderDaysOfWeek,
+    kind: values.kind,
   };
 }
 

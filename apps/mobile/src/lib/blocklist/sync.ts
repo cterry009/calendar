@@ -15,6 +15,8 @@ export interface BlockListSyncChangeDto {
   enabled?: boolean;
   hardMode?: boolean;
   scope?: BlockListFormValues['scope'];
+  nightStartMinutes?: number | null;
+  weekendNightStartMinutes?: number | null;
 }
 
 function buildUpsertPayload(values: BlockListFormValues): Omit<BlockListSyncChangeDto, 'id' | 'updatedAt'> {
@@ -27,6 +29,8 @@ function buildUpsertPayload(values: BlockListFormValues): Omit<BlockListSyncChan
     enabled: values.enabled,
     hardMode: values.hardMode,
     scope: values.scope,
+    nightStartMinutes: values.nightStartMinutes,
+    weekendNightStartMinutes: values.weekendNightStartMinutes,
   };
 }
 

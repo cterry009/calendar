@@ -33,8 +33,12 @@ internal object NightBlockRules {
 
   private fun minutesSinceMidnight(now: Calendar): Int = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
 
+  /** Friday and Saturday nights (weekend-mode), same as WEEKEND_NIGHT_DAYS in nightSchedule.ts. */
+  fun isWeekendNight(weekday: Int): Boolean = weekday == Calendar.FRIDAY || weekday == Calendar.SATURDAY
+
+  // A start of 0 means "from midnight" (weekend-mode): no evening portion that night.
   private fun isEveningPortion(now: Calendar, nightStartMinutes: Int): Boolean =
-    minutesSinceMidnight(now) >= nightStartMinutes
+    nightStartMinutes > 0 && minutesSinceMidnight(now) >= nightStartMinutes
 
   // Task 8.2: true only while the morning portion's own cutoff hasn't passed yet -- used to tell
   // an early jog/step unlock (still inside the window, blocking stopped only because the user
@@ -55,8 +59,7 @@ internal object NightBlockRules {
    * comment for why ORing this with the unlock rule would be wrong, not just redundant).
    */
   fun isNightWindowActive(now: Calendar, nightStartMinutes: Int, morningEndMinutes: Int): Boolean {
-    val nowMinutes = minutesSinceMidnight(now)
-    return nowMinutes >= nightStartMinutes || nowMinutes < morningEndMinutes
+    return isEveningPortion(now, nightStartMinutes) || minutesSinceMidnight(now) < morningEndMinutes
   }
 
   /**

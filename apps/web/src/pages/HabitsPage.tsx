@@ -1,9 +1,11 @@
+import { isPlainHabit } from '@calendar/shared';
 import { useMemo, useState } from 'react';
 import { AppButton, AppCard, Paragraph, XStack, YStack } from '@calendar/ui';
 import { HabitDetail } from '../components/habits/HabitDetail';
 import { HabitForm } from '../components/habits/HabitForm';
 import { HabitTable } from '../components/habits/HabitTable';
 import { HabitTodayCard } from '../components/habits/HabitTodayCard';
+import { WeekendActivitiesCard } from '../components/habits/WeekendActivitiesCard';
 import { PageHeader } from '../components/PageHeader';
 import { StatusCard } from '../components/StatusCard';
 import { useHabits, type HabitWithScore } from '../hooks/useHabits';
@@ -39,7 +41,9 @@ export function HabitsPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingHabit, setEditingHabit] = useState<SyncHabit | null>(null);
 
-  const activeHabits = useMemo(() => habits.filter((habit) => !habit.archived), [habits]);
+  // Weekend activities have their own card (weekend-mode).
+  const plainHabits = useMemo(() => habits.filter(isPlainHabit), [habits]);
+  const activeHabits = useMemo(() => plainHabits.filter((habit) => !habit.archived), [plainHabits]);
   const selectedHabit = useMemo<HabitWithScore | null>(
     () => habits.find((habit) => habit.id === selectedHabitId) ?? null,
     [habits, selectedHabitId],
@@ -144,6 +148,15 @@ export function HabitsPage() {
 
       {error ? <StatusCard tone="error" message={error} /> : null}
 
+      <WeekendActivitiesCard
+        habits={habits}
+        records={records}
+        isBusy={isMutating}
+        onCreate={createHabit}
+        onDelete={deleteHabit}
+        onDone={(habitId) => checkIn(habitId, { date: todayKey(), value: 1, status: 'DONE' })}
+      />
+
       {isLoading ? (
         <StatusCard tone="loading" message="Cargando habitos..." />
       ) : activeHabits.length === 0 ? (
@@ -172,7 +185,7 @@ export function HabitsPage() {
         </YStack>
       ) : (
         <HabitTable
-          habits={habits}
+          habits={plainHabits}
           records={records}
           onOpenDetail={(habitId) => setSelectedHabitId(habitId)}
           onCellPress={(habitId, values) => void handleCheckIn(habitId, values)}

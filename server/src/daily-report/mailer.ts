@@ -4,11 +4,19 @@ import { createTransport } from 'nodemailer';
 // (myaccount.google.com/apppasswords, needs 2-step verification), the user's choice on 2026-10-29.
 // Behind an interface so the tests never reach a mail server.
 
+export interface MailAttachment {
+  filename: string;
+  content: string;
+  contentType: string;
+}
+
 export interface MailMessage {
   to: string;
   subject: string;
   text: string;
   html: string;
+  /** The weekly report's presentation, CSV and JSON (weekend-mode). */
+  attachments?: MailAttachment[];
 }
 
 export interface Mailer {

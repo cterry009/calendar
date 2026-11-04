@@ -90,7 +90,9 @@ each client's snapshot types (`lib/calendar/types.ts`), offline types/conflicts 
 Clients default missing snapshot fields (`?? []`) because cached snapshots predate new entities.
 
 **Server modules** (`server/src/`): `auth` (email/password, Google/Apple ID tokens, JWT access +
-per-device refresh tokens), `devices`, `sync`, `realtime`, `planning`, `tutor`, `prisma`. Global
+per-device refresh tokens), `devices`, `sync`, `realtime`, `planning`, `tutor`, `daily-report`,
+`weekly-report` (Sunday email, CSV/JSON, HTML presentation), `commitment` (the block commitment:
+while it lasts sync refuses weakening the night block), `prisma`. Global
 `ValidationPipe` uses `whitelist` + `forbidNonWhitelisted`, so every accepted field needs a
 class-validator decorator on its DTO. JSON body limit is 10mb for large offline flushes. In
 development each request logs an `[http] METHOD url status ms ip` line.

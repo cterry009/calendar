@@ -49,7 +49,7 @@ internal object NightBlockAlarmScheduler {
         return
       }
 
-      val triggerAt = nextTriggerMillis(FocusBlockPrefs.nightStartMinutes(context))
+      val triggerAt = nextTriggerMillis(context)
       // Shown if the user taps the alarm-clock icon in the status bar before it fires -- reuses the
       // app's own launch intent rather than building one by hand (see the FocusBlockModule doc
       // comment on Class.forName-style package-name assembly being the kind of thing that only
@@ -64,20 +64,23 @@ internal object NightBlockAlarmScheduler {
     }
   }
 
-  // Next occurrence of startMinutes (minutes-since-midnight): today if it hasn't passed yet,
-  // tomorrow otherwise -- same "wraps to the next day" shape NightBlockRules.kt's own window
-  // arithmetic uses.
-  private fun nextTriggerMillis(startMinutes: Int): Long {
+  // The next night's general start, day by day since it depends on the weekday (weekend-mode). A
+  // start of 0 (from midnight) fires at the next day's 00:00. The earlier per-app starts have no
+  // alarm: they're warned about while the app is in use.
+  private fun nextTriggerMillis(context: Context): Long {
     val now = Calendar.getInstance()
-    val trigger = Calendar.getInstance().apply {
-      set(Calendar.HOUR_OF_DAY, startMinutes / 60)
-      set(Calendar.MINUTE, startMinutes % 60)
-      set(Calendar.SECOND, 0)
-      set(Calendar.MILLISECOND, 0)
+    for (ahead in 0..7) {
+      val trigger = Calendar.getInstance().apply {
+        add(Calendar.DAY_OF_YEAR, ahead)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+      }
+      val start = FocusBlockPrefs.nightStartFor(context, trigger.get(Calendar.DAY_OF_WEEK))
+      if (start == 0) trigger.add(Calendar.DAY_OF_YEAR, 1)
+      trigger.set(Calendar.HOUR_OF_DAY, start / 60)
+      trigger.set(Calendar.MINUTE, start % 60)
+      if (trigger.after(now)) return trigger.timeInMillis
     }
-    if (!trigger.after(now)) {
-      trigger.add(Calendar.DAY_OF_YEAR, 1)
-    }
-    return trigger.timeInMillis
+    return now.timeInMillis + 24 * 60 * 60_000L
   }
 }

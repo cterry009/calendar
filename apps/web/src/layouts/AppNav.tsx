@@ -51,6 +51,7 @@ const NAV_GROUPS: NavGroup[] = [
       { panel: 'ritual', labelKey: 'nav.link.ritual', Icon: Sunrise },
       { panel: 'wellness', labelKey: 'nav.link.wellness', Icon: Heart },
       { panel: 'dashboard', labelKey: 'nav.link.dashboard', Icon: BarChart3 },
+      { panel: 'reports', labelKey: 'nav.link.reports', Icon: CalendarDays },
       { panel: 'suggestions', labelKey: 'nav.link.suggestions', Icon: Lightbulb },
     ],
   },

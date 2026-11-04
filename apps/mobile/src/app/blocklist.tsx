@@ -4,12 +4,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import { Input } from 'tamagui';
 import { BlockListEntryRow } from '../components/blocklist/BlockListEntryRow';
+import { CommitmentCard } from '../components/blocklist/CommitmentCard';
+import { NightStartEditor } from '../components/blocklist/NightStartEditor';
 import { InstalledAppRow } from '../components/blocklist/InstalledAppRow';
 import { MostUsedSuggestions } from '../components/blocklist/MostUsedSuggestions';
 import { TutorialScrollView } from '../components/onboarding/TutorialScrollView';
 import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useOnboarding } from '../context/OnboardingContext';
 import { useBlockList } from '../hooks/useBlockList';
+import { useCommitment } from '../hooks/useCommitment';
 import { useInstalledApps } from '../hooks/useInstalledApps';
 import { useFocusLockdownEnabled } from '../hooks/useFocusLockdownEnabled';
 import { useNightBlockEnabled } from '../hooks/useNightBlockEnabled';
@@ -25,7 +28,7 @@ import {
   openFullScreenIntentSettings,
 } from '../lib/focusBlock/api';
 import type { InstalledAppInfo } from '../lib/blocklist/installedApps.types';
-import type { BlockListScope } from '@calendar/shared';
+import { isNightStartNoLater, type BlockListScope } from '@calendar/shared';
 
 /**
  * Task 6.5. Two independent sections sharing one BlockListEntry list (packages/shared's unified
@@ -117,7 +120,8 @@ function searchInstalledApps(apps: InstalledAppInfo[], query: string): Installed
 }
 
 export default function BlockListScreen() {
-  const { entries, isLoading, isMutating, error, createEntry, deleteEntry } = useBlockList();
+  const { entries, isLoading, isMutating, error, createEntry, updateNightStarts, deleteEntry } = useBlockList();
+  const { isLocked } = useCommitment();
   const installedApps = useInstalledApps();
   const { startTour } = useOnboarding();
   const [search, setSearch] = useState('');
@@ -127,6 +131,7 @@ export default function BlockListScreen() {
   const nightWindow = useNightWindow();
   const [startInput, setStartInput] = useState(() => formatNightWindowMinutes(nightWindow.startMinutes));
   const [endInput, setEndInput] = useState(() => formatNightWindowMinutes(nightWindow.endMinutes));
+  const [weekendInput, setWeekendInput] = useState(() => formatNightWindowMinutes(nightWindow.weekendStartMinutes));
   const [windowError, setWindowError] = useState<string | null>(null);
   const [windowSaving, setWindowSaving] = useState(false);
   // Shown right next to the button that was pressed, not just in the top-of-screen flash banner
@@ -154,7 +159,8 @@ export default function BlockListScreen() {
   useEffect(() => {
     setStartInput(formatNightWindowMinutes(nightWindow.startMinutes));
     setEndInput(formatNightWindowMinutes(nightWindow.endMinutes));
-  }, [nightWindow.startMinutes, nightWindow.endMinutes]);
+    setWeekendInput(formatNightWindowMinutes(nightWindow.weekendStartMinutes));
+  }, [nightWindow.startMinutes, nightWindow.endMinutes, nightWindow.weekendStartMinutes]);
   const [accessibilityEnabled, setAccessibilityEnabled] = useState(false);
   const [fullScreenIntentAllowed, setFullScreenIntentAllowed] = useState(false);
   const [batteryOptimizationIgnored, setBatteryOptimizationIgnored] = useState(false);
@@ -203,6 +209,10 @@ export default function BlockListScreen() {
   async function toggleApp(packageName: string, label: string) {
     const existing = androidEntries.find((entry) => entry.identifier === packageName);
     if (existing) {
+      if (isLocked && existing.scope === 'NIGHT') {
+        flash('Con el compromiso activo no se puede quitar de la lista nocturna.');
+        return;
+      }
       await removeEntry(existing.id, packageName, label);
       return;
     }
@@ -230,20 +240,30 @@ export default function BlockListScreen() {
   async function saveNightWindow() {
     const startMinutes = parseTimeInput(startInput);
     const endMinutes = parseTimeInput(endInput);
+    const weekendStartMinutes = parseTimeInput(weekendInput);
 
-    if (startMinutes === null || endMinutes === null) {
+    if (startMinutes === null || endMinutes === null || weekendStartMinutes === null) {
       setWindowError('Escribi la hora en formato HH:MM, por ejemplo 22:30.');
+      return;
+    }
+    if (
+      isLocked &&
+      (!isNightStartNoLater(startMinutes, nightWindow.startMinutes, nightWindow.startMinutes) ||
+        !isNightStartNoLater(weekendStartMinutes, nightWindow.weekendStartMinutes, nightWindow.weekendStartMinutes) ||
+        endMinutes < nightWindow.endMinutes)
+    ) {
+      setWindowError('Con el compromiso activo, el horario solo se puede alargar.');
       return;
     }
 
     setWindowSaving(true);
     setWindowJustSaved(false);
     try {
-      const result = await nightWindow.setWindow({ startMinutes, endMinutes });
+      const result = await nightWindow.setWindow({ startMinutes, endMinutes, weekendStartMinutes });
       setWindowError(result.ok ? null : result.error);
       if (result.ok) {
         // The PC takes the same window (it's kept in the synced plan).
-        void saveNightWindowToPlan({ startMinutes, endMinutes }).catch(() => undefined);
+        void saveNightWindowToPlan({ startMinutes, endMinutes, weekendStartMinutes }).catch(() => undefined);
         flash('Horario guardado.');
         setWindowJustSaved(true);
         setTimeout(() => setWindowJustSaved(false), 2500);
@@ -311,7 +331,8 @@ export default function BlockListScreen() {
                 </H2>
                 <Paragraph margin={0} color="$muted">
                   Bloquea automaticamente las apps de esta lista todas las noches, de{' '}
-                  {formatNightWindowMinutes(nightWindow.startMinutes)} a {formatNightWindowMinutes(nightWindow.endMinutes)}.
+                  {formatNightWindowMinutes(nightWindow.startMinutes)} a {formatNightWindowMinutes(nightWindow.endMinutes)}
+                  {' '}(viernes y sabado desde las {formatNightWindowMinutes(nightWindow.weekendStartMinutes)}).
                   Al despertar, primero el ejercicio: siguen bloqueadas hasta que salgas a trotar o
                   camines 1500 pasos despues de las {formatNightWindowMinutes(nightWindow.endMinutes)}, y como
                   maximo hasta las 09:30, cuando empieza el bloque de estudio (necesita la deteccion de
@@ -321,7 +342,7 @@ export default function BlockListScreen() {
                   <AppButton variant={nightEnabled ? 'primary' : 'ghost'} onPress={() => setNightEnabled(true)}>
                     Activado
                   </AppButton>
-                  <AppButton variant={!nightEnabled ? 'primary' : 'ghost'} onPress={() => setNightEnabled(false)}>
+                  <AppButton variant={!nightEnabled ? 'primary' : 'ghost'} disabled={isLocked} onPress={() => setNightEnabled(false)}>
                     Desactivado
                   </AppButton>
                 </XStack>
@@ -342,6 +363,12 @@ export default function BlockListScreen() {
                         Fin
                       </Text>
                       <Input value={endInput} onChangeText={setEndInput} placeholder="08:00" width={100} />
+                    </YStack>
+                    <YStack gap="$1">
+                      <Text color="$muted" fontSize="$2">
+                        Inicio vie y sab
+                      </Text>
+                      <Input value={weekendInput} onChangeText={setWeekendInput} placeholder="00:00" width={100} />
                     </YStack>
                     <AppButton variant="primary" onPress={() => void saveNightWindow()} disabled={windowSaving}>
                       {windowSaving ? 'Guardando...' : 'Guardar horario'}
@@ -368,6 +395,8 @@ export default function BlockListScreen() {
               </YStack>
             </AppCard>
           ) : null}
+
+          {Platform.OS === 'android' && activeScope === 'NIGHT' ? <CommitmentCard /> : null}
 
           {Platform.OS === 'android' ? (
             <TutorialTarget id="blocklist-real">
@@ -401,6 +430,7 @@ export default function BlockListScreen() {
                           </AppButton>
                           <AppButton
                             variant={!lockdownEnabled ? 'primary' : 'ghost'}
+                            disabled={isLocked}
                             onPress={() => setLockdownEnabled(false)}
                           >
                             Solo mi lista
@@ -473,7 +503,18 @@ export default function BlockListScreen() {
                         isBusy={isMutating}
                         isPending={pendingPackage === entry.identifier}
                         onDelete={() => void removeEntry(entry.id, entry.identifier, entry.label)}
-                      />
+                        isLocked={isLocked && entry.scope === 'NIGHT'}
+                      >
+                        {entry.scope === 'NIGHT' ? (
+                          <NightStartEditor
+                            entry={entry}
+                            window={nightWindow}
+                            isLocked={isLocked}
+                            isBusy={isMutating}
+                            onSave={(weekday, weekend) => updateNightStarts(entry, weekday, weekend)}
+                          />
+                        ) : null}
+                      </BlockListEntryRow>
                     ))}
                   </YStack>
                 )}

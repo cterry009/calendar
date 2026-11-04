@@ -39,12 +39,18 @@ export interface StudyPlanData {
 export interface NightWindowSetting {
   startMinutes: number;
   endMinutes: number;
+  /**
+   * When the block starts on Friday and Saturday nights (weekend-mode, 2026-11-04); 0 = at midnight,
+   * so those evenings are free. Absent on plans saved before: 00:00 (DEFAULT_WEEKEND_NIGHT_START).
+   */
+  weekendStartMinutes?: number;
 }
 
-/** 22:00-08:00 (2026-10-15). */
+/** 22:00-08:00 (2026-10-15), from midnight on Friday and Saturday (2026-11-04). */
 export const DEFAULT_PLAN_NIGHT_WINDOW: NightWindowSetting = {
   startMinutes: 22 * 60,
   endMinutes: 8 * 60,
+  weekendStartMinutes: 0,
 };
 
 /** The night block can't be shorter than this (8 h since 2026-10-15, was 10 h on the phone). */

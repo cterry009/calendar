@@ -5,6 +5,7 @@ import { ApiError } from '../lib/auth/api';
 import {
   buildCreateBlockListPayload,
   buildDeleteBlockListPayload,
+  buildUpdateBlockListPayload,
   syncBlockListBatch,
 } from '../lib/blocklist/sync';
 import type { BlockListFormValues, SyncBlockListRecord } from '../lib/blocklist/types';
@@ -17,6 +18,8 @@ interface UseBlockListResult {
   error: string | null;
   refetch: () => Promise<void>;
   createEntry: (values: BlockListFormValues) => Promise<void>;
+  /** A NIGHT entry's own start times (weekend-mode). */
+  updateNightStarts: (entry: SyncBlockListRecord, nightStartMinutes: number | null, weekendNightStartMinutes: number | null) => Promise<void>;
   deleteEntry: (entryId: string) => Promise<void>;
 }
 
@@ -99,9 +102,21 @@ export function useBlockList(): UseBlockListResult {
         enabled: values.enabled,
         hardMode: values.hardMode,
         scope: values.scope,
+        nightStartMinutes: values.nightStartMinutes ?? null,
+        weekendNightStartMinutes: values.weekendNightStartMinutes ?? null,
         updatedAt: nowIso,
       };
       await executeMutation([buildCreateBlockListPayload(values)], (current) => [...current, optimisticEntry]);
+    },
+    [executeMutation],
+  );
+
+  const updateNightStarts = useCallback(
+    async (entry: SyncBlockListRecord, nightStartMinutes: number | null, weekendNightStartMinutes: number | null) => {
+      const payload = buildUpdateBlockListPayload(entry.id, { ...entry, nightStartMinutes, weekendNightStartMinutes });
+      await executeMutation([payload], (current) =>
+        current.map((row) => (row.id === entry.id ? { ...row, nightStartMinutes, weekendNightStartMinutes } : row)),
+      );
     },
     [executeMutation],
   );
@@ -115,5 +130,5 @@ export function useBlockList(): UseBlockListResult {
     [executeMutation],
   );
 
-  return { entries, isLoading, isMutating, error, refetch, createEntry, deleteEntry };
+  return { entries, isLoading, isMutating, error, refetch, createEntry, updateNightStarts, deleteEntry };
 }

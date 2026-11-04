@@ -118,6 +118,7 @@ export function useHabits(): UseHabitsResult {
         reminderStartMinute: values.reminderStartMinute ?? null,
         reminderEndMinute: values.reminderEndMinute ?? null,
         reminderDaysOfWeek: values.reminderDaysOfWeek ?? [],
+        kind: values.kind ?? 'HABIT',
         createdAt: nowIso,
         updatedAt: nowIso,
       };

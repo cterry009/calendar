@@ -38,5 +38,18 @@
         <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
       </intent-filter>
     </receiver>
+    <!-- The block commitment (weekend-mode): no policies, it only makes uninstalling need this
+         admin deactivated first, and CommitmentGuard keeps that screen closed. -->
+    <receiver
+      android:name=".CommitmentAdminReceiver"
+      android:permission="android.permission.BIND_DEVICE_ADMIN"
+      android:exported="true">
+      <meta-data
+        android:name="android.app.device_admin"
+        android:resource="@xml/commitment_device_admin" />
+      <intent-filter>
+        <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>

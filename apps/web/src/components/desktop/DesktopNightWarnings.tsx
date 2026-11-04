@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
-import { pickActivitySuggestion } from '@calendar/shared';
+import { DEFAULT_WEEKEND_NIGHT_START, nightWarningSubject, pickActivitySuggestion, type NightWarningTarget } from '@calendar/shared';
 import { isDesktop } from '../../lib/desktop';
 import { formatNightWindowMinutes, getNightSettings, nightWarningDue, setNightWindow } from '../../lib/desktop/nightWindow';
+import { useBlockList } from '../../hooks/useBlockList';
 import { usePlan } from '../../hooks/usePlan';
 
 // "Bloqueo nocturno en 30 min": the half hour before the night window, every 15 minutes, warn that
@@ -48,10 +49,28 @@ export function DesktopNightWarnings() {
     const synced = plan?.nightWindow;
     if (!synced) return;
     const local = getNightSettings().window;
-    if (local.startMinutes !== synced.startMinutes || local.endMinutes !== synced.endMinutes) setNightWindow(synced);
-  }, [plan?.nightWindow?.startMinutes, plan?.nightWindow?.endMinutes]);
+    const weekendStartMinutes = synced.weekendStartMinutes ?? DEFAULT_WEEKEND_NIGHT_START;
+    if (
+      local.startMinutes !== synced.startMinutes ||
+      local.endMinutes !== synced.endMinutes ||
+      local.weekendStartMinutes !== weekendStartMinutes
+    ) {
+      setNightWindow({ ...synced, weekendStartMinutes });
+    }
+  }, [plan?.nightWindow?.startMinutes, plan?.nightWindow?.endMinutes, plan?.nightWindow?.weekendStartMinutes]);
 
-  const [active, setActive] = useState<{ minutesLeft: number; start: string; suggestion: string } | null>(null);
+  // The general block, and every entry with its own start (weekend-mode). In a ref: the check below
+  // runs on its own timer and must see the current list.
+  const { entries } = useBlockList('NIGHT');
+  const targets = useRef<NightWarningTarget[]>([{ label: null }]);
+  targets.current = [
+    { label: null },
+    ...entries
+      .filter((entry) => entry.enabled && (entry.nightStartMinutes != null || entry.weekendNightStartMinutes != null))
+      .map((entry) => ({ label: entry.label, override: entry })),
+  ];
+
+  const [active, setActive] = useState<{ minutesLeft: number; start: string; what: string; suggestion: string } | null>(null);
 
   useEffect(() => {
     if (!isDesktop) return;
@@ -59,12 +78,15 @@ export function DesktopNightWarnings() {
     function check() {
       const settings = getNightSettings();
       const now = new Date();
-      const minutesLeft = nightWarningDue(now, settings, readLast());
-      if (minutesLeft === null) return;
+      const due = nightWarningDue(now, settings, readLast(), targets.current);
+      if (due === null) return;
       writeLast(now.getTime());
 
-      const start = formatNightWindowMinutes(settings.window.startMinutes);
-      setActive({ minutesLeft, start, suggestion: pickActivitySuggestion('GAME') });
+      const { minutesLeft } = due;
+      const start = formatNightWindowMinutes(due.start);
+      const single = due.labels.length === 1 && due.labels[0] !== null;
+      const what = `${single ? 'se bloquea' : 'se bloquean'} ${nightWarningSubject(due.labels)}`;
+      setActive({ minutesLeft, start, what, suggestion: pickActivitySuggestion('GAME') });
       void raiseWindow().catch(() => undefined);
       void (async () => {
         try {
@@ -74,7 +96,7 @@ export function DesktopNightWarnings() {
           if ((await isPermissionGranted()) || (await requestPermission()) === 'granted') {
             sendNotification({
               title: `Bloqueo nocturno en ${minutesLeft} min`,
-              body: `A las ${start} se bloquean las redes sociales y los juegos hasta manana.`,
+              body: `A las ${start} ${what} hasta mañana.`,
             });
           }
         } catch {
@@ -117,8 +139,7 @@ export function DesktopNightWarnings() {
           Bloqueo nocturno en {active.minutesLeft} min
         </Text>
         <Paragraph margin={0} color="$muted">
-          A las {active.start} se bloquean las redes sociales y los juegos hasta mañana. Buen momento para ir
-          cerrando.
+          A las {active.start} {active.what} hasta mañana. Buen momento para ir cerrando.
         </Paragraph>
         <YStack gap="$1" padding="$3" borderRadius="$4" backgroundColor="rgba(255,255,255,0.06)">
           <Text fontWeight="700" color="$accent">

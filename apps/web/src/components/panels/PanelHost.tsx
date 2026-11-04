@@ -10,6 +10,7 @@ import { PomodoroPage } from '../../pages/PomodoroPage';
 import { RitualPage } from '../../pages/RitualPage';
 import { SettingsPage } from '../../pages/SettingsPage';
 import { SuggestionsPage } from '../../pages/SuggestionsPage';
+import { WeeklyReportsPage } from '../../pages/WeeklyReportsPage';
 import { WellnessPage } from '../../pages/WellnessPage';
 import { SlideOverPanel } from './SlideOverPanel';
 
@@ -25,6 +26,7 @@ const PANEL_PAGES: Record<PanelId, ComponentType> = {
   habits: HabitsPage,
   settings: SettingsPage,
   wellness: WellnessPage,
+  reports: WeeklyReportsPage,
 };
 
 export function PanelHost() {

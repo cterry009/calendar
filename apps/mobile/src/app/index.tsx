@@ -1,4 +1,4 @@
-import { completedPomodoroDateKeys, computePomodoroStreak } from '@calendar/shared';
+import { completedPomodoroDateKeys, computePomodoroStreak, isPlainHabit } from '@calendar/shared';
 import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Link } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -63,7 +63,7 @@ export default function HomeScreen() {
     });
   }, [today]);
 
-  const activeHabits = useMemo(() => habits.filter((habit) => !habit.archived), [habits]);
+  const activeHabits = useMemo(() => habits.filter((habit) => !habit.archived && isPlainHabit(habit)), [habits]);
 
   const selectedTasks = useMemo(
     () => tasks.filter((task) => task.scheduledAt && isSameDay(new Date(task.scheduledAt), selectedDate)),

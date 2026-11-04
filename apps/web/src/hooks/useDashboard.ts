@@ -1,3 +1,4 @@
+import { isPlainHabit } from '@calendar/shared';
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError } from '../lib/api';
 import { useSync } from '../context/SyncContext';
@@ -38,7 +39,8 @@ export function useDashboard(): UseDashboardResult {
         tasks: snapshot.tasks,
         pomodoroSessions: snapshot.pomodoroSessions,
         fitnessEntries: snapshot.fitnessEntries,
-        habits: snapshot.habits,
+        // Weekend activities are reminders, not habits (weekend-mode).
+        habits: snapshot.habits.filter(isPlainHabit),
         habitRecords: snapshot.habitRecords,
         dailyStepCounts: snapshot.dailyStepCounts,
         dailyFloorsClimbed: snapshot.dailyFloorsClimbed,

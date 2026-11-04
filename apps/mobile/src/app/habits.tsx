@@ -1,8 +1,10 @@
 import { AppButton, AppCard, Eyebrow, H1, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { Stack } from 'expo-router';
 import { useMemo, useState } from 'react';
+import { isPlainHabit } from '@calendar/shared';
 import { HabitForm } from '../components/habits/HabitForm';
 import { HabitRow } from '../components/habits/HabitRow';
+import { WeekendActivitiesCard } from '../components/habits/WeekendActivitiesCard';
 import { TutorialScrollView } from '../components/onboarding/TutorialScrollView';
 import { TutorialTarget } from '../components/onboarding/TutorialTarget';
 import { useOnboarding } from '../context/OnboardingContext';
@@ -25,7 +27,7 @@ export default function HabitsScreen() {
   const { startTour } = useOnboarding();
   const [showForm, setShowForm] = useState(false);
 
-  const activeHabits = habits.filter((habit) => !habit.archived);
+  const activeHabits = habits.filter((habit) => !habit.archived && isPlainHabit(habit));
 
   // A template is offered until a habit with the same title already exists -- simple dedupe, no
   // separate "this came from template X" tracking, consistent with there being no edit form yet
@@ -105,6 +107,15 @@ export default function HabitsScreen() {
               </YStack>
             </AppCard>
           </TutorialTarget>
+
+          <WeekendActivitiesCard
+            habits={habits}
+            records={records}
+            isBusy={isMutating}
+            onCreate={createHabit}
+            onDelete={(habitId) => void deleteHabit(habitId)}
+            onDone={(habitId) => handleCheckIn(habitId, 'DONE')}
+          />
 
           {availableTemplates.length > 0 ? (
             <TutorialTarget id="habits-templates">

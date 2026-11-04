@@ -1,9 +1,18 @@
 import { useEffect, useMemo } from 'react';
+import { commitmentUntilMs, isCommitmentActive } from '@calendar/shared';
 import { useBlockList } from './useBlockList';
+import { useCommitment } from './useCommitment';
 import { useNightBlockEnabled } from './useNightBlockEnabled';
 import { useNightWindow } from './useNightWindow';
 import { useNightWindowFromPlan } from './useNightWindowFromPlan';
-import { setNightBlockingState, setNightWindow } from '../lib/focusBlock/api';
+import {
+  isDeviceAdminActive,
+  removeDeviceAdmin,
+  setCommitmentUntil,
+  setNightAppStarts,
+  setNightBlockingState,
+  setNightWindow,
+} from '../lib/focusBlock/api';
 
 // Matches useFocusBlocking.ts's WORK_HOURS_CHECK_INTERVAL_MS -- same reason, see the refetch
 // effect below.
@@ -25,8 +34,9 @@ const BLOCK_LIST_REFETCH_INTERVAL_MS = 30_000;
 export function useNightBlocking(): void {
   const { entries, refetch } = useBlockList();
   const [enabled] = useNightBlockEnabled();
-  const { startMinutes, endMinutes } = useNightWindow();
+  const { startMinutes, endMinutes, weekendStartMinutes } = useNightWindow();
   useNightWindowFromPlan();
+  const { commitment } = useCommitment();
 
   // Real bug found on-device (same class useFocusBlocking.ts already documents and works around
   // for the FOCUS list): this hook's own useBlockList() instance is separate from
@@ -60,6 +70,30 @@ export function useNightBlocking(): void {
   // own schedule (a settings edit, not a block-list mutation) -- same "push whatever changed"
   // shape, no reason to couple them into one effect.
   useEffect(() => {
-    setNightWindow(startMinutes, endMinutes);
-  }, [startMinutes, endMinutes]);
+    setNightWindow(startMinutes, endMinutes, weekendStartMinutes);
+  }, [startMinutes, endMinutes, weekendStartMinutes]);
+
+  // weekend-mode: apps and sites with their own night start.
+  const appStartsJson = useMemo(() => {
+    const starts: Record<string, { s: number | null; w: number | null }> = {};
+    for (const entry of entries) {
+      if (!entry.enabled || entry.scope !== 'NIGHT') continue;
+      const s = entry.nightStartMinutes ?? null;
+      const w = entry.weekendNightStartMinutes ?? null;
+      if (s !== null || w !== null) starts[entry.identifier] = { s, w };
+    }
+    return JSON.stringify(starts);
+  }, [entries]);
+
+  useEffect(() => {
+    setNightAppStarts(appStartsJson);
+  }, [appStartsJson]);
+
+  // The commitment is enforced natively against the clock, so it ends on time by itself. What's left
+  // to do when it's over is giving up device admin, so the app can be uninstalled normally again.
+  const commitmentUntil = commitmentUntilMs(commitment);
+  useEffect(() => {
+    setCommitmentUntil(commitmentUntil);
+    if (commitment && !isCommitmentActive(commitment) && isDeviceAdminActive()) removeDeviceAdmin();
+  }, [commitment, commitmentUntil]);
 }

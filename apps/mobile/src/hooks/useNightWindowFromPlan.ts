@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react';
+import { DEFAULT_WEEKEND_NIGHT_START } from '@calendar/shared';
 import { useSync } from '../context/SyncContext';
 import { getNightWindowSnapshot, setNightWindowPersisted } from '../lib/nightBlock/state';
 import { planOf } from '../lib/plan/api';
@@ -16,8 +17,13 @@ export function useNightWindowFromPlan(): void {
       const synced = planOf(await pullSnapshot())?.nightWindow;
       if (!synced) return;
       const local = getNightWindowSnapshot();
-      if (local.startMinutes !== synced.startMinutes || local.endMinutes !== synced.endMinutes) {
-        await setNightWindowPersisted(synced);
+      const weekendStartMinutes = synced.weekendStartMinutes ?? DEFAULT_WEEKEND_NIGHT_START;
+      if (
+        local.startMinutes !== synced.startMinutes ||
+        local.endMinutes !== synced.endMinutes ||
+        local.weekendStartMinutes !== weekendStartMinutes
+      ) {
+        await setNightWindowPersisted({ ...synced, weekendStartMinutes });
       }
     } catch {
       // Offline: keep the window this phone already has.

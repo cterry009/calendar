@@ -14,6 +14,9 @@ export interface SyncBlockListRecord {
   // whichever scope its caller asks for (defaults to 'FOCUS', preserving every pre-existing call
   // site's behavior); pass 'ALL' to get both.
   scope: BlockListScope;
+  // weekend-mode: a NIGHT entry's own start (null/absent = the night window's).
+  nightStartMinutes?: number | null;
+  weekendNightStartMinutes?: number | null;
   updatedAt: string;
 }
 
@@ -26,6 +29,8 @@ export interface BlockListFormValues {
   enabled: boolean;
   hardMode: boolean;
   scope: BlockListScope;
+  nightStartMinutes?: number | null;
+  weekendNightStartMinutes?: number | null;
 }
 
 export const BLOCK_LIST_KINDS: BlockListKind[] = ['MOBILE_APP', 'WEBSITE', 'DESKTOP_APP'];

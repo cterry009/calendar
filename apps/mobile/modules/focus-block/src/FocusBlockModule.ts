@@ -4,7 +4,12 @@ import type { FocusBlockNativeModule, NativePendingBlockEvent, WebsiteUsageRecor
 declare class FocusBlockModule extends NativeModule<{}> implements FocusBlockNativeModule {
   setBlockingState(active: boolean, activeUntilMs: number, blockedPackages: string[], lockdown: boolean): void;
   setNightBlockingState(enabled: boolean, blockedPackages: string[]): void;
-  setNightWindow(startMinutes: number, endMinutes: number): void;
+  setNightWindow(startMinutes: number, endMinutes: number, weekendStartMinutes: number): void;
+  setNightAppStarts(json: string): void;
+  setCommitmentUntil(untilMs: number): void;
+  isDeviceAdminActive(): boolean;
+  requestDeviceAdmin(): void;
+  removeDeviceAdmin(): void;
   setWorkSocialLimit(windowsJson: string, socialPackages: string[]): void;
   isWorkHours(): boolean;
   setBlockPopupContent(json: string): void;

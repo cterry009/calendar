@@ -4,7 +4,9 @@ import type { BlockListScope } from '@calendar/shared';
 import { BlockListForm } from '../components/blocklist/BlockListForm';
 import { BlockListList } from '../components/blocklist/BlockListList';
 import { DesktopBlockingCard } from '../components/blocklist/DesktopBlockingCard';
+import { CommitmentCard } from '../components/blocklist/CommitmentCard';
 import { DesktopNightSettingsCard } from '../components/blocklist/DesktopNightSettingsCard';
+import { useCommitment } from '../hooks/useCommitment';
 import { GameTimeBlockSuggestions } from '../components/blocklist/GameTimeBlockSuggestions';
 import { MostUsedBlockSuggestions } from '../components/blocklist/MostUsedBlockSuggestions';
 import { FocusTriggerForm } from '../components/focusTriggers/FocusTriggerForm';
@@ -17,6 +19,7 @@ import type { SyncBlockListRecord } from '../lib/blocklist/types';
 import type { SyncFocusTriggerRecord } from '../lib/focusTriggers/types';
 
 export function BlockListPage() {
+  const { isLocked } = useCommitment();
   // Which list is being viewed/edited -- FOCUS (default, matches every pre-existing entry's
   // actual behavior) or NIGHT (task: game-time block suggestions, desktop's first NIGHT-capable
   // UI -- previously mobile-only, see SyncBlockListRecord's doc comment). Independent lists, same
@@ -103,7 +106,12 @@ export function BlockListPage() {
         </AppButton>
       </XStack>
 
-      {viewScope === 'NIGHT' ? <DesktopNightSettingsCard /> : null}
+      {viewScope === 'NIGHT' ? (
+        <>
+          <CommitmentCard />
+          <DesktopNightSettingsCard />
+        </>
+      ) : null}
 
       {showCreateForm ? (
         <BlockListForm
@@ -146,6 +154,10 @@ export function BlockListPage() {
             setEditingEntry(entry);
           }}
           onDelete={(entry) => deleteEntry(entry.id)}
+          onSaveNightStarts={(entry, nightStartMinutes, weekendNightStartMinutes) =>
+            updateEntry(entry.id, { ...entry, nightStartMinutes, weekendNightStartMinutes })
+          }
+          isLocked={isLocked}
         />
       )}
 

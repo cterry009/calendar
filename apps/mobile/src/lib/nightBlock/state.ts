@@ -1,4 +1,4 @@
-import { MIN_NIGHT_WINDOW_HOURS } from '@calendar/shared';
+import { DEFAULT_WEEKEND_NIGHT_START, MIN_NIGHT_WINDOW_HOURS, validateNightStart } from '@calendar/shared';
 import { platformStorage } from '../platformStorage';
 
 const NIGHT_BLOCK_ENABLED_KEY = 'calendar_night_block_enabled_v1';
@@ -16,6 +16,8 @@ export const DEFAULT_NIGHT_END_MINUTES = 8 * 60;
 export interface NightWindow {
   startMinutes: number;
   endMinutes: number;
+  /** Friday and Saturday nights (weekend-mode); 0 = from midnight. */
+  weekendStartMinutes: number;
 }
 
 // Duration assumes the window crosses midnight (endMinutes < startMinutes as raw
@@ -42,7 +44,11 @@ let enabled = false;
 let loaded = false;
 const listeners = new Set<(enabled: boolean) => void>();
 
-let window: NightWindow = { startMinutes: DEFAULT_NIGHT_START_MINUTES, endMinutes: DEFAULT_NIGHT_END_MINUTES };
+let window: NightWindow = {
+  startMinutes: DEFAULT_NIGHT_START_MINUTES,
+  endMinutes: DEFAULT_NIGHT_END_MINUTES,
+  weekendStartMinutes: DEFAULT_WEEKEND_NIGHT_START,
+};
 let windowLoaded = false;
 const windowListeners = new Set<(window: NightWindow) => void>();
 
@@ -70,7 +76,11 @@ async function ensureWindowLoaded(): Promise<void> {
     try {
       const parsed = JSON.parse(stored) as Partial<NightWindow>;
       if (typeof parsed.startMinutes === 'number' && typeof parsed.endMinutes === 'number') {
-        window = { startMinutes: parsed.startMinutes, endMinutes: parsed.endMinutes };
+        window = {
+          startMinutes: parsed.startMinutes,
+          endMinutes: parsed.endMinutes,
+          weekendStartMinutes: parsed.weekendStartMinutes ?? DEFAULT_WEEKEND_NIGHT_START,
+        };
       }
     } catch {
       // Corrupt/unexpected stored value -- keep the default rather than crash on startup.
@@ -122,6 +132,9 @@ export async function setNightWindowPersisted(next: NightWindow): Promise<{ ok: 
     const hours = Math.round((duration / 60) * 10) / 10;
     return { ok: false, error: `La ventana debe durar al menos ${MIN_NIGHT_WINDOW_HOURS} horas (dura ${hours}h con estos valores).` };
   }
+
+  const weekend = validateNightStart(next.weekendStartMinutes);
+  if (!weekend.ok) return weekend;
 
   window = next;
   notifyWindow();

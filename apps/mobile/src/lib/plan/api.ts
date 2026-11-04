@@ -135,7 +135,11 @@ export async function recordWakeExercise(occurredAt: string): Promise<void> {
 }
 
 /** The night window edited on the phone goes into the plan, so the PC takes it too. */
-export async function saveNightWindowToPlan(window: { startMinutes: number; endMinutes: number }): Promise<void> {
+export async function saveNightWindowToPlan(window: {
+  startMinutes: number;
+  endMinutes: number;
+  weekendStartMinutes: number;
+}): Promise<void> {
   const plan = planOf(await pullSnapshot());
   if (!plan) return;
   await syncBatch({ studyPlan: [{ updatedAt: new Date().toISOString(), planData: { ...plan, nightWindow: window } }] });

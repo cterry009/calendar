@@ -181,8 +181,9 @@ export class DailyReportService implements OnModuleInit, OnModuleDestroy {
       this.prisma.dailyStepCount.findUnique({ where: { userId_date: { userId, date: dayKey } } }),
       this.prisma.dailyScreenTime.findUnique({ where: { userId_date: { userId, date: dayKey } } }),
       this.prisma.dailyGameTime.findUnique({ where: { userId_date: { userId, date: dayKey } } }),
-      this.prisma.habit.count({ where: { userId, deletedAt: null, archived: false } }),
-      this.prisma.habitRecord.count({ where: { userId, date: dayKey, status: 'DONE' } }),
+      // Weekend activities are reminders, not habits (weekend-mode).
+      this.prisma.habit.count({ where: { userId, deletedAt: null, archived: false, kind: 'HABIT' } }),
+      this.prisma.habitRecord.count({ where: { userId, date: dayKey, status: 'DONE', habit: { kind: 'HABIT' } } }),
     ]);
     const labelOf = new Map(schedules.map((s) => [s.id, s.label ?? 'Bloque']));
 

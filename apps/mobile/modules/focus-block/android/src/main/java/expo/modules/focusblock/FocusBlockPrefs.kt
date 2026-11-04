@@ -54,6 +54,17 @@ internal object FocusBlockPrefs {
   private const val DEFAULT_NIGHT_START_MINUTES = 22 * 60
   private const val DEFAULT_NIGHT_END_MINUTES = 8 * 60
 
+  // weekend-mode (2026-11-04): Friday and Saturday nights start here (0 = from midnight), and a
+  // NIGHT entry can start at its own time (JSON: identifier -> {"s": weeknights, "w": weekend}).
+  // Same rule as packages/shared/src/blocking/nightSchedule.ts.
+  private const val KEY_NIGHT_WEEKEND_START_MINUTES = "night_weekend_start_minutes"
+  private const val DEFAULT_NIGHT_WEEKEND_START_MINUTES = 0
+  private const val KEY_NIGHT_APP_STARTS = "night_app_starts"
+
+  // The block commitment (weekend-mode): epoch ms it lasts until, Long.MAX_VALUE = indefinitely,
+  // 0 = none. Evaluated here against the clock, so it holds and ends with the app closed.
+  private const val KEY_COMMITMENT_UNTIL = "commitment_until"
+
   // Exercise on waking (2026-10-15): after the night window ends, the night list stays blocked
   // until a jog or WAKE_STEP_THRESHOLD steps taken since waking, at the latest until this time --
   // when the 09:30 study block starts and focus blocking takes over. A deadline at or before the
@@ -84,7 +95,13 @@ internal object FocusBlockPrefs {
     return until <= 0L || System.currentTimeMillis() < until
   }
 
-  fun isLockdown(context: Context): Boolean = prefs(context).getBoolean(KEY_LOCKDOWN, false)
+  fun isLockdown(context: Context): Boolean = prefs(context).getBoolean(KEY_LOCKDOWN, false) || isCommitted(context)
+
+  fun setCommitmentUntil(context: Context, untilMs: Long) {
+    prefs(context).edit().putLong(KEY_COMMITMENT_UNTIL, untilMs).apply()
+  }
+
+  fun isCommitted(context: Context): Boolean = System.currentTimeMillis() < prefs(context).getLong(KEY_COMMITMENT_UNTIL, 0L)
 
   fun blockedPackages(context: Context): Set<String> =
     prefs(context).getStringSet(KEY_BLOCKED_PACKAGES, emptySet()) ?: emptySet()
@@ -96,7 +113,7 @@ internal object FocusBlockPrefs {
       .apply()
   }
 
-  fun isNightEnabled(context: Context): Boolean = prefs(context).getBoolean(KEY_NIGHT_ENABLED, false)
+  fun isNightEnabled(context: Context): Boolean = prefs(context).getBoolean(KEY_NIGHT_ENABLED, false) || isCommitted(context)
 
   fun nightBlockedPackages(context: Context): Set<String> =
     prefs(context).getStringSet(KEY_NIGHT_BLOCKED_PACKAGES, emptySet()) ?: emptySet()
@@ -119,11 +136,38 @@ internal object FocusBlockPrefs {
   fun nightBlockedDomains(context: Context): Set<String> =
     prefs(context).getStringSet(KEY_NIGHT_BLOCKED_DOMAINS, emptySet()) ?: emptySet()
 
-  fun setNightWindow(context: Context, startMinutes: Int, endMinutes: Int) {
+  fun setNightWindow(context: Context, startMinutes: Int, endMinutes: Int, weekendStartMinutes: Int) {
     prefs(context).edit()
       .putInt(KEY_NIGHT_START_MINUTES, startMinutes)
       .putInt(KEY_NIGHT_END_MINUTES, endMinutes)
+      .putInt(KEY_NIGHT_WEEKEND_START_MINUTES, weekendStartMinutes)
       .apply()
+  }
+
+  fun writeNightAppStarts(context: Context, json: String) {
+    prefs(context).edit().putString(KEY_NIGHT_APP_STARTS, json).apply()
+  }
+
+  fun nightWeekendStartMinutes(context: Context): Int =
+    prefs(context).getInt(KEY_NIGHT_WEEKEND_START_MINUTES, DEFAULT_NIGHT_WEEKEND_START_MINUTES)
+
+  private fun nightAppStart(context: Context, identifier: String): JSONObject? {
+    val raw = prefs(context).getString(KEY_NIGHT_APP_STARTS, null) ?: return null
+    return runCatching { JSONObject(raw).optJSONObject(identifier) }.getOrNull()
+  }
+
+  fun hasOwnNightStart(context: Context, identifier: String): Boolean = nightAppStart(context, identifier) != null
+
+  /**
+   * When the night of `weekday` (Calendar.DAY_OF_WEEK) starts, for `identifier` when it has its
+   * own start and for the general rule otherwise. 0 = from midnight: that evening is free.
+   */
+  fun nightStartFor(context: Context, weekday: Int, identifier: String? = null): Int {
+    val weekend = NightBlockRules.isWeekendNight(weekday)
+    val own = identifier?.let { nightAppStart(context, it) }
+    val key = if (weekend) "w" else "s"
+    if (own != null && own.has(key) && !own.isNull(key)) return own.getInt(key)
+    return if (weekend) nightWeekendStartMinutes(context) else nightStartMinutes(context)
   }
 
   fun nightStartMinutes(context: Context): Int =

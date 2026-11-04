@@ -8,9 +8,13 @@ interface BlockListListProps {
   emptyMessage: string;
   onEdit: (entry: SyncBlockListRecord) => void;
   onDelete: (entry: SyncBlockListRecord) => Promise<void>;
+  /** A NIGHT entry's own start times (weekend-mode). */
+  onSaveNightStarts?: (entry: SyncBlockListRecord, weekday: number | null, weekend: number | null) => Promise<void>;
+  /** The block commitment is running. */
+  isLocked?: boolean;
 }
 
-export function BlockListList({ entries, isBusy, emptyMessage, onEdit, onDelete }: BlockListListProps) {
+export function BlockListList({ entries, isBusy, emptyMessage, onEdit, onDelete, onSaveNightStarts, isLocked }: BlockListListProps) {
   if (!entries.length) {
     return (
       <AppCard>
@@ -22,7 +26,15 @@ export function BlockListList({ entries, isBusy, emptyMessage, onEdit, onDelete 
   return (
     <YStack gap="$3">
       {entries.map((entry) => (
-        <BlockListItem key={entry.id} entry={entry} isBusy={isBusy} onEdit={onEdit} onDelete={onDelete} />
+        <BlockListItem
+          key={entry.id}
+          entry={entry}
+          isBusy={isBusy}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onSaveNightStarts={onSaveNightStarts}
+          isLocked={isLocked}
+        />
       ))}
     </YStack>
   );

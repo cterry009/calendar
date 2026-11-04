@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Input } from 'tamagui';
 import { AppButton, AppCard, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
+import { DEFAULT_WEEKEND_NIGHT_START, isNightStartNoLater } from '@calendar/shared';
 import { isDesktop } from '../../lib/desktop';
+import { useCommitment } from '../../hooks/useCommitment';
 import { useNightSettings } from '../../hooks/useNightWindowActive';
 import { usePlan } from '../../hooks/usePlan';
 import { saveStudyPlan } from '../../lib/plan/sync';
@@ -20,6 +22,9 @@ import {
 export function DesktopNightSettingsCard() {
   const { enabled, window: nightWindow } = useNightSettings();
   const { plan } = usePlan();
+  const { isLocked } = useCommitment();
+  const weekendStart = nightWindow.weekendStartMinutes ?? DEFAULT_WEEKEND_NIGHT_START;
+  const [weekendInput, setWeekendInput] = useState(() => formatNightWindowMinutes(weekendStart));
   const [startInput, setStartInput] = useState(() => formatNightWindowMinutes(nightWindow.startMinutes));
   const [endInput, setEndInput] = useState(() => formatNightWindowMinutes(nightWindow.endMinutes));
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +33,8 @@ export function DesktopNightSettingsCard() {
   useEffect(() => {
     setStartInput(formatNightWindowMinutes(nightWindow.startMinutes));
     setEndInput(formatNightWindowMinutes(nightWindow.endMinutes));
-  }, [nightWindow.startMinutes, nightWindow.endMinutes]);
+    setWeekendInput(formatNightWindowMinutes(weekendStart));
+  }, [nightWindow.startMinutes, nightWindow.endMinutes, weekendStart]);
 
   useEffect(() => {
     if (!justSaved) return;
@@ -41,15 +47,27 @@ export function DesktopNightSettingsCard() {
   function save() {
     const startMinutes = parseNightTimeInput(startInput);
     const endMinutes = parseNightTimeInput(endInput);
-    if (startMinutes === null || endMinutes === null) {
+    const weekendStartMinutes = parseNightTimeInput(weekendInput);
+    if (startMinutes === null || endMinutes === null || weekendStartMinutes === null) {
       setError('Escribe la hora en formato HH:MM, por ejemplo 22:30.');
       return;
     }
-    const result = setNightWindow({ startMinutes, endMinutes });
+    if (
+      isLocked &&
+      (!isNightStartNoLater(startMinutes, nightWindow.startMinutes, nightWindow.startMinutes) ||
+        !isNightStartNoLater(weekendStartMinutes, weekendStart, weekendStart) ||
+        endMinutes < nightWindow.endMinutes)
+    ) {
+      setError('Con el compromiso activo, el horario solo se puede alargar.');
+      return;
+    }
+    const result = setNightWindow({ startMinutes, endMinutes, weekendStartMinutes });
     setError(result.ok ? null : result.error);
     setJustSaved(result.ok);
     // The phone takes the same window (it's kept in the synced plan).
-    if (result.ok && plan) void saveStudyPlan({ ...plan, nightWindow: { startMinutes, endMinutes } }).catch(() => undefined);
+    if (result.ok && plan) {
+      void saveStudyPlan({ ...plan, nightWindow: { startMinutes, endMinutes, weekendStartMinutes } }).catch(() => undefined);
+    }
   }
 
   const durationHours =
@@ -63,14 +81,14 @@ export function DesktopNightSettingsCard() {
         </H2>
         <Paragraph margin={0} color="$muted">
           Cierra los programas y bloquea los sitios de la lista nocturna todas las noches, de{' '}
-          {formatNightWindowMinutes(nightWindow.startMinutes)} a {formatNightWindowMinutes(nightWindow.endMinutes)}.
-          Se configura por dispositivo: el horario del teléfono es independiente.
+          {formatNightWindowMinutes(nightWindow.startMinutes)} a {formatNightWindowMinutes(nightWindow.endMinutes)}{' '}
+          (viernes y sábado desde las {formatNightWindowMinutes(weekendStart)}). El horario es el mismo en el teléfono.
         </Paragraph>
         <XStack gap="$2">
           <AppButton type="button" variant={enabled ? 'primary' : 'ghost'} onPress={() => setNightEnabled(true)}>
             Activado
           </AppButton>
-          <AppButton type="button" variant={!enabled ? 'primary' : 'ghost'} onPress={() => setNightEnabled(false)}>
+          <AppButton type="button" variant={!enabled ? 'primary' : 'ghost'} disabled={isLocked} onPress={() => setNightEnabled(false)}>
             Desactivado
           </AppButton>
         </XStack>
@@ -91,6 +109,12 @@ export function DesktopNightSettingsCard() {
                 Fin
               </Text>
               <Input value={endInput} onChangeText={setEndInput} placeholder="08:00" width={100} />
+            </YStack>
+            <YStack gap="$1">
+              <Text color="$muted" fontSize="$2">
+                Inicio vie y sáb
+              </Text>
+              <Input value={weekendInput} onChangeText={setWeekendInput} placeholder="00:00" width={100} />
             </YStack>
             <AppButton type="button" variant="primary" onPress={save}>
               Guardar horario

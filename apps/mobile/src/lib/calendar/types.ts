@@ -1,4 +1,6 @@
 import type {
+  CommitmentView,
+  HabitKind,
   AttentionProfile,
   AttentionSource,
   ExerciseAttempt,
@@ -86,6 +88,8 @@ export interface SyncHabit {
   reminderStartMinute: number | null;
   reminderEndMinute: number | null;
   reminderDaysOfWeek: number[];
+  /** weekend-mode; absent on cached snapshots (a habit). */
+  kind?: HabitKind;
   createdAt: string;
   updatedAt: string;
 }
@@ -136,6 +140,8 @@ export interface SyncSnapshot {
    * Read-only on the phone for now; absent on older servers / cached snapshots (`?? []`).
    */
   exerciseAttempts?: ExerciseAttempt[];
+  /** The block commitment (weekend-mode), read-only; absent on older servers / cached snapshots. */
+  commitment?: CommitmentView | null;
   syncedAt: string;
 }
 

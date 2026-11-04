@@ -2,6 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SyncEventsService } from '../realtime/sync-events.service';
+import { checkWeekendActivity } from '@calendar/shared';
+import { commitmentView, isWindowNoWeaker, planNightWindow, weakensNightEntry } from '../commitment/commitment.service';
 import {
   BlockEventSyncChangeDto,
   FocusEventSyncChangeDto,
@@ -59,6 +61,7 @@ export class SyncService {
       scheduleExceptions,
       studyPlan,
       exerciseAttempts,
+      blockCommitment,
     ] = await Promise.all([
       this.prisma.task.findMany({
         where: { userId, deletedAt: null },
@@ -104,6 +107,7 @@ export class SyncService {
         omit: { generatedStatement: true, feedback: true },
         orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
       }),
+      this.prisma.blockCommitment.findUnique({ where: { userId } }),
     ]);
 
     return {
@@ -149,8 +153,24 @@ export class SyncService {
             createdAt: serotoninSession.createdAt.toISOString(),
           }
         : null,
+      // weekend-mode: read-only here, started and extended through /commitment.
+      commitment: commitmentView(blockCommitment),
       syncedAt: new Date().toISOString(),
     };
+  }
+
+  /**
+   * True while the block commitment lasts (weekend-mode): changes that weaken the night block are
+   * then refused as conflicts with reason 'commitment', and the client adopts the server's row.
+   */
+  private async commitmentActive(userId: string): Promise<boolean> {
+    const row = await this.prisma.blockCommitment.findUnique({ where: { userId } });
+    return row !== null && (row.endsAt === null || row.endsAt > new Date());
+  }
+
+  private async nightWindowOf(userId: string) {
+    const plan = await this.prisma.studyPlan.findUnique({ where: { userId } });
+    return planNightWindow(plan?.planData ?? null);
   }
 
   async processBatch(
@@ -725,6 +745,15 @@ export class SyncService {
       : null;
     const key = change.id;
 
+    // The commitment outranks updatedAt: a weakening change is refused even when it is newer.
+    if (
+      existing &&
+      (await this.commitmentActive(userId)) &&
+      weakensNightEntry(existing, change, await this.nightWindowOf(userId))
+    ) {
+      return { status: 'conflict', clientKey: key, server: existing, reason: 'commitment' };
+    }
+
     if (change.deleted) {
       if (!existing) {
         return { status: 'skipped', clientKey: key };
@@ -753,6 +782,13 @@ export class SyncService {
       enabled: change.enabled ?? true,
       hardMode: change.hardMode ?? false,
       scope: change.scope ?? existing?.scope ?? ('FOCUS' as const),
+      // undefined = an older client that doesn't know them: keep what's there.
+      nightStartMinutes:
+        change.nightStartMinutes === undefined ? (existing?.nightStartMinutes ?? null) : change.nightStartMinutes,
+      weekendNightStartMinutes:
+        change.weekendNightStartMinutes === undefined
+          ? (existing?.weekendNightStartMinutes ?? null)
+          : change.weekendNightStartMinutes,
       updatedAt: new Date(change.updatedAt),
     };
 
@@ -1364,7 +1400,23 @@ export class SyncService {
       return { status: 'conflict', clientKey: key, server: existing };
     }
 
+    const kind = change.kind ?? existing?.kind ?? ('HABIT' as const);
+    const reminderDaysOfWeek = change.reminderDaysOfWeek ?? [0, 1, 2, 3, 4, 5, 6];
+    // weekend-mode: at most 3 weekend activities a day. The apps check first; this is for a second
+    // device adding one offline at the same time.
+    if (kind === 'WEEKEND_ACTIVITY' && !(change.archived ?? false)) {
+      const others = await this.prisma.habit.findMany({
+        where: { userId, kind: 'WEEKEND_ACTIVITY', deletedAt: null, archived: false },
+        select: { id: true, kind: true, reminderDaysOfWeek: true },
+      });
+      const fits = checkWeekendActivity(others, { id: existing?.id, kind, reminderDaysOfWeek });
+      if (!fits.ok) {
+        return { status: 'conflict', clientKey: key, server: existing ?? null, reason: 'weekend-activity-cap' };
+      }
+    }
+
     const data = {
+      kind,
       title: change.title,
       description: change.description ?? null,
       type: change.type ?? ('NORMAL' as const),
@@ -1378,7 +1430,7 @@ export class SyncService {
       linkedFitnessActivityType: change.linkedFitnessActivityType ?? null,
       reminderStartMinute: change.reminderStartMinute ?? null,
       reminderEndMinute: change.reminderEndMinute ?? null,
-      reminderDaysOfWeek: change.reminderDaysOfWeek ?? [0, 1, 2, 3, 4, 5, 6],
+      reminderDaysOfWeek,
       clientId: change.clientId ?? existing?.clientId ?? null,
       updatedAt: new Date(change.updatedAt),
       deletedAt: null,
@@ -1615,6 +1667,13 @@ export class SyncService {
     }
     if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
       return { status: 'conflict', clientKey: key, server: existing };
+    }
+    if (
+      existing &&
+      (await this.commitmentActive(userId)) &&
+      !isWindowNoWeaker(planNightWindow(change.planData), planNightWindow(existing.planData))
+    ) {
+      return { status: 'conflict', clientKey: key, server: existing, reason: 'commitment' };
     }
 
     const planData = change.planData as Prisma.InputJsonValue;

@@ -13,10 +13,13 @@ use tauri::{
     App, AppHandle, Emitter, Manager, Wry,
 };
 
+use crate::commitment::CommitmentState;
+
 /// Kept in managed state so `set_tray_state` can update the status line without rebuilding the
 /// whole menu every second while a pomodoro runs.
 pub struct TrayHandles {
     status: MenuItem<Wry>,
+    quit: MenuItem<Wry>,
 }
 
 pub fn create(app: &App) -> tauri::Result<()> {
@@ -43,6 +46,7 @@ pub fn create(app: &App) -> tauri::Result<()> {
 
     app.manage(TrayHandles {
         status: status.clone(),
+        quit: quit.clone(),
     });
 
     let icon = app
@@ -68,7 +72,8 @@ pub fn create(app: &App) -> tauri::Result<()> {
                     let _ = app.emit("tray://pomodoro", "reset");
                 }
                 "show" => show_main(app),
-                "quit" => app.exit(0),
+                // The item is greyed out during a block commitment; this is the backstop.
+                "quit" if !app.state::<CommitmentState>().is_active() => app.exit(0),
                 _ => {}
             }
         })
@@ -85,6 +90,14 @@ pub fn create(app: &App) -> tauri::Result<()> {
         .build(app)?;
 
     Ok(())
+}
+
+/// Off while a block commitment lasts (commitment.rs).
+pub fn set_quit_allowed(app: &AppHandle, allowed: bool) {
+    if let Some(handles) = app.try_state::<TrayHandles>() {
+        let _ = handles.quit.set_enabled(allowed);
+        let _ = handles.quit.set_text(if allowed { "Salir" } else { "Salir (compromiso activo)" });
+    }
 }
 
 /// Show + focus the main window (from a tray click or the "Abrir ventana" item). The window is

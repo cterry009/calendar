@@ -154,6 +154,14 @@ enum HabitType {
   NEGATIVE
 }
 
+// weekend-mode (2026-11-04): a WEEKEND_ACTIVITY is a reminder for something to do on Saturday or
+// Sunday (packages/shared/src/habits/weekendActivities.ts) -- a Habit for its reminder and check-in,
+// but outside the habit list and score, at most 3 a day.
+enum HabitKind {
+  HABIT
+  WEEKEND_ACTIVITY
+}
+
 enum HabitRecordStatus {
   DONE
   SKIPPED
@@ -197,6 +205,8 @@ model User {
   scheduleExceptions  ScheduleException[]
   dailyReports        DailyReport[]
   planSuggestions     PlanSuggestion[]
+  weeklyReports       WeeklyReport[]
+  blockCommitment     BlockCommitment?
 
   @@map("users")
 }
@@ -280,8 +290,8 @@ model Schedule {
 
   // Horario 2026-10-19: the plan category (estudio_b1, carrera, ...) and the block's pomodoro
   // sequence, [{tipo: foco|pausa|cierre, minutos, etiqueta}], which wins over pomodoroMin & co.
-  category String?
-  sequence Json?
+  category       String?
+  sequence       Json?
   // The morning window (dynamic-study-blocks, 2026-10-22): this many blocks started on demand inside
   // it, each sized by a check-in; null for a fixed block.
   flexibleBlocks Int?
@@ -417,22 +427,26 @@ model PomodoroSession {
 // ─── Focus blocking ──────────────────────────────────────────────────────────
 
 model BlockListEntry {
-  id           String          @id @default(cuid())
-  userId       String
-  kind         BlockListKind
-  identifier   String // package name, domain, or exe name
-  label        String
-  platform     DevicePlatform?
-  highDopamine Boolean         @default(false) // serotonin / detox mode
-  enabled      Boolean         @default(true)
-  hardMode     Boolean         @default(false) // non-cancelable once a native blocker (Android/Windows) enforces it
+  id                       String          @id @default(cuid())
+  userId                   String
+  kind                     BlockListKind
+  identifier               String // package name, domain, or exe name
+  label                    String
+  platform                 DevicePlatform?
+  highDopamine             Boolean         @default(false) // serotonin / detox mode
+  enabled                  Boolean         @default(true)
+  hardMode                 Boolean         @default(false) // non-cancelable once a native blocker (Android/Windows) enforces it
   // Task 11.8: FOCUS (default, matches every pre-existing row's actual behavior) or NIGHT --
   // which trigger this entry belongs to. Part of the uniqueness key (not just userId+kind+
   // identifier) so the same app/site can be listed in both the daytime FOCUS list and the NIGHT
   // list independently, since they're deliberately separate lists, not one filtered view.
-  scope        BlockListScope  @default(FOCUS)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  scope                    BlockListScope  @default(FOCUS)
+  // weekend-mode: a NIGHT entry's own start (minutes from midnight, 0 = from midnight), weeknights
+  // and Friday/Saturday nights; null = the night window's (packages/shared/src/blocking/nightSchedule.ts).
+  nightStartMinutes        Int?
+  weekendNightStartMinutes Int?
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -782,6 +796,7 @@ model Habit {
   reminderStartMinute       Int?
   reminderEndMinute         Int?
   reminderDaysOfWeek        Int[]     @default([0, 1, 2, 3, 4, 5, 6]) // 0=Sunday..6=Saturday, matches Schedule.daysOfWeek's convention
+  kind                      HabitKind @default(HABIT)
   clientId                  String? // offline sync id from client
   deletedAt                 DateTime?
   createdAt                 DateTime  @default(now())
@@ -843,11 +858,15 @@ model JournalEntry {
 // Server-only, not synced: the report is an email, and the suggestion is read and answered through
 // /planning/suggestions while online (approving it writes the tasks, which do sync).
 
-/** One report sent: the day it covers, so it goes out once per day even across restarts. */
+/**
+ * One report sent: the day it covers, so it goes out once per day even across restarts.
+ */
 model DailyReport {
   id     String   @id @default(cuid())
   userId String
-  /** The local day the report covers (YYYY-MM-DD). */
+  /**
+   * The local day the report covers (YYYY-MM-DD).
+   */
   date   String
   sentAt DateTime @default(now())
 
@@ -863,15 +882,21 @@ enum PlanSuggestionStatus {
   DISMISSED
 }
 
-/** A plan of blocks the report proposed for a day with nothing planned, waiting for the user. */
+/**
+ * A plan of blocks the report proposed for a day with nothing planned, waiting for the user.
+ */
 model PlanSuggestion {
   id        String               @id @default(cuid())
   userId    String
-  /** The local day it plans (YYYY-MM-DD). */
+  /**
+   * The local day it plans (YYYY-MM-DD).
+   */
   date      String
   timeZone  String
   status    PlanSuggestionStatus @default(PENDING)
-  /** The planner's PlanProposal (planning.types.ts), with the task titles at the time. */
+  /**
+   * The planner's PlanProposal (planning.types.ts), with the task titles at the time.
+   */
   proposal  Json
   createdAt DateTime             @default(now())
   updatedAt DateTime             @updatedAt
@@ -880,4 +905,43 @@ model PlanSuggestion {
 
   @@unique([userId, date])
   @@map("plan_suggestions")
+}
+
+// The Sunday report (weekend-mode, 2026-11-04): one row per week sent, Monday's date as the key. Keeps
+// the week's data (the same JSON as the attachment) so the app can show past weeks and the next
+// report can compare without recomputing.
+model WeeklyReport {
+  id        String    @id @default(cuid())
+  userId    String
+  /**
+   * The week's Monday, local (YYYY-MM-DD).
+   */
+  weekStart String
+  data      Json
+  /**
+   * Null until the scheduled Sunday send (a manual or preview build doesn't count as sent).
+   */
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart])
+  @@map("weekly_reports")
+}
+
+// "No se puede cerrar" (weekend-mode, 2026-11-04): while it lasts the night block can't be weakened
+// from any device (sync refuses it) and the apps resist being closed or uninstalled. Only ever
+// extended: endsAt null = indefinitely. Server-only; the clients read it from the sync snapshot.
+model BlockCommitment {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  startedAt DateTime  @default(now())
+  endsAt    DateTime?
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("block_commitments")
 }

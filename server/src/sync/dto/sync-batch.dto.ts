@@ -32,6 +32,7 @@ import {
   FitnessSource,
   FocusEventKind,
   FocusTriggerKind,
+  HabitKind,
   HabitRecordStatus,
   ScheduleCompletionStatus,
   HabitType,
@@ -426,6 +427,20 @@ export class BlockListSyncChangeDto {
   @IsOptional()
   @IsEnum(BlockListScope)
   scope?: BlockListScope;
+
+  // weekend-mode: a NIGHT entry's own start times (null = the night window's). Omitted by older
+  // clients: kept as they were.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1439)
+  nightStartMinutes?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1439)
+  weekendNightStartMinutes?: number | null;
 }
 
 export class FocusTriggerSyncChangeDto {
@@ -945,6 +960,12 @@ export class HabitSyncChangeDto {
   @Min(0, { each: true })
   @Max(6, { each: true })
   reminderDaysOfWeek?: number[];
+
+  // weekend-mode: a weekend activity (3 a day at most, checked in sync.service.ts). Omitted by older
+  // clients: kept as it was, HABIT for a new one.
+  @IsOptional()
+  @IsEnum(HabitKind)
+  kind?: HabitKind;
 }
 
 export class HabitRecordSyncChangeDto {

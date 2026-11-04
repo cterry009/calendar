@@ -1,4 +1,4 @@
-import type { HabitRecordStatus, HabitType } from '@calendar/shared';
+import type { HabitKind, HabitRecordStatus, HabitType } from '@calendar/shared';
 
 export type { SyncHabit, SyncHabitRecord } from '../calendar/types';
 
@@ -23,6 +23,8 @@ export interface HabitFormValues {
   reminderStartMinute?: number | null;
   reminderEndMinute?: number | null;
   reminderDaysOfWeek?: number[];
+  /** weekend-mode: a weekend activity instead of a habit. */
+  kind?: HabitKind;
 }
 
 export interface HabitCheckInValues {

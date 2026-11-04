@@ -1,5 +1,7 @@
 package expo.modules.focusblock
 
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -45,11 +47,49 @@ class FocusBlockModule : Module() {
     // >=10h-duration validation lives entirely on the JS side (lib/nightBlock/state.ts) before this
     // is ever called -- this layer just stores whatever it's given, same "native side has no
     // business logic of its own" pattern as setNightBlockingState above.
-    Function("setNightWindow") { startMinutes: Int, endMinutes: Int ->
+    Function("setNightWindow") { startMinutes: Int, endMinutes: Int, weekendStartMinutes: Int ->
       appContext.reactContext?.let { context ->
-        FocusBlockPrefs.setNightWindow(context, startMinutes, endMinutes)
+        FocusBlockPrefs.setNightWindow(context, startMinutes, endMinutes, weekendStartMinutes)
         NightBlockAlarmScheduler.reschedule(context)
       }
+    }
+
+    // weekend-mode: the NIGHT entries with their own start, as {"identifier":{"s":m,"w":m}}.
+    Function("setNightAppStarts") { json: String ->
+      appContext.reactContext?.let { context -> FocusBlockPrefs.writeNightAppStarts(context, json) }
+    }
+
+    // The block commitment: epoch ms it lasts until (0 = none, a huge number = indefinitely).
+    Function("setCommitmentUntil") { untilMs: Double ->
+      appContext.reactContext?.let { context ->
+        FocusBlockPrefs.setCommitmentUntil(context, if (untilMs >= Long.MAX_VALUE.toDouble()) Long.MAX_VALUE else untilMs.toLong())
+        NightBlockAlarmScheduler.reschedule(context)
+      }
+    }
+
+    // Device admin: with it active the app can't be uninstalled until it's deactivated, and the
+    // commitment keeps that screen closed. Android only lets the user grant it, on its own screen.
+    Function("isDeviceAdminActive") {
+      appContext.reactContext?.let { context -> devicePolicy(context)?.isAdminActive(adminComponent(context)) } ?: false
+    }
+
+    Function("requestDeviceAdmin") {
+      appContext.reactContext?.let { context ->
+        context.startActivity(
+          Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+            .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent(context))
+            .putExtra(
+              DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+              "Mientras dure tu compromiso, la app no se podrá desinstalar. Al terminar se quita sola.",
+            )
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+      }
+    }
+
+    // The commitment ended: uninstalling works normally again.
+    Function("removeDeviceAdmin") {
+      appContext.reactContext?.let { context -> devicePolicy(context)?.removeActiveAdmin(adminComponent(context)) }
     }
 
     // Work-hours social limit (WorkSocialLimit.kt). windowsJson is the enabled WORK schedules as
@@ -202,6 +242,11 @@ class FocusBlockModule : Module() {
     }
   }
 }
+
+private fun devicePolicy(context: Context): DevicePolicyManager? =
+  context.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
+
+private fun adminComponent(context: Context): ComponentName = ComponentName(context, CommitmentAdminReceiver::class.java)
 
 private fun isIgnoringBatteryOptimizations(context: Context): Boolean {
   val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return false

@@ -1,4 +1,5 @@
 import { AppButton, Text, XStack, YStack } from '@calendar/ui';
+import type { ReactNode } from 'react';
 import { confirmDestructiveAction } from '../../lib/confirmAction';
 import { BLOCK_LIST_KIND_LABELS, BLOCK_LIST_PLATFORM_LABELS } from '../../lib/blocklist/labels';
 import type { SyncBlockListRecord } from '../../lib/blocklist/types';
@@ -8,11 +9,15 @@ interface BlockListEntryRowProps {
   isBusy: boolean;
   isPending: boolean;
   onDelete: () => void;
+  /** No "Quitar": the block commitment is running on a NIGHT entry (weekend-mode). */
+  isLocked?: boolean;
+  /** Under the row: a NIGHT entry's start times. */
+  children?: ReactNode;
 }
 
 // Mirrors apps/web/src/components/blocklist/BlockListItem.tsx, minus the edit form (this screen
 // only creates entries via the installed-apps picker, see task 6.5's scope note in blocklist.tsx).
-export function BlockListEntryRow({ entry, isBusy, isPending, onDelete }: BlockListEntryRowProps) {
+export function BlockListEntryRow({ entry, isBusy, isPending, onDelete, isLocked, children }: BlockListEntryRowProps) {
   function confirmDelete() {
     // hardMode entries get a stronger message but the same single-confirm-dialog contract as a
     // normal entry -- design.md's "no single tap" requirement is about there being no bare X
@@ -34,11 +39,13 @@ export function BlockListEntryRow({ entry, isBusy, isPending, onDelete }: BlockL
             {entry.identifier}
           </Text>
         </YStack>
-        <AppButton variant="ghost" paddingHorizontal="$2" onPress={confirmDelete} disabled={isBusy}>
-          <Text color="$danger" fontSize="$2">
-            {isPending ? 'Quitando...' : 'Quitar'}
-          </Text>
-        </AppButton>
+        {isLocked ? null : (
+          <AppButton variant="ghost" paddingHorizontal="$2" onPress={confirmDelete} disabled={isBusy}>
+            <Text color="$danger" fontSize="$2">
+              {isPending ? 'Quitando...' : 'Quitar'}
+            </Text>
+          </AppButton>
+        )}
       </XStack>
 
       <XStack gap="$3" flexWrap="wrap">
@@ -61,6 +68,7 @@ export function BlockListEntryRow({ entry, isBusy, isPending, onDelete }: BlockL
           </Text>
         ) : null}
       </XStack>
+      {children}
     </YStack>
   );
 }

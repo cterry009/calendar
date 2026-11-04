@@ -52,6 +52,8 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
       val pkg = event.packageName?.toString() ?: return
       if (WebsiteUsage.isBrowser(pkg)) onBrowserContent(pkg, throttled = true)
+      // A Settings page fills in after its window event: the commitment looks again.
+      else guardCommitment(pkg)
       return
     }
     if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
@@ -65,6 +67,7 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     val foregroundPackage = event.packageName?.toString() ?: return
     trackForeground(foregroundPackage)
     if (foregroundPackage == packageName) return // never block our own app
+    if (guardCommitment(foregroundPackage)) return
 
     // Work focus: social media and games are off limits from the first minute, whether or not
     // they're on the block list. "Focus" = inside a WORK block (evaluated natively from the pushed
@@ -241,20 +244,21 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     if (!FocusBlockPrefs.isNightEnabled(this)) return null
     if (pkg !in FocusBlockPrefs.nightBlockedPackages(this)) return null
 
-    return if (nightListBlockingNow()) "NIGHT" else null
+    return if (nightListBlockingNow(identifier = pkg)) "NIGHT" else null
   }
 
   /**
    * The night list's rule right now, with exercise on waking (2026-10-15): every night check goes
    * through here so apps, sites and the social/game rule agree, and so the steps-since-waking
-   * baseline is recorded on every check during the night.
+   * baseline is recorded on every check during the night. `identifier` is the app or site, for
+   * its own start time (weekend-mode); today's weekday decides the evening's start.
    */
-  private fun nightListBlockingNow(now: Calendar = Calendar.getInstance()): Boolean {
+  private fun nightListBlockingNow(now: Calendar = Calendar.getInstance(), identifier: String? = null): Boolean {
     val nightEnd = FocusBlockPrefs.nightEndMinutes(this)
     val stepsToday = StepCountReader.dailySteps(this)
     return NightBlockRules.isNightListBlocking(
       now,
-      FocusBlockPrefs.nightStartMinutes(this),
+      FocusBlockPrefs.nightStartFor(this, now.get(Calendar.DAY_OF_WEEK), identifier),
       nightEnd,
       JogStatusReader.hasJoggedToday(this),
       stepsToday,
@@ -273,7 +277,7 @@ class FocusBlockAccessibilityService : AccessibilityService() {
   private val tick = object : Runnable {
     override fun run() {
       val pkg = currentForeground ?: return
-      if (!isSocialOrGame(pkg)) return
+      if (!followsNightRule(pkg)) return
       // Catches an app that was already open when a WORK block or pomodoro began: no window event
       // fires for it, so without this it would stay usable until the next app switch.
       if (kickIfInWorkFocus(pkg)) return
@@ -288,7 +292,7 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     if (pkg == currentForeground) return
     currentForeground = pkg
     handler.removeCallbacks(tick)
-    if (isSocialOrGame(pkg)) handler.postDelayed(tick, WORK_LIMIT_TICK_MS)
+    if (followsNightRule(pkg)) handler.postDelayed(tick, WORK_LIMIT_TICK_MS)
     handler.removeCallbacks(siteTick)
     if (WebsiteUsage.isBrowser(pkg)) {
       onBrowserContent(pkg, throttled = false)
@@ -358,8 +362,8 @@ class FocusBlockAccessibilityService : AccessibilityService() {
       return "FOCUS"
     }
     if (!FocusBlockPrefs.isNightEnabled(this)) return null
-    if (FocusBlockPrefs.nightBlockedDomains(this).none { WebsiteUsage.matches(domain, it) }) return null
-    return if (nightListBlockingNow()) "NIGHT" else null
+    val listed = FocusBlockPrefs.nightBlockedDomains(this).firstOrNull { WebsiteUsage.matches(domain, it) } ?: return null
+    return if (nightListBlockingNow(identifier = listed)) "NIGHT" else null
   }
 
   private fun currentKeyboardPackage(): String? = runCatching {
@@ -372,6 +376,9 @@ class FocusBlockAccessibilityService : AccessibilityService() {
   // unreliable on real hardware (socialPackages.ts) -- "game" is what game packages actually carry.
   // Cached: a package's category doesn't change while it's installed.
   private val gameCache = HashMap<String, Boolean>()
+
+  /** Social media, games, and anything else with its own night start (Discord isn't "social"). */
+  private fun followsNightRule(pkg: String): Boolean = isSocialOrGame(pkg) || FocusBlockPrefs.hasOwnNightStart(this, pkg)
 
   private fun isSocialOrGame(pkg: String): Boolean {
     if (pkg in WorkSocialLimit.socialPackages(this)) return true
@@ -430,12 +437,12 @@ class FocusBlockAccessibilityService : AccessibilityService() {
 
   /** True when it kicked the app out. */
   private fun applyNightRule(pkg: String): Boolean {
-    if (!FocusBlockPrefs.isNightEnabled(this) || !isSocialOrGame(pkg)) return false
+    if (!FocusBlockPrefs.isNightEnabled(this) || !followsNightRule(pkg)) return false
     val now = Calendar.getInstance()
-    val start = FocusBlockPrefs.nightStartMinutes(this)
+    val start = FocusBlockPrefs.nightStartFor(this, now.get(Calendar.DAY_OF_WEEK), pkg)
     val nightEnd = FocusBlockPrefs.nightEndMinutes(this)
     val exerciseEnd = FocusBlockPrefs.wakeExerciseEndMinutes(this)
-    if (nightListBlockingNow(now)) {
+    if (nightListBlockingNow(now, pkg)) {
       val reason =
         if (NightBlockRules.isInWakeExercisePortion(now, nightEnd, exerciseEnd)) {
           "primero el ejercicio: trota o camina ${NightBlockRules.WAKE_STEP_THRESHOLD} pasos y se desbloquea (o a las ${WorkSocialLimit.clock(exerciseEnd)})"
@@ -452,11 +459,32 @@ class FocusBlockAccessibilityService : AccessibilityService() {
       lastNightWarningAt = nowMs
       val category = if (pkg in WorkSocialLimit.socialPackages(this)) BlockPopup.Category.SOCIAL else BlockPopup.Category.GAME
       val title = "Bloqueo nocturno en $minutesLeft min"
-      val body = "A las ${WorkSocialLimit.clock(start)} se bloquean las redes sociales y los juegos hasta manana. Buen momento para ir cerrando."
+      val what = if (FocusBlockPrefs.hasOwnNightStart(this, pkg)) "se bloquea ${appLabel(pkg)}" else "se bloquean las redes sociales y los juegos"
+      val body = "A las ${WorkSocialLimit.clock(start)} $what hasta manana. Buen momento para ir cerrando."
       WorkSocialLimit.notify(this, title, body)
       BlockPopup.showWarning(this, title, body, category)
     }
     return false
+  }
+
+  // ---- The block commitment (CommitmentGuard.kt) ----
+  private var lastGuardRead = 0L
+
+  /** While the commitment lasts, leaves this app's Settings pages; true when it did. */
+  private fun guardCommitment(pkg: String): Boolean {
+    if (!CommitmentGuard.isGuardedPackage(pkg) || !FocusBlockPrefs.isCommitted(this)) return false
+    val now = System.currentTimeMillis()
+    if (now - lastGuardRead < SITE_READ_THROTTLE_MS) return false
+    lastGuardRead = now
+    val texts = CommitmentGuard.screenTexts(rootInActiveWindow)
+    if (!CommitmentGuard.isDangerousScreen(texts, appLabel(packageName))) return false
+    blockAndExplain(
+      pkg,
+      "NIGHT",
+      "tienes un compromiso activo: la app no se puede cerrar ni desinstalar hasta que termine",
+      label = "Ajustes de esta app",
+    )
+    return true
   }
 
   /** Kicks a social app or game out if a work focus is on; true when it did. */

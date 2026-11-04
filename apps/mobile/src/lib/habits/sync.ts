@@ -1,5 +1,5 @@
 import * as Crypto from 'expo-crypto';
-import type { HabitRecordStatus, HabitType } from '@calendar/shared';
+import type { HabitKind, HabitRecordStatus, HabitType } from '@calendar/shared';
 import { syncBatch, type SyncBatchResponse } from '../sync/api';
 import type { HabitCheckInValues, HabitFormValues } from './types';
 
@@ -29,6 +29,7 @@ export interface HabitSyncChangeDto {
   reminderStartMinute?: number;
   reminderEndMinute?: number;
   reminderDaysOfWeek?: number[];
+  kind?: HabitKind;
 }
 
 export interface HabitRecordSyncChangeDto {
@@ -57,6 +58,7 @@ function buildHabitUpsertPayload(values: HabitFormValues): Omit<HabitSyncChangeD
     reminderStartMinute: values.reminderStartMinute ?? undefined,
     reminderEndMinute: values.reminderEndMinute ?? undefined,
     reminderDaysOfWeek: values.reminderDaysOfWeek,
+    kind: values.kind,
   };
 }
 

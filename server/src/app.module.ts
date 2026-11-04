@@ -10,6 +10,8 @@ import { SyncModule } from './sync/sync.module';
 import { StudyStatusModule } from './study-status/study-status.module';
 import { TutorModule } from './tutor/tutor.module';
 import { DailyReportModule } from './daily-report/daily-report.module';
+import { CommitmentModule } from './commitment/commitment.module';
+import { WeeklyReportModule } from './weekly-report/weekly-report.module';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { DailyReportModule } from './daily-report/daily-report.module';
     TutorModule,
     StudyStatusModule,
     DailyReportModule,
+    CommitmentModule,
+    WeeklyReportModule,
   ],
   controllers: [AppController],
 })

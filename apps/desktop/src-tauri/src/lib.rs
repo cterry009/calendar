@@ -6,6 +6,7 @@
 
 mod app_tracking;
 mod blocking;
+mod commitment;
 mod focus_window;
 mod game_tracking;
 mod hosts;
@@ -28,6 +29,7 @@ pub fn run() {
         .manage(Mutex::new(game_tracking::GameTrackingState::default()))
         .manage(Mutex::new(app_tracking::AppTrackingState::default()))
         .manage(Mutex::new(website_tracking::WebsiteTrackingState::default()))
+        .manage(commitment::CommitmentState::default())
         // Task 9.8: user-configurable "start on boot". Registers HKCU\...\Run on Windows; the
         // `--minimized` arg lets an autostarted launch come up hidden to the tray (handled in
         // setup() below).
@@ -73,6 +75,7 @@ pub fn run() {
             app_version,
             tray::set_tray_state,
             blocking::set_process_blocking,
+            commitment::set_commitment,
             game_tracking::get_game_time_today,
             app_tracking::get_app_time_today,
             website_tracking::get_website_time,

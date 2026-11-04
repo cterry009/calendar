@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { isWithinNightWindow, subscribeNightSettings, getNightSettings, type NightSettings } from '../lib/desktop/nightWindow';
+import { subscribeNightSettings, getNightSettings, type NightSettings } from '../lib/desktop/nightWindow';
 
 // Ticks every 30s to recompute whether "now" falls inside the desktop night window -- a plain
 // time-of-day check, so it can't be driven off block-list/pomodoro state changes the way
@@ -12,8 +12,8 @@ export function useNightSettings(): NightSettings {
   return settings;
 }
 
-export function useNightWindowActive(): boolean {
-  const { enabled, window: nightWindow } = useNightSettings();
+/** The time, every 30s: each app has its own start now (weekend-mode), so callers do the check. */
+export function useNightClock(): Date {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -21,5 +21,5 @@ export function useNightWindowActive(): boolean {
     return () => window.clearInterval(interval);
   }, []);
 
-  return enabled && isWithinNightWindow(now, nightWindow.startMinutes, nightWindow.endMinutes);
+  return now;
 }
