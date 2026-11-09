@@ -626,3 +626,84 @@ describe('exercise attempts (study-tutor-game phase 2)', () => {
     expect(JSON.stringify(await check(attempt('long', 0, { feedback: 'x'.repeat(10_001) })))).toContain('feedback');
   });
 });
+
+describe('projects and their log (projects-and-claude-bridge 2.2-2.3)', () => {
+  const project = (overrides: Record<string, unknown> = {}) => ({
+    clientId: 'p-1',
+    updatedAt: at(0),
+    title: 'PINNs en dinámica de fluidos',
+    status: 'ACTIVE',
+    nextSteps: ['SIREN', 'Fourier features'],
+    ...overrides,
+  });
+
+  it('creates a project, keeps "not estimated" progress as null, and an older change is a conflict', async () => {
+    await h.batch({ projects: [project()] });
+    let row = await h.prisma.project.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(row).toMatchObject({ title: 'PINNs en dinámica de fluidos', progress: null, nextSteps: ['SIREN', 'Fourier features'] });
+
+    await h.batch({ projects: [project({ updatedAt: at(2), progress: 30 })] });
+    const result = await h.batch({ projects: [project({ updatedAt: at(1), progress: 90 })] });
+    row = await h.prisma.project.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(row.progress).toBe(30);
+    expect(result.conflicts.projects).toHaveLength(1);
+  });
+
+  it('rejects a progress outside 0-100', async () => {
+    const dto = plainToInstance(SyncBatchDto, { projects: [project({ progress: 101 })] });
+    expect((await validate(dto)).length).toBeGreaterThan(0);
+  });
+
+  it('links a task to a project created in the same batch, and deleting the project keeps the task unlinked', async () => {
+    await h.batch({ projects: [project()] });
+    const p = await h.prisma.project.findFirstOrThrow({ where: { userId: h.userId } });
+    await h.batch({ projects: [project({ clientId: 'p-2', title: 'Maestría' })], tasks: [task({ projectId: p.id })] });
+    let t = await h.prisma.task.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(t.projectId).toBe(p.id);
+
+    // A change that omits projectId keeps it.
+    await h.batch({ tasks: [task({ updatedAt: at(1), title: 'Leer AN1 §2' })] });
+    t = await h.prisma.task.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(t.projectId).toBe(p.id);
+
+    await h.batch({ projects: [{ id: p.id, updatedAt: at(2), deleted: true }] });
+    t = await h.prisma.task.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(t.projectId).toBeNull();
+    expect(t.deletedAt).toBeNull();
+    const pulled = await h.pull();
+    expect(pulled.projects.map((x: { title: string }) => x.title)).toEqual(['Maestría']);
+  });
+
+  it("a project that isn't the user's is stored as no project", async () => {
+    const theirs = await h.prisma.project.create({ data: { userId: h.otherUserId, title: 'Ajeno' } });
+    await h.batch({ tasks: [task({ projectId: theirs.id })] });
+    const t = await h.prisma.task.findFirstOrThrow({ where: { userId: h.userId } });
+    expect(t.projectId).toBeNull();
+  });
+
+  it('log entries: created with their source, editable, newest first in the pull, soft-deleted', async () => {
+    await h.batch({ projects: [project()] });
+    const p = await h.prisma.project.findFirstOrThrow({ where: { userId: h.userId } });
+    await h.batch({
+      projectLogEntries: [
+        { clientId: 'l-1', updatedAt: at(0), projectId: p.id, date: '2026-11-08', text: 'Benchmark de la cavidad' },
+        { clientId: 'l-2', updatedAt: at(0), projectId: p.id, date: '2026-11-09', text: 'Terminé el bench', source: 'CLAUDE' },
+      ],
+    });
+    await h.batch({ projectLogEntries: [{ clientId: 'l-2', updatedAt: at(1), projectId: p.id, date: '2026-11-09', text: 'Terminé el benchmark', source: 'CLAUDE' }] });
+    let pulled = await h.pull();
+    expect(pulled.projectLogEntries.map((e: { text: string; source: string }) => [e.text, e.source])).toEqual([
+      ['Terminé el benchmark', 'CLAUDE'],
+      ['Benchmark de la cavidad', 'APP'],
+    ]);
+    await h.batch({ projectLogEntries: [{ clientId: 'l-1', updatedAt: at(2), deleted: true }] });
+    pulled = await h.pull();
+    expect(pulled.projectLogEntries).toHaveLength(1);
+  });
+
+  it('a log entry for a project that is not the user\'s is skipped', async () => {
+    const result = await h.batch({ projectLogEntries: [{ clientId: 'l-x', updatedAt: at(0), projectId: 'nope', date: '2026-11-09', text: 'x' }] });
+    expect(result.applied.projectLogEntries?.[0]?.status).toBe('skipped');
+    expect(await h.prisma.projectLogEntry.count({ where: { userId: h.userId } })).toBe(0);
+  });
+});

@@ -20,7 +20,9 @@ export type SyncEntityType =
   | 'exerciseAttempts'
   | 'dailyScreenTime'
   | 'dailyGameTime'
-  | 'dailyDesktopAppTime';
+  | 'dailyDesktopAppTime'
+  | 'projects'
+  | 'projectLogEntries';
 
 export interface SyncChangeResult<T = unknown> {
   status: 'applied' | 'conflict' | 'skipped';

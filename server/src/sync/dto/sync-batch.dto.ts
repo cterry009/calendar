@@ -37,6 +37,9 @@ import {
   ScheduleCompletionStatus,
   HabitType,
   PomodoroState,
+  ProjectLogSource,
+  ProjectPriority,
+  ProjectStatus,
   ScheduleKind,
   TaskDifficulty,
   TaskPriority,
@@ -137,6 +140,12 @@ export class TaskSyncChangeDto {
   @IsOptional()
   @IsDateString()
   completedAt?: string;
+
+  // projects-and-claude-bridge: null unlinks; omitted keeps the current project. A project that
+  // isn't the user's (or was deleted) is stored as no project.
+  @IsOptional()
+  @IsString()
+  projectId?: string | null;
 }
 
 // One segment of a block's pomodoro sequence (horario 2026-10-19).
@@ -1148,6 +1157,113 @@ export class JournalEntrySyncChangeDto {
   content?: string;
 }
 
+// projects-and-claude-bridge (2026-11-08): a project and one entry of its progress log.
+export class ProjectSyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsOptional()
+  @IsString()
+  clientId?: string;
+
+  @IsDateString()
+  updatedAt!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  deleted?: boolean;
+
+  @ValidateIf((item) => !item.deleted)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  summary?: string | null;
+
+  @IsOptional()
+  @IsEnum(ProjectStatus)
+  status?: ProjectStatus;
+
+  @IsOptional()
+  @IsEnum(ProjectPriority)
+  priority?: ProjectPriority;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  area?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  color?: string | null;
+
+  /** YYYY-MM-DD; null clears it. */
+  @IsOptional()
+  @IsDateString()
+  deadline?: string | null;
+
+  /** 0-100; null = not estimated. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  progress?: number | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  @MaxLength(300, { each: true })
+  nextSteps?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  blocker?: string | null;
+}
+
+export class ProjectLogEntrySyncChangeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsOptional()
+  @IsString()
+  clientId?: string;
+
+  @IsDateString()
+  updatedAt!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  deleted?: boolean;
+
+  @ValidateIf((item) => !item.deleted)
+  @IsString()
+  projectId?: string;
+
+  /** YYYY-MM-DD, the local day of the entry. */
+  @ValidateIf((item) => !item.deleted)
+  @IsDateString()
+  date?: string;
+
+  @ValidateIf((item) => !item.deleted)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(5000)
+  text?: string;
+
+  @IsOptional()
+  @IsEnum(ProjectLogSource)
+  source?: ProjectLogSource;
+}
+
 export class SyncBatchDto {
   @IsOptional()
   @IsArray()
@@ -1250,6 +1366,18 @@ export class SyncBatchDto {
   @ValidateNested({ each: true })
   @Type(() => HabitSyncChangeDto)
   habits?: HabitSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProjectSyncChangeDto)
+  projects?: ProjectSyncChangeDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProjectLogEntrySyncChangeDto)
+  projectLogEntries?: ProjectLogEntrySyncChangeDto[];
 
   @IsOptional()
   @IsArray()

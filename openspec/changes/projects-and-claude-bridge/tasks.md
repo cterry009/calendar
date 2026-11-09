@@ -8,9 +8,9 @@
 
 ## 2. Sync
 
-- [ ] 2.1 Add `project` and `projectLogEntry` to `sync.types.ts`, `dto/sync-batch.dto.ts` (class-validator on every field) and the pull in `sync.service.ts`. Verify: `GET /sync/pull` returns both lists.
-- [ ] 2.2 `applyProjectChange` / `applyProjectLogEntryChange` (updatedAt-wins, soft delete, userId-scoped; deleting a project unlinks its tasks). Verify: new cases in `server/test/sync.service.test.ts` (create, conflict, delete keeps tasks).
-- [ ] 2.3 Accept `projectId` on task changes, refusing a project of another user. Verify: test.
+- [x] 2.1 Add `project` and `projectLogEntry` to `sync.types.ts`, `dto/sync-batch.dto.ts` (class-validator on every field) and the pull in `sync.service.ts`. Verify: `GET /sync/pull` returns both lists.
+- [x] 2.2 `applyProjectChange` / `applyProjectLogEntryChange` (updatedAt-wins, soft delete, userId-scoped; deleting a project unlinks its tasks). Verify: new cases in `server/test/sync.service.test.ts` (create, conflict, delete keeps tasks).
+- [x] 2.3 Accept `projectId` on task changes, refusing a project of another user. Verify: test.
 
 ## 3. Clients
 

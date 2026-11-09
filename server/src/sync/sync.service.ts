@@ -18,6 +18,8 @@ import {
   FocusTriggerSyncChangeDto,
   HabitRecordSyncChangeDto,
   HabitSyncChangeDto,
+  ProjectLogEntrySyncChangeDto,
+  ProjectSyncChangeDto,
   ScheduleCompletionSyncChangeDto,
   ScheduleExceptionSyncChangeDto,
   StudyPlanSyncChangeDto,
@@ -62,6 +64,8 @@ export class SyncService {
       studyPlan,
       exerciseAttempts,
       blockCommitment,
+      projects,
+      projectLogEntries,
     ] = await Promise.all([
       this.prisma.task.findMany({
         where: { userId, deletedAt: null },
@@ -108,6 +112,12 @@ export class SyncService {
         orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
       }),
       this.prisma.blockCommitment.findUnique({ where: { userId } }),
+      // projects-and-claude-bridge: soft-deleted ones stay out, like tasks and habits.
+      this.prisma.project.findMany({ where: { userId, deletedAt: null } }),
+      this.prisma.projectLogEntry.findMany({
+        where: { userId, deletedAt: null },
+        orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+      }),
     ]);
 
     return {
@@ -129,6 +139,8 @@ export class SyncService {
       scheduleCompletions,
       scheduleExceptions,
       exerciseAttempts,
+      projects,
+      projectLogEntries,
       studyPlan: studyPlan
         ? {
             id: studyPlan.id,
@@ -180,6 +192,33 @@ export class SyncService {
   ): Promise<SyncBatchResult> {
     const result: SyncBatchResult = { applied: {}, conflicts: {} };
     const changedEntities = new Set<SyncEntityType>();
+
+    // projects-and-claude-bridge: projects first, so a task or log entry in the same batch can
+    // point at a project created in it.
+    if (dto.projects?.length) {
+      result.applied.projects = [];
+      result.conflicts.projects = [];
+      for (const change of dto.projects) {
+        const outcome = await this.applyProjectChange(userId, change);
+        this.bucketResult(result, 'projects', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('projects');
+          if (change.deleted) changedEntities.add('tasks');
+        }
+      }
+    }
+
+    if (dto.projectLogEntries?.length) {
+      result.applied.projectLogEntries = [];
+      result.conflicts.projectLogEntries = [];
+      for (const change of dto.projectLogEntries) {
+        const outcome = await this.applyProjectLogEntryChange(userId, change);
+        this.bucketResult(result, 'projectLogEntries', outcome);
+        if (outcome.status === 'applied') {
+          changedEntities.add('projectLogEntries');
+        }
+      }
+    }
 
     if (dto.tasks?.length) {
       result.applied.tasks = [];
@@ -536,6 +575,7 @@ export class SyncService {
       category: change.category ?? null,
       status: change.status,
       completedAt: change.completedAt ? new Date(change.completedAt) : null,
+      projectId: await this.ownProjectId(userId, change.projectId),
       clientId: change.clientId ?? existing?.clientId ?? null,
       updatedAt: new Date(change.updatedAt),
       deletedAt: null,
@@ -546,6 +586,131 @@ export class SyncService {
       : await this.prisma.task.create({ data: { ...data, userId } });
 
     return { status: 'applied', clientKey: key, record };
+  }
+
+  /**
+   * projects-and-claude-bridge: undefined keeps the task's project (Prisma skips the field); null or a
+   * project that isn't this user's live project unlinks it rather than failing the whole batch (an
+   * offline client may still hold a project deleted elsewhere).
+   */
+  private async ownProjectId(userId: string, projectId: string | null | undefined) {
+    if (projectId === undefined) return undefined;
+    if (projectId === null) return null;
+    const project = await this.prisma.project.findFirst({
+      where: { id: projectId, userId, deletedAt: null },
+      select: { id: true },
+    });
+    return project?.id ?? null;
+  }
+
+  private async applyProjectChange(
+    userId: string,
+    change: ProjectSyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const existing = await this.findOwned(this.prisma.project, userId, change);
+    const key = this.clientKey(change);
+
+    if (change.deleted) {
+      if (!existing) return { status: 'skipped', clientKey: key };
+      if (this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+        return { status: 'conflict', clientKey: key, server: existing };
+      }
+      // Soft delete; its tasks stay, unlinked (spec: "Project deleted"). Log entries stay too.
+      const [record] = await this.prisma.$transaction([
+        this.prisma.project.update({
+          where: { id: existing.id },
+          data: { deletedAt: new Date(), updatedAt: new Date(change.updatedAt) },
+        }),
+        this.prisma.task.updateMany({
+          where: { userId, projectId: existing.id },
+          data: { projectId: null, updatedAt: new Date() },
+        }),
+      ]);
+      return { status: 'applied', clientKey: key, record };
+    }
+
+    if (!change.title) throw new BadRequestException('Project changes require title');
+    if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+      return { status: 'conflict', clientKey: key, server: existing };
+    }
+
+    const data = {
+      title: change.title,
+      summary: change.summary ?? null,
+      status: change.status ?? existing?.status ?? ('ACTIVE' as const),
+      priority: change.priority ?? existing?.priority ?? ('MEDIUM' as const),
+      area: change.area ?? null,
+      color: change.color ?? null,
+      deadline: change.deadline ? new Date(change.deadline.slice(0, 10)) : null,
+      progress: change.progress ?? null,
+      nextSteps: change.nextSteps ?? [],
+      blocker: change.blocker ?? null,
+      clientId: change.clientId ?? existing?.clientId ?? null,
+      updatedAt: new Date(change.updatedAt),
+      deletedAt: null,
+    };
+    const record = existing
+      ? await this.prisma.project.update({ where: { id: existing.id }, data })
+      : await this.prisma.project.create({ data: { ...data, userId } });
+    return { status: 'applied', clientKey: key, record };
+  }
+
+  private async applyProjectLogEntryChange(
+    userId: string,
+    change: ProjectLogEntrySyncChangeDto,
+  ): Promise<SyncChangeResult> {
+    const existing = await this.findOwned(this.prisma.projectLogEntry, userId, change);
+    const key = this.clientKey(change);
+
+    if (change.deleted) {
+      if (!existing) return { status: 'skipped', clientKey: key };
+      if (this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+        return { status: 'conflict', clientKey: key, server: existing };
+      }
+      const record = await this.prisma.projectLogEntry.update({
+        where: { id: existing.id },
+        data: { deletedAt: new Date(), updatedAt: new Date(change.updatedAt) },
+      });
+      return { status: 'applied', clientKey: key, record };
+    }
+
+    if (!change.projectId || !change.date || !change.text) {
+      throw new BadRequestException('Project log entries require projectId, date and text');
+    }
+    if (existing && this.isServerNewer(existing.updatedAt, change.updatedAt)) {
+      return { status: 'conflict', clientKey: key, server: existing };
+    }
+    const project = await this.prisma.project.findFirst({
+      where: { id: change.projectId, userId },
+      select: { id: true },
+    });
+    // Another user's project, or one that never reached this server: nothing to attach it to.
+    if (!project) return { status: 'skipped', clientKey: key };
+
+    const data = {
+      projectId: project.id,
+      date: new Date(change.date.slice(0, 10)),
+      text: change.text,
+      source: change.source ?? existing?.source ?? ('APP' as const),
+      clientId: change.clientId ?? existing?.clientId ?? null,
+      updatedAt: new Date(change.updatedAt),
+      deletedAt: null,
+    };
+    const record = existing
+      ? await this.prisma.projectLogEntry.update({ where: { id: existing.id }, data })
+      : await this.prisma.projectLogEntry.create({ data: { ...data, userId } });
+    return { status: 'applied', clientKey: key, record };
+  }
+
+  /** By id or clientId, always within the user's rows. */
+  private findOwned<T>(
+    delegate: { findFirst(args: { where: Record<string, unknown> }): Promise<T | null> },
+    userId: string,
+    change: { id?: string; clientId?: string },
+  ): Promise<T | null> {
+    if (change.id) return delegate.findFirst({ where: { id: change.id, userId } });
+    if (change.clientId) return delegate.findFirst({ where: { userId, clientId: change.clientId } });
+    return Promise.resolve(null);
   }
 
   private findTask(userId: string, change: TaskSyncChangeDto) {
