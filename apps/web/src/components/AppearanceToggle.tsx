@@ -8,22 +8,7 @@ export function AppearanceToggle() {
 
   return (
     <XStack gap="$1" flexWrap="wrap" aria-label={t('settings.appearance.title')}>
-      <AppButton
-        type="button"
-        variant={mode === 'dark' ? 'primary' : 'ghost'}
-        onPress={() => setMode('dark')}
-        aria-pressed={mode === 'dark'}
-      >
-        {t('settings.appearance.dark')}
-      </AppButton>
-      <AppButton
-        type="button"
-        variant={mode === 'light' ? 'primary' : 'ghost'}
-        onPress={() => setMode('light')}
-        aria-pressed={mode === 'light'}
-      >
-        {t('settings.appearance.light')}
-      </AppButton>
+      {/* 2026-11-09: only the Agenda look (light/dark); the older looks stay in the code. */}
       <AppButton
         type="button"
         variant={mode === 'agendaLight' ? 'primary' : 'ghost'}

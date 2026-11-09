@@ -992,6 +992,11 @@ model Project {
   progress  Int?
   nextSteps String[]        @default([])
   blocker   String?
+  // 2026-11-09: the general objective, the specific ones ([{ text, done }]) and free tags
+  // (sub-classifications inside an area). With no stored progress, progress = specific done / total.
+  generalObjective   String?
+  specificObjectives Json     @default("[]")
+  tags               String[] @default([])
   clientId  String?
   deletedAt DateTime?
   createdAt DateTime        @default(now())

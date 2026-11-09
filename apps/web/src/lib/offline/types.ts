@@ -18,7 +18,8 @@ export type SyncEntityType =
   | 'dailyGameTime'
   | 'dailyDesktopAppTime'
   | 'focusEvents'
-  | 'exerciseAttempts';
+  | 'exerciseAttempts'
+  | 'projects';
 
 export interface SyncQueueItem {
   id?: number;
@@ -51,6 +52,7 @@ export interface SyncBatchBody {
   dailyDesktopAppTime?: unknown[];
   focusEvents?: unknown[];
   exerciseAttempts?: unknown[];
+  projects?: unknown[];
 }
 
 export interface SyncBatchResponse {

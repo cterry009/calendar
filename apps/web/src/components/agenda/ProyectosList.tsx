@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { localDateKey, projectsNeedingAttention } from '@calendar/shared';
+import { localDateKey, projectProgress, projectsNeedingAttention } from '@calendar/shared';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { useCalendarData } from '../../hooks/useCalendarData';
 import { useToday } from '../../hooks/useNow';
 import type { SyncProject } from '../../lib/calendar/types';
 import { areaLabel, projectArea, type ProjectAreaKey } from '../../lib/projects/areas';
+import { saveProject } from '../../lib/projects/sync';
 import { Pill, ProgressBar, SectionTitle, StripeCard, SummaryLine } from './parts';
 
 // projects-and-claude-bridge 3.2 (read side, in the agenda-redesign look): the user's projects with
@@ -35,6 +36,25 @@ export function ProyectosList({ areas }: { areas?: readonly ProjectAreaKey[] }) 
   const data = useCalendarData();
   const today = useToday();
   const [filter, setFilter] = useState<Filter>('abiertos');
+  const [tag, setTag] = useState<string | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [tagDraft, setTagDraft] = useState<Record<string, string>>({});
+
+  async function save(p: SyncProject, patch: Partial<SyncProject>) {
+    setSaving(p.id);
+    try {
+      await saveProject(p, patch);
+      await data.refetch();
+    } finally {
+      setSaving(null);
+    }
+  }
+  function addTag(p: SyncProject) {
+    const t = (tagDraft[p.id] ?? '').trim();
+    if (!t || (p.tags ?? []).includes(t)) return;
+    setTagDraft((d) => ({ ...d, [p.id]: '' }));
+    void save(p, { tags: [...(p.tags ?? []), t].slice(0, 12) });
+  }
   const attention = useMemo(
     () =>
       new Map(
@@ -52,7 +72,9 @@ export function ProyectosList({ areas }: { areas?: readonly ProjectAreaKey[] }) 
   }, [data.projectLogEntries]);
 
   const inArea = data.projects.filter((p) => !areas || areas.includes(projectArea(p.area)));
+  const allTags = [...new Set(inArea.flatMap((p) => p.tags ?? []))].sort((a, b) => a.localeCompare(b));
   const list = inArea
+    .filter((p) => !tag || (p.tags ?? []).includes(tag))
     .filter((p) => (filter === 'todos' ? true : filter === 'abiertos' ? p.status !== 'DONE' : p.status === filter))
     .sort((a, b) => ORDER[a.status] - ORDER[b.status] || PORDER[a.priority] - PORDER[b.priority] || a.title.localeCompare(b.title));
   const active = inArea.filter((p) => p.status === 'ACTIVE').length;
@@ -70,6 +92,18 @@ export function ProyectosList({ areas }: { areas?: readonly ProjectAreaKey[] }) 
           </AppButton>
         ))}
       </XStack>
+      {allTags.length ? (
+        <XStack gap="$1" flexWrap="wrap" alignItems="center">
+          <Text fontSize="$2" color="$muted">
+            Etiquetas:
+          </Text>
+          {allTags.map((t) => (
+            <AppButton key={t} variant={tag === t ? 'primary' : 'ghost'} size="$2" onPress={() => setTag(tag === t ? null : t)}>
+              #{t}
+            </AppButton>
+          ))}
+        </XStack>
+      ) : null}
       {inArea.length === 0 ? (
         <Paragraph margin={0} color="$muted">
           No hay proyectos en esta área.
@@ -99,18 +133,55 @@ export function ProyectosList({ areas }: { areas?: readonly ProjectAreaKey[] }) 
                   {p.summary}
                 </Paragraph>
               ) : null}
-              {p.progress !== null ? (
+              {p.generalObjective ? (
                 <YStack gap="$1">
-                  <Text fontSize="$2" color="$muted">
-                    Avance {p.progress} %
-                  </Text>
-                  <ProgressBar value={p.progress} color={p.color} />
+                  <SectionTitle>Objetivo general</SectionTitle>
+                  <Text fontSize="$3">{p.generalObjective}</Text>
                 </YStack>
               ) : (
-                <Text fontSize="$2" color="$muted">
-                  Avance sin estimar
+                <Text fontSize="$2" color="$warning">
+                  Sin objetivo general definido
                 </Text>
               )}
+              {p.specificObjectives?.length ? (
+                <YStack gap="$1">
+                  <SectionTitle>Objetivos específicos</SectionTitle>
+                  {p.specificObjectives.map((o, i) => (
+                    <XStack key={`${i}-${o.text}`} gap="$2" alignItems="flex-start">
+                      <input
+                        type="checkbox"
+                        checked={o.done}
+                        disabled={saving === p.id}
+                        aria-label={o.text}
+                        style={{ width: 16, height: 16, marginTop: 3 }}
+                        onChange={() =>
+                          void save(p, {
+                            specificObjectives: (p.specificObjectives ?? []).map((x, j) => (j === i ? { ...x, done: !x.done } : x)),
+                          })
+                        }
+                      />
+                      <Text flex={1} fontSize="$3" color={o.done ? '$muted' : '$color'} textDecorationLine={o.done ? 'line-through' : 'none'}>
+                        {o.text}
+                      </Text>
+                    </XStack>
+                  ))}
+                </YStack>
+              ) : null}
+              {(() => {
+                const pr = projectProgress({ progress: p.progress, specificObjectives: p.specificObjectives });
+                return pr ? (
+                  <YStack gap="$1">
+                    <Text fontSize="$2" color="$muted">
+                      Avance {pr.value} %{pr.source === 'objectives' ? ' (por objetivos cumplidos)' : ''}
+                    </Text>
+                    <ProgressBar value={pr.value} color={p.color} />
+                  </YStack>
+                ) : (
+                  <Text fontSize="$2" color="$muted">
+                    Avance sin estimar
+                  </Text>
+                );
+              })()}
               {p.nextSteps.length ? (
                 <YStack gap="$1">
                   <SectionTitle>Próximos pasos</SectionTitle>
@@ -124,6 +195,34 @@ export function ProyectosList({ areas }: { areas?: readonly ProjectAreaKey[] }) 
               <Text fontSize="$2" color={a && a.kind !== 'stale' ? '$danger' : '$muted'}>
                 {[a?.reason, p.deadline ? `Límite: ${p.deadline.slice(0, 10)}` : null, last ? `Último avance: ${last}` : null].filter(Boolean).join(' · ')}
               </Text>
+              <XStack gap="$1" flexWrap="wrap" alignItems="center">
+                {(p.tags ?? []).map((t) => (
+                  <XStack key={t} alignItems="center" gap={2}>
+                    <Pill>#{t}</Pill>
+                    <AppButton
+                      variant="ghost"
+                      size="$1"
+                      aria-label={`Quitar etiqueta ${t}`}
+                      disabled={saving === p.id}
+                      onPress={() => void save(p, { tags: (p.tags ?? []).filter((x) => x !== t) })}
+                    >
+                      ×
+                    </AppButton>
+                  </XStack>
+                ))}
+                <input
+                  value={tagDraft[p.id] ?? ''}
+                  placeholder="+ etiqueta"
+                  maxLength={40}
+                  disabled={saving === p.id}
+                  onChange={(e) => setTagDraft((d) => ({ ...d, [p.id]: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') addTag(p);
+                  }}
+                  aria-label={`Nueva etiqueta para ${p.title}`}
+                  style={{ width: 110, padding: '2px 6px', fontSize: 12, border: '1px dashed currentColor', borderRadius: 999, background: 'transparent', color: 'inherit', opacity: 0.7 }}
+                />
+              </XStack>
             </StripeCard>
             </YStack>
           );

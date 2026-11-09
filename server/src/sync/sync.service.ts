@@ -645,6 +645,13 @@ export class SyncService {
       progress: change.progress ?? null,
       nextSteps: change.nextSteps ?? [],
       blocker: change.blocker ?? null,
+      // Omitted by older clients: undefined leaves the stored value alone.
+      generalObjective: change.generalObjective === undefined ? undefined : change.generalObjective,
+      specificObjectives:
+        change.specificObjectives === undefined
+          ? undefined
+          : change.specificObjectives.map((o) => ({ text: o.text, done: o.done })),
+      tags: change.tags === undefined ? undefined : change.tags,
       clientId: change.clientId ?? existing?.clientId ?? null,
       updatedAt: new Date(change.updatedAt),
       deletedAt: null,

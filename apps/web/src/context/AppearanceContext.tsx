@@ -25,6 +25,10 @@ function loadStoredMode(): AppearanceMode {
     return defaultAppearance();
   }
   const stored = window.localStorage.getItem(APPEARANCE_STORAGE_KEY);
+  // 2026-11-09 (the user): the Agenda look (Fraunces + IBM Plex, graphite/cobalt) is the app's look;
+  // an older stored dark/light choice becomes the Agenda mode of the same brightness.
+  if (stored === 'dark') return 'agendaDark';
+  if (stored === 'light') return 'agendaLight';
   return MODES.includes(stored as AppearanceMode) ? (stored as AppearanceMode) : defaultAppearance();
 }
 

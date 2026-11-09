@@ -8,6 +8,12 @@ export const ProjectStatusSchema = z.enum(['ACTIVE', 'PAUSED', 'BLOCKED', 'IDEA'
 export const ProjectPrioritySchema = z.enum(['HIGH', 'MEDIUM', 'LOW']);
 export const ProjectLogSourceSchema = z.enum(['APP', 'CLAUDE']);
 
+/** A specific objective; the general one is a plain text. */
+export const ProjectObjectiveSchema = z.object({
+  text: z.string().min(1).max(300),
+  done: z.boolean().default(false),
+});
+
 export const ProjectSchema = z.object({
   id: z.string().optional(),
   clientId: z.string().max(100).optional().nullable(),
@@ -23,6 +29,10 @@ export const ProjectSchema = z.object({
   progress: z.number().int().min(0).max(100).optional().nullable(),
   nextSteps: z.array(z.string().min(1).max(300)).max(30).default([]),
   blocker: z.string().max(500).optional().nullable(),
+  generalObjective: z.string().max(500).optional().nullable(),
+  specificObjectives: z.array(ProjectObjectiveSchema).max(30).default([]),
+  /** Sub-classifications inside the area (e.g. "PINN-LBM", "cartas"). */
+  tags: z.array(z.string().min(1).max(40)).max(12).default([]),
 });
 
 export const ProjectLogEntrySchema = z.object({
@@ -37,4 +47,5 @@ export const ProjectLogEntrySchema = z.object({
 export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
 export type ProjectPriority = z.infer<typeof ProjectPrioritySchema>;
 export type Project = z.infer<typeof ProjectSchema>;
+export type ProjectObjective = z.infer<typeof ProjectObjectiveSchema>;
 export type ProjectLogEntry = z.infer<typeof ProjectLogEntrySchema>;

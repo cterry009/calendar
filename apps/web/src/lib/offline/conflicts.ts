@@ -19,6 +19,7 @@ const ENTITY_LABELS: Record<SyncEntityType, string> = {
   dailyDesktopAppTime: 'tiempo por aplicacion',
   focusEvents: 'registro de foco',
   exerciseAttempts: 'intentos de ejercicios',
+  projects: 'proyectos',
 };
 
 export function countSyncConflicts(response: SyncBatchResponse): number {

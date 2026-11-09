@@ -285,6 +285,10 @@ export interface SyncProject {
   progress: number | null;
   nextSteps: string[];
   blocker: string | null;
+  /** 2026-11-09; absent on cached snapshots from before. */
+  generalObjective?: string | null;
+  specificObjectives?: Array<{ text: string; done: boolean }>;
+  tags?: string[];
   updatedAt: string;
   deletedAt: string | null;
 }

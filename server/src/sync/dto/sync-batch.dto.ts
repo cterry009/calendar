@@ -1226,6 +1226,36 @@ export class ProjectSyncChangeDto {
   @IsString()
   @MaxLength(500)
   blocker?: string | null;
+
+  /** Left out = keep what's stored (older clients don't send these). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  generalObjective?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @ValidateNested({ each: true })
+  @Type(() => ProjectObjectiveDto)
+  specificObjectives?: ProjectObjectiveDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(12)
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  tags?: string[];
+}
+
+export class ProjectObjectiveDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(300)
+  text!: string;
+
+  @IsBoolean()
+  done!: boolean;
 }
 
 export class ProjectLogEntrySyncChangeDto {
