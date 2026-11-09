@@ -6,7 +6,11 @@ export type AppearanceMode = Extract<CalendarTheme, 'dark' | 'light' | 'agendaLi
 const MODES: readonly AppearanceMode[] = ['dark', 'light', 'agendaLight', 'agendaDark'];
 
 const APPEARANCE_STORAGE_KEY = 'calendar.appearance';
-const DEFAULT_APPEARANCE: AppearanceMode = 'dark';
+// agenda-redesign 1.1 (2026-11-09): with no stored choice, the Agenda look in the system's light/dark.
+function defaultAppearance(): AppearanceMode {
+  if (typeof window === 'undefined' || !window.matchMedia) return 'agendaDark';
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'agendaLight' : 'agendaDark';
+}
 
 interface AppearanceContextValue {
   mode: AppearanceMode;
@@ -18,10 +22,10 @@ const AppearanceContext = createContext<AppearanceContextValue | null>(null);
 
 function loadStoredMode(): AppearanceMode {
   if (typeof window === 'undefined') {
-    return DEFAULT_APPEARANCE;
+    return defaultAppearance();
   }
   const stored = window.localStorage.getItem(APPEARANCE_STORAGE_KEY);
-  return MODES.includes(stored as AppearanceMode) ? (stored as AppearanceMode) : DEFAULT_APPEARANCE;
+  return MODES.includes(stored as AppearanceMode) ? (stored as AppearanceMode) : defaultAppearance();
 }
 
 /**

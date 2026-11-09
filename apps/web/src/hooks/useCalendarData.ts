@@ -18,6 +18,9 @@ interface UseCalendarDataResult {
   habitRecords: SyncSnapshot['habitRecords'];
   /** Study game attempts (2026-10-21); empty for snapshots cached before them. */
   exerciseAttempts: NonNullable<SyncSnapshot['exerciseAttempts']>;
+  /** projects-and-claude-bridge; empty for snapshots cached before them. */
+  projects: NonNullable<SyncSnapshot['projects']>;
+  projectLogEntries: NonNullable<SyncSnapshot['projectLogEntries']>;
   syncedAt: string | null;
   isLoading: boolean;
   error: string | null;
@@ -26,10 +29,12 @@ interface UseCalendarDataResult {
 
 type CalendarSnapshot = Omit<
   SyncSnapshot,
-  'syncedAt' | 'scheduleExceptions' | 'exerciseAttempts'
+  'syncedAt' | 'scheduleExceptions' | 'exerciseAttempts' | 'projects' | 'projectLogEntries'
 > & {
   scheduleExceptions: NonNullable<SyncSnapshot['scheduleExceptions']>;
   exerciseAttempts: NonNullable<SyncSnapshot['exerciseAttempts']>;
+  projects: NonNullable<SyncSnapshot['projects']>;
+  projectLogEntries: NonNullable<SyncSnapshot['projectLogEntries']>;
 };
 
 const EMPTY_SNAPSHOT: CalendarSnapshot = {
@@ -54,6 +59,8 @@ const EMPTY_SNAPSHOT: CalendarSnapshot = {
   scheduleExceptions: [],
   studyPlan: null,
   exerciseAttempts: [],
+  projects: [],
+  projectLogEntries: [],
 };
 
 export function useCalendarData(): UseCalendarDataResult {
@@ -93,6 +100,8 @@ export function useCalendarData(): UseCalendarDataResult {
         scheduleExceptions: data.scheduleExceptions ?? [],
         studyPlan: data.studyPlan ?? null,
         exerciseAttempts: data.exerciseAttempts ?? [],
+        projects: data.projects ?? [],
+        projectLogEntries: data.projectLogEntries ?? [],
       });
       setSyncedAt(data.syncedAt);
     } catch (errorValue) {

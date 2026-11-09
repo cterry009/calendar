@@ -35,41 +35,23 @@ interface NavLink {
   Icon: (props: IconProps) => JSX.Element;
 }
 
-interface NavGroup {
-  labelKey: string;
-  links: NavLink[];
-}
-
-// Grouped by why someone opens the section, not alphabetically or by build
-// order — six flat icons read as a junk drawer; three purposes don't. The
-// calendar itself has no entry here: it's always the view underneath.
-const NAV_GROUPS: NavGroup[] = [
-  {
-    labelKey: 'nav.group.plan',
-    links: [
-      { panel: 'horario', labelKey: 'nav.link.horario', Icon: CalendarDays },
-      { panel: 'ritual', labelKey: 'nav.link.ritual', Icon: Sunrise },
-      { panel: 'wellness', labelKey: 'nav.link.wellness', Icon: Heart },
-      { panel: 'dashboard', labelKey: 'nav.link.dashboard', Icon: BarChart3 },
-      { panel: 'reports', labelKey: 'nav.link.reports', Icon: CalendarDays },
-      { panel: 'suggestions', labelKey: 'nav.link.suggestions', Icon: Lightbulb },
-    ],
-  },
-  {
-    labelKey: 'nav.group.focus',
-    links: [
-      { panel: 'pomodoro', labelKey: 'nav.link.pomodoro', Icon: Timer },
-      { panel: 'blocklist', labelKey: 'nav.link.blocklist', Icon: ShieldBan },
-    ],
-  },
-  {
-    labelKey: 'nav.group.wellness',
-    links: [
-      { panel: 'habits', labelKey: 'nav.link.habits', Icon: ListChecks },
-      { panel: 'fitness', labelKey: 'nav.link.fitness', Icon: Activity },
-      { panel: 'detox', labelKey: 'nav.link.detox', Icon: Leaf },
-    ],
-  },
+// agenda-redesign (2026-11-09): the routine destinations as labeled tabs (the icon-only groups weren't
+// intuitive); the rest under "Más". The calendar is always the view underneath: "Calendario" just
+// closes any open panel.
+const MAIN_LINKS: NavLink[] = [
+  { panel: 'horario', labelKey: 'nav.link.horario', Icon: CalendarDays },
+  { panel: 'pomodoro', labelKey: 'nav.link.pomodoro', Icon: Timer },
+  { panel: 'habits', labelKey: 'nav.link.habits', Icon: ListChecks },
+];
+const MORE_LINKS: NavLink[] = [
+  { panel: 'ritual', labelKey: 'nav.link.ritual', Icon: Sunrise },
+  { panel: 'wellness', labelKey: 'nav.link.wellness', Icon: Heart },
+  { panel: 'dashboard', labelKey: 'nav.link.dashboard', Icon: BarChart3 },
+  { panel: 'reports', labelKey: 'nav.link.reports', Icon: CalendarDays },
+  { panel: 'suggestions', labelKey: 'nav.link.suggestions', Icon: Lightbulb },
+  { panel: 'blocklist', labelKey: 'nav.link.blocklist', Icon: ShieldBan },
+  { panel: 'fitness', labelKey: 'nav.link.fitness', Icon: Activity },
+  { panel: 'detox', labelKey: 'nav.link.detox', Icon: Leaf },
 ];
 
 function NavDivider() {
@@ -83,6 +65,25 @@ export function AppNav() {
   const { activePanel, openPanel, closePanel } = usePanel();
   const { open: openQuickAdd } = useQuickAdd();
   const [isTourMenuOpen, setIsTourMenuOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const moreActive = MORE_LINKS.some((l) => l.panel === activePanel);
+
+  useEffect(() => {
+    if (!isMoreOpen) return;
+    function onDown(event: MouseEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target && !target.closest('[data-more-menu-root]')) setIsMoreOpen(false);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setIsMoreOpen(false);
+    }
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [isMoreOpen]);
 
   useEffect(() => {
     if (!isTourMenuOpen) return;
@@ -153,37 +154,68 @@ export function AppNav() {
 
         <NavDivider />
 
-        {NAV_GROUPS.map((group, index) => (
-          <XStack key={group.labelKey} alignItems="center" gap="$3" flexWrap="wrap">
-            {index > 0 ? <NavDivider /> : null}
-            <XStack alignItems="center" gap="$2" flexWrap="wrap">
-              <Text
-                fontSize="$1"
-                color="$muted"
-                textTransform="uppercase"
-                letterSpacing={1.5}
-                fontWeight="600"
-              >
-                {t(group.labelKey)}
+        <XStack gap="$1" flexWrap="wrap" alignItems="center" role="tablist">
+          <AppButton variant={activePanel === null ? 'primary' : 'ghost'} onPress={closePanel} data-tutorial="nav-calendar">
+            <CalendarDays size={16} />
+            <Text color="inherit" fontWeight="600">
+              Calendario
+            </Text>
+          </AppButton>
+          {MAIN_LINKS.map((link) => (
+            <AppButton
+              key={link.panel}
+              variant={activePanel === link.panel ? 'primary' : 'ghost'}
+              onPress={() => openPanel(link.panel)}
+              data-tutorial={`nav-${link.panel}`}
+            >
+              <link.Icon size={16} />
+              <Text color="inherit" fontWeight="600">
+                {t(link.labelKey)}
               </Text>
-              <XStack gap="$1" flexWrap="wrap">
-                {group.links.map((link) => (
+            </AppButton>
+          ))}
+          <YStack position="relative" data-more-menu-root>
+            <AppButton variant={moreActive ? 'primary' : 'ghost'} onPress={() => setIsMoreOpen((v) => !v)} aria-expanded={isMoreOpen}>
+              <Text color="inherit" fontWeight="600">
+                Más ▾
+              </Text>
+            </AppButton>
+            {isMoreOpen ? (
+              <YStack
+                position="absolute"
+                top="100%"
+                left={0}
+                marginTop="$1"
+                minWidth={220}
+                backgroundColor="$surface"
+                borderWidth={1}
+                borderColor="$borderColor"
+                borderRadius="$3"
+                padding="$1"
+                zIndex={20}
+                shadowColor="$shadowColor"
+                shadowRadius={12}
+              >
+                {MORE_LINKS.map((link) => (
                   <AppButton
                     key={link.panel}
                     variant={activePanel === link.panel ? 'primary' : 'ghost'}
-                    onPress={() => openPanel(link.panel)}
-                    aria-label={t(link.labelKey)}
-                    title={t(link.labelKey)}
-                    paddingHorizontal="$3"
+                    borderWidth={0}
+                    justifyContent="flex-start"
+                    onPress={() => {
+                      setIsMoreOpen(false);
+                      openPanel(link.panel);
+                    }}
                     data-tutorial={`nav-${link.panel}`}
                   >
-                    <link.Icon size={18} />
+                    <link.Icon size={16} />
+                    <Text color="inherit">{t(link.labelKey)}</Text>
                   </AppButton>
                 ))}
-              </XStack>
-            </XStack>
-          </XStack>
-        ))}
+              </YStack>
+            ) : null}
+          </YStack>
+        </XStack>
       </XStack>
 
       <XStack alignItems="center" gap="$2" flexWrap="wrap">

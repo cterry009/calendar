@@ -265,7 +265,38 @@ export interface SyncSnapshot {
   exerciseAttempts?: ExerciseAttempt[];
   /** The block commitment (weekend-mode), read-only; absent on older servers / cached snapshots. */
   commitment?: CommitmentView | null;
+  /** projects-and-claude-bridge (2026-11-09); absent on older servers / cached snapshots. */
+  projects?: SyncProject[];
+  projectLogEntries?: SyncProjectLogEntry[];
   syncedAt: string;
+}
+
+export interface SyncProject {
+  id: string;
+  clientId: string | null;
+  title: string;
+  summary: string | null;
+  status: 'ACTIVE' | 'PAUSED' | 'BLOCKED' | 'IDEA' | 'DONE';
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  area: string | null;
+  color: string | null;
+  deadline: string | null;
+  /** 0-100; null = not estimated. */
+  progress: number | null;
+  nextSteps: string[];
+  blocker: string | null;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface SyncProjectLogEntry {
+  id: string;
+  projectId: string;
+  date: string;
+  text: string;
+  source: 'APP' | 'CLAUDE';
+  updatedAt: string;
+  deletedAt: string | null;
 }
 
 /** A one-off change to one block on one day (server ScheduleException). `date` is that day's UTC midnight. */
