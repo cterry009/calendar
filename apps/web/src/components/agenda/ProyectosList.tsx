@@ -4,6 +4,7 @@ import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { useCalendarData } from '../../hooks/useCalendarData';
 import { useToday } from '../../hooks/useNow';
 import type { SyncProject } from '../../lib/calendar/types';
+import { areaLabel, projectArea, type ProjectAreaKey } from '../../lib/projects/areas';
 import { Pill, ProgressBar, SectionTitle, StripeCard, SummaryLine } from './parts';
 
 // projects-and-claude-bridge 3.2 (read side, in the agenda-redesign look): the user's projects with
@@ -30,7 +31,7 @@ const PRIORITY: Record<SyncProject['priority'], string> = { HIGH: 'alta', MEDIUM
 const ORDER = { BLOCKED: 0, ACTIVE: 1, PAUSED: 2, IDEA: 3, DONE: 4 } as const;
 const PORDER = { HIGH: 0, MEDIUM: 1, LOW: 2 } as const;
 
-export function ProyectosList() {
+export function ProyectosList({ areas }: { areas?: readonly ProjectAreaKey[] }) {
   const data = useCalendarData();
   const today = useToday();
   const [filter, setFilter] = useState<Filter>('abiertos');
@@ -50,15 +51,17 @@ export function ProyectosList() {
     return m;
   }, [data.projectLogEntries]);
 
-  const list = data.projects
+  const inArea = data.projects.filter((p) => !areas || areas.includes(projectArea(p.area)));
+  const list = inArea
     .filter((p) => (filter === 'todos' ? true : filter === 'abiertos' ? p.status !== 'DONE' : p.status === filter))
     .sort((a, b) => ORDER[a.status] - ORDER[b.status] || PORDER[a.priority] - PORDER[b.priority] || a.title.localeCompare(b.title));
-  const active = data.projects.filter((p) => p.status === 'ACTIVE').length;
+  const active = inArea.filter((p) => p.status === 'ACTIVE').length;
+  const flagged = inArea.filter((p) => attention.has(p.id)).length;
 
   return (
     <YStack gap="$3">
       <SummaryLine>
-        {active} activos · {attention.size} piden atención · {data.projects.length} en total
+        {active} activos · {flagged} piden atención · {inArea.length} en total
       </SummaryLine>
       <XStack gap="$1" flexWrap="wrap">
         {FILTERS.map(([id, label]) => (
@@ -67,9 +70,9 @@ export function ProyectosList() {
           </AppButton>
         ))}
       </XStack>
-      {data.projects.length === 0 ? (
+      {inArea.length === 0 ? (
         <Paragraph margin={0} color="$muted">
-          Aún no hay proyectos. Los 9 de la agenda de Claude se cargan con el puente (projects-and-claude-bridge 6.1), y podrás crearlos aquí.
+          No hay proyectos en esta área.
         </Paragraph>
       ) : list.length === 0 ? (
         <Paragraph margin={0} color="$muted">
@@ -86,7 +89,7 @@ export function ProyectosList() {
               <XStack gap="$1" flexWrap="wrap">
                 <Pill tone={STATUS[p.status].tone}>{STATUS[p.status].label}</Pill>
                 <Pill tone={p.priority === 'HIGH' ? 'danger' : p.priority === 'MEDIUM' ? 'warning' : 'muted'}>prioridad {PRIORITY[p.priority]}</Pill>
-                {p.area ? <Pill>{p.area}</Pill> : null}
+                <Pill>{areaLabel(p.area)}</Pill>
               </XStack>
               <Text fontWeight="700" fontSize="$5">
                 {p.title}

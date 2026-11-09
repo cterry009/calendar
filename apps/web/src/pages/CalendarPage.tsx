@@ -7,6 +7,8 @@ import { MorningCard } from '../components/morning/MorningCard';
 import { PlanSuggestionCard } from '../components/planning/PlanSuggestionCard';
 import { CalendarPanel } from '../components/calendar/CalendarPanel';
 import { PageHeader } from '../components/PageHeader';
+import { rememberedTab, rememberTab, SubTabs } from '../components/agenda/SubTabs';
+import { HorarioPage } from './HorarioPage';
 import { useLanguage } from '../context/LanguageContext';
 import type { CalendarViewMode } from '../lib/calendar/types';
 import { startOfDay } from '../lib/calendar/utils';
@@ -15,6 +17,9 @@ import { isSameDay } from '../lib/calendar/utils';
 
 export function CalendarPage() {
   const { t } = useLanguage();
+  const [view, setView] = useState<'calendario' | 'horario'>(() =>
+    rememberedTab('calendar.calendario.view', ['calendario', 'horario'] as const, 'calendario'),
+  );
   const [mode, setMode] = useState<CalendarViewMode>('week');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   // 2026-11-09: when the day changes with the app open, follow it -- unless the user had moved
@@ -36,8 +41,20 @@ export function CalendarPage() {
         tutorialId="calendar-hero"
         maxWidth={700}
       />
+      <SubTabs
+        tabs={[
+          { id: 'calendario', label: 'Calendario' },
+          { id: 'horario', label: 'Horario' },
+        ]}
+        value={view}
+        onChange={(id) => {
+          setView(id);
+          rememberTab('calendar.calendario.view', id);
+        }}
+      />
 
-      <XStack gap="$5" flexWrap="wrap" alignItems="flex-start">
+      {view === 'horario' ? <HorarioPage /> : null}
+      <XStack display={view === 'calendario' ? 'flex' : 'none'} gap="$5" flexWrap="wrap" alignItems="flex-start">
         <YStack flex={2} minWidth={360}>
           <CalendarPanel mode={mode} selectedDate={selectedDate} onModeChange={setMode} onChangeDate={setSelectedDate} />
         </YStack>

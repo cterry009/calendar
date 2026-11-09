@@ -1,26 +1,81 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { localDateKey, projectsNeedingAttention } from '@calendar/shared';
 import { AppButton, H1, Paragraph, Text, XStack, YStack } from '@calendar/ui';
-import { DayTasksSidebar } from '../calendar/DayTasksSidebar';
 import { PlanSuggestionCard } from '../planning/PlanSuggestionCard';
 import { usePanel } from '../../context/PanelContext';
+import { useQuickAdd } from '../../context/QuickAddContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
 import { useNow, useToday } from '../../hooks/useNow';
-import { toggleEventDone } from '../../lib/calendar/completions';
+import { useTasks } from '../../hooks/useTasks';
+import { syncBatch } from '../../lib/offline/sync-client';
+import { buildCheckInPayload, buildDeleteCheckInPayload } from '../../lib/habits/sync';
 import { buildEventsForRange, endOfDay } from '../../lib/calendar/utils';
+import type { SyncTaskRecord } from '../../lib/tasks/types';
 import { categoryColor } from '../calendar/eventStyles';
-import { SectionTitle, StripeCard, SummaryLine } from './parts';
+import { rememberTab } from './SubTabs';
+import { Pill, ProgressBar, StripeCard } from './parts';
+
+// agenda-redesign (2026-11-09): Hoy laid out like the first Agenda board the user picked -- a hero card
+// (date, one summary line, energy), three cards side by side (the day's blocks, today's agenda,
+// tasks), then today's habits with quick amounts and the next seven days.
 
 const clock = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+const ENERGY_KEY = (day: string) => `calendar.energia.${day}`;
 
-// agenda-redesign (2026-11-09): the Hoy page, laid out like the Agenda board the user liked -- a dated
-// summary first, then two columns: what's now and the day's blocks; attention, habits and the week.
+function readEnergy(day: string): number {
+  try {
+    const v = Number(window.localStorage.getItem(ENERGY_KEY(day)));
+    return Number.isFinite(v) && v > 0 ? v : 60;
+  } catch {
+    return 60;
+  }
+}
+
+function Card({ title, action, children, minWidth = 300 }: { title: string; action?: ReactNode; children: ReactNode; minWidth?: number }) {
+  return (
+    <YStack
+      flex={1}
+      flexBasis={minWidth}
+      minWidth={minWidth}
+      backgroundColor="$surface"
+      borderWidth={1}
+      borderColor="$borderColor"
+      borderRadius="$4"
+      padding="$4"
+      gap="$3"
+    >
+      <XStack justifyContent="space-between" alignItems="center" gap="$2">
+        <Text fontSize={12} fontWeight="700" letterSpacing={1.2} color="$muted" textTransform="uppercase">
+          {title}
+        </Text>
+        {action}
+      </XStack>
+      {children}
+    </YStack>
+  );
+}
+
+function Empty({ children }: { children: ReactNode }) {
+  return (
+    <Paragraph margin={0} size="$2" color="$muted">
+      {children}
+    </Paragraph>
+  );
+}
+
 export function HoyDashboard() {
   const data = useCalendarData();
+  const { tasks, completeTask, isMutating } = useTasks();
   const now = useNow();
   const today = useToday();
+  const todayKey = localDateKey(today);
+  const navigate = useNavigate();
   const { openPanel } = usePanel();
-  const [busy, setBusy] = useState(false);
+  const { open: openQuickAdd } = useQuickAdd();
+  const [energy, setEnergy] = useState(() => readEnergy(todayKey));
+  const [busyHabit, setBusyHabit] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   const todayEvents = useMemo(
     () =>
@@ -41,201 +96,358 @@ export function HoyDashboard() {
       ),
     [data, today],
   );
-  const blocks = todayEvents.filter((e) => e.type === 'work').sort((a, b) => a.start.getTime() - b.start.getTime());
+  const byStart = (a: { start: Date }, b: { start: Date }) => a.start.getTime() - b.start.getTime();
+  const blocks = todayEvents.filter((e) => e.type === 'work').sort(byStart);
+  const agenda = todayEvents.filter((e) => e.type !== 'work' && e.type !== 'habit').sort(byStart);
   const current = blocks.find((b) => b.start <= now && now < b.end) ?? null;
   const next = blocks.find((b) => b.start > now) ?? null;
-  const habits = todayEvents.filter((e) => e.type === 'habit');
+
+  const open = tasks.filter((t) => t.status !== 'COMPLETED');
+  const highNoDate = open.filter((t) => !t.scheduledAt && t.priority === 'HIGH');
+  const dueToday = open.filter((t) => t.scheduledAt && new Date(t.scheduledAt) < endOfDay(today));
+
   const attention = useMemo(
-    () => projectsNeedingAttention(data.projects, data.projectLogEntries.map((l) => ({ ...l, date: l.date.slice(0, 10) })), localDateKey(today)),
-    [data.projects, data.projectLogEntries, today],
+    () => projectsNeedingAttention(data.projects, data.projectLogEntries.map((l) => ({ ...l, date: l.date.slice(0, 10) })), todayKey),
+    [data.projects, data.projectLogEntries, todayKey],
   );
   const projectById = new Map(data.projects.map((p) => [p.id, p]));
-  const pendingTasks = data.tasks.filter((t) => !t.deletedAt && t.status !== 'COMPLETED' && t.scheduledAt && new Date(t.scheduledAt) < endOfDay(today)).length;
 
-  async function toggleHabit(event: (typeof habits)[number]) {
-    setBusy(true);
-    try {
-      await toggleEventDone(event);
-      await data.refetch();
-    } finally {
-      setBusy(false);
-    }
-  }
+  const habits = data.habits.filter((h) => !h.archived);
+  const recordOf = (habitId: string) => data.habitRecords.find((r) => r.habitId === habitId && r.date.slice(0, 10) === todayKey);
 
   const week = useMemo(() => {
-    const days: Array<{ date: Date; items: string[] }> = [];
+    const days: Array<{ date: Date; items: Array<{ id: string; label: string; color?: string | null }> }> = [];
     for (let i = 1; i <= 7; i++) {
       const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
       const key = localDateKey(d);
-      const items = [
-        ...data.tasks
-          .filter((t) => !t.deletedAt && t.status !== 'COMPLETED' && t.scheduledAt && localDateKey(new Date(t.scheduledAt)) === key)
-          .map((t) => t.title),
-        ...data.projects.filter((p) => p.status !== 'DONE' && p.deadline?.slice(0, 10) === key).map((p) => `Fecha límite: ${p.title}`),
-      ];
-      if (items.length) days.push({ date: d, items });
+      days.push({
+        date: d,
+        items: [
+          ...data.tasks
+            .filter((t) => !t.deletedAt && t.status !== 'COMPLETED' && t.scheduledAt && localDateKey(new Date(t.scheduledAt)) === key)
+            .map((t) => ({ id: t.id, label: t.title })),
+          ...data.projects
+            .filter((p) => p.status !== 'DONE' && p.deadline?.slice(0, 10) === key)
+            .map((p) => ({ id: p.id, label: `Cierre: ${p.title}`, color: p.color })),
+        ],
+      });
     }
     return days;
   }, [data.tasks, data.projects, today]);
-  const dateTitle = today.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  function changeEnergy(v: number) {
+    setEnergy(v);
+    try {
+      window.localStorage.setItem(ENERGY_KEY(todayKey), String(v));
+    } catch {
+      /* per-device only */
+    }
+  }
+
+  async function setHabitValue(habitId: string, value: number) {
+    const record = recordOf(habitId);
+    setBusyHabit(habitId);
+    try {
+      const change =
+        value <= 0
+          ? record
+            ? buildDeleteCheckInPayload(record.id)
+            : null
+          : buildCheckInPayload(habitId, { date: todayKey, value, status: 'DONE' }, record?.id);
+      if (change) await syncBatch({ habitRecords: [change] });
+      await data.refetch();
+    } finally {
+      setBusyHabit(null);
+      setDrafts((d) => {
+        const rest = { ...d };
+        delete rest[habitId];
+        return rest;
+      });
+    }
+  }
+
+  async function done(task: SyncTaskRecord) {
+    await completeTask(task, task.estimatedMinutes);
+    await data.refetch();
+  }
+
+  function editSchedule() {
+    rememberTab('calendar.calendario.view', 'horario');
+    navigate('/calendar');
+  }
+
+  const dateTitle = today.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const summary = [
+    `${blocks.length} ${blocks.length === 1 ? 'bloque' : 'bloques'}`,
+    `${agenda.length} en agenda`,
+    `${dueToday.length} ${dueToday.length === 1 ? 'tarea para hoy' : 'tareas para hoy'}`,
+    attention.length ? `${attention.length} ${attention.length === 1 ? 'proyecto pide' : 'proyectos piden'} atención` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const taskRow = (t: SyncTaskRecord) => (
+    <XStack key={t.id} gap="$2" alignItems="center">
+      <input
+        type="checkbox"
+        checked={false}
+        disabled={isMutating}
+        onChange={() => void done(t)}
+        aria-label={`Completar ${t.title}`}
+        style={{ width: 18, height: 18 }}
+      />
+      <Text flex={1}>{t.title}</Text>
+      {t.priority === 'HIGH' ? <Pill tone="danger">alta</Pill> : null}
+      {t.scheduledAt ? (
+        <Text fontSize="$2" color="$muted">
+          {clock(new Date(t.scheduledAt))}
+        </Text>
+      ) : null}
+    </XStack>
+  );
 
   return (
     <YStack gap="$5">
-      <YStack gap="$1">
-        <H1 margin={0} fontFamily="$heading" fontSize="$9" fontWeight="500">
-          {dateTitle.charAt(0).toUpperCase() + dateTitle.slice(1)}
-        </H1>
-        <SummaryLine>
-          {blocks.length} {blocks.length === 1 ? 'bloque' : 'bloques'} hoy · {pendingTasks} {pendingTasks === 1 ? 'tarea pendiente' : 'tareas pendientes'} ·{' '}
-          {attention.length} {attention.length === 1 ? 'proyecto pide' : 'proyectos piden'} atención
-        </SummaryLine>
-      </YStack>
-
-      <XStack gap="$5" flexWrap="wrap" alignItems="flex-start">
-        <YStack flex={1} minWidth={320} gap="$4">
-          <YStack gap="$2">
-            <SectionTitle>Ahora</SectionTitle>
-            {current ? (
-              <StripeCard color={categoryColor(current.meta?.category ?? null)}>
-                <Text fontSize="$2" color="$muted">
-                  {clock(current.start)}–{clock(current.end)} · en curso
-                </Text>
-                <Text fontWeight="700" fontSize="$6">
-                  {current.title}
-                </Text>
-                {current.meta?.description ? (
-                  <Paragraph margin={0} size="$3" color="$muted">
-                    {current.meta.description}
-                  </Paragraph>
-                ) : null}
-                <AppButton variant="primary" alignSelf="flex-start" onPress={() => openPanel('pomodoro')}>
-                  Empezar
-                </AppButton>
-              </StripeCard>
-            ) : (
-              <Paragraph margin={0} color="$muted">
-                Ningún bloque en curso{next ? `; el siguiente es a las ${clock(next.start)}.` : '.'}
-              </Paragraph>
-            )}
-          </YStack>
-
-          <YStack gap="$2">
-            <SectionTitle>Bloques del día</SectionTitle>
-            {blocks.length === 0 ? (
-              <Paragraph margin={0} color="$muted">
-                Hoy no hay bloques.
-              </Paragraph>
-            ) : (
-              blocks.map((b) => {
-                const state = b.end <= now ? 'past' : b.start <= now ? 'now' : 'next';
-                return (
-                  <XStack
-                    key={b.id}
-                    gap="$3"
-                    alignItems="center"
-                    padding="$2"
-                    borderRadius="$2"
-                    borderWidth={1}
-                    borderColor={state === 'now' ? '$accent' : '$borderColor'}
-                    backgroundColor={state === 'now' ? '$accentBackground' : 'transparent'}
-                    opacity={state === 'past' ? 0.55 : 1}
-                  >
-                    <YStack width={4} alignSelf="stretch" borderRadius={2} backgroundColor={categoryColor(b.meta?.category ?? null) ?? '$accent'} />
-                    <Text fontSize="$2" color="$muted" width={96}>
-                      {clock(b.start)}–{clock(b.end)}
-                    </Text>
-                    <Text flex={1}>{b.meta?.done ? '✓ ' : ''}{b.title}</Text>
-                  </XStack>
-                );
-              })
-            )}
-          </YStack>
-
-          <DayTasksSidebar selectedDate={today} />
+      {/* Hero */}
+      <XStack
+        backgroundColor="$surface"
+        borderWidth={1}
+        borderColor="$borderColor"
+        borderRadius="$5"
+        padding="$5"
+        gap="$5"
+        flexWrap="wrap"
+        justifyContent="space-between"
+        alignItems="center"
+      >
+        <YStack gap="$2" flex={1} minWidth={280}>
+          <Text fontSize={12} fontWeight="700" letterSpacing={1.2} color="$muted" textTransform="uppercase">
+            Hoy
+          </Text>
+          <H1 margin={0} fontFamily="$heading" fontSize="$9" fontWeight="500">
+            {dateTitle.charAt(0).toUpperCase() + dateTitle.slice(1)}
+          </H1>
+          <Paragraph margin={0} color="$muted">
+            {summary}
+          </Paragraph>
+          {current ? (
+            <XStack gap="$2" alignItems="center" flexWrap="wrap">
+              <Text>
+                Ahora: <Text fontWeight="700">{current.title}</Text> hasta las {clock(current.end)}
+              </Text>
+              <AppButton variant="small" onPress={() => openPanel('pomodoro')}>
+                Empezar
+              </AppButton>
+            </XStack>
+          ) : next ? (
+            <Text color="$muted">Siguiente bloque: {next.title} a las {clock(next.start)}</Text>
+          ) : null}
         </YStack>
+        <YStack gap="$2" width={260}>
+          <XStack justifyContent="space-between">
+            <Text fontSize="$2" color="$muted">
+              Energía (0–100)
+            </Text>
+            <Text fontWeight="700">{energy}</Text>
+          </XStack>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={energy}
+            onChange={(e) => changeEnergy(Number(e.target.value))}
+            aria-label="Energía de hoy"
+            style={{ width: '100%' }}
+          />
+        </YStack>
+      </XStack>
 
-        <YStack flex={1} minWidth={300} gap="$4">
-          <YStack gap="$2">
-            <SectionTitle>Proyectos que piden atención</SectionTitle>
-            {attention.length === 0 ? (
-              <Paragraph margin={0} color="$muted">
-                Todo al día.
-              </Paragraph>
-            ) : (
-              attention.slice(0, 5).map((a) => {
-                const p = projectById.get(a.projectId);
-                return (
-                  <StripeCard key={a.projectId} color={p?.color}>
+      {/* Three cards */}
+      <XStack gap="$4" flexWrap="wrap" alignItems="stretch">
+        <Card
+          title="Bloques del día"
+          action={
+            <AppButton variant="ghost" size="$2" onPress={editSchedule}>
+              Editar
+            </AppButton>
+          }
+        >
+          {blocks.length === 0 ? (
+            <Empty>Hoy no hay bloques.</Empty>
+          ) : (
+            blocks.map((b) => {
+              const state = b.end <= now ? 'past' : b.start <= now ? 'now' : 'next';
+              return (
+                <XStack
+                  key={b.id}
+                  gap="$3"
+                  alignItems="center"
+                  padding="$2"
+                  borderRadius="$2"
+                  borderWidth={1}
+                  borderColor={state === 'now' ? '$accent' : '$borderColor'}
+                  opacity={state === 'past' ? 0.55 : 1}
+                >
+                  <YStack width={4} alignSelf="stretch" borderRadius={2} backgroundColor={categoryColor(b.meta?.category ?? null) ?? '$accent'} />
+                  <Text fontSize="$2" color="$muted" width={92}>
+                    {clock(b.start)}–{clock(b.end)}
+                  </Text>
+                  <Text flex={1}>
+                    {b.meta?.done ? '✓ ' : ''}
+                    {b.title}
+                  </Text>
+                </XStack>
+              );
+            })
+          )}
+        </Card>
+
+        <Card
+          title="Agenda de hoy"
+          action={
+            <AppButton variant="ghost" size="$2" onPress={openQuickAdd}>
+              + Evento
+            </AppButton>
+          }
+        >
+          {agenda.length === 0 ? (
+            <Empty>Nada más agendado hoy.</Empty>
+          ) : (
+            agenda.map((e) => (
+              <XStack key={e.id} gap="$3" alignItems="center">
+                <Text fontSize="$2" color="$muted" width={48}>
+                  {clock(e.start)}
+                </Text>
+                <Text flex={1}>{e.title}</Text>
+              </XStack>
+            ))
+          )}
+        </Card>
+
+        <Card
+          title="Tareas"
+          action={
+            <XStack gap="$1">
+              <AppButton variant="ghost" size="$2" onPress={openQuickAdd}>
+                + Tarea
+              </AppButton>
+              <AppButton variant="ghost" size="$2" onPress={() => navigate('/calendar')}>
+                Editar
+              </AppButton>
+            </XStack>
+          }
+        >
+          {dueToday.length === 0 && highNoDate.length === 0 ? <Empty>Sin tareas pendientes.</Empty> : null}
+          {dueToday.length > 0 ? <YStack gap="$2">{dueToday.map(taskRow)}</YStack> : null}
+          {highNoDate.length > 0 ? (
+            <YStack gap="$2">
+              <Text fontSize="$2" color="$muted">
+                Prioridad alta sin fecha
+              </Text>
+              {highNoDate.slice(0, 6).map(taskRow)}
+            </YStack>
+          ) : null}
+        </Card>
+      </XStack>
+
+      {/* Habits */}
+      <Card title="Hábitos de hoy" minWidth={600}>
+        {habits.length === 0 ? (
+          <Empty>Sin hábitos.</Empty>
+        ) : (
+          <XStack gap="$3" flexWrap="wrap">
+            {habits.map((h) => {
+              const value = recordOf(h.id)?.value ?? 0;
+              const goal = h.dailyGoalValue || 1;
+              const step = goal >= 10 ? Math.round(goal / 4) : 1;
+              const draft = drafts[h.id];
+              const pct = h.type === 'NEGATIVE' ? (value <= goal ? 100 : 0) : Math.round((value / goal) * 100);
+              return (
+                <YStack key={h.id} flexBasis={220} flexGrow={1} maxWidth={320} gap="$2" padding="$3" borderWidth={1} borderColor="$borderColor" borderRadius="$3">
+                  <XStack justifyContent="space-between" gap="$2">
+                    <Text fontWeight="600" flex={1}>
+                      {h.title}
+                    </Text>
+                    <Text fontSize="$2" color="$muted">
+                      meta {goal} {h.dailyGoalUnit}
+                    </Text>
+                  </XStack>
+                  <XStack gap="$2" alignItems="center">
+                    <input
+                      type="number"
+                      min={0}
+                      value={draft ?? String(value)}
+                      disabled={busyHabit === h.id}
+                      onChange={(e) => setDrafts((d) => ({ ...d, [h.id]: e.target.value }))}
+                      onBlur={() => draft !== undefined && void setHabitValue(h.id, Number(draft) || 0)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && draft !== undefined) void setHabitValue(h.id, Number(draft) || 0);
+                      }}
+                      aria-label={`${h.title} (${h.dailyGoalUnit})`}
+                      style={{ width: 80, padding: 4 }}
+                    />
+                    <AppButton variant="small" disabled={busyHabit === h.id} onPress={() => void setHabitValue(h.id, value + step)}>
+                      +{step}
+                    </AppButton>
+                    <Text fontSize="$2" color="$muted">
+                      {h.dailyGoalUnit}
+                    </Text>
+                  </XStack>
+                  <ProgressBar value={pct} color={h.color} />
+                </YStack>
+              );
+            })}
+          </XStack>
+        )}
+      </Card>
+
+      {/* Next 7 days */}
+      <Card title="Próximos 7 días" minWidth={600}>
+        <XStack gap="$2" flexWrap="wrap">
+          {week.map((d) => (
+            <YStack key={d.date.toISOString()} flexBasis={130} flexGrow={1} gap="$1" padding="$2" borderWidth={1} borderColor="$borderColor" borderRadius="$3" minHeight={90}>
+              <Text fontSize="$2" fontWeight="700" color="$muted">
+                {d.date.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric' })}
+              </Text>
+              {d.items.length === 0 ? (
+                <Text fontSize="$2" color="$muted">
+                  —
+                </Text>
+              ) : (
+                d.items.slice(0, 4).map((it) => (
+                  <Text key={it.id} fontSize="$2" numberOfLines={2}>
+                    {it.label}
+                  </Text>
+                ))
+              )}
+            </YStack>
+          ))}
+        </XStack>
+      </Card>
+
+      {/* Attention */}
+      {attention.length > 0 ? (
+        <Card title="Proyectos que piden atención" minWidth={600}>
+          <XStack gap="$3" flexWrap="wrap">
+            {attention.slice(0, 6).map((a) => {
+              const p = projectById.get(a.projectId);
+              return (
+                <YStack key={a.projectId} flexBasis={260} flexGrow={1}>
+                  <StripeCard color={p?.color}>
                     <Text fontWeight="600">{p?.title ?? 'Proyecto'}</Text>
                     <Text fontSize="$2" color={a.kind === 'stale' ? '$muted' : '$danger'}>
                       {a.reason}
                     </Text>
                   </StripeCard>
-                );
-              })
-            )}
-          </YStack>
+                </YStack>
+              );
+            })}
+          </XStack>
+        </Card>
+      ) : null}
 
-          <YStack gap="$2">
-            <SectionTitle>Hábitos de hoy</SectionTitle>
-            {habits.length === 0 ? (
-              <Paragraph margin={0} color="$muted">
-                Sin hábitos para hoy.
-              </Paragraph>
-            ) : (
-              habits.map((h) => (
-                <XStack key={h.id} gap="$2" alignItems="center">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(h.meta?.done)}
-                    disabled={busy}
-                    onChange={() => void toggleHabit(h)}
-                    aria-label={h.title}
-                    style={{ width: 18, height: 18 }}
-                  />
-                  <Text flex={1} color={h.meta?.done ? '$muted' : '$color'} textDecorationLine={h.meta?.done ? 'line-through' : 'none'}>
-                    {h.title}
-                  </Text>
-                  {h.meta?.habitWhen ? (
-                    <Text fontSize="$2" color="$muted">
-                      {h.meta.habitWhen}
-                    </Text>
-                  ) : null}
-                </XStack>
-              ))
-            )}
-          </YStack>
-
-          <YStack gap="$2">
-            <SectionTitle>Próximos 7 días</SectionTitle>
-            {week.length === 0 ? (
-              <Paragraph margin={0} color="$muted">
-                Semana despejada.
-              </Paragraph>
-            ) : (
-              week.map((d) => (
-                <XStack key={d.date.toISOString()} gap="$3">
-                  <Text fontSize="$2" color="$muted" width={96}>
-                    {d.date.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })}
-                  </Text>
-                  <Text flex={1} fontSize="$3">
-                    {d.items.join(' · ')}
-                  </Text>
-                </XStack>
-              ))
-            )}
-          </YStack>
-
-          <YStack gap="$2">
-            <SectionTitle>Fechas de cierre del radar</SectionTitle>
-            <Paragraph margin={0} size="$2" color="$muted">
-              Llegan aquí cuando los radares escriban en el calendario (research-tracking). Por ahora, en Investigación.
-            </Paragraph>
-          </YStack>
-
-          <PlanSuggestionCard />
-        </YStack>
-      </XStack>
+      <PlanSuggestionCard />
     </YStack>
   );
 }

@@ -1,64 +1,39 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  Activity,
   AppButton,
   BarChart3,
-  CalendarDays,
   Eyebrow,
-  Heart,
   HelpCircle,
-  Leaf,
-  Lightbulb,
-  ListChecks,
   Paragraph,
   Plus,
   Settings,
   ShieldBan,
-  Sunrise,
   Text,
-  Timer,
   XStack,
   YStack,
-  type IconProps,
 } from '@calendar/ui';
 import { TourMenu } from '../components/onboarding/TourMenu';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useOnboarding } from '../context/OnboardingContext';
-import { usePanel, type PanelId } from '../context/PanelContext';
+import { usePanel } from '../context/PanelContext';
 import { useQuickAdd } from '../context/QuickAddContext';
 import { TOURS, type TourId } from '../lib/onboarding/tours';
 
-interface NavLink {
-  panel: PanelId;
-  labelKey: string;
-  Icon: (props: IconProps) => JSX.Element;
-}
 
-// agenda-redesign (2026-11-09): the routine destinations as labeled tabs (the icon-only groups weren't
-// intuitive); the rest under "Más". The calendar is always the view underneath: "Calendario" just
-// closes any open panel.
+// agenda-redesign (2026-11-09, the user's structure): three tabs -- Hoy, Proyectos (habits, exercise,
+// the ritual, study, master's, papers by area) and Calendario (with its Horario). Estadísticas and
+// Bloqueo under "Más". Sugerencias, Detox and the Pomodoro tab are gone from the nav (the pomodoro
+// lives inside the work blocks); their code stays.
 const PAGE_LINKS = [
-  { path: '/calendar', label: 'Calendario' },
   { path: '/hoy', label: 'Hoy' },
   { path: '/proyectos', label: 'Proyectos' },
-  { path: '/investigacion', label: 'Investigación' },
+  { path: '/calendar', label: 'Calendario' },
 ];
-const MAIN_LINKS: NavLink[] = [
-  { panel: 'horario', labelKey: 'nav.link.horario', Icon: CalendarDays },
-  { panel: 'pomodoro', labelKey: 'nav.link.pomodoro', Icon: Timer },
-  { panel: 'habits', labelKey: 'nav.link.habits', Icon: ListChecks },
-];
-const MORE_LINKS: NavLink[] = [
-  { panel: 'ritual', labelKey: 'nav.link.ritual', Icon: Sunrise },
-  { panel: 'wellness', labelKey: 'nav.link.wellness', Icon: Heart },
-  { panel: 'dashboard', labelKey: 'nav.link.dashboard', Icon: BarChart3 },
-  { panel: 'reports', labelKey: 'nav.link.reports', Icon: CalendarDays },
-  { panel: 'suggestions', labelKey: 'nav.link.suggestions', Icon: Lightbulb },
-  { panel: 'blocklist', labelKey: 'nav.link.blocklist', Icon: ShieldBan },
-  { panel: 'fitness', labelKey: 'nav.link.fitness', Icon: Activity },
-  { panel: 'detox', labelKey: 'nav.link.detox', Icon: Leaf },
+const MORE_PAGES = [
+  { path: '/estadisticas', label: 'Estadísticas', Icon: BarChart3 },
+  { path: '/bloqueo', label: 'Bloqueo', Icon: ShieldBan },
 ];
 
 function NavDivider() {
@@ -79,7 +54,7 @@ export function AppNav() {
     if (activePanel) closePanel();
     navigate(path);
   };
-  const moreActive = MORE_LINKS.some((l) => l.panel === activePanel);
+  const moreActive = activePanel === null && MORE_PAGES.some((l) => l.path === pathname);
 
   useEffect(() => {
     if (!isMoreOpen) return;
@@ -180,20 +155,6 @@ export function AppNav() {
               </Text>
             </AppButton>
           ))}
-          <NavDivider />
-          {MAIN_LINKS.map((link) => (
-            <AppButton
-              key={link.panel}
-              variant={activePanel === link.panel ? 'primary' : 'ghost'}
-              onPress={() => openPanel(link.panel)}
-              data-tutorial={`nav-${link.panel}`}
-            >
-              <link.Icon size={16} />
-              <Text color="inherit" fontWeight="600">
-                {t(link.labelKey)}
-              </Text>
-            </AppButton>
-          ))}
           <YStack position="relative" data-more-menu-root>
             <AppButton variant={moreActive ? 'primary' : 'ghost'} onPress={() => setIsMoreOpen((v) => !v)} aria-expanded={isMoreOpen}>
               <Text color="inherit" fontWeight="600">
@@ -216,20 +177,19 @@ export function AppNav() {
                 shadowColor="$shadowColor"
                 shadowRadius={12}
               >
-                {MORE_LINKS.map((link) => (
+                {MORE_PAGES.map((link) => (
                   <AppButton
-                    key={link.panel}
-                    variant={activePanel === link.panel ? 'primary' : 'ghost'}
+                    key={link.path}
+                    variant={activePanel === null && pathname === link.path ? 'primary' : 'ghost'}
                     borderWidth={0}
                     justifyContent="flex-start"
                     onPress={() => {
                       setIsMoreOpen(false);
-                      openPanel(link.panel);
+                      goTo(link.path);
                     }}
-                    data-tutorial={`nav-${link.panel}`}
                   >
                     <link.Icon size={16} />
-                    <Text color="inherit">{t(link.labelKey)}</Text>
+                    <Text color="inherit">{link.label}</Text>
                   </AppButton>
                 ))}
               </YStack>
