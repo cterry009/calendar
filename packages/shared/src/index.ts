@@ -10,6 +10,7 @@ export * from './blocking/nightSchedule.js';
 export * from './blocking/commitment.js';
 export * from './serotonin/index.js';
 export * from './pomodoro/state-machine.js';
+export * from './pomodoro/focusGuard.js';
 export * from './pomodoro/streak.js';
 export * from './pomodoro/focus-events.js';
 export * from './pomodoro/focusPlan.js';
