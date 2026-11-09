@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { AppButton, AppCard, H2, Paragraph, YStack } from '@calendar/ui';
 import { useLanguage } from '../../context/LanguageContext';
 import { usePanel } from '../../context/PanelContext';
@@ -28,6 +28,7 @@ import { DayView } from './DayView';
 import { MonthView } from './MonthView';
 import { WeekTimeGrid } from './WeekTimeGrid';
 import { WeekView } from './WeekView';
+import { EventDetailsPanel } from './EventDetailsPanel';
 
 function getRangeForMode(mode: CalendarViewMode, selectedDate: Date): { start: Date; end: Date } {
   if (mode === 'day') {
@@ -60,6 +61,8 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
   const fitnessData = useFitness();
   const pomodoro = usePomodoro();
   const { openPanel } = usePanel();
+  // 2026-11-09: the event whose details panel is open.
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   function selectDay(date: Date) {
     onChangeDate(startOfDay(date));
@@ -136,6 +139,10 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
   );
 
   const dayEvents = useMemo(() => eventsForDate(events, selectedDate), [events, selectedDate]);
+  const selectedEvent = useMemo(
+    () => (selectedEventId ? events.find((e) => e.id === selectedEventId) ?? null : null),
+    [events, selectedEventId],
+  );
   const weekDays = useMemo(() => {
     const weekStart = getStartOfWeek(selectedDate);
     return Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
@@ -208,17 +215,30 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
               onToggleDone={handleToggleDone}
               onToggleSkipped={handleToggleSkipped}
               onChangeException={handleChangeException}
+              onSelectEvent={setSelectedEventId}
             />
             <WeekView days={weekSummary} onSelectDay={selectDay} />
           </YStack>
         ) : mode === 'week' ? (
           <YStack gap="$4">
-            <WeekTimeGrid weekDays={weekDays} events={events} onSelectDay={selectDay} />
+            <WeekTimeGrid weekDays={weekDays} events={events} onSelectDay={selectDay} onSelectEvent={setSelectedEventId} />
             <WeekView days={weekSummary} onSelectDay={selectDay} />
           </YStack>
         ) : (
           <MonthView days={monthSummary} onSelectDay={selectDay} />
         )
+      ) : null}
+
+      {selectedEvent ? (
+        <EventDetailsPanel
+          event={selectedEvent}
+          tasks={data.tasks}
+          suggestedPomodoros={data.studyPlan?.planData.pomodoros_sugeridos}
+          onClose={() => setSelectedEventId(null)}
+          onChanged={async () => {
+            await data.refetch();
+          }}
+        />
       ) : null}
 
       {data.syncedAt ? (

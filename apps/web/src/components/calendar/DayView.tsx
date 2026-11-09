@@ -67,6 +67,7 @@ interface DayViewProps {
   onToggleSkipped?: (event: CalendarEvent) => Promise<void>;
   /** Timetable blocks: a change for this day only (horario 2026-10-19). */
   onChangeException?: (change: ExceptionChange) => Promise<void>;
+  onSelectEvent?: (eventId: string) => void;
 }
 
 function SkipToggle({ event, onToggle }: { event: CalendarEvent; onToggle: (event: CalendarEvent) => Promise<void> }) {
@@ -248,6 +249,7 @@ export function DayView({
   onToggleDone,
   onToggleSkipped,
   onChangeException,
+  onSelectEvent,
 }: DayViewProps) {
   const [openFitnessFormBlockId, setOpenFitnessFormBlockId] = useState<string | null>(null);
   const habitEvents = events.filter((event) => event.type === 'habit');
@@ -321,6 +323,7 @@ export function DayView({
               isToday={isSelectedDateToday}
               onStartFocusSegment={onStartFocusSegment}
               isStartingFocus={isStartingFocus}
+              onSelectEvent={onSelectEvent}
             />
           </>
         )}

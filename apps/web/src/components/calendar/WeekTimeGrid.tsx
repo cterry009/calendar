@@ -5,6 +5,7 @@ import { eventsForDate, isSameDay } from '../../lib/calendar/utils';
 import { buildDayBars, clampZoom, DEFAULT_ZOOM, layoutBars, minuteOfDay, outlineFill, ZOOM_STEP } from './timeGridLayout';
 import { ZoomControls } from './ZoomControls';
 import { clockLabel, NowLine } from './NowLine';
+import { eventIdOfBar } from '../../lib/calendar/eventDetails';
 import { useNow, useToday } from '../../hooks/useNow';
 
 const BASE_ROW_HEIGHT_PX = 48;
@@ -17,11 +18,13 @@ interface WeekTimeGridProps {
   weekDays: Date[];
   events: CalendarEvent[];
   onSelectDay: (date: Date) => void;
+  /** Opens the event's details panel (2026-11-09). */
+  onSelectEvent?: (eventId: string) => void;
 }
 
 /** Google Calendar-style 7-day grid: one column per day, all sharing the same hour rows,
  * each rendering that day's schedule (pomodoro plan segments, rest blocks, tasks, fitness). */
-export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProps) {
+export function WeekTimeGrid({ weekDays, events, onSelectDay, onSelectEvent }: WeekTimeGridProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const today = useToday();
   const now = useNow();
@@ -169,6 +172,8 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
                   opacity={bar.done ? 0.45 : 1}
                   paddingHorizontal="$1"
                   overflow="hidden"
+                  cursor={onSelectEvent ? 'pointer' : 'default'}
+                  onPress={onSelectEvent ? () => onSelectEvent(eventIdOfBar(bar.id)) : undefined}
                 >
                   {bar.height >= 14 ? (
                     <Text fontSize="$1" color={bar.color} fontWeight="600" lineHeight={12}>
@@ -196,6 +201,8 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
                   overflow="hidden"
                   zIndex={2}
                   opacity={bar.done ? 0.5 : 1}
+                  cursor={onSelectEvent ? 'pointer' : 'default'}
+                  onPress={onSelectEvent ? () => onSelectEvent(eventIdOfBar(bar.id)) : undefined}
                 >
                   {bar.height >= 14 ? (
                     <Text

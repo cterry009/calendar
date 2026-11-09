@@ -4,6 +4,7 @@ import type { CalendarEvent } from '../../lib/calendar/types';
 import { buildDayBars, clampZoom, DEFAULT_ZOOM, layoutBars, minuteOfDay, outlineFill, ZOOM_STEP } from './timeGridLayout';
 import { ZoomControls } from './ZoomControls';
 import { clockLabel, NowLine } from './NowLine';
+import { eventIdOfBar } from '../../lib/calendar/eventDetails';
 import { useNow } from '../../hooks/useNow';
 
 const BASE_ROW_HEIGHT_PX = 96;
@@ -18,6 +19,8 @@ interface DayTimeGridProps {
   isToday: boolean;
   onStartFocusSegment: (focusDurationMin: number, taskId?: string) => Promise<void>;
   isStartingFocus: boolean;
+  /** Opens the event's details panel (2026-11-09); its "Empezar" replaces the one-click start. */
+  onSelectEvent?: (eventId: string) => void;
 }
 
 /** Renders the day's schedule as a Google Calendar-style hourly grid: events positioned and
@@ -29,6 +32,7 @@ export function DayTimeGrid({
   isToday,
   onStartFocusSegment,
   isStartingFocus,
+  onSelectEvent,
 }: DayTimeGridProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
@@ -146,9 +150,15 @@ export function DayTimeGrid({
                 paddingHorizontal="$3"
                 paddingVertical={bar.height >= 30 ? 4 : 0}
                 overflow="hidden"
-                cursor={canStart ? 'pointer' : 'default'}
+                cursor={canStart || onSelectEvent ? 'pointer' : 'default'}
                 opacity={bar.done ? 0.45 : canStart && isStartingFocus ? 0.6 : 1}
-                onPress={canStart ? () => void onStartFocusSegment(bar.endMinute - bar.startMinute, bar.taskId) : undefined}
+                onPress={
+                  onSelectEvent
+                    ? () => onSelectEvent(eventIdOfBar(bar.id))
+                    : canStart
+                      ? () => void onStartFocusSegment(bar.endMinute - bar.startMinute, bar.taskId)
+                      : undefined
+                }
               >
                 {bar.height >= 18 ? (
                   <Text fontSize="$3" color={bar.color} fontWeight={isCurrent ? '800' : '600'} lineHeight={18}>
@@ -187,6 +197,8 @@ export function DayTimeGrid({
                 overflow="hidden"
                 zIndex={2}
                 opacity={bar.done ? 0.5 : 1}
+                cursor={onSelectEvent ? 'pointer' : 'default'}
+                onPress={onSelectEvent ? () => onSelectEvent(eventIdOfBar(bar.id)) : undefined}
               >
                 {bar.height >= 18 ? (
                   <Text fontSize="$3" fontWeight="800" color={outline ? bar.color : '$onAccent'} lineHeight={18}>
