@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { XStack, YStack } from '@calendar/ui';
-import { SidePanelTabs } from '../components/sidepanel/SidePanelTabs';
+import { AppCard, XStack, YStack } from '@calendar/ui';
+import { DayTasksSidebar } from '../components/calendar/DayTasksSidebar';
+import { MiniMonthCalendar } from '../components/calendar/MiniMonthCalendar';
+import { ScheduleManager } from '../components/schedules/ScheduleManager';
+import { MorningCard } from '../components/morning/MorningCard';
+import { PlanSuggestionCard } from '../components/planning/PlanSuggestionCard';
 import { CalendarPanel } from '../components/calendar/CalendarPanel';
 import { PageHeader } from '../components/PageHeader';
 import { useLanguage } from '../context/LanguageContext';
@@ -38,14 +42,22 @@ export function CalendarPage() {
           <CalendarPanel mode={mode} selectedDate={selectedDate} onModeChange={setMode} onChangeDate={setSelectedDate} />
         </YStack>
 
-        <YStack flex={1} minWidth={320} maxWidth={460}>
-          <SidePanelTabs
-            selectedDate={selectedDate}
-            onSelectDate={(date) => {
-              setSelectedDate(startOfDay(date));
-              setMode('day');
-            }}
-          />
+        <YStack flex={1} minWidth={300} gap="$5">
+          <PlanSuggestionCard />
+          <MorningCard />
+          <AppCard>
+            <MiniMonthCalendar
+              selectedDate={selectedDate}
+              onSelectDate={(date) => {
+                setSelectedDate(startOfDay(date));
+                setMode('day');
+              }}
+            />
+          </AppCard>
+          <DayTasksSidebar selectedDate={selectedDate} />
+          <YStack data-tutorial="schedule-header">
+            <ScheduleManager />
+          </YStack>
         </YStack>
       </XStack>
     </YStack>

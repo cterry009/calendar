@@ -3,6 +3,9 @@ import { LegacyPanelRedirect } from './components/panels/LegacyPanelRedirect';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ProtectedAppLayout } from './layouts/ProtectedAppLayout';
 import { CalendarPage } from './pages/CalendarPage';
+import { HoyPage } from './pages/HoyPage';
+import { InvestigacionPage } from './pages/InvestigacionPage';
+import { ProyectosPage } from './pages/ProyectosPage';
 import { LoginPage } from './pages/LoginPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -19,6 +22,10 @@ export default function App() {
           <Route element={<ProtectedAppLayout />}>
             <Route path="/" element={<Navigate to="/calendar" replace />} />
             <Route path="/calendar" element={<CalendarPage />} />
+            {/* agenda-redesign (2026-11-09): full pages, not tabs beside the calendar. */}
+            <Route path="/hoy" element={<HoyPage />} />
+            <Route path="/proyectos" element={<ProyectosPage />} />
+            <Route path="/investigacion" element={<InvestigacionPage />} />
             <Route path="/tasks" element={<Navigate to="/calendar" replace />} />
             <Route path="/schedule" element={<Navigate to="/calendar" replace />} />
             {/* These used to be full pages; they're slide-over panels now (task 5.1). Old

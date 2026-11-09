@@ -30,7 +30,7 @@ const PRIORITY: Record<SyncProject['priority'], string> = { HIGH: 'alta', MEDIUM
 const ORDER = { BLOCKED: 0, ACTIVE: 1, PAUSED: 2, IDEA: 3, DONE: 4 } as const;
 const PORDER = { HIGH: 0, MEDIUM: 1, LOW: 2 } as const;
 
-export function ProyectosTab() {
+export function ProyectosList() {
   const data = useCalendarData();
   const today = useToday();
   const [filter, setFilter] = useState<Filter>('abiertos');
@@ -76,11 +76,13 @@ export function ProyectosTab() {
           No hay proyectos en este filtro.
         </Paragraph>
       ) : (
-        list.map((p) => {
+        <XStack gap="$3" flexWrap="wrap" alignItems="flex-start">
+        {list.map((p) => {
           const a = attention.get(p.id);
           const last = lastLog.get(p.id);
           return (
-            <StripeCard key={p.id} color={p.color}>
+            <YStack key={p.id} flexBasis={320} flexGrow={1} maxWidth={520}>
+            <StripeCard color={p.color}>
               <XStack gap="$1" flexWrap="wrap">
                 <Pill tone={STATUS[p.status].tone}>{STATUS[p.status].label}</Pill>
                 <Pill tone={p.priority === 'HIGH' ? 'danger' : p.priority === 'MEDIUM' ? 'warning' : 'muted'}>prioridad {PRIORITY[p.priority]}</Pill>
@@ -120,8 +122,10 @@ export function ProyectosTab() {
                 {[a?.reason, p.deadline ? `Límite: ${p.deadline.slice(0, 10)}` : null, last ? `Último avance: ${last}` : null].filter(Boolean).join(' · ')}
               </Text>
             </StripeCard>
+            </YStack>
           );
-        })
+        })}
+        </XStack>
       )}
     </YStack>
   );

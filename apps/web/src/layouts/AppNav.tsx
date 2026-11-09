@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Activity,
   AppButton,
@@ -38,6 +39,12 @@ interface NavLink {
 // agenda-redesign (2026-11-09): the routine destinations as labeled tabs (the icon-only groups weren't
 // intuitive); the rest under "Más". The calendar is always the view underneath: "Calendario" just
 // closes any open panel.
+const PAGE_LINKS = [
+  { path: '/calendar', label: 'Calendario' },
+  { path: '/hoy', label: 'Hoy' },
+  { path: '/proyectos', label: 'Proyectos' },
+  { path: '/investigacion', label: 'Investigación' },
+];
 const MAIN_LINKS: NavLink[] = [
   { panel: 'horario', labelKey: 'nav.link.horario', Icon: CalendarDays },
   { panel: 'pomodoro', labelKey: 'nav.link.pomodoro', Icon: Timer },
@@ -66,6 +73,12 @@ export function AppNav() {
   const { open: openQuickAdd } = useQuickAdd();
   const [isTourMenuOpen, setIsTourMenuOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const goTo = (path: string) => {
+    if (activePanel) closePanel();
+    navigate(path);
+  };
   const moreActive = MORE_LINKS.some((l) => l.panel === activePanel);
 
   useEffect(() => {
@@ -155,12 +168,19 @@ export function AppNav() {
         <NavDivider />
 
         <XStack gap="$1" flexWrap="wrap" alignItems="center" role="tablist">
-          <AppButton variant={activePanel === null ? 'primary' : 'ghost'} onPress={closePanel} data-tutorial="nav-calendar">
-            <CalendarDays size={16} />
-            <Text color="inherit" fontWeight="600">
-              Calendario
-            </Text>
-          </AppButton>
+          {PAGE_LINKS.map((page) => (
+            <AppButton
+              key={page.path}
+              variant={activePanel === null && pathname === page.path ? 'primary' : 'ghost'}
+              onPress={() => goTo(page.path)}
+              data-tutorial={`nav-page-${page.path.slice(1)}`}
+            >
+              <Text color="inherit" fontWeight="600">
+                {page.label}
+              </Text>
+            </AppButton>
+          ))}
+          <NavDivider />
           {MAIN_LINKS.map((link) => (
             <AppButton
               key={link.panel}
