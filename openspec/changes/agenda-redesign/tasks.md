@@ -2,9 +2,9 @@
 
 ## 1. Look and home
 
-- [ ] 1.1 Agenda modes as default for users with no stored choice, following the OS light/dark (`AppearanceContext`). Verify: Vitest for the default resolution.
-- [ ] 1.2 `HoyPage` as `/`: current/next block with one primary action, today's tasks and habits, next items. Verify: Vitest for "what is current/next"; tried in the app at a block time.
-- [ ] 1.3 Navigation trimmed to the routine destinations; the rest under "Más". Verify: every page still reachable; tried.
+- [x] 1.1 Agenda modes as default for users with no stored choice, following the OS light/dark (`AppearanceContext`). Verify: Vitest for the default resolution.
+- [x] 1.2 Today first — changed by the user on 2026-11-09: the calendar stays the main view, with a side panel of tabs (Hoy, Proyectos, Investigación); Hoy has the summary, current/next block with "Empezar", projects needing attention, today's habits and the existing cards. Verify: tried in the desktop app at a block time.
+- [x] 1.3 Navigation trimmed to the routine destinations; the rest under "Más". Verify: every page still reachable; tried.
 
 ## 2. Timetable and sync status
 

@@ -14,7 +14,7 @@
 
 ## 3. Clients
 
-- [ ] 3.1 Web: snapshot/offline types and conflict handling for both entities (`?? []` defaults). Verify: `npm run typecheck --prefix apps/web`, existing Vitest pass.
+- [x] 3.1 Web: snapshot/offline types and conflict handling for both entities (`?? []` defaults). Verify: `npm run typecheck --prefix apps/web`, existing Vitest pass.
 - [ ] 3.2 Web/desktop: plain `/proyectos` route — list with status, priority, progress or "sin estimar", attention flags; detail with next steps, log (add entry), linked tasks; create/edit/delete; project picker on the task form. Verify: Vitest for the list's sort and attention badges; tried in `npm run dev --prefix apps/web`.
 - [ ] 3.3 Mobile: snapshot/offline types (`db.ts`, `lib/sync/api.ts`) and the project name on task rows. Verify: `npm run typecheck --prefix apps/mobile`; tried on the phone (relaunch with `monkey`, check accessibility).
 
