@@ -35,6 +35,14 @@
 - [ ] 6.1 From the chat, create through the bridge the 9 projects and 3 master's tasks of the Claude artifact "Agenda de Cristo" (habits stay the calendar's own). Verify: they show on `/proyectos` and on the phone.
 - [ ] 6.2 Delete the artifact and its paused morning summary once the user confirms. Verify: the user confirms nothing is missing.
 
+## 7. Revisión (feature-review-gate)
+
+Each feature reaches Cristo as a review card (what it does, how to try it in ≤ 2 min, the assumptions taken) and is checked off only with his answer.
+
+- [ ] 7.1 Cristo revisó la pantalla de Proyectos (lista, detalle, bitácora, tareas enlazadas): coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+- [ ] 7.2 Cristo revisó los proyectos que piden atención en el correo de las 21:00: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+- [ ] 7.3 Cristo revisó hablar con el calendario desde el chat de Claude (las herramientas del puente): coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+
 ## Workflow follow-up
 
 - Next change: visual redesign of web/desktop with the prototype board's look (tokens in `packages/ui`), then mobile.

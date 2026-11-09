@@ -23,3 +23,12 @@
 ## 4. Web/desktop
 
 - [ ] 4.1 The day's exercise (activity, routine day, planned minutes, last sessions) on the morning view. Verify: Vitest for the plan card; seen in the app.
+
+## 5. Revisión (feature-review-gate)
+
+Each feature reaches Cristo as a review card (what it does, how to try it in ≤ 2 min, the assumptions taken) and is checked off only with his answer.
+
+- [ ] 5.1 Cristo revisó el plan semanal de ejercicio (rutina, trote, movilidad) y su progresión: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+- [ ] 5.2 Cristo revisó la pregunta de la mañana según el día: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+- [ ] 5.3 Cristo revisó la sesión guiada con videos, dolor y Borg: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+- [ ] 5.4 Cristo revisó la verificación con los sensores y el desbloqueo: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.

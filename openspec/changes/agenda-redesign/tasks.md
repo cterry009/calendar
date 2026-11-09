@@ -32,3 +32,15 @@
 ## 6. Phone
 
 - [ ] 6.1 Agenda tokens on mobile (after 1-5). Verify: tried on the phone.
+
+## 7. Revisión (feature-review-gate)
+
+Each feature reaches Cristo as a review card (what it does, how to try it in ≤ 2 min, the assumptions taken) and is checked off only with his answer.
+
+- [ ] 7.1 Cristo revisó el diseño Agenda por defecto: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+- [ ] 7.2 Cristo revisó Hoy como pantalla de inicio: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+- [ ] 7.3 Cristo revisó el Horario en cuadrícula con el estado de sincronización: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+- [ ] 7.4 Cristo revisó ocultar el tiempo y el avance por sesión: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+- [ ] 7.5 Cristo revisó la barra hacia la siguiente sección: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+- [ ] 7.6 Cristo revisó "Pensando… N s" con detalles y la estimación de tiempo: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+- [ ] 7.7 Cristo revisó el modo pantalla completa: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.

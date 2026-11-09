@@ -16,3 +16,11 @@
 ## 3. App
 
 - [ ] 3.1 Investigación section (Maestrías, Investigadores, Lecturas) with filters and editable user fields, in the agenda-redesign look. Verify: Vitest for filters; tried with real rows.
+
+## 4. Revisión (feature-review-gate)
+
+Each feature reaches Cristo as a review card (what it does, how to try it in ≤ 2 min, the assumptions taken) and is checked off only with his answer.
+
+- [ ] 4.1 Cristo revisó la sección Investigación (maestrías, investigadores, lecturas): coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+- [ ] 4.2 Cristo revisó las fechas de cierre como tareas: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
+- [ ] 4.3 Cristo revisó los radares corriendo en el PC: coincide / cambiar / quitar. Verify: his answer recorded here; "cambiar" becomes a task in this change.
