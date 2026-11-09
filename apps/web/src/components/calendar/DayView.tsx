@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNow } from '../../hooks/useNow';
 import { findFreeSlots } from '@calendar/shared';
 import { AppButton, AppCard, H2, H3, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { DayTimeGrid } from './DayTimeGrid';
@@ -202,6 +203,8 @@ function FocusPlanSummary({
     ],
   );
 
+  // Before the early return below: a hook can't come after it.
+  const now = useNow();
   const plan = useMemo(
     () => generateFocusPlan(minuteOfDay(block.start), minuteOfDay(block.end), planConfig),
     [block.start, block.end, planConfig],
@@ -209,7 +212,7 @@ function FocusPlanSummary({
 
   if (plan.length === 0) return null;
 
-  const nowMinute = isToday ? minuteOfDay(new Date()) : -1;
+  const nowMinute = isToday ? minuteOfDay(now) : -1;
   const currentSegment = plan.find((segment) => nowMinute >= segment.startMinute && nowMinute < segment.endMinute);
   const longBreaks = countSegmentsByType(plan, 'long-break');
   const pomodoros = countSegmentsByType(plan, 'pomodoro');
@@ -248,7 +251,8 @@ export function DayView({
 }: DayViewProps) {
   const [openFitnessFormBlockId, setOpenFitnessFormBlockId] = useState<string | null>(null);
   const habitEvents = events.filter((event) => event.type === 'habit');
-  const isSelectedDateToday = isSameDay(selectedDate, new Date());
+  const now = useNow();
+  const isSelectedDateToday = isSameDay(selectedDate, now);
 
   const blocks = events
     .filter((event) => event.type === 'work' || event.type === 'rest')

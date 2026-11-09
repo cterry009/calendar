@@ -3,6 +3,8 @@ import { Text, XStack, YStack } from '@calendar/ui';
 import type { CalendarEvent } from '../../lib/calendar/types';
 import { buildDayBars, clampZoom, DEFAULT_ZOOM, layoutBars, minuteOfDay, outlineFill, ZOOM_STEP } from './timeGridLayout';
 import { ZoomControls } from './ZoomControls';
+import { clockLabel, NowLine } from './NowLine';
+import { useNow } from '../../hooks/useNow';
 
 const BASE_ROW_HEIGHT_PX = 96;
 const VISIBLE_HEIGHT_PX = 760;
@@ -37,7 +39,8 @@ export function DayTimeGrid({
 
   const bars = useMemo(() => buildDayBars([...blocks, ...otherEvents]), [blocks, otherEvents]);
 
-  const nowMinute = isToday ? minuteOfDay(new Date()) : -1;
+  const now = useNow();
+  const nowMinute = isToday ? minuteOfDay(now) : -1;
 
   useEffect(() => {
     if (!scrollRef.current) return;
@@ -201,7 +204,7 @@ export function DayTimeGrid({
           })}
 
           {isToday && nowMinute >= 0 ? (
-            <YStack position="absolute" top={(nowMinute / 60) * rowHeightPx} left={0} right={0} height={2} backgroundColor="$error" zIndex={3} />
+            <NowLine topPx={(nowMinute / 60) * rowHeightPx} label={clockLabel(now)} />
           ) : null}
           </YStack>
         </XStack>

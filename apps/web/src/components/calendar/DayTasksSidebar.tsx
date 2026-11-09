@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useToday } from '../../hooks/useNow';
 import { AppButton, AppCard, H2, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { TaskForm } from '../tasks/TaskForm';
 import { useLanguage } from '../../context/LanguageContext';
@@ -86,13 +87,13 @@ export function DayTasksSidebar({ selectedDate }: DayTasksSidebarProps) {
     [tasks, selectedDate],
   );
 
+  const today = useToday();
   const dayLabel = useMemo(() => {
-    const today = new Date();
     if (isSameDay(selectedDate, today)) {
       return 'Hoy';
     }
     return selectedDate.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' });
-  }, [selectedDate, locale]);
+  }, [selectedDate, locale, today]);
 
   async function handleUpdate(values: Parameters<typeof updateTask>[1]) {
     if (!editingTask) return;

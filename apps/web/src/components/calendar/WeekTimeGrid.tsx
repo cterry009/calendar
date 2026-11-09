@@ -4,6 +4,8 @@ import type { CalendarEvent } from '../../lib/calendar/types';
 import { eventsForDate, isSameDay } from '../../lib/calendar/utils';
 import { buildDayBars, clampZoom, DEFAULT_ZOOM, layoutBars, minuteOfDay, outlineFill, ZOOM_STEP } from './timeGridLayout';
 import { ZoomControls } from './ZoomControls';
+import { clockLabel, NowLine } from './NowLine';
+import { useNow, useToday } from '../../hooks/useNow';
 
 const BASE_ROW_HEIGHT_PX = 48;
 const VISIBLE_HEIGHT_PX = 640;
@@ -21,7 +23,8 @@ interface WeekTimeGridProps {
  * each rendering that day's schedule (pomodoro plan segments, rest blocks, tasks, fitness). */
 export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const today = useMemo(() => new Date(), []);
+  const today = useToday();
+  const now = useNow();
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
 
   const rowHeightPx = BASE_ROW_HEIGHT_PX * zoom;
@@ -69,7 +72,7 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
     return () => node.removeEventListener('wheel', handleWheel);
   }, []);
 
-  const nowMinute = minuteOfDay(new Date());
+  const nowMinute = minuteOfDay(now);
 
   return (
     <YStack gap="$2">
@@ -208,17 +211,7 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
                 </YStack>
               ))}
 
-              {column.isToday ? (
-                <YStack
-                  position="absolute"
-                  top={(nowMinute / 60) * rowHeightPx}
-                  left={0}
-                  right={0}
-                  height={2}
-                  backgroundColor="$error"
-                  zIndex={3}
-                />
-              ) : null}
+              {column.isToday ? <NowLine topPx={(nowMinute / 60) * rowHeightPx} label={clockLabel(now)} /> : null}
             </YStack>
           ))}
         </XStack>

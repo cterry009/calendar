@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useToday } from '../../hooks/useNow';
 import { AppButton, Text, XStack, YStack } from '@calendar/ui';
 import { useLanguage } from '../../context/LanguageContext';
 import type { Language } from '../../i18n/language';
@@ -33,7 +34,7 @@ export function MiniMonthCalendar({ selectedDate, onSelectDate }: MiniMonthCalen
     // Re-center the visible month only when the selected month/year actually changes.
   }, [selectedDate.getFullYear(), selectedDate.getMonth()]);
 
-  const today = startOfDay(new Date());
+  const today = useToday();
   const monthStart = getStartOfMonth(cursorMonth);
   const monthEnd = getEndOfMonth(cursorMonth);
   const gridStart = getStartOfWeek(monthStart);

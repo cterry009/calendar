@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppCard, XStack, YStack } from '@calendar/ui';
 import { CalendarPanel } from '../components/calendar/CalendarPanel';
 import { DayTasksSidebar } from '../components/calendar/DayTasksSidebar';
@@ -10,11 +10,23 @@ import { startOfDay } from '../lib/calendar/utils';
 import { ScheduleManager } from '../components/schedules/ScheduleManager';
 import { MorningCard } from '../components/morning/MorningCard';
 import { PlanSuggestionCard } from '../components/planning/PlanSuggestionCard';
+import { useToday } from '../hooks/useNow';
+import { isSameDay } from '../lib/calendar/utils';
 
 export function CalendarPage() {
   const { t } = useLanguage();
   const [mode, setMode] = useState<CalendarViewMode>('week');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
+  // 2026-11-09: when the day changes with the app open, follow it -- unless the user had moved
+  // to another day on purpose.
+  const today = useToday();
+  const previousToday = useRef(today);
+  useEffect(() => {
+    if (previousToday.current === today) return;
+    const wasOnToday = isSameDay(selectedDate, previousToday.current);
+    previousToday.current = today;
+    if (wasOnToday) setSelectedDate(today);
+  }, [today, selectedDate]);
 
   return (
     <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$7" gap="$5">
