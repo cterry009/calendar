@@ -186,13 +186,13 @@ export function DayTimeGrid({
                 opacity={bar.done ? 0.5 : 1}
               >
                 {bar.height >= 18 ? (
-                  <Text fontSize="$3" fontWeight="800" color={outline ? bar.color : '#0a1c13'} lineHeight={18}>
+                  <Text fontSize="$3" fontWeight="800" color={outline ? bar.color : '$onAccent'} lineHeight={18}>
                     {bar.done ? '✓ ' : ''}
                     {bar.label}
                   </Text>
                 ) : null}
                 {bar.height >= 50 ? (
-                  <Text fontSize="$2" color={outline ? '$muted' : '#0a1c13'} opacity={outline ? 1 : 0.8}>
+                  <Text fontSize="$2" color={outline ? '$muted' : '$onAccent'} opacity={outline ? 1 : 0.8}>
                     {bar.detail}
                   </Text>
                 ) : null}

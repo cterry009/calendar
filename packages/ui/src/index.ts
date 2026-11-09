@@ -5,7 +5,7 @@ export { CalendarProvider, tamaguiConfig } from './CalendarProvider';
 // reason icons are re-exported in components/index.ts: keep every consumer on one @tamagui/core
 // instance.
 export { TamaguiProvider, Theme } from 'tamagui';
-export { calendarThemes, palette, paletteLight, space, fontSize } from './tokens';
+export { calendarThemes, palette, paletteAgenda, paletteAgendaDark, paletteLight, space, fontSize } from './tokens';
 export type { CalendarTheme } from './tokens';
 export {
   Activity,

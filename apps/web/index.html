@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -25,9 +25,20 @@
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
       }
-      [data-theme='light'] .glass-surface {
-        background-color: rgba(255, 255, 255, 0.72);
+      [data-theme='light'] .glass-surface,
+      [data-theme='agendaLight'] .glass-surface {
+        background-color: rgba(255, 255, 255, 0.78);
       }
+      [data-theme='agendaDark'] .glass-surface {
+        background-color: rgba(25, 30, 40, 0.78);
+      }
+      /* Agenda look (2026-11-08): IBM Plex for body text, Fraunces kept for headings. The font is
+         global in the Tamagui config, so the agenda modes swap it here by the same data-theme stamp. */
+      [data-theme^='agenda'] body,
+      [data-theme^='agenda'] .font_body {
+        font-family: 'IBM Plex Sans', -apple-system, system-ui, sans-serif !important;
+      }
+      [data-theme^='agenda'] { font-variant-numeric: tabular-nums; }
     </style>
   </head>
   <body>

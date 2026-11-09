@@ -108,7 +108,7 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
               backgroundColor={column.isToday ? '$primary' : 'transparent'}
               marginTop="$1"
             >
-              <Text fontSize="$5" fontWeight="700" color={column.isToday ? '#0a1c13' : '$color'}>
+              <Text fontSize="$5" fontWeight="700" color={column.isToday ? '$onAccent' : '$color'}>
                 {column.date.getDate()}
               </Text>
             </YStack>
@@ -198,7 +198,7 @@ export function WeekTimeGrid({ weekDays, events, onSelectDay }: WeekTimeGridProp
                     <Text
                       fontSize="$1"
                       fontWeight="700"
-                      color={bar.variant === 'outline' ? bar.color : '#0a1c13'}
+                      color={bar.variant === 'outline' ? bar.color : '$onAccent'}
                       lineHeight={12}
                     >
                       {bar.done ? '✓ ' : ''}

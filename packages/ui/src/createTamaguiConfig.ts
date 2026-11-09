@@ -113,6 +113,14 @@ export function createAppTamaguiConfig(animations: AnyAnimationDriver) {
         ...lightTheme,
         ...calendarThemes.light,
       },
+      agendaLight: {
+        ...lightTheme,
+        ...calendarThemes.agendaLight,
+      },
+      agendaDark: {
+        ...darkTheme,
+        ...calendarThemes.agendaDark,
+      },
     },
     defaultTheme: 'dark',
   });

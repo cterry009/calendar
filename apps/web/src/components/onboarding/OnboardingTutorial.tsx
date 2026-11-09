@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AppButton, AppCard, Text, XStack, YStack, palette, paletteLight } from '@calendar/ui';
+import { AppButton, AppCard, Text, XStack, YStack, palette, paletteAgenda, paletteAgendaDark, paletteLight } from '@calendar/ui';
 import { useAppearance } from '../../context/AppearanceContext';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { TOURS } from '../../lib/onboarding/tours';
@@ -35,7 +35,7 @@ function measureTarget(target: string): Rect | null {
 export function OnboardingTutorial() {
   const { activeTourId, stepIndex, nextStep, prevStep, closeTour } = useOnboarding();
   const { mode } = useAppearance();
-  const accentColor = mode === 'light' ? paletteLight.accent : palette.accent;
+  const accentColor = { dark: palette, light: paletteLight, agendaLight: paletteAgenda, agendaDark: paletteAgendaDark }[mode].accent;
   const [rect, setRect] = useState<Rect | null>(null);
 
   const tour = activeTourId ? TOURS[activeTourId] : null;

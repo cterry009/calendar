@@ -11,6 +11,8 @@ export const settingsDictionary = {
       'Calendar Productivity usa la paleta "Emerald Focus" en dos variantes: oscura (pensada para reducir estimulos) y clara. El cambio se guarda en este dispositivo.',
     'settings.appearance.dark': 'Oscuro',
     'settings.appearance.light': 'Claro',
+    'settings.appearance.agendaLight': 'Agenda claro',
+    'settings.appearance.agendaDark': 'Agenda oscuro',
   },
   en: {
     'settings.navLabel': 'Settings',
@@ -24,5 +26,7 @@ export const settingsDictionary = {
       'Calendar Productivity uses the "Emerald Focus" palette in two variants: dark (designed to reduce stimulation) and light. Saved on this device.',
     'settings.appearance.dark': 'Dark',
     'settings.appearance.light': 'Light',
+    'settings.appearance.agendaLight': 'Agenda light',
+    'settings.appearance.agendaDark': 'Agenda dark',
   },
 } as const;

@@ -21,7 +21,7 @@ export const AppButton = styled(TamaguiButton, {
     variant: {
       primary: {
         backgroundColor: '$accent',
-        color: '#0a1c13',
+        color: '$onAccent',
         hoverStyle: { backgroundColor: '$accent', opacity: 0.9, y: -1 },
         pressStyle: { backgroundColor: '$accent', opacity: 0.85, scale: 0.98, y: 0 },
       },

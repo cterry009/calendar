@@ -39,7 +39,7 @@ function CompactTaskRow({ task, isBusy, onComplete, onEdit, onStartPomodoro }: C
         flexShrink={0}
       >
         {isCompleted ? (
-          <Text fontSize={12} color="#0a1c13">
+          <Text fontSize={12} color="$onAccent">
             ✓
           </Text>
         ) : null}

@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { palette, paletteLight } from '@calendar/ui';
+import { palette, paletteAgenda, paletteAgendaDark, paletteLight } from '@calendar/ui';
 import { useAppearance } from '../context/AppearanceContext';
 
 /**
@@ -10,12 +10,15 @@ import { useAppearance } from '../context/AppearanceContext';
  */
 export function useNativeFieldStyle(): CSSProperties {
   const { mode } = useAppearance();
-  const tokens = mode === 'light' ? paletteLight : palette;
+  const tokens = { dark: palette, light: paletteLight, agendaLight: paletteAgenda, agendaDark: paletteAgendaDark }[mode];
+  const agenda = mode === 'agendaLight' || mode === 'agendaDark';
 
   return {
     border: `1px solid ${tokens.border}`,
     background: tokens.surface,
     color: tokens.text,
-    fontFamily: "'Outfit', -apple-system, system-ui, sans-serif",
+    fontFamily: agenda
+      ? "'IBM Plex Sans', -apple-system, system-ui, sans-serif"
+      : "'Outfit', -apple-system, system-ui, sans-serif",
   };
 }

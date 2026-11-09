@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { CalendarTheme } from '@calendar/ui';
 
-export type AppearanceMode = Extract<CalendarTheme, 'dark' | 'light'>;
+// agendaLight/agendaDark (2026-11-08): the "Agenda" look, opt-in while the web redesign lands.
+export type AppearanceMode = Extract<CalendarTheme, 'dark' | 'light' | 'agendaLight' | 'agendaDark'>;
+const MODES: readonly AppearanceMode[] = ['dark', 'light', 'agendaLight', 'agendaDark'];
 
 const APPEARANCE_STORAGE_KEY = 'calendar.appearance';
 const DEFAULT_APPEARANCE: AppearanceMode = 'dark';
@@ -19,7 +21,7 @@ function loadStoredMode(): AppearanceMode {
     return DEFAULT_APPEARANCE;
   }
   const stored = window.localStorage.getItem(APPEARANCE_STORAGE_KEY);
-  return stored === 'light' || stored === 'dark' ? stored : DEFAULT_APPEARANCE;
+  return MODES.includes(stored as AppearanceMode) ? (stored as AppearanceMode) : DEFAULT_APPEARANCE;
 }
 
 /**
@@ -39,7 +41,9 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleMode = useCallback(() => {
-    setMode(mode === 'dark' ? 'light' : 'dark');
+    // Flips light/dark within the same family.
+    const flip: Record<AppearanceMode, AppearanceMode> = { dark: 'light', light: 'dark', agendaLight: 'agendaDark', agendaDark: 'agendaLight' };
+    setMode(flip[mode]);
   }, [mode, setMode]);
 
   useEffect(() => {

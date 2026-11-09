@@ -67,6 +67,81 @@ export const paletteLight = {
   recessedFill: 'rgba(22,36,29,0.06)',
 } as const;
 
+// "Agenda" palettes (2026-11-08): the look of the project board the user liked (Claude artifact
+// "Agenda de Cristo") -- cool graphite neutrals with a cobalt accent, light and dark. Opt-in from
+// Configuración on web/desktop while the redesign (change after projects-and-claude-bridge) lands.
+export const paletteAgenda = {
+  background: '#f3f4f7',
+  surface: '#ffffff',
+  surfaceHover: '#eef1f6',
+  text: '#1b2130',
+  textMuted: '#5b6476',
+  accent: '#2d56c8',
+  accentSoft: '#e7edfb',
+  onAccent: '#ffffff',
+  success: '#2f855a',
+  warning: '#b26d12',
+  danger: '#c43a3a',
+  border: '#dde1e9',
+  borderHighlight: 'rgba(45,86,200,0.35)',
+  shadow: 'rgba(27,33,48,0.12)',
+  shadowAmbient: 'rgba(27,33,48,0.06)',
+  overlaySubtle: 'rgba(27,33,48,0.04)',
+  overlayMedium: 'rgba(27,33,48,0.08)',
+  overlayStrong: 'rgba(27,33,48,0.14)',
+  recessedFill: 'rgba(27,33,48,0.04)',
+} as const;
+
+export const paletteAgendaDark = {
+  background: '#11141b',
+  surface: '#191e28',
+  surfaceHover: '#212838',
+  text: '#e6e9ef',
+  textMuted: '#9aa3b4',
+  accent: '#86a2ff',
+  accentSoft: '#1f2946',
+  onAccent: '#0d1222',
+  success: '#62c08d',
+  warning: '#e3a54d',
+  danger: '#f07a7a',
+  border: '#2a3141',
+  borderHighlight: 'rgba(134,162,255,0.35)',
+  shadow: 'rgba(0,0,0,0.45)',
+  shadowAmbient: 'rgba(0,0,0,0.25)',
+  overlaySubtle: 'rgba(255,255,255,0.04)',
+  overlayMedium: 'rgba(255,255,255,0.08)',
+  overlayStrong: 'rgba(255,255,255,0.14)',
+  recessedFill: 'rgba(0,0,0,0.25)',
+} as const;
+
+type AgendaPalette = typeof paletteAgenda | typeof paletteAgendaDark;
+const agendaTheme = (p: AgendaPalette) => ({
+  background: p.background,
+  color: p.text,
+  colorHover: p.text,
+  colorPress: p.text,
+  colorFocus: p.text,
+  borderColor: p.border,
+  borderColorHover: p.borderHighlight,
+  borderColorFocus: p.accent,
+  placeholderColor: p.textMuted,
+  accent: p.accent,
+  accentBackground: p.accentSoft,
+  onAccent: p.onAccent,
+  surface: p.surface,
+  surfaceHover: p.surfaceHover,
+  muted: p.textMuted,
+  success: p.success,
+  warning: p.warning,
+  danger: p.danger,
+  error: p.danger,
+  shadowColor: p.shadow,
+  overlaySubtle: p.overlaySubtle,
+  overlayMedium: p.overlayMedium,
+  overlayStrong: p.overlayStrong,
+  recessedFill: p.recessedFill,
+});
+
 export const radius = {
   1: 6,
   2: 10,
@@ -119,6 +194,7 @@ export const calendarThemes = {
     placeholderColor: palette.textMuted,
     accent: palette.accent,
     accentBackground: palette.accentSoft,
+    onAccent: '#0a1c13',
     surface: palette.surface,
     surfaceHover: palette.surfaceHover,
     muted: palette.textMuted,
@@ -144,6 +220,7 @@ export const calendarThemes = {
     placeholderColor: palette.textMuted,
     accent: palette.accentCalm,
     accentBackground: 'rgba(127,217,171,0.15)',
+    onAccent: '#0a1c13',
     surface: palette.surfaceCalm,
     surfaceHover: palette.surfaceHoverCalm,
     muted: palette.textMuted,
@@ -169,6 +246,7 @@ export const calendarThemes = {
     placeholderColor: paletteLight.textMuted,
     accent: paletteLight.accent,
     accentBackground: paletteLight.accentSoft,
+    onAccent: '#0a1c13',
     surface: paletteLight.surface,
     surfaceHover: paletteLight.surfaceHover,
     muted: paletteLight.textMuted,
@@ -182,6 +260,8 @@ export const calendarThemes = {
     overlayStrong: paletteLight.overlayStrong,
     recessedFill: paletteLight.recessedFill,
   },
+  agendaLight: agendaTheme(paletteAgenda),
+  agendaDark: agendaTheme(paletteAgendaDark),
 } as const;
 
 export type CalendarTheme = keyof typeof calendarThemes;
