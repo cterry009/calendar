@@ -25,6 +25,15 @@ fn app_version() -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Registered first, as the plugin requires. A second launch exits right away and the
+        // running app shows its window instead -- unless that launch was a `--minimized` one
+        // (autostart, commitment watchdog), which shouldn't pop the window up. 2026-11-08: two
+        // instances (11-06 and 11-08) were tracking and syncing game time at the same time.
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if !args.iter().any(|a| a == "--minimized") {
+                tray::show_main(app);
+            }
+        }))
         .manage(Mutex::new(blocking::ProcessBlockingState::default()))
         .manage(Mutex::new(game_tracking::GameTrackingState::default()))
         .manage(Mutex::new(app_tracking::AppTrackingState::default()))

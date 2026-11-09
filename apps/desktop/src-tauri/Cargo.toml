@@ -24,6 +24,9 @@ log = "0.4"
 sysinfo = { version = "0.33", default-features = false, features = ["system"] }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-autostart = "2"
+# One instance only (2026-11-08): a second launch (autostart + by hand, or the commitment watchdog)
+# ran two trackers that both pushed the day's game/app time, last writer winning.
+tauri-plugin-single-instance = "2"
 tauri-plugin-log = "2"
 # Avisos de "llevas una hora" (redes sociales / juegos). Se dispara desde el frontend, que es
 # quien evalua el umbral, igual que el resto de la politica vive en JS.
