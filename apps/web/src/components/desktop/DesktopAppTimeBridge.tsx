@@ -34,11 +34,13 @@ export function DesktopAppTimeBridge() {
         // apps each gaining under a minute), which would otherwise silently drop that change.
         const key = `${upsert.date}:${upsert.totalMinutes}:${upsert.topApps[0].key}`;
         if (key === lastPushedKey.current) return;
-        lastPushedKey.current = key;
 
         await batchSync({ dailyDesktopAppTime: [upsert] });
+        // Only after the server took it -- see DesktopGameTimeBridge (2026-11-08): with the API down
+        // batchSync throws rather than queueing, and an early key meant the push was never retried.
+        lastPushedKey.current = key;
       } catch {
-        // Native side not ready / not desktop / offline (batchSync already queues offline).
+        // Native side not ready / not desktop / API unreachable: retried on the next tick.
       }
     }
 

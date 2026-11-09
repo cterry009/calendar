@@ -30,11 +30,15 @@ export function DesktopGameTimeBridge() {
         // actively running, so this avoids a request every 60s when nothing changed.
         const key = `${upsert.date}:${upsert.totalMinutes}`;
         if (key === lastPushedKey.current) return;
-        lastPushedKey.current = key;
 
         await batchSync({ dailyGameTime: [upsert] });
+        // Only after the server took it (2026-11-08): batchSync queues when the browser is
+        // offline, but with the network up and the API down it throws instead. Marking the key
+        // before that lost the day's total for good once play stopped (nothing changes, no retry)
+        // and the in-memory counter reset at midnight -- no daily_game_time rows 11-05..11-08.
+        lastPushedKey.current = key;
       } catch {
-        // Native side not ready / not desktop / offline (batchSync already queues offline).
+        // Native side not ready / not desktop / API unreachable: retried on the next tick.
       }
     }
 
