@@ -7,6 +7,12 @@
 // is two windows, 09:00-13:00 and 14:00-18:00, each with two suggested blocks that start when the user
 // starts them and last 60-120 min by a diagnosis before every pomodoro (bloques_dinamicos; the rules
 // are in morning.ts). Lunch moved to 13:00-14:00 and the 15:25 break went away. Saturday is as given.
+//
+// Changed again by the user on 2026-11-08 (afternoon v3, plan/afternoon.ts): the master's is decided
+// (Matemática Aplicada at the UNAL), so most 16:00 "carrera" blocks become study for the master's
+// ("maestria": the base for the stochastic-control project) and two new "paper" blocks are added for
+// the paper already in progress (find why the implementation fails for some parameter sets and report
+// it so it can be published). Mornings and Saturday don't change.
 
 import type { SequenceSegment } from './sequence.js';
 
@@ -19,6 +25,8 @@ export const PLAN_CATEGORIES = [
   'pilar_e',
   'investigacion',
   'repaso',
+  'maestria',
+  'paper',
 ] as const;
 export type PlanCategory = (typeof PLAN_CATEGORIES)[number];
 
@@ -37,6 +45,8 @@ export const PLAN_CATEGORY_INFO: Record<PlanCategory, PlanCategoryInfo> = {
   pilar_e: { name: 'Pilar E 🔬', color: '#14b8a6' },
   investigacion: { name: 'Investigación 🎓🔬', color: '#166534' },
   repaso: { name: 'Repaso y planeación', color: '#6b7280' },
+  maestria: { name: 'Maestría 📐', color: '#db2777' },
+  paper: { name: 'Paper 📝', color: '#b45309' },
 };
 
 export function isPlanCategory(value: string | null | undefined): value is PlanCategory {
@@ -129,26 +139,26 @@ export const HORARIO_2026: HorarioData = {
     lunes: [
       { inicio: '09:00', fin: '10:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
       { inicio: '11:00', fin: '12:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
-      { inicio: '14:00', fin: '15:30', categoria: 'codigo_academico', titulo: 'Código de las notas' },
-      { inicio: '16:00', fin: '17:30', categoria: 'carrera', titulo: 'Maestrías: investigar programas' },
+      { inicio: '14:00', fin: '15:30', categoria: 'investigacion', titulo: 'Investigación PINN (experimentos del Pilar E)' },
+      { inicio: '16:00', fin: '17:30', categoria: 'maestria', titulo: 'Maestría: base del proyecto (control estocástico, EDPs)' },
     ],
     martes: [
       { inicio: '09:00', fin: '10:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
       { inicio: '11:00', fin: '12:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
       { inicio: '14:00', fin: '15:30', categoria: 'codigo_datos', titulo: 'Proyecto de datos' },
-      { inicio: '16:00', fin: '17:30', categoria: 'carrera', titulo: 'CV: las 3 versiones + CV académico' },
+      { inicio: '16:00', fin: '17:30', categoria: 'carrera', titulo: 'Carrera: CV y aplicaciones de trabajo' },
     ],
     miercoles: [
       { inicio: '09:00', fin: '10:30', categoria: 'estudio_b2', titulo: 'Estudio B2' },
       { inicio: '11:00', fin: '12:30', categoria: 'estudio_b2', titulo: 'Estudio B2' },
       { inicio: '14:00', fin: '15:30', categoria: 'investigacion', titulo: 'Investigación PINN (experimentos del Pilar E)' },
-      { inicio: '16:00', fin: '17:30', categoria: 'carrera', titulo: 'Maestrías: documentos (carta, SOP)' },
+      { inicio: '16:00', fin: '17:30', categoria: 'paper', titulo: 'Paper: revisar los casos que fallan' },
     ],
     jueves: [
       { inicio: '09:00', fin: '10:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
       { inicio: '11:00', fin: '12:30', categoria: 'estudio_b1', titulo: 'Estudio B1' },
-      { inicio: '14:00', fin: '15:30', categoria: 'codigo_datos', titulo: 'SQL + proyecto de datos' },
-      { inicio: '16:00', fin: '17:30', categoria: 'carrera', titulo: 'Trabajo: aplicaciones dirigidas' },
+      { inicio: '14:00', fin: '15:30', categoria: 'paper', titulo: 'Paper: reportar resultados' },
+      { inicio: '16:00', fin: '17:30', categoria: 'maestria', titulo: 'Maestría: base del proyecto (control estocástico, EDPs)' },
     ],
     viernes: [
       { inicio: '09:00', fin: '10:30', categoria: 'pilar_e', titulo: 'Estudio Pilar E' },
@@ -158,7 +168,7 @@ export const HORARIO_2026: HorarioData = {
         inicio: '16:00',
         fin: '17:30',
         categoria: 'carrera',
-        titulo: 'Maestrías: correos a profesores y recomendadores + registro y plan de la semana',
+        titulo: 'Carrera: correos (tutor, recomendadores) + registro y plan de la semana',
       },
     ],
     sabado: [
@@ -217,6 +227,8 @@ export const HORARIO_2026: HorarioData = {
     investigacion: ['Montar el experimento', 'Correr y registrar', 'Analizar, graficar, anotar conclusiones'],
     carrera: ['Tarea principal', 'Tarea principal', 'Cierre: anotar qué sigue'],
     repaso: ['Repaso', 'Repaso', 'Planear'],
+    maestria: ['Leer y tomar notas', 'Ejercicios', 'Resumir y conectar con el proyecto'],
+    paper: ['Reproducir el caso que falla', 'Diagnosticar y registrar', 'Escribir lo encontrado'],
   },
 
   fases: [
@@ -229,8 +241,11 @@ export const HORARIO_2026: HorarioData = {
         codigo_academico:
           'Integradores simplécticos (02), Picard (AN1), caminata aleatoria (03), autovalores discretizados (AN2); crear repo computational-stat-phys',
         codigo_datos: 'SQL (joins, agregaciones, ventanas) + Proyecto 1: análisis exploratorio con datos.gov.co',
+        // 2026-11-08: the master's is the UNAL; the international search becomes the weekly radar.
         carrera:
-          'Tabla de 8-12 maestrías con requisitos y fecha de cierre (buscar grupos en transporte óptimo, ML para EDPs, análisis estocástico); CV académico',
+          'UNAL (MSc Matemática Aplicada): fecha de la próxima convocatoria, requisitos y a quién pedir las cartas; revisar el radar semanal de maestrías en el exterior; CV académico',
+        maestria: 'Base del proyecto: EDPs (Navier-Stokes, formulación débil) y probabilidad para el control estocástico',
+        paper: 'Reproducir los casos que fallan y aislar los parámetros que los causan',
         pilar_e: 'E0 (mapa) → E1 (NTK y PINNs); si hace falta, AN2 §5 antes',
         investigacion: 'NTK empírico de PINN-NS y PINN-LBM: espectros y trazas por bloque; pesos adaptativos por traza',
       },
@@ -246,7 +261,9 @@ export const HORARIO_2026: HorarioData = {
         codigo_datos:
           'Proyecto 2: dashboard (Streamlit o Power BI) + análisis estadístico con incertidumbres; opción: tablero de experimentos PINN del Pilar E',
         carrera:
-          'SOP base (alrededor de la pregunta del Pilar E) y adaptaciones; pedir cartas de recomendación; 3-5 aplicaciones de trabajo por semana',
+          'Pedir las cartas de recomendación; retomar el contacto con el tutor de control estocástico; carta de intención alrededor de la pregunta del Pilar E; 3-5 aplicaciones de trabajo por semana; revisar el radar',
+        maestria: 'Control óptimo estocástico: programación dinámica, ecuación HJB, principio del máximo',
+        paper: 'Diagnóstico y correcciones; figuras y tablas de resultados',
         pilar_e: 'E2: Wasserstein, JKO, GENERIC, redes de campo medio (empezar al terminar la nota 07)',
         investigacion: 'Distribución empírica de los pesos y distancia W2 a la inicialización; ¿régimen de núcleo o de campo medio?',
       },
@@ -259,7 +276,10 @@ export const HORARIO_2026: HorarioData = {
         estudio_b2: 'Pilar B',
         codigo_academico: 'Barabási-Albert y SIS (B), CSA/FSA/GSA (C), SINDy y Kramers-Moyal (D2)',
         codigo_datos: 'Proyecto 3: modelo predictivo + pipeline reproducible; preparar entrevistas de SQL y caso práctico',
-        carrera: 'Enviar aplicaciones de maestría según fechas; preparar entrevistas; seguimiento de aplicaciones de trabajo',
+        carrera:
+          'Aplicación a la UNAL según la convocatoria; 1-3 programas del radar que cumplan los criterios (pocas cartas, procesos estocásticos); seguimiento de aplicaciones de trabajo',
+        maestria: 'Análisis funcional y métodos numéricos para control de EDPs',
+        paper: 'Redacción, revisión y envío',
         pilar_e: 'E3 (SGD como SDE) → E4 (Fisher, gradiente natural) → E5 (cálculo estocástico en variedades)',
         investigacion: 'Temperatura efectiva del ruido del minibatch; gradiente natural aproximado; informe técnico de 4-6 páginas',
       },

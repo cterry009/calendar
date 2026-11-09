@@ -19,6 +19,8 @@ const PlanCategorySchema = z.enum([
   'pilar_e',
   'investigacion',
   'repaso',
+  'maestria',
+  'paper',
 ]);
 
 /** StudyPlan.planData: one per user, like DetoxPlan. */

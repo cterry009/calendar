@@ -3,12 +3,15 @@ import {
   isMondayKey,
   isPlanCategory,
   localDateKey,
+  needsAfternoonUpdate,
+  needsPlanV3,
   needsWeekdayUpdate,
   nextMondayKey,
   PLAN_CATEGORY_INFO,
   PLAN_WEEKS,
   phaseForWeek,
   planWeekOf,
+  planV3,
   planWeekStart,
   weekProgress,
 } from '@calendar/shared';
@@ -22,7 +25,7 @@ import { useSchedules } from '../hooks/useSchedules';
 import { useTasks } from '../hooks/useTasks';
 import { importTimetable, syncMilestoneTasks } from '../lib/plan/importTimetable';
 import { saveStudyPlan } from '../lib/plan/sync';
-import { applyWeekday } from '../lib/plan/morningWindow';
+import { applyAfternoons, applyWeekday } from '../lib/plan/morningWindow';
 
 // Horario 2026-10-19: load the timetable, pick the start Monday, and follow the plan -- the week's
 // phase, pomodoros by category, "cortar tramo" uses, and the milestones.
@@ -156,6 +159,31 @@ export function HorarioPage() {
             </Paragraph>
             <AppButton variant="primary" alignSelf="flex-start" disabled={busy} onPress={() => void run(async () => void (await applyWeekday(schedules)))}>
               Actualizar la jornada
+            </AppButton>
+            {error ? <Text color="$error">{error}</Text> : null}
+          </YStack>
+        </AppCard>
+      ) : needsAfternoonUpdate(schedules) || needsPlanV3(plan) ? (
+        // Afternoon v3 (2026-11-08): the master's is decided; the afternoons get maestría and paper blocks.
+        <AppCard>
+          <YStack gap="$2">
+            <Text fontWeight="700">Nuevas tardes (2026-11-08)</Text>
+            <Paragraph margin={0} color="$muted">
+              Las mañanas y el sábado no cambian. Tardes: lunes investigación y maestría; martes datos y carrera (CV y
+              aplicaciones); miércoles investigación y paper (revisar los casos que fallan); jueves paper (reportar
+              resultados) y maestría; viernes código de las notas y carrera (correos y plan de la semana). Los bloques
+              que ya tenías se reutilizan, con su historial; el que sobra se desactiva, no se borra. El plan cambia
+              el contenido de carrera de cada fase (la UNAL en vez de la búsqueda en el exterior, que pasa a un radar
+              semanal) y agrega el de maestría y paper.
+            </Paragraph>
+            <AppButton variant="primary" alignSelf="flex-start" disabled={busy} onPress={() =>
+                void run(async () => {
+                  if (needsAfternoonUpdate(schedules)) await applyAfternoons(schedules);
+                  if (needsPlanV3(plan)) await saveStudyPlan(planV3(plan));
+                })
+              }
+            >
+              Actualizar las tardes
             </AppButton>
             {error ? <Text color="$error">{error}</Text> : null}
           </YStack>

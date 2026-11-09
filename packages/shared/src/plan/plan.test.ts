@@ -59,7 +59,9 @@ describe('plan start', () => {
 describe('template', () => {
   it('becomes one recurring schedule per distinct block, with its days', () => {
     expect(byTitle('Estudio B1').daysOfWeek).toEqual([1, 2, 4]);
-    expect(byTitle('Código de las notas').daysOfWeek).toEqual([1, 5]);
+    // Afternoon v3 (2026-11-08): only Friday keeps the notes' code; research takes Monday and Wednesday.
+    expect(byTitle('Código de las notas').daysOfWeek).toEqual([5]);
+    expect(byTitle('Investigación PINN (experimentos del Pilar E)').daysOfWeek).toEqual([1, 3]);
     expect(byTitle('Almuerzo')).toMatchObject({
       kind: 'REST',
       daysOfWeek: [1, 2, 3, 4, 5],
@@ -98,8 +100,8 @@ describe('week generation', () => {
       [540, 630, 'Estudio B1'],
       [660, 750, 'Estudio B1'],
       [780, 840, 'Almuerzo'],
-      [840, 930, 'Código de las notas'],
-      [960, 1050, 'Maestrías: investigar programas'],
+      [840, 930, 'Investigación PINN (experimentos del Pilar E)'],
+      [960, 1050, 'Maestría: base del proyecto (control estocástico, EDPs)'],
     ]);
     expect(monday.occurrences[0].description).toBe(
       'Pensum geometría: 00b → 01a → AN1b (secciones 4-6) → 01 → 02',
@@ -267,16 +269,16 @@ describe('a clock-anchored block on the timer', () => {
 
 describe('exceptions', () => {
   const codeBlock = byTitle('Código de las notas');
-  // Week 3's Monday: the 14:00 block moves to carrera that day only.
+  // Week 3's Friday: the 14:00 block moves to carrera that day only.
   const moved: ScheduleExceptionLike = {
     scheduleId: codeBlock.id,
-    date: '2026-11-02',
+    date: '2026-11-06',
     category: 'carrera',
   };
 
   it('change only that day of that week', () => {
     const week3 = generatePlanWeek(schedules, [moved], plan, 3);
-    const block = week3.days[0].occurrences.find((o) => o.scheduleId === codeBlock.id)!;
+    const block = week3.days[4].occurrences.find((o) => o.scheduleId === codeBlock.id)!;
     expect(block).toMatchObject({
       category: 'carrera',
       isException: true,
@@ -284,11 +286,9 @@ describe('exceptions', () => {
       endMinute: 930,
     });
     expect(block.description).toBe(plan.fases[0].contenido.carrera);
-    // Friday of the same week, and Monday of every other week, keep the template.
-    const friday = week3.days[4].occurrences.find((o) => o.scheduleId === codeBlock.id)!;
-    expect(friday).toMatchObject({ category: 'codigo_academico', isException: false });
+    // Friday of every other week keeps the template.
     for (const week of generatePlan(schedules, [moved], plan).filter((w) => w.week !== 3)) {
-      expect(week.days[0].occurrences.find((o) => o.scheduleId === codeBlock.id)).toMatchObject({
+      expect(week.days[4].occurrences.find((o) => o.scheduleId === codeBlock.id)).toMatchObject({
         category: 'codigo_academico',
         isException: false,
       });
@@ -325,12 +325,12 @@ describe('exceptions', () => {
     expect(swapped[2]).toMatchObject({
       startMinute: 840,
       title: career.title,
-      category: 'carrera',
+      category: 'maestria',
     });
     expect(swapped[3]).toMatchObject({
       startMinute: 960,
       title: code.title,
-      category: 'codigo_academico',
+      category: 'investigacion',
     });
   });
 });

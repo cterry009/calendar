@@ -732,6 +732,8 @@ export function buildStudyStatus(input: StudyStatusInput): StudyStatus {
     'pilar_e',
     'repaso',
     'investigacion',
+    'paper',
+    'maestria',
     'codigo_academico',
     'codigo_datos',
     'carrera',

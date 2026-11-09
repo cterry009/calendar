@@ -35,4 +35,5 @@ export * from './plan/plan.js';
 export * from './screenTime/usageCategories.js';
 export * from './plan/importBatch.js';
 export * from './plan/morning.js';
+export * from './plan/afternoon.js';
 export * from './study-status/build.js';

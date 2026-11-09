@@ -1,4 +1,4 @@
-import { weekdayV2Changes } from '@calendar/shared';
+import { afternoonV3Changes, weekdayV2Changes } from '@calendar/shared';
 import {
   buildCreateSchedulePayload,
   buildDeleteSchedulePayload,
@@ -32,6 +32,32 @@ export function weekdayPayloads(schedules: SyncScheduleRecord[]): ScheduleSyncCh
 
 export async function applyWeekday(schedules: SyncScheduleRecord[]): Promise<number> {
   const payloads = weekdayPayloads(schedules);
+  await syncScheduleBatch(payloads);
+  return payloads.length;
+}
+
+/**
+ * The batch for "Actualizar las tardes" (afternoon v3, 2026-11-08): the weekday afternoons of the new
+ * template laid over the existing schedules (same ids where possible), new blocks created, and a block
+ * left without a place disabled rather than deleted, so its completions stay.
+ */
+export function afternoonPayloads(schedules: SyncScheduleRecord[]): ScheduleSyncChangeDto[] {
+  const { updates, creates, disables } = afternoonV3Changes(schedules);
+  const values = (s: Omit<SyncScheduleRecord, 'id'>) => ({
+    ...mapSyncSchedule({ ...s, id: '' }),
+    category: s.category ?? null,
+    sequence: s.sequence ?? null,
+    flexibleBlocks: s.flexibleBlocks ?? null,
+  });
+  return [
+    ...updates.map((s) => buildUpdateSchedulePayload(s.id, values(s))),
+    ...creates.map((s) => buildCreateSchedulePayload(values(s))),
+    ...disables.map((s) => buildUpdateSchedulePayload(s.id, { ...values(s), enabled: false })),
+  ];
+}
+
+export async function applyAfternoons(schedules: SyncScheduleRecord[]): Promise<number> {
+  const payloads = afternoonPayloads(schedules);
   await syncScheduleBatch(payloads);
   return payloads.length;
 }
