@@ -38,4 +38,5 @@ export * from './plan/morning.js';
 export * from './plan/afternoon.js';
 export * from './exercise/prescription.js';
 export * from './exercise/plan.js';
+export * from './projects/attention.js';
 export * from './study-status/build.js';

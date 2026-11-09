@@ -15,6 +15,8 @@ enum DevicePlatform {
   IOS
   WINDOWS
   MACOS
+  // projects-and-claude-bridge (2026-11-08): the local Claude MCP bridge, its own revocable device.
+  AGENT
 }
 
 enum TaskDifficulty {
@@ -207,6 +209,8 @@ model User {
   planSuggestions     PlanSuggestion[]
   weeklyReports       WeeklyReport[]
   blockCommitment     BlockCommitment?
+  projects            Project[]
+  projectLogEntries   ProjectLogEntry[]
 
   @@map("users")
 }
@@ -262,6 +266,10 @@ model Task {
 
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   pomodoroSessions PomodoroSession[]
+
+  // projects-and-claude-bridge: at most one project; deleting the project keeps the task.
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@unique([userId, clientId])
   @@index([userId, scheduledAt])
@@ -944,4 +952,78 @@ model BlockCommitment {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("block_commitments")
+}
+
+// ─── Projects (projects-and-claude-bridge, 2026-11-08) ──────────────────────────
+// The user's projects (research, studies, applications, side projects) and their progress log.
+// Synced like Task: clientId for offline creates, deletedAt for soft deletes, updatedAt wins.
+
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  BLOCKED
+  IDEA
+  DONE
+}
+
+enum ProjectPriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum ProjectLogSource {
+  APP
+  CLAUDE
+}
+
+model Project {
+  id        String          @id @default(cuid())
+  userId    String
+  title     String
+  summary   String?
+  status    ProjectStatus   @default(ACTIVE)
+  priority  ProjectPriority @default(MEDIUM)
+  area      String?
+  color     String?
+  // A calendar day, stored as that day's UTC midnight (HabitRecord.date's convention).
+  deadline  DateTime?
+  // 0-100; null = not estimated, shown as "Avance sin estimar", never as 0 %.
+  progress  Int?
+  nextSteps String[]        @default([])
+  blocker   String?
+  clientId  String?
+  deletedAt DateTime?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks      Task[]
+  logEntries ProjectLogEntry[]
+
+  @@unique([userId, clientId])
+  @@index([userId, status])
+  @@map("projects")
+}
+
+// Kept in its own table, not inside Project: a new entry would otherwise conflict with a concurrent
+// project edit. Editable (typos), updatedAt wins.
+model ProjectLogEntry {
+  id        String           @id @default(cuid())
+  userId    String
+  projectId String
+  date      DateTime
+  text      String
+  source    ProjectLogSource @default(APP)
+  clientId  String?
+  deletedAt DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clientId])
+  @@index([userId, projectId, date])
+  @@map("project_log_entries")
 }

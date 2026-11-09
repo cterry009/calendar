@@ -14,3 +14,4 @@ export * from './daily-game-time.js';
 export * from './daily-desktop-app-time.js';
 export * from './study-plan.js';
 export * from './exercise-attempt.js';
+export * from './project.js';
