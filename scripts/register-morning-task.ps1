@@ -8,7 +8,10 @@ param([string]$At = '07:50')
 $script = Join-Path $PSScriptRoot 'morning-start.ps1'
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
   -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$script`""
-$trigger = New-ScheduledTaskTrigger -Daily -At $At
+# 2026-11-10: also at logon (1 min later), so a PC started before the daily time gets the API too.
+$logon = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
+$logon.Delay = 'PT1M'
+$trigger = @((New-ScheduledTaskTrigger -Daily -At $At), $logon)
 $settings = New-ScheduledTaskSettingsSet -WakeToRun -StartWhenAvailable -AllowStartIfOnBatteries `
   -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 15)
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive

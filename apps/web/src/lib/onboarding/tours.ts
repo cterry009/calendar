@@ -50,31 +50,22 @@ export const TOURS: Record<TourId, TourDefinition> = {
         description:
           'Presiona la tecla "Q" en cualquier momento (o este boton) para anotar una tarea con lenguaje natural, ej. "Preparar informe 3 pomodoros" -- sin necesidad de elegir fecha ni estimacion.',
       },
+      // 2026-11-09: the nav is three tabs now; the old panel buttons are gone.
       {
-        target: 'nav-blocklist',
-        title: 'Bloqueo durante el trabajo',
+        target: 'nav-page-hoy',
+        title: 'Hoy',
+        description: 'Tu dia de un vistazo: bloques, agenda, tareas, habitos con cantidades rapidas, energia y los proximos 7 dias.',
+      },
+      {
+        target: 'nav-page-proyectos',
+        title: 'Proyectos',
         description:
-          'Mientras un horario de Trabajo esta activo se activa una pantalla de enfoque con tu lista de distracciones. Configura apps, sitios y programas aca, incluyendo modo estricto para las que no queres poder desactivar a mitad de sesion.',
+          'Tus proyectos por area (habitos y deporte, trabajo, personal, ocio, academico e investigacion), con objetivo general, objetivos especificos y etiquetas. Habitos, ritual, bienestar y ejercicio viven en "Habitos y deporte".',
       },
       {
-        target: 'nav-wellness',
-        title: 'Bienestar diario',
-        description: 'Pilares de presencia, rituales y tentaciones evitadas corren siempre, sin activarlos aparte -- no es un modo que prendes y apagas.',
-      },
-      {
-        target: 'nav-detox',
-        title: 'Plan de desintoxicacion',
-        description: 'Programa guiado de 7 dias para reducir dependencia de estimulos de alta dopamina, con auditoria inicial y progreso por fase.',
-      },
-      {
-        target: 'nav-habits',
-        title: 'Habitos',
-        description: 'Segui habitos con un score que crece con la constancia, no con rachas perfectas -- un dia salteado explicitamente no penaliza.',
-      },
-      {
-        target: 'nav-ritual',
-        title: 'Ritual diario',
-        description: 'Una revision matutina para darle horario a tus tareas pendientes, y un cierre nocturno para marcar lo que avanzaste.',
+        target: 'nav-page-calendar',
+        title: 'Calendario y horario',
+        description: 'La semana completa y, en la pestana Horario, tus bloques fijos. Estadisticas y Bloqueo estan en "Mas".',
       },
     ],
   },
