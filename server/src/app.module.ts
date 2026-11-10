@@ -9,6 +9,7 @@ import { PlanningModule } from './planning/planning.module';
 import { SyncModule } from './sync/sync.module';
 import { StudyStatusModule } from './study-status/study-status.module';
 import { TutorModule } from './tutor/tutor.module';
+import { ProjectChatModule } from './project-chat/project-chat.module';
 import { DailyReportModule } from './daily-report/daily-report.module';
 import { CommitmentModule } from './commitment/commitment.module';
 import { WeeklyReportModule } from './weekly-report/weekly-report.module';
@@ -26,6 +27,7 @@ import { WeeklyReportModule } from './weekly-report/weekly-report.module';
     SyncModule,
     PlanningModule,
     TutorModule,
+    ProjectChatModule,
     StudyStatusModule,
     DailyReportModule,
     CommitmentModule,

@@ -1246,6 +1246,30 @@ export class ProjectSyncChangeDto {
   @IsString({ each: true })
   @MaxLength(40, { each: true })
   tags?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  localPath?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @ValidateNested({ each: true })
+  @Type(() => ProjectLinkDto)
+  links?: ProjectLinkDto[];
+}
+
+export class ProjectLinkDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  label!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(1000)
+  path!: string;
 }
 
 export class ProjectObjectiveDto {

@@ -652,6 +652,8 @@ export class SyncService {
           ? undefined
           : change.specificObjectives.map((o) => ({ text: o.text, done: o.done })),
       tags: change.tags === undefined ? undefined : change.tags,
+      localPath: change.localPath === undefined ? undefined : change.localPath,
+      links: change.links === undefined ? undefined : change.links.map((l) => ({ label: l.label, path: l.path })),
       clientId: change.clientId ?? existing?.clientId ?? null,
       updatedAt: new Date(change.updatedAt),
       deletedAt: null,

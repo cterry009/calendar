@@ -10,6 +10,7 @@ mod commitment;
 mod focus_window;
 mod game_tracking;
 mod hosts;
+mod launch;
 mod tray;
 mod website_tracking;
 
@@ -91,7 +92,9 @@ pub fn run() {
             focus_window::focus_overlay,
             focus_window::idle_seconds,
             hosts::set_website_blocking,
-            hosts::request_hosts_access
+            hosts::request_hosts_access,
+            launch::open_in_vscode,
+            launch::open_path
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

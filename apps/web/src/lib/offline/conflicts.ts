@@ -20,6 +20,7 @@ const ENTITY_LABELS: Record<SyncEntityType, string> = {
   focusEvents: 'registro de foco',
   exerciseAttempts: 'intentos de ejercicios',
   projects: 'proyectos',
+  projectLogEntries: 'bitácora de proyectos',
 };
 
 export function countSyncConflicts(response: SyncBatchResponse): number {

@@ -997,6 +997,10 @@ model Project {
   generalObjective   String?
   specificObjectives Json     @default("[]")
   tags               String[] @default([])
+  // 2026-11-10: the project's folder on this PC (opened in VS Code) and its files or links
+  // ([{ label, path }], a local path or a URL).
+  localPath          String?
+  links              Json     @default("[]")
   clientId  String?
   deletedAt DateTime?
   createdAt DateTime        @default(now())

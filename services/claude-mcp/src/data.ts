@@ -20,6 +20,8 @@ export interface Project {
   generalObjective?: string | null;
   specificObjectives?: Array<{ text: string; done: boolean }>;
   tags?: string[];
+  localPath?: string | null;
+  links?: Array<{ label: string; path: string }>;
   updatedAt: string;
 }
 export interface LogEntry {

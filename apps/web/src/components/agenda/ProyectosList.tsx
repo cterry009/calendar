@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { localDateKey, projectProgress, projectsNeedingAttention } from '@calendar/shared';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
 import { useCalendarData } from '../../hooks/useCalendarData';
@@ -36,6 +37,7 @@ export function ProyectosList({ areas }: { areas?: readonly ProjectAreaKey[] }) 
   const data = useCalendarData();
   const today = useToday();
   const [filter, setFilter] = useState<Filter>('abiertos');
+  const navigate = useNavigate();
   const [tag, setTag] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [tagDraft, setTagDraft] = useState<Record<string, string>>({});
@@ -76,7 +78,7 @@ export function ProyectosList({ areas }: { areas?: readonly ProjectAreaKey[] }) 
   const list = inArea
     .filter((p) => !tag || (p.tags ?? []).includes(tag))
     .filter((p) => (filter === 'todos' ? true : filter === 'abiertos' ? p.status !== 'DONE' : p.status === filter))
-    .sort((a, b) => ORDER[a.status] - ORDER[b.status] || PORDER[a.priority] - PORDER[b.priority] || a.title.localeCompare(b.title));
+    .sort((a, b) => PORDER[a.priority] - PORDER[b.priority] || ORDER[a.status] - ORDER[b.status] || a.title.localeCompare(b.title)); // 2026-11-10: priority first
   const active = inArea.filter((p) => p.status === 'ACTIVE').length;
   const flagged = inArea.filter((p) => attention.has(p.id)).length;
 
@@ -125,8 +127,15 @@ export function ProyectosList({ areas }: { areas?: readonly ProjectAreaKey[] }) 
                 <Pill tone={p.priority === 'HIGH' ? 'danger' : p.priority === 'MEDIUM' ? 'warning' : 'muted'}>prioridad {PRIORITY[p.priority]}</Pill>
                 <Pill>{areaLabel(p.area)}</Pill>
               </XStack>
-              <Text fontWeight="700" fontSize="$5">
-                {p.title}
+              <Text
+                fontWeight="700"
+                fontSize="$5"
+                cursor="pointer"
+                hoverStyle={{ color: '$accent' }}
+                role="link"
+                onPress={() => navigate(`/proyectos/${p.id}`)}
+              >
+                {p.title} →
               </Text>
               {p.summary ? (
                 <Paragraph margin={0} size="$2" color="$muted">

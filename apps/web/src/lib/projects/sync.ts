@@ -23,7 +23,18 @@ export async function saveProject(p: SyncProject, patch: Partial<SyncProject>): 
         generalObjective: next.generalObjective ?? null,
         specificObjectives: next.specificObjectives ?? [],
         tags: next.tags ?? [],
+        localPath: next.localPath ?? null,
+        links: next.links ?? [],
       },
+    ],
+  });
+}
+
+/** A new entry in the project's progress log, written from the app. */
+export async function addLogEntry(projectId: string, text: string, date: string): Promise<void> {
+  await syncBatch({
+    projectLogEntries: [
+      { clientId: crypto.randomUUID(), updatedAt: new Date().toISOString(), projectId, date, text, source: 'APP' },
     ],
   });
 }

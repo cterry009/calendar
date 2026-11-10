@@ -289,6 +289,9 @@ export interface SyncProject {
   generalObjective?: string | null;
   specificObjectives?: Array<{ text: string; done: boolean }>;
   tags?: string[];
+  /** 2026-11-10: folder on this PC (VS Code) and related files or links. */
+  localPath?: string | null;
+  links?: Array<{ label: string; path: string }>;
   updatedAt: string;
   deletedAt: string | null;
 }

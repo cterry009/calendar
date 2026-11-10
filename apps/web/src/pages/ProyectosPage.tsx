@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { H1, YStack } from '@calendar/ui';
+import { H1, XStack, YStack } from '@calendar/ui';
 import { ProyectosList } from '../components/agenda/ProyectosList';
 import { SectionTitle } from '../components/agenda/parts';
 import { RadarLinks } from '../components/agenda/RadarLinks';
+import { ProjectsRail } from '../components/agenda/ProjectsRail';
 import { rememberedTab, rememberTab, SubTabs } from '../components/agenda/SubTabs';
 import { FitnessPage } from './FitnessPage';
 import { HabitsPage } from './HabitsPage';
@@ -34,7 +35,8 @@ export function ProyectosPage() {
   const [academic, setAcademic] = useState<AcademicId>(() => rememberedTab('calendar.proyectos.academico', ACADEMIC.map((a) => a.id), 'estudio'));
 
   return (
-    <YStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$6" gap="$4" maxWidth={1240} width="100%" alignSelf="center">
+    <XStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$6" gap="$5" maxWidth={1400} width="100%" alignSelf="center" alignItems="flex-start">
+    <YStack flex={1} minWidth={0} gap="$4">
       <H1 margin={0} fontFamily="$heading" fontSize="$9" fontWeight="500">
         Proyectos
       </H1>
@@ -89,5 +91,7 @@ export function ProyectosPage() {
         </YStack>
       ) : null}
     </YStack>
+    <ProjectsRail />
+    </XStack>
   );
 }

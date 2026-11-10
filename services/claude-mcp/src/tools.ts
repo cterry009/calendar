@@ -151,6 +151,8 @@ export function registerTools(server: McpServer): void {
         proximos_pasos: p.nextSteps,
         bloqueo: p.blocker,
         fecha_limite: p.deadline?.slice(0, 10) ?? null,
+        carpeta: p.localPath ?? null,
+        archivos_y_enlaces: p.links ?? [],
         bitacora_reciente: log,
         tareas_abiertas: tasks,
       });

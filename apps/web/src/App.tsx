@@ -7,6 +7,7 @@ import { HoyPage } from './pages/HoyPage';
 import { EstadisticasPage } from './pages/EstadisticasPage';
 import { BloqueoPage } from './pages/BloqueoPage';
 import { ProyectosPage } from './pages/ProyectosPage';
+import { ProyectoPage } from './pages/ProyectoPage';
 import { LoginPage } from './pages/LoginPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -26,6 +27,7 @@ export default function App() {
             {/* agenda-redesign (2026-11-09): full pages, not tabs beside the calendar. */}
             <Route path="/hoy" element={<HoyPage />} />
             <Route path="/proyectos" element={<ProyectosPage />} />
+            <Route path="/proyectos/:id" element={<ProyectoPage />} />
             <Route path="/investigacion" element={<Navigate to="/proyectos" replace />} />
             <Route path="/estadisticas" element={<EstadisticasPage />} />
             <Route path="/bloqueo" element={<BloqueoPage />} />
