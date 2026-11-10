@@ -1,4 +1,5 @@
 import {
+  firstUnmasteredSection,
   globalLevel,
   logit,
   probability,
@@ -63,5 +64,17 @@ describe('levels', () => {
     expect(globalLevel(100)).toBe(1);
     expect(globalLevel(799)).toBe(3);
     expect(globalLevel(800)).toBe(4);
+  });
+});
+
+describe('firstUnmasteredSection', () => {
+  const levels: Record<string, number> = { '6': 2, '7': 3, '8': 4, '9': 1 };
+  it('skips sections at level 3 or more and keeps the order', () => {
+    expect(firstUnmasteredSection(['7', '8', '9', '6'], (s) => levels[s])).toBe('9');
+    expect(firstUnmasteredSection(['6', '7'], (s) => levels[s])).toBe('6');
+  });
+  it('treats an unknown level as not mastered, and returns null when all are', () => {
+    expect(firstUnmasteredSection(['7', '10'], (s) => levels[s])).toBe('10');
+    expect(firstUnmasteredSection(['7', '8'], (s) => levels[s])).toBeNull();
   });
 });

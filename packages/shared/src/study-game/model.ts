@@ -40,6 +40,17 @@ export function sectionLevel(theta: number, config: GameConfig = DEFAULT_GAME_CO
   return 1 + config.sectionLevelThresholds.filter((t) => theta >= t).length;
 }
 
+/**
+ * A section counts as mastered from level 3 (θ ≥ 0, about even odds on a 🟡), the user's choice on
+ * 2026-10-29: the tutor starts a session on its first section below it.
+ */
+export const MASTERED_SECTION_LEVEL = 3;
+
+/** The first section whose level is below MASTERED_SECTION_LEVEL; null when all of them reach it. */
+export function firstUnmasteredSection(sections: readonly string[], levelOf: (section: string) => number | undefined): string | null {
+  return sections.find((s) => (levelOf(s) ?? 0) < MASTERED_SECTION_LEVEL) ?? null;
+}
+
 /** XP needed for global level n. */
 export function xpForLevel(level: number, config: GameConfig = DEFAULT_GAME_CONFIG): number {
   return config.levelXpBase * level ** config.levelXpExponent;
