@@ -288,7 +288,15 @@ function NextWork({ session }: { session: SyncPomodoroRecord }) {
 // timer and the chat each have their own size (A− / A+). Kept per device in localStorage.
 const LAYOUT_KEY = 'calendar:focus-view-layout';
 const MIN_LEFT = 220;
-const DEFAULT_LAYOUT = { leftWidth: 320, timerScale: 1, chatZoom: 1 };
+// timeMode (2026-11-10, agenda-redesign 3.1): the clock, a progress bar in its place, or nothing.
+// Only the display changes: timing, records and notices run as before.
+type TimeMode = 'reloj' | 'barra' | 'oculto';
+const DEFAULT_LAYOUT: { leftWidth: number; timerScale: number; chatZoom: number; timeMode: TimeMode } = {
+  leftWidth: 320,
+  timerScale: 1,
+  chatZoom: 1,
+  timeMode: 'reloj',
+};
 type Layout = typeof DEFAULT_LAYOUT;
 
 function loadLayout(): Layout {
@@ -418,6 +426,9 @@ export function FocusView() {
     withTutor && !stacked
       ? Math.min(layout.leftWidth, Math.max(MIN_LEFT, viewport * 0.6))
       : undefined;
+  const phaseTotal = (pomodoro.phaseDurationMinutes ?? 0) * 60;
+  const phaseShare =
+    overrun > 0 ? 100 : phaseTotal > 0 ? Math.round(Math.max(0, Math.min(1, 1 - pomodoro.remainingSeconds / phaseTotal)) * 100) : 0;
   // The timer grows with its column and with its own size control.
   const timerSize = Math.round(
     Math.min(120, Math.max(40, (leftWidth ?? 420) * 0.24)) * layout.timerScale,
@@ -465,17 +476,48 @@ export function FocusView() {
       <Text fontSize="$3" fontWeight="700" textAlign="center">
         {overrun > 0 ? 'Pausa terminada' : phaseLabel}
       </Text>
+      {layout.timeMode === 'reloj' ? (
       <Text
-        fontSize={timerSize}
-        lineHeight={Math.round(timerSize * 1.08)}
-        fontWeight="800"
-        color={overrun > 0 ? '$warning' : focus ? '$color' : '$muted'}
-        style={{ fontVariantNumeric: 'tabular-nums' }}
-      >
-        {overrun > 0
-          ? `+${formatTimer(Math.floor(overrun * 60))}`
-          : formatTimer(pomodoro.remainingSeconds)}
-      </Text>
+          fontSize={timerSize}
+          lineHeight={Math.round(timerSize * 1.08)}
+          fontWeight="800"
+          color={overrun > 0 ? '$warning' : focus ? '$color' : '$muted'}
+          style={{ fontVariantNumeric: 'tabular-nums' }}
+        >
+          {overrun > 0
+            ? `+${formatTimer(Math.floor(overrun * 60))}`
+            : formatTimer(pomodoro.remainingSeconds)}
+        </Text>
+      ) : layout.timeMode === 'barra' ? (
+        <YStack width="100%" gap="$1" paddingVertical="$2" aria-label="Avance del tramo">
+          <YStack height={14} borderRadius={7} backgroundColor="$borderColor" overflow="hidden">
+            <YStack
+              height="100%"
+              width={`${phaseShare}%`}
+              backgroundColor={overrun > 0 ? '$warning' : focus ? '$accent' : '$muted'}
+            />
+          </YStack>
+        </YStack>
+      ) : null}
+      <XStack gap="$1" justifyContent="center" role="group" aria-label="Cómo ver el tiempo">
+        {(
+          [
+            ['reloj', 'Reloj'],
+            ['barra', 'Barra'],
+            ['oculto', 'Ocultar'],
+          ] as const
+        ).map(([mode, label]) => (
+          <AppButton
+            key={mode}
+            size="$2"
+            variant={layout.timeMode === mode ? 'primary' : 'ghost'}
+            aria-pressed={layout.timeMode === mode}
+            onPress={() => setLayout({ timeMode: mode })}
+          >
+            {label}
+          </AppButton>
+        ))}
+      </XStack>
 
       {flexible && !focus ? <NextWork session={session} /> : null}
 

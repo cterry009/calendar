@@ -224,10 +224,7 @@ export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}
 
   return (
     <XStack gap="$3" alignItems="stretch" flexWrap="wrap" flex={fullHeight ? 1 : undefined} minHeight={fullHeight ? 0 : undefined}>
-    <TopicsSidebar notes={notes} choice={choice} game={game} disabled={thinking} autoPick={!blockSections}
-      pinned={blockSections && blockOptions[0] ? { noteCode: blockSections.noteCode, section: blockOptions[0] } : null}
-      onChoose={setChoice}
-    />
+
     <AppCard flex={1} minWidth={320} minHeight={fullHeight ? 0 : undefined}>
       <style>{TUTOR_ANIMATIONS}</style>
       <YStack gap="$3" flex={fullHeight ? 1 : undefined} minHeight={fullHeight ? 0 : undefined}>
@@ -460,6 +457,10 @@ export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}
         )}
       </YStack>
     </AppCard>
+    <TopicsSidebar notes={notes} choice={choice} game={game} disabled={thinking} autoPick={!blockSections}
+      pinned={blockSections && blockOptions[0] ? { noteCode: blockSections.noteCode, section: blockOptions[0] } : null}
+      onChoose={setChoice}
+    />
     </XStack>
   );
 }
