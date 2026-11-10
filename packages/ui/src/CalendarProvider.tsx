@@ -19,8 +19,16 @@ function injectThemeCSS() {
 
   const styleTag = document.createElement('style');
   styleTag.id = STYLE_ID;
-  styleTag.textContent = tamaguiConfig.getCSS();
+  styleTag.textContent = rootAgendaSelectors(tamaguiConfig.getCSS());
   document.head.appendChild(styleTag);
+}
+
+// Tamagui emits the themes added on top of dark/light (agendaLight, agendaDark) only as descendant
+// selectors (`:root .t_agendaDark`), but the active theme's class sits on <html> itself, so the
+// root kept the old green variables (seen 2026-11-09 in the installed app). Each such selector also
+// gets its `:root.t_…` form.
+export function rootAgendaSelectors(css: string): string {
+  return css.replace(/:root \.t_(agendaDark|agendaLight)((?: \.t_[A-Za-z_]+)*)/g, ':root.t_$1$2, :root .t_$1$2');
 }
 
 injectThemeCSS();
