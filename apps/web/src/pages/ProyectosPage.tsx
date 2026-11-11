@@ -35,8 +35,8 @@ export function ProyectosPage() {
   const [academic, setAcademic] = useState<AcademicId>(() => rememberedTab('calendar.proyectos.academico', ACADEMIC.map((a) => a.id), 'estudio'));
 
   return (
-    <XStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$6" gap="$5" maxWidth={1400} width="100%" alignSelf="center" alignItems="flex-start">
-    <YStack flex={1} minWidth={0} gap="$4">
+    <XStack flex={1} minHeight="100vh" backgroundColor="$background" padding="$5" gap="$5" flexWrap="wrap" alignItems="flex-start" style={{ width: '100%', maxWidth: 1800, margin: '0 auto', boxSizing: 'border-box' }}>
+    <YStack flexGrow={1} flexShrink={1} flexBasis={560} minWidth={0} gap="$4">
       <H1 margin={0} fontFamily="$heading" fontSize="$9" fontWeight="500">
         Proyectos
       </H1>

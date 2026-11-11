@@ -27,7 +27,7 @@ export function ProjectsRail({ currentId }: { currentId?: string }) {
   const list = data.projects.filter((p) => p.status !== 'DONE').sort(byPriority(attention));
 
   return (
-    <YStack width={260} flexShrink={0} gap="$1" padding="$3" borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="$surface" alignSelf="flex-start" style={{ position: 'sticky', top: 80, maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
+    <YStack flexGrow={0} flexShrink={0} flexBasis={280} width={280} gap="$1" padding="$3" borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="$surface" alignSelf="flex-start" style={{ position: 'sticky', top: 80, maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
       <Text fontSize={12} fontWeight="700" letterSpacing={1.2} color="$muted" textTransform="uppercase" marginBottom="$1">
         Proyectos por prioridad
       </Text>

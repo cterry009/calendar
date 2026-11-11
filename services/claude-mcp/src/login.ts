@@ -13,15 +13,17 @@ const out = new Writable({
   },
 });
 const rl = createInterface({ input: process.stdin, output: out, terminal: true });
+// The prompt goes through readline itself (written before muting), so the terminal's redraw can't
+// erase it; for the password, echo is muted right after the prompt is shown.
 const ask = (q: string, hidden = false) =>
   new Promise<string>((resolve) => {
-    process.stdout.write(q);
-    muted = hidden;
-    rl.question('', (a) => {
+    muted = false;
+    rl.question(q, (a) => {
       muted = false;
       if (hidden) process.stdout.write('\n');
       resolve(a.trim());
     });
+    muted = hidden;
   });
 
 const email = await ask('Correo de la app de calendario: ');
