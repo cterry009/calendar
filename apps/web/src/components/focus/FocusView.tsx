@@ -291,6 +291,16 @@ const MIN_LEFT = 220;
 // timeMode (2026-11-10, agenda-redesign 3.1): the clock, a progress bar in its place, or nothing.
 // Only the display changes: timing, records and notices run as before.
 type TimeMode = 'reloj' | 'barra' | 'oculto';
+// spacing (2026-11-11): line height of the chat's text and the gaps between messages and topics.
+type Spacing = 'compacto' | 'normal' | 'amplio';
+const SPACING: Record<Spacing, { lineHeight: string; gap: string }> = {
+  compacto: { lineHeight: '1.3', gap: '5px' },
+  normal: { lineHeight: '1.5', gap: '10px' },
+  amplio: { lineHeight: '1.8', gap: '18px' },
+};
+// Tamagui fixes a line height per font size, so it is overridden here; KaTeX keeps its own.
+const SPACING_CSS = `.tutor-spacing :where(p, li, span, div):not(.katex, .katex *) { line-height: var(--tutor-lh) !important; }`;
+
 // leftCollapsed (2026-11-11): dragging the divider past the limit folds the pomodoro into a rail.
 const LEFT_FOLD = 140;
 const DEFAULT_LAYOUT: {
@@ -299,9 +309,11 @@ const DEFAULT_LAYOUT: {
   chatZoom: number;
   timeMode: TimeMode;
   leftCollapsed: boolean;
+  spacing: Spacing;
 } = {
   leftWidth: 320,
   leftCollapsed: false,
+  spacing: 'normal',
   timerScale: 1,
   chatZoom: 1,
   timeMode: 'reloj',
@@ -590,6 +602,28 @@ export function FocusView() {
             value={layout.chatZoom}
             onChange={(chatZoom) => setLayout({ chatZoom })}
           />
+          <XStack gap="$1" alignItems="center" role="group" aria-label="Espaciado del chat">
+            <Text fontSize="$1" color="$muted">
+              Espaciado
+            </Text>
+            {(
+              [
+                ['compacto', '≡ Compacto'],
+                ['normal', '☰ Normal'],
+                ['amplio', '☷ Amplio'],
+              ] as const
+            ).map(([mode, label]) => (
+              <AppButton
+                key={mode}
+                size="$2"
+                variant={layout.spacing === mode ? 'primary' : 'ghost'}
+                aria-pressed={layout.spacing === mode}
+                onPress={() => setLayout({ spacing: mode })}
+              >
+                {label}
+              </AppButton>
+            ))}
+          </XStack>
         </XStack>
       ) : null}
     </YStack>
@@ -666,8 +700,16 @@ export function FocusView() {
           flex={1}
           minWidth={0}
           minHeight={stacked ? 520 : 0}
-          style={{ zoom: layout.chatZoom } as React.CSSProperties}
+          className="tutor-spacing"
+          style={
+            {
+              zoom: layout.chatZoom,
+              '--tutor-lh': (SPACING[layout.spacing] ?? SPACING.normal).lineHeight,
+              '--tutor-gap': (SPACING[layout.spacing] ?? SPACING.normal).gap,
+            } as React.CSSProperties
+          }
         >
+          <style>{SPACING_CSS}</style>
           <TutorPanel fullHeight />
         </YStack>
       ) : null}

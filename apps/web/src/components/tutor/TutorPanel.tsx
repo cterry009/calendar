@@ -449,7 +449,7 @@ export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}
                 overflowY: 'auto',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 10,
+                gap: 'var(--tutor-gap, 10px)',
                 paddingRight: 4,
               }}
             >

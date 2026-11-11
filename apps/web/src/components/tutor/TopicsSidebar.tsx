@@ -147,7 +147,7 @@ export function TopicsSidebar({
   const thresholds = DEFAULT_GAME_CONFIG.sectionLevelThresholds;
 
   return (
-    <YStack width={width} flexShrink={0} gap="$2" padding="$3" borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="$surface" alignSelf={fill ? 'stretch' : 'flex-start'} style={fill ? { overflowY: 'auto' } : undefined}>
+    <YStack width={width} flexShrink={0} gap="$2" padding="$3" borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="$surface" alignSelf={fill ? 'stretch' : 'flex-start'} style={fill ? { overflowY: 'auto', gap: 'var(--tutor-gap, 8px)' } : undefined}>
       <Text fontSize={12} fontWeight="700" letterSpacing={1.2} color="$muted" textTransform="uppercase">
         Temas en curso
       </Text>
