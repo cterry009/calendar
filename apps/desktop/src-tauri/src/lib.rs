@@ -64,7 +64,7 @@ pub fn run() {
             hosts::clear_on_startup();
 
             if std::env::args().any(|a| a == "--minimized") {
-                if let Some(w) = tauri::Manager::get_webview_window(app, "main") {
+                if let Some(w) = tauri::Manager::get_window(app, "main") {
                     let _ = w.hide();
                 }
             }

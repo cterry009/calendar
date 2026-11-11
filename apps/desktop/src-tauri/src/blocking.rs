@@ -202,7 +202,7 @@ pub fn start_monitor(app: &AppHandle) {
                         // repeatedly-relaunched app doesn't fight the user for focus every 2s.
                         // Best-effort: a window that can't be shown/focused (e.g. mid-teardown)
                         // shouldn't crash the monitor thread.
-                        if let Some(window) = app.get_webview_window("main") {
+                        if let Some(window) = app.get_window("main") {
                             let _ = window.show();
                             let _ = window.unminimize();
                             let _ = window.set_focus();

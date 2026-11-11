@@ -7,7 +7,7 @@ use tauri::{AppHandle, Manager};
 
 #[tauri::command]
 pub fn focus_overlay(app: AppHandle, show: bool) {
-    let Some(window) = app.get_webview_window("main") else {
+    let Some(window) = app.get_window("main") else {
         return;
     };
     if show {

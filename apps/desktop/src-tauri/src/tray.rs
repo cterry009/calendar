@@ -103,8 +103,10 @@ pub fn set_quit_allowed(app: &AppHandle, allowed: bool) {
 /// Show + focus the main window (from a tray click or the "Abrir ventana" item). The window is
 /// only hidden, never destroyed, on close (see `lib.rs`'s window-event handler), so it's always
 /// there to re-show.
+/// `get_window`, not `get_webview_window`: once the focus view adds a child webview (the radar
+/// pane, 2026-11-11) the main window holds two webviews and is no longer a "webview window".
 pub fn show_main(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
+    if let Some(window) = app.get_window("main") {
         let _ = window.show();
         let _ = window.unminimize();
         let _ = window.set_focus();
