@@ -34,6 +34,7 @@ import { SequenceTimeline } from '../pomodoro/SequenceTimeline';
 import { DiagnosisSliders } from '../morning/Diagnosis';
 import { Stepper } from '../morning/FlexibleBlockStarter';
 import { TutorPanel } from '../tutor/TutorPanel';
+import { blockPages, EmbeddedPages } from './EmbeddedPages';
 
 // The focus view (dynamic-study-blocks D17, user-requested 2026-10-22): while a block's pomodoro
 // runs, the app window shows only the pomodoro -- timer, segment, the block's plan, the controls for
@@ -449,13 +450,16 @@ export function FocusView() {
   const flexible = !!session.flexible;
   const overrun = flexible && !focus ? pauseOverrunMinutes(session, Date.now()) : 0;
   const withTutor = isStudyTask(task);
+  // A radar / research block shows its claude.ai page where the chat would be (2026-11-11).
+  const pages = withTutor ? [] : blockPages(schedule?.label);
+  const withSide = withTutor || pages.length > 0;
   const inBlock = !!session.scheduleId;
   const phaseLabel = segment?.etiqueta ?? (focus ? 'Foco' : 'Pausa');
   // A narrow window stacks the pomodoro over the chat instead of side by side.
-  const stacked = withTutor && viewport < 760;
-  const folded = withTutor && !stacked && layout.leftCollapsed;
+  const stacked = withSide && viewport < 760;
+  const folded = withSide && !stacked && layout.leftCollapsed;
   const leftWidth =
-    withTutor && !stacked
+    withSide && !stacked
       ? Math.min(layout.leftWidth, Math.max(MIN_LEFT, viewport * 0.6))
       : undefined;
   const phaseTotal = (pomodoro.phaseDurationMinutes ?? 0) * 60;
@@ -470,7 +474,7 @@ export function FocusView() {
     <YStack
       width={leftWidth}
       display={folded ? 'none' : 'flex'}
-      flex={withTutor ? undefined : 1}
+      flex={withSide ? undefined : 1}
       flexShrink={0}
       gap="$3"
       alignItems="center"
@@ -595,7 +599,7 @@ export function FocusView() {
         {flexible ? <FlexiblePlan session={session} /> : inBlock ? <SequenceTimeline /> : null}
       </YStack>
 
-      {withTutor ? (
+      {withSide ? (
         <XStack gap="$3" flexWrap="wrap" justifyContent="center" paddingTop="$2">
           <SizeControl
             label="Reloj"
@@ -603,10 +607,11 @@ export function FocusView() {
             onChange={(timerScale) => setLayout({ timerScale })}
           />
           <SizeControl
-            label="Chat"
+            label={withTutor ? 'Chat' : 'Página'}
             value={layout.chatZoom}
             onChange={(chatZoom) => setLayout({ chatZoom })}
           />
+          {withTutor ? (<>
           <XStack gap="$1" alignItems="center" role="group" aria-label="Espaciado del chat">
             <Text fontSize="$1" color="$muted">
               Espaciado
@@ -651,6 +656,7 @@ export function FocusView() {
               </AppButton>
             ))}
           </XStack>
+          </>) : null}
         </XStack>
       ) : null}
     </YStack>
@@ -677,7 +683,7 @@ export function FocusView() {
     >
       {pomodoroColumn}
 
-      {withTutor && !stacked ? (
+      {withSide && !stacked ? (
         // The divider: drag it to give the chat or the pomodoro more room.
         <div
           role="separator"
@@ -739,6 +745,10 @@ export function FocusView() {
         >
           <style>{SPACING_CSS}</style>
           <TutorPanel fullHeight />
+        </YStack>
+      ) : pages.length ? (
+        <YStack flex={1} minWidth={0} minHeight={stacked ? 520 : 0}>
+          <EmbeddedPages pages={pages} zoom={layout.chatZoom} suspended={dragging} />
         </YStack>
       ) : null}
     </XStack>,
