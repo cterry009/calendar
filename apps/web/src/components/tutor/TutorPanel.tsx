@@ -200,6 +200,13 @@ export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}
         current: currentForTurn(chat.current),
         pomodoroSessionId: blockTask && session ? session.id : undefined,
         studyTaskId: blockTask?.id,
+        history: chat.messages
+          .filter((m) => m.role !== 'system' && m.text !== text)
+          .slice(-12)
+          .map((m) => ({
+            role: m.role === 'user' ? ('user' as const) : ('assistant' as const),
+            text: m.text.slice(0, 1500),
+          })),
       });
       setChat((c) => withTurn(c, turn));
       setGame(turn.game);
@@ -450,7 +457,8 @@ export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 'var(--tutor-gap, 10px)',
-                paddingRight: 4,
+                paddingLeft: 'var(--tutor-pad, 0px)',
+                paddingRight: 'calc(var(--tutor-pad, 0px) + 4px)',
               }}
             >
               {chat.messages.length === 0 ? (

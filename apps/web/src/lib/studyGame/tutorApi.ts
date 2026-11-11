@@ -85,6 +85,8 @@ export interface TutorTurnInput {
   };
   pomodoroSessionId?: string;
   studyTaskId?: string;
+  /** Last chat messages: the tutor's memory if its session was lost. */
+  history?: { role: 'user' | 'assistant'; text: string }[];
 }
 
 export function tutorNotes(): Promise<TutorNoteSummary[]> {

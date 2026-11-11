@@ -1,4 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tutorConfig } from './tutor.config';
 import {
   BadGatewayException,
   BadRequestException,
@@ -73,8 +76,32 @@ function fromCatalog(exercise: Exercise): TutorExercise {
  */
 @Injectable()
 export class TutorService {
-  /** Claude session id -> user id. In memory: after a restart a new conversation starts (D32). */
-  private readonly sessions = new Map<string, string>();
+  /**
+   * Claude session id -> user id. Kept on disk since 2026-11-11 so a server restart no longer
+   * wipes the tutor's memory (Claude keeps the transcript itself; this only checks ownership).
+   */
+  private readonly sessionsFile = join(tutorConfig().workDir, 'sessions.json');
+  private readonly sessions = this.loadSessions();
+
+  private loadSessions(): Map<string, string> {
+    try {
+      return new Map(Object.entries(JSON.parse(readFileSync(this.sessionsFile, 'utf8')) as Record<string, string>));
+    } catch {
+      return new Map();
+    }
+  }
+
+  private rememberSession(sessionId: string, userId: string) {
+    this.rememberSession(sessionId, userId);
+    // Keep the newest 500 conversations.
+    while (this.sessions.size > 500) this.sessions.delete(this.sessions.keys().next().value as string);
+    try {
+      mkdirSync(tutorConfig().workDir, { recursive: true });
+      writeFileSync(this.sessionsFile, JSON.stringify(Object.fromEntries(this.sessions)));
+    } catch {
+      // Memory only until the next restart.
+    }
+  }
   private readonly busy = new Set<string>();
 
   constructor(
@@ -147,7 +174,9 @@ export class TutorService {
         resume = true;
       } else {
         warnings.push(
-          'El tutor no recuerda esa conversación (¿se reinició el servidor?): empieza una nueva.',
+          dto.history?.length
+            ? 'La sesión del tutor se perdió: sigue la conversación con tus últimos mensajes.'
+            : 'El tutor no recuerda esa conversación (¿se reinició el servidor?): empieza una nueva.',
         );
       }
     }
@@ -165,7 +194,15 @@ export class TutorService {
     const studySession = dto.studyTaskId
       ? await this.studySessionTitle(userId, dto.studyTaskId)
       : null;
+    const recentRows = await this.prisma.exerciseAttempt.findMany({
+      where: { userId, noteCode: ref.noteCode, section: ref.section },
+      orderBy: { occurredAt: 'desc' },
+      take: 10,
+      select: { exerciseId: true, r: true },
+    });
     const prompt = buildTurnPrompt({
+      recent: recentRows.map((a) => ({ exerciseId: a.exerciseId, r: Number(a.r) })),
+      history: resume ? undefined : dto.history?.slice(-12),
       message: dto.message,
       note,
       section: noteSection,

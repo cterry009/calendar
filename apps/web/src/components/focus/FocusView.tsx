@@ -293,10 +293,11 @@ const MIN_LEFT = 220;
 type TimeMode = 'reloj' | 'barra' | 'oculto';
 // spacing (2026-11-11): line height of the chat's text and the gaps between messages and topics.
 type Spacing = 'compacto' | 'normal' | 'amplio';
-const SPACING: Record<Spacing, { lineHeight: string; gap: string }> = {
-  compacto: { lineHeight: '1.3', gap: '5px' },
-  normal: { lineHeight: '1.5', gap: '10px' },
-  amplio: { lineHeight: '1.8', gap: '18px' },
+// pad: room between the chat's text and its walls.
+const SPACING: Record<Spacing, { lineHeight: string; gap: string; pad: string }> = {
+  compacto: { lineHeight: '1.3', gap: '5px', pad: '0px' },
+  normal: { lineHeight: '1.5', gap: '10px', pad: '12px' },
+  amplio: { lineHeight: '1.8', gap: '18px', pad: '32px' },
 };
 // Tamagui fixes a line height per font size, so it is overridden here; KaTeX keeps its own.
 const SPACING_CSS = `.tutor-spacing :where(p, li, span, div):not(.katex, .katex *) { line-height: var(--tutor-lh) !important; }`;
@@ -706,6 +707,7 @@ export function FocusView() {
               zoom: layout.chatZoom,
               '--tutor-lh': (SPACING[layout.spacing] ?? SPACING.normal).lineHeight,
               '--tutor-gap': (SPACING[layout.spacing] ?? SPACING.normal).gap,
+              '--tutor-pad': (SPACING[layout.spacing] ?? SPACING.normal).pad,
             } as React.CSSProperties
           }
         >

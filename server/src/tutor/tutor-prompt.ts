@@ -26,6 +26,10 @@ export interface TurnPromptInput {
   current: TutorExercise | null;
   /** The engine wants a new exercise at this b (no catalog exercise is close enough). */
   generateAt: number | null;
+  /** Exercises already worked in this section, newest first, with their grade. */
+  recent?: { exerciseId: string; r: number }[];
+  /** Earlier messages, sent only when Claude's own session could not be resumed. */
+  history?: { role: 'user' | 'assistant'; text: string }[];
 }
 
 const KIND_LABEL: Record<ExerciseKind, string> = {
@@ -55,7 +59,24 @@ export function buildTurnPrompt(input: TurnPromptInput): string {
   out.push(
     `Habilidad en la sección: θ = ${round2(input.theta)}, nivel ${input.level}, ${input.attempts} intentos.`,
   );
+  if (input.recent?.length) {
+    out.push(
+      `Ya trabajados en esta sección (más reciente primero; no los vuelvas a plantear): ${input.recent
+        .map((a) => `${a.exerciseId} (${a.r})`)
+        .join(', ')}.`,
+    );
+  }
+  out.push(
+    'Recuerda la conversación: no repitas una pregunta que ya hiciste ni una que el estudiante ya respondió; ' +
+      'si no la entendió, reformúlala distinto o avanza.',
+  );
   out.push('');
+
+  if (input.history?.length) {
+    out.push('[Conversación previa — la sesión anterior se perdió; continúala desde aquí]');
+    for (const m of input.history) out.push(`${m.role === 'user' ? 'Estudiante' : 'Tutor'}: ${m.text}`);
+    out.push('');
+  }
 
   if (current) {
     const kind = current.kind ? KIND_LABEL[current.kind] : 'generado';

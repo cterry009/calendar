@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsIn,
   IsNumber,
   IsOptional,
@@ -52,6 +54,16 @@ export class TutorCurrentExerciseDto {
   answer?: string;
 }
 
+/** One earlier message of the chat, for when Claude's session can't be resumed. */
+export class TutorHistoryMessageDto {
+  @IsIn(['user', 'assistant'])
+  role!: 'user' | 'assistant';
+
+  @IsString()
+  @MaxLength(4000)
+  text!: string;
+}
+
 export class TutorTurnDto extends TutorSectionQueryDto {
   @IsString()
   @MinLength(1)
@@ -74,4 +86,12 @@ export class TutorTurnDto extends TutorSectionQueryDto {
   @IsOptional()
   @IsString()
   studyTaskId?: string;
+
+  /** The chat's last messages (2026-11-11): the tutor's memory when the session was lost. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(16)
+  @ValidateNested({ each: true })
+  @Type(() => TutorHistoryMessageDto)
+  history?: TutorHistoryMessageDto[];
 }
