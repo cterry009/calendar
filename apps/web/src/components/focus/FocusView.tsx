@@ -293,12 +293,14 @@ const MIN_LEFT = 220;
 type TimeMode = 'reloj' | 'barra' | 'oculto';
 // spacing (2026-11-11): line height of the chat's text and the gaps between messages and topics.
 type Spacing = 'compacto' | 'normal' | 'amplio';
-// pad: room between the chat's text and its walls.
-const SPACING: Record<Spacing, { lineHeight: string; gap: string; pad: string }> = {
-  compacto: { lineHeight: '1.3', gap: '5px', pad: '0px' },
-  normal: { lineHeight: '1.5', gap: '10px', pad: '12px' },
-  amplio: { lineHeight: '1.8', gap: '18px', pad: '32px' },
+const SPACING: Record<Spacing, { lineHeight: string; gap: string }> = {
+  compacto: { lineHeight: '1.3', gap: '5px' },
+  normal: { lineHeight: '1.5', gap: '10px' },
+  amplio: { lineHeight: '1.8', gap: '18px' },
 };
+// margin (2026-11-11): its own control, the room between the chat's text and its walls.
+type Margin = 'estrecho' | 'normal' | 'amplio';
+const MARGIN: Record<Margin, string> = { estrecho: '0px', normal: '12px', amplio: '40px' };
 // Tamagui fixes a line height per font size, so it is overridden here; KaTeX keeps its own.
 const SPACING_CSS = `.tutor-spacing :where(p, li, span, div):not(.katex, .katex *) { line-height: var(--tutor-lh) !important; }`;
 
@@ -311,10 +313,12 @@ const DEFAULT_LAYOUT: {
   timeMode: TimeMode;
   leftCollapsed: boolean;
   spacing: Spacing;
+  margin: Margin;
 } = {
   leftWidth: 320,
   leftCollapsed: false,
   spacing: 'normal',
+  margin: 'normal',
   timerScale: 1,
   chatZoom: 1,
   timeMode: 'reloj',
@@ -625,6 +629,28 @@ export function FocusView() {
               </AppButton>
             ))}
           </XStack>
+          <XStack gap="$1" alignItems="center" role="group" aria-label="Margen del chat">
+            <Text fontSize="$1" color="$muted">
+              Margen
+            </Text>
+            {(
+              [
+                ['estrecho', '▕▏ Estrecho'],
+                ['normal', '▕ ▏ Normal'],
+                ['amplio', '▕  ▏ Amplio'],
+              ] as const
+            ).map(([mode, label]) => (
+              <AppButton
+                key={mode}
+                size="$2"
+                variant={layout.margin === mode ? 'primary' : 'ghost'}
+                aria-pressed={layout.margin === mode}
+                onPress={() => setLayout({ margin: mode })}
+              >
+                {label}
+              </AppButton>
+            ))}
+          </XStack>
         </XStack>
       ) : null}
     </YStack>
@@ -707,7 +733,7 @@ export function FocusView() {
               zoom: layout.chatZoom,
               '--tutor-lh': (SPACING[layout.spacing] ?? SPACING.normal).lineHeight,
               '--tutor-gap': (SPACING[layout.spacing] ?? SPACING.normal).gap,
-              '--tutor-pad': (SPACING[layout.spacing] ?? SPACING.normal).pad,
+              '--tutor-pad': MARGIN[layout.margin] ?? MARGIN.normal,
             } as React.CSSProperties
           }
         >
