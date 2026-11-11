@@ -94,7 +94,8 @@ pub fn run() {
             hosts::set_website_blocking,
             hosts::request_hosts_access,
             launch::open_in_vscode,
-            launch::open_path
+            launch::open_path,
+            launch::open_url
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

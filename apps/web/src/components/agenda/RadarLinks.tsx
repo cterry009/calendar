@@ -37,7 +37,7 @@ export function RadarLinks({ only }: { only?: string[] }) {
   return (
     <YStack gap="$2">
       <Paragraph margin={0} size="$2" color="$muted">
-        {isDesktop ? 'Se abren en una ventana de la app.' : 'Se abren en una pestaña nueva.'}
+        {isDesktop ? 'Se abren en tu navegador.' : 'Se abren en una pestaña nueva.'}
       </Paragraph>
       <XStack gap="$3" flexWrap="wrap">
         {pages.map((p) => (

@@ -51,3 +51,19 @@ pub fn open_path(path: String) -> Result<(), String> {
     let result = Command::new("xdg-open").arg(p).spawn();
     result.map(|_| ()).map_err(|e| format!("No se pudo abrir: {e}"))
 }
+
+/// 2026-11-11: claude.ai pages (radars, reading log) open in the default browser, where the user is
+/// signed in; an app window has no claude.ai session. Only plain https URLs are accepted.
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    if !url.starts_with("https://") || url.chars().any(|c| c.is_whitespace() || c == '"') {
+        return Err(format!("Enlace no permitido: {url}"));
+    }
+    #[cfg(windows)]
+    let result = Command::new("explorer").arg(&url).spawn();
+    #[cfg(target_os = "macos")]
+    let result = Command::new("open").arg(&url).spawn();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let result = Command::new("xdg-open").arg(&url).spawn();
+    result.map(|_| ()).map_err(|e| format!("No se pudo abrir: {e}"))
+}
