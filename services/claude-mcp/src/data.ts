@@ -95,6 +95,7 @@ export interface Snapshot {
   scheduleCompletions?: ScheduleCompletion[];
   dailyGameTime?: Array<{ date: string; totalMinutes: number }>;
   exerciseAttempts?: Array<{ occurredAt: string; r: number }>;
+  checkIns?: Array<{ at: string; kind: string; energy: number | null; napped: boolean | null; exerciseIntensity: string | null; progress: number | null; reason: string | null }>;
   projects?: Project[];
   projectLogEntries?: LogEntry[];
 }

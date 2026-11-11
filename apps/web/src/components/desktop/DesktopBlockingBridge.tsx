@@ -4,7 +4,9 @@ import { useBlockList } from '../../hooks/useBlockList';
 import { useCommitment } from '../../hooks/useCommitment';
 import { useNightClock, useNightSettings } from '../../hooks/useNightWindowActive';
 import { useWorkGameLock } from '../../hooks/useWorkGameLock';
-import { focusBlockTargets } from '../../lib/desktop/focusBlockTargets';
+import { ALL_GAMES_IDENTIFIER, focusBlockTargets } from '../../lib/desktop/focusBlockTargets';
+import { updateGameBreakContext, useGameBreak } from '../../lib/checkins/gameBreakStore';
+import { usePomodoro } from '../../context/PomodoroContext';
 import { useSoftFocus } from '../../context/SoftFocusContext';
 import { isDesktop } from '../../lib/desktop';
 
@@ -44,7 +46,9 @@ function identifiersFor(
 }
 
 export function DesktopBlockingBridge() {
-  const { isFocusActive: isOverlayVisible, isWithinWorkSchedule, isInWorkWindow } = useSoftFocus();
+  const { isFocusActive: isOverlayVisible, isWithinWorkSchedule, isInWorkWindow, manualSoftFocus, isLocationActive } = useSoftFocus();
+  const pomodoro = usePomodoro();
+  const gameBreak = useGameBreak();
   const { enabled: nightEnabled, window: nightWindow } = useNightSettings();
   const { isLocked } = useCommitment();
   const now = useNightClock();
@@ -74,16 +78,26 @@ export function DesktopBlockingBridge() {
   const inWorkFocus = isOverlayVisible || isWithinWorkSchedule || isInWorkWindow;
   // The night window (on/off + hours in the Nocturno tab) blocks the same targets: from 22:30 by
   // default, social media and games are off until morning, list or no list.
-  const focusTargets = useMemo(
-    () => focusBlockTargets(inWorkFocus || isNightActive),
-    [inWorkFocus, isNightActive],
-  );
+  // 2026-11-10: work-hours game breaks -- in the work window (or between pomodoros of a WORK block),
+  // with no focus phase, no manual/location focus and not at night, games may run while today's
+  // budget and the 20-minute break last (gameBreakStore counts the minutes). Social stays blocked.
+  const hardFocus = pomodoro.isBlocking || manualSoftFocus.active || isLocationActive;
+  useEffect(() => {
+    updateGameBreakContext({ inWorkWindow: isInWorkWindow || isWithinWorkSchedule, inFocus: hardFocus });
+  }, [isInWorkWindow, isWithinWorkSchedule, hardFocus]);
+  const gamesOnBreak = inWorkFocus && !hardFocus && !isNightActive && gameBreak.allowed;
+  const focusTargets = useMemo(() => {
+    const targets = focusBlockTargets(inWorkFocus || isNightActive);
+    return gamesOnBreak ? { ...targets, processes: targets.processes.filter((p) => p !== ALL_GAMES_IDENTIFIER) } : targets;
+  }, [inWorkFocus, isNightActive, gamesOnBreak]);
 
+  // On a game break the user's own FOCUS list (which lists League of Legends) waits for a focus phase too.
+  const focusListActive = gamesOnBreak ? hardFocus : isOverlayVisible;
   const blockedProcesses = useMemo(() => {
-    const focus = isOverlayVisible ? identifiersFor(entries, 'DESKTOP_APP', 'FOCUS') : [];
+    const focus = focusListActive ? identifiersFor(entries, 'DESKTOP_APP', 'FOCUS') : [];
     const night = identifiersFor(nightEntries, 'DESKTOP_APP', 'NIGHT');
     return Array.from(new Set([...focus, ...night, ...workLockedGames, ...focusTargets.processes]));
-  }, [entries, nightEntries, isOverlayVisible, workLockedGames, focusTargets]);
+  }, [entries, nightEntries, focusListActive, workLockedGames, focusTargets]);
 
   const blockedWebsites = useMemo(() => {
     const focus = isOverlayVisible ? identifiersFor(entries, 'WEBSITE', 'FOCUS') : [];

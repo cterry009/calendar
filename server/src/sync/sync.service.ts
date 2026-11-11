@@ -66,6 +66,7 @@ export class SyncService {
       blockCommitment,
       projects,
       projectLogEntries,
+      checkIns,
     ] = await Promise.all([
       this.prisma.task.findMany({
         where: { userId, deletedAt: null },
@@ -118,6 +119,11 @@ export class SyncService {
         where: { userId, deletedAt: null },
         orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       }),
+      // 2026-11-10: check-ins of the last 60 days (a handful a day).
+      this.prisma.checkIn.findMany({
+        where: { userId, at: { gte: new Date(Date.now() - 60 * 86_400_000) } },
+        orderBy: { at: 'asc' },
+      }),
     ]);
 
     return {
@@ -141,6 +147,7 @@ export class SyncService {
       exerciseAttempts,
       projects,
       projectLogEntries,
+      checkIns,
       studyPlan: studyPlan
         ? {
             id: studyPlan.id,

@@ -79,8 +79,30 @@ export function patterns(snap: Snapshot, days = 28) {
   const games = (snap.dailyGameTime ?? []).filter((g) => Date.parse(`${g.date.slice(0, 10)}T12:00:00Z`) >= since);
   const gameAvg = games.length ? Math.round(games.reduce((a, g) => a + g.totalMinutes, 0) / days) : 0;
 
+  // Check-ins: energy by hour, naps per day, and energy on days after a very intense session.
+  const checks = (snap.checkIns ?? []).filter((c) => inRange(c.at));
+  const energyByHour: Record<string, number[]> = {};
+  for (const c of checks) if (c.energy !== null) (energyByHour[`${localHour(c.at)}:00`] ??= []).push(c.energy);
+  const avg = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
+  const naps = new Map<string, number>();
+  for (const c of checks) if (c.napped) naps.set(dayKey(new Date(c.at)), (naps.get(dayKey(new Date(c.at))) ?? 0) + 1);
+  const intenseDays = new Set(checks.filter((c) => c.exerciseIntensity === 'muy-intenso').map((c) => dayKey(new Date(c.at))));
+  const energyOn = (pred: (d: string) => boolean) =>
+    avg(checks.filter((c) => c.energy !== null && localHour(c.at) >= 12 && pred(dayKey(new Date(c.at)))).map((c) => c.energy as number));
+  const reasons: Record<string, number> = {};
+  for (const c of checks) if (c.kind === 'dinamico' && c.reason) reasons[c.reason] = (reasons[c.reason] ?? 0) + 1;
+
   return {
     periodo_dias: days,
+    registros: {
+      cantidad: checks.length,
+      energia_promedio_por_hora: Object.fromEntries(Object.entries(energyByHour).map(([h, xs]) => [h, avg(xs)])),
+      siestas_por_dia: Object.fromEntries(naps),
+      energia_tarde_dias_muy_intensos: energyOn((d) => intenseDays.has(d)),
+      energia_tarde_otros_dias: energyOn((d) => !intenseDays.has(d)),
+      motivos_dinamicos: reasons,
+      avance_promedio_reportado: avg(checks.filter((c) => c.progress !== null).map((c) => c.progress as number)),
+    },
     foco: {
       minutos_totales: focusMin,
       sesiones: sessions.length,

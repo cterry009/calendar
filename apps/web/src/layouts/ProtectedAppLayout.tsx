@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { DesktopBlockedOverlay } from '../components/desktop/DesktopBlockedOverlay';
+import { CheckInPrompt } from '../components/checkins/CheckInPrompt';
 import { DesktopBlockingBridge } from '../components/desktop/DesktopBlockingBridge';
 import { DesktopCommitmentBridge } from '../components/desktop/DesktopCommitmentBridge';
 import { DesktopAppTimeBridge } from '../components/desktop/DesktopAppTimeBridge';
@@ -42,6 +43,7 @@ export function ProtectedAppLayout() {
                   <DesktopUsageWarnings />
                   <DesktopNightWarnings />
                   <DesktopBlockedOverlay />
+                  <CheckInPrompt />
                   <SyncStatusBanner />
                   <Outlet />
                   <PanelHost />

@@ -42,3 +42,4 @@ export * from './exercise/plan.js';
 export * from './projects/attention.js';
 export * from './projects/progress.js';
 export * from './study-status/build.js';
+export * from './checkins/index.js';

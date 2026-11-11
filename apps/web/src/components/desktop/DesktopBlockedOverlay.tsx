@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
-import { finishPomodoroPhrase, isInNightWindow, pickActivitySuggestion } from '@calendar/shared';
+import { blockSuggestion, finishPomodoroPhrase, isInNightWindow, primaryCause } from '@calendar/shared';
+import { useGameBreak } from '../../lib/checkins/gameBreakStore';
 import { usePomodoro } from '../../context/PomodoroContext';
 import { useSoftFocus } from '../../context/SoftFocusContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
@@ -62,7 +63,44 @@ export function DesktopBlockedOverlay() {
   if (soft.isLocationActive) reasons.push(`Enfoque por ubicación${soft.activeLocationTriggerLabel ? `: ${soft.activeLocationTriggerLabel}` : ''}`);
   if (soft.isWithinWorkSchedule) reasons.push('Estás dentro de un bloque de trabajo del horario');
   else if (soft.isInWorkWindow) reasons.push('Ventana de trabajo entre semana (9–13 y 14–18): los juegos quedan bloqueados aunque no hayas empezado el bloque');
-  if ((night.enabled || isLocked) && isInNightWindow(now, night.window)) reasons.push('Ventana nocturna');
+  const nightActive = (night.enabled || isLocked) && isInNightWindow(now, night.window);
+  if (nightActive) reasons.push('Ventana nocturna');
+  const gameBreak = useGameBreak();
+  const workTime = soft.isWithinWorkSchedule || soft.isInWorkWindow;
+  const budgetSpent = workTime && !gameBreak.allowed;
+  if (workTime && !inFocus && !nightActive) {
+    reasons.push(
+      gameBreak.allowed
+        ? `Pausa de juego: llevas ${gameBreak.usedToday} de ${gameBreak.budget} min hoy`
+        : gameBreak.currentSession >= 20
+          ? 'Esta pausa de juego ya llegó a 20 min; vuelve a abrirse en la próxima pausa'
+          : `Usaste los ${gameBreak.budget} min de juego de hoy en horario de trabajo`,
+    );
+  }
+  // 2026-11-10: the suggestion depends on why it was blocked, and changes each time.
+  const cause = primaryCause({
+    night: nightActive,
+    focus: inFocus || soft.manualSoftFocus.active || soft.isLocationActive,
+    gameBudgetSpent: budgetSpent,
+    workWindow: workTime,
+    social: false,
+  });
+  const tip = useMemo(() => {
+    if (!alert) return '';
+    let last: string | null = null;
+    try {
+      last = window.localStorage.getItem('calendar.lastBlockTip');
+    } catch {
+      /* none */
+    }
+    const t = blockSuggestion(cause, last);
+    try {
+      window.localStorage.setItem('calendar.lastBlockTip', t);
+    } catch {
+      /* none */
+    }
+    return t;
+  }, [alert?.id]); // one tip per alert
 
   useEffect(() => {
     if (!isDesktop) return;
@@ -75,7 +113,7 @@ export function DesktopBlockedOverlay() {
       listen<string>('process-blocked', (event) => {
         const id = ++seq;
         const name = event.payload || 'una app';
-        const suggestion = pickActivitySuggestion('GAME');
+        const suggestion = '';
         window.clearTimeout(timeoutId);
         setAlert({ id, name, suggestion });
         timeoutId = window.setTimeout(() => {
@@ -160,7 +198,7 @@ export function DesktopBlockedOverlay() {
           <Text fontWeight="700" color="$accent">
             Mientras tanto
           </Text>
-          <Paragraph margin={0}>{alert.suggestion}</Paragraph>
+          <Paragraph margin={0}>{tip}</Paragraph>
         </YStack>
         <XStack justifyContent="flex-end">
           <AppButton variant="primary" onPress={() => setAlert(null)}>
