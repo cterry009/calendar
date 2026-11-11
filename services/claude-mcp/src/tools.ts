@@ -1,4 +1,4 @@
-import { projectProgress, projectsNeedingAttention } from '@calendar/shared';
+import { EXERCISE_PLAN_START, morningExerciseFor, PHASE_NAMES, PRESCRIPTION, projectProgress, projectsNeedingAttention } from '@calendar/shared';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { patterns } from './patterns.js';
@@ -129,6 +129,39 @@ export function registerTools(server: McpServer): void {
       });
       const note = hits.length > 1 ? ` (había ${hits.length} con ese nombre; usé el primero)` : '';
       return text(`"${h.title}" = ${valor ?? h.dailyGoalValue} el ${day}${note}: ${result}`);
+    },
+  );
+
+  server.registerTool(
+    'ejercicio_hoy',
+    {
+      title: 'Ejercicio de hoy',
+      description:
+        'Qué toca hoy en el plan de ejercicio de su prescripción médica (Medicina del deporte, U. El Bosque): rutina (con el día 1-5 y sus videos), trote, movilidad o descanso; minutos planeados, intensidad de la semana y rangos de frecuencia cardiaca/Borg.',
+      inputSchema: { fecha: z.string().optional().describe('YYYY-MM-DD; por defecto hoy.') },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ fecha }) => {
+      const snap = await snapshot();
+      const day = fecha ?? dayKey();
+      // Routine sessions done since the plan started: records of the morning-exercise habit on routine days.
+      const habit = (snap.habits ?? []).find((h) => !h.archived && /ejercicio al despertar/i.test(h.title));
+      const done = (snap.habitRecords ?? []).filter(
+        (r) => habit && r.habitId === habit.id && r.value > 0 && r.date.slice(0, 10) >= EXERCISE_PLAN_START && r.date.slice(0, 10) < day && [1, 3, 5].includes(new Date(`${r.date.slice(0, 10)}T12:00:00Z`).getUTCDay()),
+      ).length;
+      const ex = morningExerciseFor(day, EXERCISE_PLAN_START, done);
+      const zona = ex.intensity ? PRESCRIPTION.intensidad[ex.intensity] : null;
+      return json(`Ejercicio de ${day}: ${ex.kind}${ex.optional ? ' (opcional)' : ''}, ${ex.plannedMinutes} min, semana ${ex.week}.`, {
+        tipo: ex.kind,
+        minutos: ex.plannedMinutes,
+        semana_del_plan: ex.week,
+        intensidad: ex.intensity,
+        zona: zona ? { lpm: zona.lpm, fc_max: zona.fcMax, borg: zona.borg } : null,
+        rutina_dia: ex.routine ? { dia: ex.routine.day, videos: ex.routine.videos.map((v) => ({ fase: PHASE_NAMES[v.phase], url: v.url, titulo: v.title })) } : null,
+        estructura: PRESCRIPTION.estructura.map((e) => e.text),
+        progresion: PRESCRIPTION.progresion,
+        seguridad: PRESCRIPTION.seguridad,
+      });
     },
   );
 

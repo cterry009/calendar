@@ -1,9 +1,9 @@
-# Registers (or updates) the scheduled task that wakes the PC at 07:50 and runs morning-start.ps1.
+# Registers (or updates) the scheduled task that wakes the PC at 06:25 (moved 2026-11-10 for the 6:30 morning check-in) and runs morning-start.ps1.
 # Run once from a normal PowerShell: powershell -ExecutionPolicy Bypass -File scripts\register-morning-task.ps1
-# Optional: -At '07:50'. It runs only while you're signed in (it opens the desktop app), and it can
+# Optional: -At '06:25'. It runs only while you're signed in (it opens the desktop app), and it can
 # wake the PC from sleep or hibernation, not from a full shutdown.
 
-param([string]$At = '07:50')
+param([string]$At = '06:25')
 
 $script = Join-Path $PSScriptRoot 'morning-start.ps1'
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' `

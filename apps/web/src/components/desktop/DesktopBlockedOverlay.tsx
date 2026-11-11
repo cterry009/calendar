@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AppButton, Paragraph, Text, XStack, YStack } from '@calendar/ui';
-import { finishPomodoroPhrase, pickActivitySuggestion } from '@calendar/shared';
+import { finishPomodoroPhrase, isInNightWindow, pickActivitySuggestion } from '@calendar/shared';
 import { usePomodoro } from '../../context/PomodoroContext';
+import { useSoftFocus } from '../../context/SoftFocusContext';
+import { useCalendarData } from '../../hooks/useCalendarData';
+import { useCommitment } from '../../hooks/useCommitment';
+import { useNightClock, useNightSettings } from '../../hooks/useNightWindowActive';
 import { formatTimer } from '../../lib/pomodoro/timer';
 import { isDesktop } from '../../lib/desktop';
 
@@ -36,6 +40,29 @@ export function DesktopBlockedOverlay() {
   // The pomodoro being protected: how long until it's done, ticking (2026-10-06).
   const { session, remainingSeconds } = usePomodoro();
   const inFocus = !!session?.active && session.state === 'FOCUS' && !session.pausedAt;
+  // 2026-11-10: say exactly what is active, with names (a stale October session was blocking games
+  // and nothing on screen said so).
+  const soft = useSoftFocus();
+  const data = useCalendarData();
+  const night = useNightSettings();
+  const { isLocked } = useCommitment();
+  const now = useNightClock();
+  const hhmm = (iso: string | null | undefined) =>
+    iso ? new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+  const reasons: string[] = [];
+  if (inFocus && session) {
+    const task = session.taskId ? data.tasks.find((t) => t.id === session.taskId) : null;
+    const block = session.scheduleId ? data.schedules.find((x) => x.id === session.scheduleId) : null;
+    const what = task?.title ?? block?.label ?? 'sin tarea';
+    const startedDay = session.startedAt ? new Date(session.startedAt).toLocaleDateString('es-CO') : '';
+    const today = new Date().toLocaleDateString('es-CO');
+    reasons.push(`Pomodoro activo: «${what}», desde ${startedDay && startedDay !== today ? `${startedDay} ` : ''}${hhmm(session.startedAt)}`);
+  }
+  if (soft.manualSoftFocus.active) reasons.push('Enfoque manual activo');
+  if (soft.isLocationActive) reasons.push(`Enfoque por ubicación${soft.activeLocationTriggerLabel ? `: ${soft.activeLocationTriggerLabel}` : ''}`);
+  if (soft.isWithinWorkSchedule) reasons.push('Estás dentro de un bloque de trabajo del horario');
+  else if (soft.isInWorkWindow) reasons.push('Ventana de trabajo entre semana (9–13 y 14–18): los juegos quedan bloqueados aunque no hayas empezado el bloque');
+  if ((night.enabled || isLocked) && isInNightWindow(now, night.window)) reasons.push('Ventana nocturna');
 
   useEffect(() => {
     if (!isDesktop) return;
@@ -107,9 +134,15 @@ export function DesktopBlockedOverlay() {
           App bloqueada
         </Text>
         <Paragraph margin={0} color="$muted">
-          Se cerró <Text fontWeight="700">{alert.name}</Text> porque tenés un enfoque activo
-          (pomodoro, tarea u horario de trabajo).
+          Se cerró <Text fontWeight="700">{alert.name}</Text>. Lo que está activo:
         </Paragraph>
+        <YStack gap="$1">
+          {(reasons.length ? reasons : ['Un límite de juego en horario de trabajo o una regla de la lista de bloqueo']).map((r) => (
+            <Text key={r} fontWeight="600">
+              • {r}
+            </Text>
+          ))}
+        </YStack>
         {inFocus ? (
           <YStack alignItems="center" gap="$1">
             <Text fontSize={48} fontWeight="800" style={{ fontVariantNumeric: 'tabular-nums' }}>
