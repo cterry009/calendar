@@ -72,8 +72,24 @@ export interface ScheduleCompletion {
   status?: 'DONE' | 'SKIPPED';
   reason?: string | null;
 }
+export interface Habit {
+  id: string;
+  title: string;
+  type: 'NORMAL' | 'NEGATIVE';
+  dailyGoalValue: number;
+  dailyGoalUnit: string;
+  archived: boolean;
+}
+export interface HabitRecord {
+  id: string;
+  habitId: string;
+  date: string;
+  value: number;
+}
 export interface Snapshot {
   tasks: Task[];
+  habits?: Habit[];
+  habitRecords?: HabitRecord[];
   schedules: Schedule[];
   pomodoroSessions?: PomodoroSession[];
   scheduleCompletions?: ScheduleCompletion[];

@@ -79,6 +79,60 @@ export function registerTools(server: McpServer): void {
   );
 
   server.registerTool(
+    'habitos',
+    {
+      title: 'Hábitos de hoy',
+      description: 'Los hábitos activos con su meta y lo registrado hoy (o el día indicado).',
+      inputSchema: { fecha: z.string().optional().describe('YYYY-MM-DD; por defecto hoy.') },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ fecha }) => {
+      const snap = await snapshot();
+      const day = fecha ?? dayKey();
+      const list = (snap.habits ?? [])
+        .filter((h) => !h.archived)
+        .map((h) => {
+          const r = (snap.habitRecords ?? []).find((x) => x.habitId === h.id && x.date.slice(0, 10) === day);
+          return { id: h.id, habito: h.title, meta: `${h.dailyGoalValue} ${h.dailyGoalUnit}`, tipo: h.type, hoy: r?.value ?? 0 };
+        });
+      return json(`Hábitos (${day}):`, list);
+    },
+  );
+
+  server.registerTool(
+    'registrar_habito',
+    {
+      title: 'Registrar hábito',
+      description: 'Registra el valor de un hábito en un día (por defecto hoy; valor por defecto = su meta). Acepta el id o parte del nombre. Sustituye lo registrado ese día.',
+      inputSchema: {
+        habito: z.string(),
+        valor: z.number().min(0).optional(),
+        fecha: z.string().optional().describe('YYYY-MM-DD; por defecto hoy.'),
+      },
+    },
+    async ({ habito, valor, fecha }) => {
+      const snap = await snapshot();
+      const habits = (snap.habits ?? []).filter((h) => !h.archived);
+      const fold = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const hits = habits.filter((h) => h.id === habito || fold(h.title).includes(fold(habito)));
+      if (!hits.length) return text(`No hay un hábito que coincida con "${habito}". Usa habitos para ver los nombres.`);
+      const h = hits[0];
+      const day = fecha ?? dayKey();
+      const existing = (snap.habitRecords ?? []).find((x) => x.habitId === h.id && x.date.slice(0, 10) === day);
+      const result = await sendChange('habitRecords', {
+        ...(existing ? { id: existing.id } : { clientId: crypto.randomUUID() }),
+        updatedAt: new Date().toISOString(),
+        habitId: h.id,
+        date: day,
+        value: valor ?? h.dailyGoalValue,
+        status: 'DONE',
+      });
+      const note = hits.length > 1 ? ` (había ${hits.length} con ese nombre; usé el primero)` : '';
+      return text(`"${h.title}" = ${valor ?? h.dailyGoalValue} el ${day}${note}: ${result}`);
+    },
+  );
+
+  server.registerTool(
     'patrones',
     {
       title: 'Patrones de trabajo',
