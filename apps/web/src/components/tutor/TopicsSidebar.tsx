@@ -54,6 +54,8 @@ export function TopicsSidebar({
   autoPick,
   pinned,
   onChoose,
+  width = 270,
+  fill = false,
 }: {
   notes: TutorNoteSummary[] | null;
   choice: TopicRef | null;
@@ -64,6 +66,10 @@ export function TopicsSidebar({
   /** The study block's topic: always in the set, first, while the block runs. */
   pinned?: TopicRef | null;
   onChoose: (topic: TopicRef) => void;
+  /** Column width; the focus view lets you drag it. */
+  width?: number;
+  /** Fill the column's height and scroll inside it (focus view). */
+  fill?: boolean;
 }) {
   const pensum = useMemo<TopicRef[]>(
     // Pensum order = note code order (00b sets, 01a topology, then AN1, AN1b... analysis), sections as written.
@@ -141,7 +147,7 @@ export function TopicsSidebar({
   const thresholds = DEFAULT_GAME_CONFIG.sectionLevelThresholds;
 
   return (
-    <YStack width={270} flexShrink={0} gap="$2" padding="$3" borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="$surface" alignSelf="flex-start">
+    <YStack width={width} flexShrink={0} gap="$2" padding="$3" borderWidth={1} borderColor="$borderColor" borderRadius="$4" backgroundColor="$surface" alignSelf={fill ? 'stretch' : 'flex-start'} style={fill ? { overflowY: 'auto' } : undefined}>
       <Text fontSize={12} fontWeight="700" letterSpacing={1.2} color="$muted" textTransform="uppercase">
         Temas en curso
       </Text>

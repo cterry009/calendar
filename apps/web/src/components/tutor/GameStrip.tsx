@@ -36,13 +36,44 @@ export function GameStrip({
   game,
   xpFloat,
   levelUp,
+  compact = false,
 }: {
   game: TutorSectionGame;
+  /** One short line (focus view): the topic bar already lives in "Temas en curso". */
+  compact?: boolean;
   /** "+N XP" of the grade that just came in, keyed so it animates once. */
   xpFloat: { key: string; xp: number } | null;
   levelUp: { key: string; text: string } | null;
 }) {
   const fill = thetaPercent(game.theta);
+  if (compact) {
+    return (
+      <XStack gap="$3" alignItems="center" flexWrap="wrap" position="relative">
+        <Text fontSize="$2" color="$muted">
+          {sectionLabel(game.section)} · nivel {game.level} · Nivel {game.globalLevel} · {game.xp} XP
+        </Text>
+        {game.combo >= 2 ? (
+          <Text key={`combo-${game.combo}`} className="tutor-pop" fontSize="$2" color="$accent" fontWeight="800">
+            🔥 ×{Math.min(1.5, 1 + 0.1 * game.combo).toFixed(1)}
+          </Text>
+        ) : null}
+        {levelUp ? (
+          <Text key={levelUp.key} className="tutor-pop" fontSize="$2" color="$accent" fontWeight="800">
+            {levelUp.text}
+          </Text>
+        ) : null}
+        {xpFloat && xpFloat.xp > 0 ? (
+          <span
+            key={xpFloat.key}
+            className="tutor-xp-float"
+            style={{ fontWeight: 800, color: '#4ee0a0', pointerEvents: 'none', fontSize: 13 }}
+          >
+            +{xpFloat.xp} XP
+          </span>
+        ) : null}
+      </XStack>
+    );
+  }
   return (
     <YStack gap="$2" position="relative">
       <XStack justifyContent="space-between" alignItems="center" gap="$2" flexWrap="wrap">

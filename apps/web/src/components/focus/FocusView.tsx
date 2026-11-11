@@ -291,8 +291,17 @@ const MIN_LEFT = 220;
 // timeMode (2026-11-10, agenda-redesign 3.1): the clock, a progress bar in its place, or nothing.
 // Only the display changes: timing, records and notices run as before.
 type TimeMode = 'reloj' | 'barra' | 'oculto';
-const DEFAULT_LAYOUT: { leftWidth: number; timerScale: number; chatZoom: number; timeMode: TimeMode } = {
+// leftCollapsed (2026-11-11): dragging the divider past the limit folds the pomodoro into a rail.
+const LEFT_FOLD = 140;
+const DEFAULT_LAYOUT: {
+  leftWidth: number;
+  timerScale: number;
+  chatZoom: number;
+  timeMode: TimeMode;
+  leftCollapsed: boolean;
+} = {
   leftWidth: 320,
+  leftCollapsed: false,
   timerScale: 1,
   chatZoom: 1,
   timeMode: 'reloj',
@@ -385,7 +394,12 @@ export function FocusView() {
     if (!dragging) return;
     const onMove = (e: PointerEvent) => {
       const max = Math.max(MIN_LEFT, window.innerWidth * 0.6);
-      setLayout({ leftWidth: Math.round(Math.min(max, Math.max(MIN_LEFT, e.clientX - 12))) });
+      const x = e.clientX - 12;
+      setLayout(
+        x < LEFT_FOLD
+          ? { leftCollapsed: true }
+          : { leftCollapsed: false, leftWidth: Math.round(Math.min(max, Math.max(MIN_LEFT, x))) },
+      );
     };
     const onUp = () => setDragging(false);
     window.addEventListener('pointermove', onMove);
@@ -422,6 +436,7 @@ export function FocusView() {
   const phaseLabel = segment?.etiqueta ?? (focus ? 'Foco' : 'Pausa');
   // A narrow window stacks the pomodoro over the chat instead of side by side.
   const stacked = withTutor && viewport < 760;
+  const folded = withTutor && !stacked && layout.leftCollapsed;
   const leftWidth =
     withTutor && !stacked
       ? Math.min(layout.leftWidth, Math.max(MIN_LEFT, viewport * 0.6))
@@ -437,6 +452,7 @@ export function FocusView() {
   const pomodoroColumn = (
     <YStack
       width={leftWidth}
+      display={folded ? 'none' : 'flex'}
       flex={withTutor ? undefined : 1}
       flexShrink={0}
       gap="$3"
@@ -605,30 +621,42 @@ export function FocusView() {
         <div
           role="separator"
           aria-orientation="vertical"
-          aria-label="Ajustar el ancho"
-          title="Arrastra para ajustar el ancho"
+          aria-label={folded ? 'Mostrar el pomodoro' : 'Ajustar el ancho'}
+          title={folded ? 'Clic o arrastra para mostrar el pomodoro' : 'Arrastra para ajustar; llévalo a la izquierda para ocultar'}
           onPointerDown={(e) => {
             e.preventDefault();
             setDragging(true);
           }}
-          onDoubleClick={() => setLayout({ leftWidth: DEFAULT_LAYOUT.leftWidth })}
+          onClick={folded ? () => setLayout({ leftCollapsed: false }) : undefined}
+          onDoubleClick={() => setLayout({ leftWidth: DEFAULT_LAYOUT.leftWidth, leftCollapsed: false })}
           style={{
-            width: 14,
+            width: folded ? 26 : 14,
             flexShrink: 0,
-            cursor: 'col-resize',
+            cursor: folded ? 'pointer' : 'col-resize',
             display: 'flex',
+            flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
+            gap: 6,
+            borderRadius: 6,
+            background: folded ? 'rgba(127,127,127,0.10)' : undefined,
           }}
         >
-          <div
-            style={{
-              width: 4,
-              height: 64,
-              borderRadius: 2,
-              background: dragging ? 'rgba(78,224,160,0.9)' : 'rgba(255,255,255,0.18)',
-            }}
-          />
+          {folded ? (
+            <span style={{ writingMode: 'vertical-rl', fontSize: 11, opacity: 0.75, letterSpacing: 1 }}>
+              {phaseLabel.toUpperCase()}
+              {layout.timeMode === 'oculto' ? '' : ` · ${formatTimer(pomodoro.remainingSeconds)}`} ▸
+            </span>
+          ) : (
+            <div
+              style={{
+                width: 4,
+                height: 64,
+                borderRadius: 2,
+                background: dragging ? 'rgba(78,224,160,0.9)' : 'rgba(255,255,255,0.18)',
+              }}
+            />
+          )}
         </div>
       ) : null}
 

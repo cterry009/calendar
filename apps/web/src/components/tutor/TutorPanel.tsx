@@ -55,6 +55,30 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'No se pudo hablar con el tutor.';
 }
 
+// The "Temas en curso" column in the focus view (2026-11-11): drag its edge to resize it; past the
+// limit it folds into a slim rail that brings it back.
+const SIDE_KEY = 'calendar.tutor.sidePane';
+const SIDE_MIN = 220;
+const SIDE_MAX = 480;
+const SIDE_FOLD = 150;
+type SidePane = { width: number; collapsed: boolean };
+function loadSide(): SidePane {
+  try {
+    const raw = window.localStorage.getItem(SIDE_KEY);
+    if (raw) return { width: 270, collapsed: false, ...(JSON.parse(raw) as Partial<SidePane>) };
+  } catch {
+    // Private mode: defaults.
+  }
+  return { width: 270, collapsed: false };
+}
+function saveSide(side: SidePane) {
+  try {
+    window.localStorage.setItem(SIDE_KEY, JSON.stringify(side));
+  } catch {
+    // Not remembered.
+  }
+}
+
 /**
  * `fullHeight`: inside the focus view (2026-10-22) the chat takes the screen's height instead of the
  * page's 380 px.
@@ -219,13 +243,63 @@ export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}
     setCorrecting(false);
   };
 
+  const [side, setSide] = useState<SidePane>(() =>
+    typeof window === 'undefined' ? { width: 270, collapsed: false } : loadSide(),
+  );
+  const [sideDrag, setSideDrag] = useState<{ x: number; w: number; scale: number } | null>(null);
+  useEffect(() => {
+    if (!sideDrag) return;
+    let latest: SidePane | null = null;
+    const onMove = (e: PointerEvent) => {
+      const w = sideDrag.w + (sideDrag.x - e.clientX) / sideDrag.scale;
+      setSide((current) => {
+        latest =
+          w < SIDE_FOLD
+            ? { ...current, collapsed: true }
+            : { width: Math.round(Math.min(SIDE_MAX, Math.max(SIDE_MIN, w))), collapsed: false };
+        return latest;
+      });
+    };
+    const onUp = () => {
+      if (latest) saveSide(latest);
+      setSideDrag(null);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    document.body.style.userSelect = 'none';
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      document.body.style.userSelect = '';
+    };
+  }, [sideDrag]);
+  const startSideDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const el = e.currentTarget;
+    // The chat may be zoomed (A−/A+): pointer pixels are screen pixels, widths are CSS pixels.
+    const scale = el.offsetWidth ? el.getBoundingClientRect().width / el.offsetWidth : 1;
+    setSideDrag({ x: e.clientX, w: side.collapsed ? 0 : side.width, scale: scale || 1 });
+  };
+  const openSide = () => {
+    const next = { width: Math.max(SIDE_MIN, side.width), collapsed: false };
+    setSide(next);
+    saveSide(next);
+  };
+
   const thinking = thinkingSince !== null;
   const selectedNote = notes?.find((n) => n.noteCode === choice?.noteCode) ?? null;
 
   return (
-    <XStack gap="$3" alignItems="stretch" flexWrap="wrap" flex={fullHeight ? 1 : undefined} minHeight={fullHeight ? 0 : undefined}>
+    <XStack
+      gap={fullHeight ? 0 : '$3'}
+      alignItems="stretch"
+      // In the focus view the topics stay on the right whatever the text size (no wrapping below).
+      flexWrap={fullHeight ? 'nowrap' : 'wrap'}
+      flex={fullHeight ? 1 : undefined}
+      minHeight={fullHeight ? 0 : undefined}
+    >
 
-    <AppCard flex={1} minWidth={320} minHeight={fullHeight ? 0 : undefined}>
+    <AppCard flex={1} minWidth={fullHeight ? 0 : 320} minHeight={fullHeight ? 0 : undefined}>
       <style>{TUTOR_ANIMATIONS}</style>
       <YStack gap="$3" flex={fullHeight ? 1 : undefined} minHeight={fullHeight ? 0 : undefined}>
         <XStack justifyContent="space-between" alignItems="center" gap="$2" flexWrap="wrap">
@@ -318,7 +392,7 @@ export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}
           </XStack>
         )}
 
-        {choice && game ? <GameStrip game={game} xpFloat={xpFloat} levelUp={levelUp} /> : null}
+        {choice && game ? <GameStrip game={game} xpFloat={xpFloat} levelUp={levelUp} compact={fullHeight} /> : null}
 
         {choice ? (
           <>
@@ -457,10 +531,43 @@ export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}
         )}
       </YStack>
     </AppCard>
-    <TopicsSidebar notes={notes} choice={choice} game={game} disabled={thinking} autoPick={!blockSections}
-      pinned={blockSections && blockOptions[0] ? { noteCode: blockSections.noteCode, section: blockOptions[0] } : null}
-      onChoose={setChoice}
-    />
+    {fullHeight ? (
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={side.collapsed ? 'Mostrar temas en curso' : 'Ajustar el ancho de los temas'}
+        title={side.collapsed ? 'Clic o arrastra para mostrar los temas' : 'Arrastra para ajustar; llévalo a la derecha para ocultar'}
+        onPointerDown={startSideDrag}
+        onClick={side.collapsed ? openSide : undefined}
+        style={{
+          width: side.collapsed ? 22 : 12,
+          flexShrink: 0,
+          cursor: side.collapsed ? 'pointer' : 'col-resize',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 6,
+          borderRadius: 6,
+          background: side.collapsed ? 'rgba(127,127,127,0.10)' : undefined,
+        }}
+      >
+        {side.collapsed ? (
+          <span style={{ writingMode: 'vertical-rl', fontSize: 11, opacity: 0.7, letterSpacing: 1 }}>◂ TEMAS</span>
+        ) : (
+          <div style={{ width: 4, height: 64, borderRadius: 2, background: sideDrag ? 'rgba(78,224,160,0.9)' : 'rgba(127,127,127,0.35)' }} />
+        )}
+      </div>
+    ) : null}
+    {/* Folded, it stays mounted (hidden): it still picks the first topic. */}
+    <div style={fullHeight ? { display: side.collapsed ? 'none' : 'flex', minHeight: 0 } : { display: 'contents' }}>
+      <TopicsSidebar notes={notes} choice={choice} game={game} disabled={thinking} autoPick={!blockSections}
+        pinned={blockSections && blockOptions[0] ? { noteCode: blockSections.noteCode, section: blockOptions[0] } : null}
+        onChoose={setChoice}
+        width={fullHeight ? side.width : 270}
+        fill={fullHeight}
+      />
+    </div>
     </XStack>
   );
 }
