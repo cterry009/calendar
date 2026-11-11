@@ -286,6 +286,25 @@ export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}
     saveSide(next);
   };
 
+  // The header (title, note and section pickers) folds into a thin bar in the focus view.
+  const [headerFolded, setHeaderFolded] = useState(() => {
+    try {
+      return window.localStorage.getItem('calendar.tutor.headerFolded') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleHeader = () => {
+    const next = !headerFolded;
+    setHeaderFolded(next);
+    try {
+      window.localStorage.setItem('calendar.tutor.headerFolded', next ? '1' : '0');
+    } catch {
+      // Not remembered.
+    }
+  };
+  const folded = fullHeight && headerFolded;
+
   const thinking = thinkingSince !== null;
   const selectedNote = notes?.find((n) => n.noteCode === choice?.noteCode) ?? null;
 
@@ -303,16 +322,40 @@ export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}
       <style>{TUTOR_ANIMATIONS}</style>
       <YStack gap="$3" flex={fullHeight ? 1 : undefined} minHeight={fullHeight ? 0 : undefined}>
         <XStack justifyContent="space-between" alignItems="center" gap="$2" flexWrap="wrap">
-          <Text fontSize="$6" fontWeight="800">
-            Tutor
-          </Text>
-          {blockTask ? (
-            <Text color="$muted" fontSize="$2">
-              Sesión: {blockTask.title}
+          <XStack gap="$2" alignItems="baseline" flexShrink={1} minWidth={0}>
+            <Text fontSize={folded ? '$3' : '$6'} fontWeight="800">
+              Tutor
             </Text>
+            {folded && choice ? (
+              <Text color="$muted" fontSize="$2" numberOfLines={1}>
+                {choice.noteCode} · {sectionLabel(choice.section)}
+              </Text>
+            ) : blockTask ? (
+              <Text color="$muted" fontSize="$2" numberOfLines={1}>
+                Sesión: {blockTask.title}
+              </Text>
+            ) : null}
+          </XStack>
+          {fullHeight ? (
+            // Focus view: the level line sits on the title's right instead of taking its own row.
+            <XStack gap="$2" alignItems="center" marginLeft="auto">
+              {choice && game ? (
+                <GameStrip game={game} xpFloat={xpFloat} levelUp={levelUp} compact />
+              ) : null}
+              <AppButton
+                variant="ghost"
+                size="$2"
+                onPress={toggleHeader}
+                aria-expanded={!folded}
+                aria-label={folded ? 'Mostrar el encabezado' : 'Ocultar el encabezado'}
+              >
+                {folded ? '▾' : '▴'}
+              </AppButton>
+            </XStack>
           ) : null}
         </XStack>
 
+        {folded ? null : (<>
         {notesError ? (
           <Paragraph color="$error" margin={0}>
             {notesError}
@@ -392,7 +435,9 @@ export function TutorPanel({ fullHeight = false }: { fullHeight?: boolean } = {}
           </XStack>
         )}
 
-        {choice && game ? <GameStrip game={game} xpFloat={xpFloat} levelUp={levelUp} compact={fullHeight} /> : null}
+        </>)}
+
+        {choice && game && !fullHeight ? <GameStrip game={game} xpFloat={xpFloat} levelUp={levelUp} /> : null}
 
         {choice ? (
           <>
