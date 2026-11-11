@@ -12,7 +12,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedRequest } from '../common/auth-request.types';
-import { TutorSectionQueryDto, TutorTurnDto } from './dto/tutor-turn.dto';
+import { TutorGradeDto, TutorSectionQueryDto, TutorTurnDto } from './dto/tutor-turn.dto';
 import { TutorService } from './tutor.service';
 
 @ApiTags('tutor')
@@ -44,5 +44,18 @@ export class TutorController {
   })
   state(@Req() req: AuthenticatedRequest, @Query() query: TutorSectionQueryDto) {
     return this.tutor.state(req.user.userId, query);
+  }
+
+  @Get('next')
+  @ApiOperation({ summary: 'Siguiente ejercicio de una sección, con respuesta y texto de la sección (tutor en Claude)' })
+  next(@Req() req: AuthenticatedRequest, @Query() query: TutorSectionQueryDto) {
+    return this.tutor.nextExercise(req.user.userId, query);
+  }
+
+  @Post('grade')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Registra una calificación dada en un chat de Claude' })
+  grade(@Req() req: AuthenticatedRequest, @Body() dto: TutorGradeDto) {
+    return this.tutor.grade(req.user.userId, req.user.deviceId, dto);
   }
 }

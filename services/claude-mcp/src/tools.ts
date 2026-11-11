@@ -2,6 +2,7 @@ import { EXERCISE_PLAN_START, morningExerciseFor, PHASE_NAMES, PRESCRIPTION, pro
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { patterns } from './patterns.js';
+import { api } from './client.js';
 import {
   AREAS,
   dayKey,
@@ -431,5 +432,76 @@ export function registerTools(server: McpServer): void {
       const result = await sendChange('projects', projectChange(p, patch));
       return text(`"${p.title}" actualizado: ${result}`);
     },
+  );
+
+  // Tutor in Claude (2026-11-11): the app's engine picks and records; this chat explains and grades.
+  server.registerTool(
+    'tutor_notas',
+    {
+      title: 'Tutor: notas',
+      description: 'Las notas de estudio del vault con sus secciones y cuántos ejercicios tiene cada una. Úsalo para elegir nota y sección (noteCode y section) antes de tutor_ejercicio.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    async () => json('Notas con ejercicios:', await api('/tutor/notes')),
+  );
+
+  server.registerTool(
+    'tutor_ejercicio',
+    {
+      title: 'Tutor: siguiente ejercicio',
+      description:
+        'El ejercicio que el motor del juego elige para una sección según el nivel (θ) de Cristo, con su respuesta de referencia (NO se la muestres mientras intenta), la pista, el texto de la sección de la nota y los ejercicios ya trabajados. Si exercise es null y generateAt tiene valor, inventa uno de la sección con esa dificultad b.',
+      inputSchema: {
+        noteCode: z.string().min(1).describe('Código de la nota, p. ej. AN1.'),
+        section: z.string().min(1).describe('Sección, p. ej. 3.'),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ noteCode, section }) =>
+      json(
+        'Siguiente ejercicio (la respuesta es solo para calificar):',
+        await api(`/tutor/next?noteCode=${encodeURIComponent(noteCode)}&section=${encodeURIComponent(section)}`),
+      ),
+  );
+
+  server.registerTool(
+    'tutor_calificar',
+    {
+      title: 'Tutor: calificar',
+      description:
+        'Registra en la app la calificación de un ejercicio cuando Cristo terminó de responderlo: r = 1 bien, 0.5 a medias, 0 mal o "no sé". Actualiza su nivel, XP y barras de dominio, y devuelve el siguiente ejercicio. Califica una sola vez por ejercicio.',
+      inputSchema: {
+        noteCode: z.string().min(1),
+        section: z.string().min(1),
+        source: z.enum(['nota', 'generado']).describe('nota = vino de tutor_ejercicio; generado = lo inventaste tú.'),
+        exerciseId: z.string().optional().describe('El exerciseId de tutor_ejercicio; omítelo para uno generado nuevo.'),
+        b: z.number().min(-6).max(6).optional().describe('Generados: el generateAt que dio tutor_ejercicio.'),
+        enunciado: z.string().optional().describe('Generados: el enunciado que planteaste.'),
+        respuesta: z.string().optional().describe('Generados: la respuesta completa.'),
+        r: z.union([z.literal(0), z.literal(0.5), z.literal(1)]),
+        pistas: z.number().int().min(0).max(20).describe('Cuántas pistas le diste.'),
+        justificacion: z.string().min(1).max(4000).describe('Por qué esa nota, en una o dos frases.'),
+      },
+    },
+    async (a) =>
+      json(
+        `Calificación ${a.r} registrada en la app.`,
+        await api('/tutor/grade', {
+          method: 'POST',
+          body: JSON.stringify({
+            noteCode: a.noteCode,
+            section: a.section,
+            source: a.source,
+            exerciseId: a.exerciseId,
+            b: a.b,
+            statement: a.enunciado,
+            answer: a.respuesta,
+            r: a.r,
+            hints: a.pistas,
+            feedback: a.justificacion,
+          }),
+        }),
+      ),
   );
 }

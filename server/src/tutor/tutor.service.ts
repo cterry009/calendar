@@ -21,7 +21,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SyncService } from '../sync/sync.service';
 import type { SyncBatchDto } from '../sync/dto/sync-batch.dto';
 import type { Catalog } from './catalog';
-import type { TutorTurnDto } from './dto/tutor-turn.dto';
+import type { TutorGradeDto, TutorTurnDto } from './dto/tutor-turn.dto';
 import { TutorGameService, type SectionGame, type SectionGameView } from './tutor-game.service';
 import {
   TUTOR_MODEL,
@@ -331,6 +331,101 @@ export class TutorService {
       game,
       warnings,
       durationMs,
+    };
+  }
+
+  /**
+   * The tutor in a regular Claude chat (2026-11-11): the exercise the engine picks for a section,
+   * with its reference answer, the section's text and what was already worked. No Claude run here.
+   */
+  async nextExercise(userId: string, ref: SectionRef) {
+    const catalog = this.game.loadCatalog();
+    const note = catalog.notes.get(ref.noteCode);
+    if (!note) throw new BadRequestException(`No hay ejercicios de la nota ${ref.noteCode} en el vault`);
+    const noteSection = note.sections.find((s) => s.section === ref.section);
+    if (!noteSection)
+      throw new BadRequestException(`La nota ${ref.noteCode} no tiene la sección ${ref.section}`);
+    const state = await this.game.state(userId, catalog);
+    const next = this.game.next(state, catalog, ref);
+    const recent = await this.prisma.exerciseAttempt.findMany({
+      where: { userId, noteCode: ref.noteCode, section: ref.section },
+      orderBy: { occurredAt: 'desc' },
+      take: 10,
+      select: { exerciseId: true, r: true, occurredAt: true },
+    });
+    let sectionText: string | null = null;
+    try {
+      const lines = readFileSync(note.path, 'utf8').split(/\r?\n/);
+      sectionText = lines.slice(Math.max(0, noteSection.startLine - 1), noteSection.endLine).join('\n').slice(0, 15000);
+    } catch {
+      // The vault is not readable: the exercise alone still works.
+    }
+    return {
+      game: this.game.view(state, ref),
+      exercise: next.type === 'catalog' ? fromCatalog(next.exercise) : null,
+      generateAt: next.type === 'generate' ? next.targetB : null,
+      recent: recent.map((a) => ({ exerciseId: a.exerciseId, r: Number(a.r), at: a.occurredAt.toISOString() })),
+      note: { noteCode: note.noteCode, title: note.title, path: note.relativePath, section: noteSection.title },
+      sectionText,
+    };
+  }
+
+  /** Records a grade given in a Claude chat, like a turn's, and returns the updated game. */
+  async grade(userId: string, deviceId: string, dto: TutorGradeDto) {
+    const catalog = this.game.loadCatalog();
+    const ref: SectionRef = { noteCode: dto.noteCode, section: dto.section };
+    if (!catalog.notes.get(ref.noteCode)?.sections.some((s) => s.section === ref.section))
+      throw new BadRequestException(`${ref.noteCode} §${ref.section} no está en el vault`);
+    const exerciseId =
+      dto.exerciseId ??
+      (dto.source === 'generado' ? `${ref.noteCode}#gen-${randomBytes(4).toString('hex')}` : '');
+    const current = this.resolveCurrent(
+      {
+        noteCode: ref.noteCode,
+        section: ref.section,
+        message: '-',
+        current: { exerciseId, source: dto.source, b: dto.b, statement: dto.statement, answer: dto.answer },
+      } as TutorTurnDto,
+      catalog,
+    );
+    const before = await this.game.state(userId, catalog);
+    const thetaBefore = this.game.view(before, ref).theta;
+    const id = randomUUID();
+    const occurredAt = new Date().toISOString();
+    await this.sync.processBatch(userId, deviceId, {
+      exerciseAttempts: [
+        {
+          id,
+          exerciseId: current.exerciseId,
+          exerciseSource: current.source,
+          noteCode: current.noteCode,
+          section: current.section,
+          b: current.b,
+          r: dto.r,
+          hints: Math.round(dto.hints),
+          minutes: null,
+          gradedBy: 'claude',
+          supersedes: null,
+          occurredAt,
+          generatedStatement: current.source === 'generado' ? current.statement : null,
+          feedback: dto.feedback,
+          studyTaskId: dto.studyTaskId ?? null,
+          pomodoroSessionId: null,
+        },
+      ],
+    } as SyncBatchDto);
+    const after = await this.game.state(userId, catalog);
+    const outcome = after.outcomes.find((o) => o.attemptId === id);
+    const next = this.game.next(after, catalog, ref);
+    return {
+      exerciseId: current.exerciseId,
+      r: dto.r,
+      xpGained: outcome?.xp ?? 0,
+      thetaBefore: outcome?.thetaBefore ?? thetaBefore,
+      thetaAfter: outcome?.thetaAfter ?? thetaBefore,
+      game: this.game.view(after, ref),
+      nextExercise: next.type === 'catalog' ? fromCatalog(next.exercise) : null,
+      generateAt: next.type === 'generate' ? next.targetB : null,
     };
   }
 

@@ -95,3 +95,48 @@ export class TutorTurnDto extends TutorSectionQueryDto {
   @Type(() => TutorHistoryMessageDto)
   history?: TutorHistoryMessageDto[];
 }
+
+/** A grade Claude gives from a regular Claude chat through the bridge (2026-11-11, tutor in Claude). */
+export class TutorGradeDto extends TutorSectionQueryDto {
+  /** Catalog id, or a generated id; omit for a new generated exercise (the server names it). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  exerciseId?: string;
+
+  @IsIn(['nota', 'generado'])
+  source!: 'nota' | 'generado';
+
+  /** Generated exercises: the b the engine asked for (tutor_ejercicio's generarConB). */
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(-6)
+  @Max(6)
+  b?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
+  statement?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
+  answer?: string;
+
+  @IsIn([0, 0.5, 1])
+  r!: 0 | 0.5 | 1;
+
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  @Max(20)
+  hints!: number;
+
+  @IsString()
+  @MaxLength(4000)
+  feedback!: string;
+
+  @IsOptional()
+  @IsString()
+  studyTaskId?: string;
+}
