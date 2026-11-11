@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+﻿import { useMemo, useState, type ReactNode } from 'react';
 import { AppButton, AppCard, H2, Paragraph, YStack } from '@calendar/ui';
 import { useLanguage } from '../../context/LanguageContext';
 import { usePanel } from '../../context/PanelContext';
@@ -51,9 +51,11 @@ interface CalendarPanelProps {
   selectedDate: Date;
   onModeChange: (mode: CalendarViewMode) => void;
   onChangeDate: (date: Date) => void;
+  /** 2026-11-10: what the Día view shows instead of the day grid (the Hoy page, for today). */
+  dayContent?: ReactNode;
 }
 
-export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }: CalendarPanelProps) {
+export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate, dayContent }: CalendarPanelProps) {
   const { t, locale } = useLanguage();
   const data = useCalendarData();
   const { notifyEntityChanged } = useSync();
@@ -201,7 +203,9 @@ export function CalendarPanel({ mode, selectedDate, onModeChange, onChangeDate }
       ) : null}
 
       {!data.isLoading && !data.error ? (
-        mode === 'day' ? (
+        mode === 'day' && dayContent ? (
+          dayContent
+        ) : mode === 'day' ? (
           <YStack gap="$4">
             <DayView
               selectedDate={selectedDate}

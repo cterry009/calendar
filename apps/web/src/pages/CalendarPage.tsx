@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { XStack, YStack } from '@calendar/ui';
 import { CalendarPanel } from '../components/calendar/CalendarPanel';
-import { DayPanel } from '../components/calendar/DayPanel';
+import { HoyDashboard } from '../components/agenda/HoySections';
 import { PageHeader } from '../components/PageHeader';
 import { rememberedTab, rememberTab, SubTabs } from '../components/agenda/SubTabs';
 import { HorarioPage } from './HorarioPage';
@@ -55,10 +55,15 @@ export function CalendarPage() {
       {view === 'horario' ? <HorarioPage /> : null}
       <XStack display={view === 'calendario' ? 'flex' : 'none'} gap="$5" flexWrap="wrap" alignItems="flex-start">
         <YStack flex={1} minWidth={360}>
-          <CalendarPanel mode={mode} selectedDate={selectedDate} onModeChange={setMode} onChangeDate={setSelectedDate} />
+          <CalendarPanel
+            mode={mode}
+            selectedDate={selectedDate}
+            onModeChange={setMode}
+            onChangeDate={setSelectedDate}
+            dayContent={isSameDay(selectedDate, today) ? <HoyDashboard /> : undefined}
+          />
         </YStack>
 
-        {mode === 'day' ? <DayPanel date={selectedDate} /> : null}
       </XStack>
     </YStack>
   );

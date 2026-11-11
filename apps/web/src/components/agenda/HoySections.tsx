@@ -2,7 +2,6 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { localDateKey, projectsNeedingAttention } from '@calendar/shared';
 import { AppButton, H1, Paragraph, Text, XStack, YStack } from '@calendar/ui';
-import { PlanSuggestionCard } from '../planning/PlanSuggestionCard';
 import { usePanel } from '../../context/PanelContext';
 import { useQuickAdd } from '../../context/QuickAddContext';
 import { useCalendarData } from '../../hooks/useCalendarData';
@@ -447,7 +446,6 @@ export function HoyDashboard() {
         </Card>
       ) : null}
 
-      <PlanSuggestionCard />
     </YStack>
   );
 }
