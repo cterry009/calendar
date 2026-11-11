@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { AppCard, XStack, YStack } from '@calendar/ui';
-import { DayTasksSidebar } from '../components/calendar/DayTasksSidebar';
-import { MiniMonthCalendar } from '../components/calendar/MiniMonthCalendar';
-import { ScheduleManager } from '../components/schedules/ScheduleManager';
-import { MorningCard } from '../components/morning/MorningCard';
-import { PlanSuggestionCard } from '../components/planning/PlanSuggestionCard';
+import { XStack, YStack } from '@calendar/ui';
 import { CalendarPanel } from '../components/calendar/CalendarPanel';
+import { DayPanel } from '../components/calendar/DayPanel';
 import { PageHeader } from '../components/PageHeader';
 import { rememberedTab, rememberTab, SubTabs } from '../components/agenda/SubTabs';
 import { HorarioPage } from './HorarioPage';
@@ -20,7 +16,10 @@ export function CalendarPage() {
   const [view, setView] = useState<'calendario' | 'horario'>(() =>
     rememberedTab('calendar.calendario.view', ['calendario', 'horario'] as const, 'calendario'),
   );
-  const [mode, setMode] = useState<CalendarViewMode>('week');
+  // 2026-11-10: /hoy now lands here as ?vista=dia.
+  const [mode, setMode] = useState<CalendarViewMode>(() =>
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('vista') === 'dia' ? 'day' : 'week',
+  );
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   // 2026-11-09: when the day changes with the app open, follow it -- unless the user had moved
   // to another day on purpose.
@@ -55,27 +54,11 @@ export function CalendarPage() {
 
       {view === 'horario' ? <HorarioPage /> : null}
       <XStack display={view === 'calendario' ? 'flex' : 'none'} gap="$5" flexWrap="wrap" alignItems="flex-start">
-        <YStack flex={2} minWidth={360}>
+        <YStack flex={1} minWidth={360}>
           <CalendarPanel mode={mode} selectedDate={selectedDate} onModeChange={setMode} onChangeDate={setSelectedDate} />
         </YStack>
 
-        <YStack flex={1} minWidth={300} gap="$5">
-          <PlanSuggestionCard />
-          <MorningCard />
-          <AppCard>
-            <MiniMonthCalendar
-              selectedDate={selectedDate}
-              onSelectDate={(date) => {
-                setSelectedDate(startOfDay(date));
-                setMode('day');
-              }}
-            />
-          </AppCard>
-          <DayTasksSidebar selectedDate={selectedDate} />
-          <YStack data-tutorial="schedule-header">
-            <ScheduleManager />
-          </YStack>
-        </YStack>
+        {mode === 'day' ? <DayPanel date={selectedDate} /> : null}
       </XStack>
     </YStack>
   );

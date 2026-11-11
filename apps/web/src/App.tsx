@@ -3,7 +3,6 @@ import { LegacyPanelRedirect } from './components/panels/LegacyPanelRedirect';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ProtectedAppLayout } from './layouts/ProtectedAppLayout';
 import { CalendarPage } from './pages/CalendarPage';
-import { HoyPage } from './pages/HoyPage';
 import { EstadisticasPage } from './pages/EstadisticasPage';
 import { BloqueoPage } from './pages/BloqueoPage';
 import { ProyectosPage } from './pages/ProyectosPage';
@@ -25,7 +24,7 @@ export default function App() {
             <Route path="/" element={<Navigate to="/calendar" replace />} />
             <Route path="/calendar" element={<CalendarPage />} />
             {/* agenda-redesign (2026-11-09): full pages, not tabs beside the calendar. */}
-            <Route path="/hoy" element={<HoyPage />} />
+            <Route path="/hoy" element={<Navigate to="/calendar?vista=dia" replace />} />
             <Route path="/proyectos" element={<ProyectosPage />} />
             <Route path="/proyectos/:id" element={<ProyectoPage />} />
             <Route path="/investigacion" element={<Navigate to="/proyectos" replace />} />

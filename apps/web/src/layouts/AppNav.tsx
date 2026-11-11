@@ -5,7 +5,6 @@ import {
   BarChart3,
   Eyebrow,
   HelpCircle,
-  Paragraph,
   Plus,
   Settings,
   ShieldBan,
@@ -14,6 +13,7 @@ import {
   YStack,
 } from '@calendar/ui';
 import { TourMenu } from '../components/onboarding/TourMenu';
+import { NavStats } from '../components/agenda/NavStats';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useOnboarding } from '../context/OnboardingContext';
@@ -26,8 +26,8 @@ import { TOURS, type TourId } from '../lib/onboarding/tours';
 // the ritual, study, master's, papers by area) and Calendario (with its Horario). Estadísticas and
 // Bloqueo under "Más". Sugerencias, Detox and the Pomodoro tab are gone from the nav (the pomodoro
 // lives inside the work blocks); their code stays.
+// 2026-11-10: "Hoy" lives in the calendar's Día view now; the nav is Proyectos and Calendario.
 const PAGE_LINKS = [
-  { path: '/hoy', label: 'Hoy' },
   { path: '/proyectos', label: 'Proyectos' },
   { path: '/calendar', label: 'Calendario' },
 ];
@@ -41,7 +41,7 @@ function NavDivider() {
 }
 
 export function AppNav() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const { t } = useLanguage();
   const { openTutorial, startTour } = useOnboarding();
   const { activePanel, openPanel, closePanel } = usePanel();
@@ -146,7 +146,7 @@ export function AppNav() {
           {PAGE_LINKS.map((page) => (
             <AppButton
               key={page.path}
-              variant={activePanel === null && pathname === page.path ? 'primary' : 'ghost'}
+              variant={activePanel === null && (pathname === page.path || pathname.startsWith(`${page.path}/`)) ? 'primary' : 'ghost'}
               onPress={() => goTo(page.path)}
               data-tutorial={`nav-page-${page.path.slice(1)}`}
             >
@@ -199,9 +199,7 @@ export function AppNav() {
       </XStack>
 
       <XStack alignItems="center" gap="$2" flexWrap="wrap">
-        <Paragraph color="$muted" margin={0} size="$2">
-          {user?.email ?? ''}
-        </Paragraph>
+        <NavStats />
         <AppButton
           variant={activePanel === 'settings' ? 'primary' : 'ghost'}
           onPress={() => openPanel('settings')}

@@ -26,7 +26,18 @@ function dayTitle(date: string): string {
   return `el ${WEEKDAYS[day.getDay()]} ${d}`;
 }
 
-export function PlanSuggestionCard() {
+/**
+ * `popup` (2026-11-10, the user): shown as a centered pop-up over the app when there's a plan to
+ * approve, instead of a card in the page; "Después" hides it until the next suggestion.
+ */
+export function PlanSuggestionCard({ popup = false }: { popup?: boolean } = {}) {
+  const [hiddenId, setHiddenId] = useState<string | null>(() => {
+    try {
+      return window.sessionStorage.getItem('calendar.planPopupHidden');
+    } catch {
+      return null;
+    }
+  });
   const { notifyEntityChanged } = useSync();
   const [suggestion, setSuggestion] = useState<PlanSuggestion | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,6 +64,7 @@ export function PlanSuggestionCard() {
   }, [load]);
 
   if (!suggestion) {
+    if (popup) return null;
     return message ? (
       <AppCard>
         <Text color="$accent" fontWeight="700">
@@ -91,7 +103,7 @@ export function PlanSuggestionCard() {
     ? [...suggestion.blocks, { label: 'En el día, sin bloque', start: '', end: '', tasks: suggestion.loose }]
     : suggestion.blocks;
 
-  return (
+  const card = (
     <AppCard>
       <YStack gap="$3">
         <YStack>
@@ -137,8 +149,33 @@ export function PlanSuggestionCard() {
           <AppButton variant="ghost" disabled={busy} onPress={() => void act(false)}>
             Descartar
           </AppButton>
+          {popup ? (
+            <AppButton
+              variant="ghost"
+              disabled={busy}
+              onPress={() => {
+                setHiddenId(suggestion.id);
+                try {
+                  window.sessionStorage.setItem('calendar.planPopupHidden', suggestion.id);
+                } catch {
+                  /* per session */
+                }
+              }}
+            >
+              Después
+            </AppButton>
+          ) : null}
         </XStack>
       </YStack>
     </AppCard>
+  );
+  if (!popup) return card;
+  if (hiddenId === suggestion.id) return null;
+  return (
+    <YStack position="fixed" top={0} left={0} right={0} bottom={0} zIndex={8500} backgroundColor="rgba(10, 12, 16, 0.55)" justifyContent="center" alignItems="center" padding="$5">
+      <YStack width="100%" maxWidth={560} maxHeight="85vh" style={{ overflowY: 'auto' }}>
+        {card}
+      </YStack>
+    </YStack>
   );
 }

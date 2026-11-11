@@ -268,6 +268,8 @@ export interface SyncSnapshot {
   /** projects-and-claude-bridge (2026-11-09); absent on older servers / cached snapshots. */
   projects?: SyncProject[];
   projectLogEntries?: SyncProjectLogEntry[];
+  /** 2026-11-10: the day's check-ins (energy, naps, exercise intensity), last 60 days. */
+  checkIns?: SyncCheckIn[];
   syncedAt: string;
 }
 
@@ -294,6 +296,17 @@ export interface SyncProject {
   links?: Array<{ label: string; path: string }>;
   updatedAt: string;
   deletedAt: string | null;
+}
+
+export interface SyncCheckIn {
+  id: string;
+  at: string;
+  kind: string;
+  energy: number | null;
+  napped: boolean | null;
+  exerciseIntensity: string | null;
+  progress: number | null;
+  reason: string | null;
 }
 
 export interface SyncProjectLogEntry {
