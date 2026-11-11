@@ -1,6 +1,7 @@
 import { projectProgress, projectsNeedingAttention } from '@calendar/shared';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { patterns } from './patterns.js';
 import {
   AREAS,
   dayKey,
@@ -75,6 +76,18 @@ export function registerTools(server: McpServer): void {
         { bloques: blocks, tareas_hoy: forToday, prioridad_alta_sin_fecha: high, proyectos_atencion: attention },
       );
     },
+  );
+
+  server.registerTool(
+    'patrones',
+    {
+      title: 'Patrones de trabajo',
+      description:
+        'Cómo trabaja Cristo según el calendario (no según el chat): minutos y mejores horas de foco, duración típica de sesión, bloques hechos/saltados/sin marcar por categoría y sus razones, tareas completadas y vencidas, ejercicios del tutor y tiempo de juego. Para ajustar cuándo y cuánto proponer.',
+      inputSchema: { dias: z.number().int().min(7).max(90).optional().describe('Ventana en días, por defecto 28.') },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ dias }) => json(`Patrones de los últimos ${dias ?? 28} días:`, patterns(await snapshot(), dias ?? 28)),
   );
 
   server.registerTool(

@@ -58,9 +58,27 @@ export interface Schedule {
   enabled: boolean;
   category?: string | null;
 }
+export interface PomodoroSession {
+  startedAt: string | null;
+  endedAt: string | null;
+  focusDurationMin: number;
+  interrupted: boolean;
+  completedCycles: number;
+  scheduleId?: string | null;
+}
+export interface ScheduleCompletion {
+  scheduleId: string;
+  date: string;
+  status?: 'DONE' | 'SKIPPED';
+  reason?: string | null;
+}
 export interface Snapshot {
   tasks: Task[];
   schedules: Schedule[];
+  pomodoroSessions?: PomodoroSession[];
+  scheduleCompletions?: ScheduleCompletion[];
+  dailyGameTime?: Array<{ date: string; totalMinutes: number }>;
+  exerciseAttempts?: Array<{ occurredAt: string; r: number }>;
   projects?: Project[];
   projectLogEntries?: LogEntry[];
 }
@@ -101,6 +119,11 @@ export function dayKey(d: Date = new Date()): string {
 export function weekday(d: Date = new Date()): number {
   const name = new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, weekday: 'short' }).format(d);
   return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(name);
+}
+
+/** Hour 0-23 of an instant in the user's time zone. */
+export function localHour(iso: string): number {
+  return Number(new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, hour: '2-digit', hour12: false }).format(new Date(iso))) % 24;
 }
 
 export function localTime(iso: string): string {
