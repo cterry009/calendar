@@ -20,6 +20,8 @@ export interface SyncTaskRecord {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  /** projects-and-claude-bridge; absent from older snapshots. */
+  projectId?: string | null;
 }
 
 export interface TaskFormValues {

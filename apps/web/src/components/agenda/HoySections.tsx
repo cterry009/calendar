@@ -101,9 +101,17 @@ export function HoyDashboard() {
   const current = blocks.find((b) => b.start <= now && now < b.end) ?? null;
   const next = blocks.find((b) => b.start > now) ?? null;
 
-  const open = tasks.filter((t) => t.status !== 'COMPLETED');
-  const highNoDate = open.filter((t) => !t.scheduledAt && t.priority === 'HIGH');
-  const dueToday = open.filter((t) => t.scheduledAt && new Date(t.scheduledAt) < endOfDay(today));
+  // R3 (2026-11-13): today first; overdue and unassigned in sections that fold, so the list doesn't swamp the page.
+  const open = tasks.filter((t) => t.status !== 'COMPLETED' && t.status !== 'CANCELLED' && !t.deletedAt);
+  const todayStart = today.getTime();
+  const todayEnd = endOfDay(today).getTime();
+  const at = (t: SyncTaskRecord) => (t.scheduledAt ? new Date(t.scheduledAt).getTime() : null);
+  const PRIORITY_RANK = { HIGH: 0, MEDIUM: 1, LOW: 2 } as const;
+  const byPriority = (a: SyncTaskRecord, b: SyncTaskRecord) =>
+    PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || (at(a) ?? 0) - (at(b) ?? 0);
+  const dueToday = open.filter((t) => { const x = at(t); return x !== null && x >= todayStart && x < todayEnd; });
+  const overdue = open.filter((t) => { const x = at(t); return x !== null && x < todayStart; }).sort(byPriority);
+  const unassigned = open.filter((t) => !t.scheduledAt);
 
   const attention = useMemo(
     () => projectsNeedingAttention(data.projects, data.projectLogEntries.map((l) => ({ ...l, date: l.date.slice(0, 10) })), todayKey),
@@ -337,15 +345,22 @@ export function HoyDashboard() {
             </XStack>
           }
         >
-          {dueToday.length === 0 && highNoDate.length === 0 ? <Empty>Sin tareas pendientes.</Empty> : null}
-          {dueToday.length > 0 ? <YStack gap="$2">{dueToday.map(taskRow)}</YStack> : null}
-          {highNoDate.length > 0 ? (
-            <YStack gap="$2">
-              <Text fontSize="$2" color="$muted">
-                Prioridad alta sin fecha
-              </Text>
-              {highNoDate.slice(0, 6).map(taskRow)}
-            </YStack>
+          <TaskSection id="hoy" title="Hoy" count={dueToday.length} defaultOpen>
+            {dueToday.length ? dueToday.map(taskRow) : <Empty>Nada programado para hoy.</Empty>}
+          </TaskSection>
+          {overdue.length ? (
+            <TaskSection id="atrasadas" title="Atrasadas" count={overdue.length} tone="danger">
+              {overdue.map(taskRow)}
+            </TaskSection>
+          ) : null}
+          {unassigned.length ? (
+            <TaskSection id="sin-asignar" title="Sin asignar" count={unassigned.length}>
+              {groupUnassigned(unassigned, (id) => projectById.get(id)?.title ?? null).map((g) => (
+                <TaskSection key={g.key} id={`sin-asignar:${g.key}`} title={g.title} count={g.tasks.length} nested>
+                  {g.tasks.sort(byPriority).map(taskRow)}
+                </TaskSection>
+              ))}
+            </TaskSection>
           ) : null}
         </Card>
       </XStack>
@@ -446,6 +461,88 @@ export function HoyDashboard() {
         </Card>
       ) : null}
 
+    </YStack>
+  );
+}
+
+
+/** R3: unassigned tasks by project (or category), groups with a high-priority task first. */
+function groupUnassigned(
+  tasks: SyncTaskRecord[],
+  projectTitle: (id: string) => string | null,
+): Array<{ key: string; title: string; tasks: SyncTaskRecord[] }> {
+  const groups = new Map<string, { key: string; title: string; tasks: SyncTaskRecord[] }>();
+  for (const t of tasks) {
+    const project = t.projectId ? projectTitle(t.projectId) : null;
+    const title = project ?? (t.category ? t.category.replace(/_/g, ' ') : 'Sin proyecto');
+    const key = project ? `p:${t.projectId}` : t.category ? `c:${t.category}` : 'none';
+    const g = groups.get(key) ?? { key, title, tasks: [] };
+    g.tasks.push(t);
+    groups.set(key, g);
+  }
+  const high = (g: { tasks: SyncTaskRecord[] }) => (g.tasks.some((t) => t.priority === 'HIGH') ? 0 : 1);
+  return [...groups.values()].sort((a, b) => high(a) - high(b) || (a.key === 'none' ? 1 : b.key === 'none' ? -1 : a.title.localeCompare(b.title, 'es')));
+}
+
+const SECTION_KEY = 'calendar.hoy.sections';
+function loadSections(): Record<string, boolean> {
+  try {
+    return JSON.parse(window.localStorage.getItem(SECTION_KEY) ?? '{}') as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+}
+
+/** A task section that folds; its open/closed state is remembered on this device. */
+function TaskSection({
+  id,
+  title,
+  count,
+  defaultOpen = false,
+  tone,
+  nested = false,
+  children,
+}: {
+  id: string;
+  title: string;
+  count: number;
+  defaultOpen?: boolean;
+  tone?: 'danger';
+  nested?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(() => loadSections()[id] ?? defaultOpen);
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    try {
+      window.localStorage.setItem(SECTION_KEY, JSON.stringify({ ...loadSections(), [id]: next }));
+    } catch {
+      // Not remembered.
+    }
+  };
+  return (
+    <YStack gap="$2" paddingLeft={nested ? '$3' : 0}>
+      <XStack
+        gap="$2"
+        alignItems="center"
+        cursor="pointer"
+        onPress={toggle}
+        role="button"
+        aria-expanded={open}
+        paddingVertical="$1"
+      >
+        <Text color="$muted" width={14}>
+          {open ? '▾' : '▸'}
+        </Text>
+        <Text fontWeight={nested ? '600' : '700'} fontSize={nested ? '$3' : '$4'} flex={1}>
+          {title}
+        </Text>
+        <Text fontSize="$2" color={tone === 'danger' ? '$error' : '$muted'} fontWeight="700">
+          {count}
+        </Text>
+      </XStack>
+      {open ? <YStack gap="$2" paddingLeft="$4">{children}</YStack> : null}
     </YStack>
   );
 }
