@@ -23,8 +23,11 @@ const byTitle = (titles: string[]): EmbeddedPage[] =>
 /** The pages a schedule block works on, from its label. */
 export function blockPages(label: string | null | undefined): EmbeddedPage[] {
   if (!label) return [];
-  if (/maestr/i.test(label)) return byTitle(['Radar de maestrías', 'Radar de maestrías – documento']);
-  if (/investigaci|paper|pinn/i.test(label))
+  // 2026-11-13 schedule: "Investigadores, maestrías y doctorados" and "Revisión del paper" blocks.
+  // "Temas de maestría avanzada" is study, not a radar.
+  if (/investigadores|doctorad|convocatoria/i.test(label))
+    return byTitle(['Radar de maestrías', 'Radar de investigadores – PINNs y control estocástico', 'Radar de maestrías – documento']);
+  if (/paper|pinn/i.test(label))
     return byTitle(['Radar de investigadores – PINNs y control estocástico', 'Bitácora de lectura PINN']);
   return [];
 }

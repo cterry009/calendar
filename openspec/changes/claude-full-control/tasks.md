@@ -60,3 +60,12 @@ Al cerrar cada fase: entrada en la bitácora del proyecto "App de calendario y t
 - [ ] A.5 "Ya lo domino": se desbloquea al aprobar el nivel (o un mínimo); se puede seguir practicando y el tema solo se retira cuando Cristo pulsa "Ya lo domino".
 - [ ] A.6 Ventana nocturna fines de semana: empieza a las 12 (confirmar si es 00:00).
 - [ ] A.7 Radares en la app: opción (a), cambio research-tracking (las tareas programadas escriben programas, investigadores y fechas de cierre en la base de la app).
+
+## Pedidos del 13 nov (después de revisar Hoy)
+
+- [ ] B.1 Ciclo de vida de la tarea: Por hacer → En proceso (al asignarla/empezarla: arranca el pomodoro y el registro de energía de inicio) → al terminar, registro de cierre y "¿se completó?" (sí = completada; no = sigue pendiente). Manual y automático.
+- [ ] B.2 Atrasada: si pasa su hora/evento sin completarse, o nunca pasó a En proceso, queda como atrasada.
+- [ ] B.3 Registro de energía: más etiquetas (variadas) y campo de descripción libre.
+- [ ] B.4 Hábitos de hoy: al marcarlo queda como hecho y se oculta (sección "Hechos" plegada), en vez de las cajas con número.
+- [ ] B.5 Registrar todo (atrasadas, saltadas, incumplidas) para el informe del domingo; tarea programada semanal que, si hay muchas atrasadas o incumplidas, abre un chat: "¿qué pasó?, ¿qué cambiamos?" y sugiere cambios.
+- [ ] B.6 Pomodoros desde el MCP (iniciar, pausar, terminar con su tema), dentro de la fase 1.
